@@ -1,4 +1,6 @@
 using Pss.FhirProcessor.Engine.DependencyInjection;
+using Pss.FhirProcessor.Playground.Api.Services;
+using Pss.FhirProcessor.Playground.Api.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +10,10 @@ builder.Services.AddEndpointsApiExplorer();
 
 // Register FhirProcessor.Engine services
 builder.Services.AddFhirProcessorEngine();
+
+// Register Playground API services
+builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+builder.Services.AddScoped<IProjectService, ProjectService>();
 
 // Add CORS for frontend
 builder.Services.AddCors(options =>

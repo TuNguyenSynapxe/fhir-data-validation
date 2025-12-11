@@ -1,0 +1,39 @@
+{
+  "version": "1.0",
+  "fhirVersion": "R4",
+  "rules": [
+    {
+      "id": "R1",
+      "type": "Required",
+      "resourceType": "Patient",
+      "path": "name.family",
+      "severity": "error",
+      "errorCode": "MANDATORY_MISSING",
+      "message": "Patient family name is required"
+    },
+    {
+      "id": "R2",
+      "type": "FixedValue",
+      "resourceType": "Patient",
+      "path": "gender",
+      "severity": "error",
+      "errorCode": "FIXED_VALUE_MISMATCH",
+      "message": "Patient gender must be female",
+      "params": {
+        "value": "female"
+      }
+    },
+    {
+      "id": "R3",
+      "type": "Regex",
+      "resourceType": "Patient",
+      "path": "identifier.where(system='http://example.org/nric').value",
+      "severity": "error",
+      "errorCode": "REGEX_INVALID",
+      "message": "Invalid NRIC format",
+      "params": {
+        "pattern": "^[STFG]\\d{7}[A-Z]$"
+      }
+    }
+  ]
+}

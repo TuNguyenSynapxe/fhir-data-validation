@@ -4,6 +4,9 @@ using Hl7.Fhir.Model;
 using Hl7.FhirPath;
 using Hl7.Fhir.Serialization;
 using Hl7.Fhir.ElementModel;
+using Hl7.Fhir.Introspection;
+using Hl7.Fhir.Specification.Source;
+using Hl7.Fhir.Specification;
 using Pss.FhirProcessor.Engine.Models;
 using Pss.FhirProcessor.Engine.Interfaces;
 
@@ -15,10 +18,15 @@ namespace Pss.FhirProcessor.Engine.Services;
 public class FhirPathRuleEngine : IFhirPathRuleEngine
 {
     private readonly FhirPathCompiler _compiler;
+    private readonly ModelInspector _inspector;
+    private readonly IStructureDefinitionSummaryProvider _provider;
     
     public FhirPathRuleEngine()
     {
         _compiler = new FhirPathCompiler();
+        _inspector = ModelInspector.ForAssembly(typeof(Patient).Assembly);
+        var resolver = ZipSource.CreateValidationSource();
+        _provider = new StructureDefinitionSummaryProvider(resolver);
     }
     
     public async Task<List<RuleValidationError>> ValidateAsync(Bundle bundle, RuleSet ruleSet, CancellationToken cancellationToken = default)
@@ -464,8 +472,15 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         try
         {
             var compiled = _compiler.Compile(path);
-            var typedElement = resource.ToTypedElement();
-            var result = compiled(typedElement, null);
+            
+            // Convert Resource POCO to ScopedNode via JSON round-trip
+            var serializer = new FhirJsonSerializer();
+            var json = serializer.SerializeToString(resource);
+            var node = FhirJsonNode.Parse(json);
+            var typedElement = node.ToTypedElement(_provider);
+            var scopedNode = new ScopedNode(typedElement);
+            
+            var result = compiled(scopedNode, EvaluationContext.CreateDefault());
             return result.ToList();
         }
         catch (Exception ex)
