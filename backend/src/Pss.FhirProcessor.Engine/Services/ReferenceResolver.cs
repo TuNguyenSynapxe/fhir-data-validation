@@ -1,0 +1,267 @@
+using System.Reflection;
+using Hl7.Fhir.Model;
+using Hl7.Fhir.Introspection;
+using Pss.FhirProcessor.Engine.Models;
+using Pss.FhirProcessor.Engine.Interfaces;
+
+namespace Pss.FhirProcessor.Engine.Services;
+
+/// <summary>
+/// Validates resource references within a bundle
+/// </summary>
+public class ReferenceResolver : IReferenceResolver
+{
+    public async Task<List<ReferenceValidationError>> ValidateAsync(Bundle bundle, CancellationToken cancellationToken = default)
+    {
+        var errors = new List<ReferenceValidationError>();
+        
+        // Build a lookup of available resources
+        var resourceLookup = BuildResourceLookup(bundle);
+        
+        // Validate references in each entry
+        for (int i = 0; i < bundle.Entry.Count; i++)
+        {
+            var entry = bundle.Entry[i];
+            if (entry.Resource == null)
+                continue;
+            
+            var refErrors = ValidateResourceReferences(entry.Resource, i, resourceLookup);
+            errors.AddRange(refErrors);
+        }
+        
+        return await System.Threading.Tasks.Task.FromResult(errors);
+    }
+    
+    private Dictionary<string, (string ResourceType, string ResourceId, int EntryIndex)> BuildResourceLookup(Bundle bundle)
+    {
+        var lookup = new Dictionary<string, (string, string, int)>();
+        
+        for (int i = 0; i < bundle.Entry.Count; i++)
+        {
+            var entry = bundle.Entry[i];
+            if (entry.Resource == null)
+                continue;
+            
+            var resourceType = entry.Resource.TypeName;
+            var resourceId = entry.Resource.Id;
+            
+            // Add fullUrl mapping
+            if (!string.IsNullOrEmpty(entry.FullUrl))
+            {
+                lookup[entry.FullUrl] = (resourceType, resourceId ?? "", i);
+            }
+            
+            // Add resourceType/id mapping
+            if (!string.IsNullOrEmpty(resourceId))
+            {
+                var key = $"{resourceType}/{resourceId}";
+                lookup[key] = (resourceType, resourceId, i);
+            }
+        }
+        
+        return lookup;
+    }
+    
+    private List<ReferenceValidationError> ValidateResourceReferences(
+        Resource resource,
+        int entryIndex,
+        Dictionary<string, (string ResourceType, string ResourceId, int EntryIndex)> resourceLookup)
+    {
+        var errors = new List<ReferenceValidationError>();
+        
+        // Use reflection to find all ResourceReference properties
+        var references = FindAllReferences(resource);
+        
+        foreach (var (refPath, reference) in references)
+        {
+            if (string.IsNullOrEmpty(reference.Reference))
+                continue;
+            
+            // Check if reference exists in bundle
+            if (!resourceLookup.ContainsKey(reference.Reference))
+            {
+                errors.Add(new ReferenceValidationError
+                {
+                    Severity = "error",
+                    ResourceType = resource.TypeName,
+                    Path = refPath,
+                    ErrorCode = "REFERENCE_NOT_FOUND",
+                    Message = $"Referenced resource not found: {reference.Reference}",
+                    Details = new Dictionary<string, object>
+                    {
+                        ["reference"] = reference.Reference
+                    },
+                    EntryIndex = entryIndex,
+                    ResourceId = resource.Id,
+                    Reference = reference.Reference
+                });
+            }
+            else
+            {
+                // Validate reference type if specified
+                var targetResource = resourceLookup[reference.Reference];
+                
+                // Check type in reference.Type or infer from reference string
+                var expectedTypes = GetExpectedReferenceTypes(reference, refPath);
+                
+                if (expectedTypes.Any() && !expectedTypes.Contains(targetResource.ResourceType))
+                {
+                    errors.Add(new ReferenceValidationError
+                    {
+                        Severity = "error",
+                        ResourceType = resource.TypeName,
+                        Path = refPath,
+                        ErrorCode = "REFERENCE_TYPE_MISMATCH",
+                        Message = $"Reference type mismatch. Expected: {string.Join(", ", expectedTypes)}, Found: {targetResource.ResourceType}",
+                        Details = new Dictionary<string, object>
+                        {
+                            ["reference"] = reference.Reference,
+                            ["expectedTypes"] = expectedTypes,
+                            ["actualType"] = targetResource.ResourceType
+                        },
+                        EntryIndex = entryIndex,
+                        ResourceId = resource.Id,
+                        Reference = reference.Reference
+                    });
+                }
+            }
+        }
+        
+        return errors;
+    }
+    
+    private List<(string Path, ResourceReference Reference)> FindAllReferences(Resource resource, string basePath = "")
+    {
+        var references = new List<(string, ResourceReference)>();
+        
+        if (resource == null)
+            return references;
+        
+        var resourceType = resource.GetType();
+        if (string.IsNullOrEmpty(basePath))
+            basePath = resource.TypeName;
+        
+        // Get all properties
+        var properties = resourceType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+        
+        foreach (var prop in properties)
+        {
+            var value = prop.GetValue(resource);
+            if (value == null)
+                continue;
+            
+            var propPath = $"{basePath}.{prop.Name}";
+            
+            // Check if property is a ResourceReference
+            if (value is ResourceReference resourceRef)
+            {
+                references.Add((propPath, resourceRef));
+            }
+            // Check if property is a list of ResourceReferences
+            else if (value is System.Collections.IEnumerable enumerable && 
+                     !(value is string))
+            {
+                int index = 0;
+                foreach (var item in enumerable)
+                {
+                    if (item is ResourceReference itemRef)
+                    {
+                        references.Add(($"{propPath}[{index}]", itemRef));
+                    }
+                    else if (item is Element element)
+                    {
+                        // Recursively search complex elements
+                        references.AddRange(FindReferencesInElement(element, $"{propPath}[{index}]"));
+                    }
+                    index++;
+                }
+            }
+            // Recursively search complex types
+            else if (value is Element element)
+            {
+                references.AddRange(FindReferencesInElement(element, propPath));
+            }
+        }
+        
+        return references;
+    }
+    
+    private List<(string Path, ResourceReference Reference)> FindReferencesInElement(Element element, string basePath)
+    {
+        var references = new List<(string, ResourceReference)>();
+        
+        if (element == null)
+            return references;
+        
+        var elementType = element.GetType();
+        var properties = elementType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+        
+        foreach (var prop in properties)
+        {
+            var value = prop.GetValue(element);
+            if (value == null)
+                continue;
+            
+            var propPath = $"{basePath}.{prop.Name}";
+            
+            if (value is ResourceReference resourceRef)
+            {
+                references.Add((propPath, resourceRef));
+            }
+            else if (value is System.Collections.IEnumerable enumerable && 
+                     !(value is string))
+            {
+                int index = 0;
+                foreach (var item in enumerable)
+                {
+                    if (item is ResourceReference itemRef)
+                    {
+                        references.Add(($"{propPath}[{index}]", itemRef));
+                    }
+                    else if (item is Element childElement)
+                    {
+                        references.AddRange(FindReferencesInElement(childElement, $"{propPath}[{index}]"));
+                    }
+                    index++;
+                }
+            }
+            else if (value is Element childElement)
+            {
+                references.AddRange(FindReferencesInElement(childElement, propPath));
+            }
+        }
+        
+        return references;
+    }
+    
+    private List<string> GetExpectedReferenceTypes(ResourceReference reference, string path)
+    {
+        var types = new List<string>();
+        
+        // Check if reference.Type is specified
+        if (!string.IsNullOrEmpty(reference.Type))
+        {
+            types.Add(reference.Type);
+        }
+        
+        // Infer from common FHIR patterns
+        if (path.Contains(".subject"))
+        {
+            types.AddRange(new[] { "Patient", "Group", "Device", "Location" });
+        }
+        else if (path.Contains(".performer") || path.Contains(".practitioner"))
+        {
+            types.AddRange(new[] { "Practitioner", "PractitionerRole", "Organization" });
+        }
+        else if (path.Contains(".encounter"))
+        {
+            types.Add("Encounter");
+        }
+        else if (path.Contains(".location"))
+        {
+            types.Add("Location");
+        }
+        
+        return types;
+    }
+}
