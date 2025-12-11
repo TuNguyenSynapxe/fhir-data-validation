@@ -31,7 +31,73 @@ public class SmartPathNavigationService : ISmartPathNavigationService
             
             // Start with Bundle
             breadcrumbs.Add("Bundle");
-            var currentNode = JsonSerializer.SerializeToDocument(bundle).RootElement;
+            
+            // Use FhirJsonSerializer for proper FHIR serialization
+            var fhirSerializer = new Hl7.Fhir.Serialization.FhirJsonSerializer();
+            var json = fhirSerializer.SerializeToString(bundle);
+            var currentNode = JsonDocument.Parse(json).RootElement;
+            
+            // If path doesn't start with "entry", assume it's relative to first resource (or specified resourceType)
+            if (segments.Count > 0 && segments[0].PropertyName != "entry")
+            {
+                // Find entry index - either by resourceType or default to 0
+                int? entryIndex = null;
+                if (!string.IsNullOrEmpty(resourceType))
+                {
+                    // Find first entry matching resource type
+                    for (int i = 0; i < bundle.Entry.Count; i++)
+                    {
+                        if (bundle.Entry[i].Resource?.TypeName == resourceType)
+                        {
+                            entryIndex = i;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    entryIndex = 0; // Default to first entry
+                }
+                
+                if (entryIndex.HasValue && entryIndex.Value < bundle.Entry.Count)
+                {
+                    // Navigate to entry[index].resource
+                    pointer.Append($"/entry/{entryIndex.Value}");
+                    breadcrumbs.Add($"entry[{entryIndex.Value}]");
+                    
+                    if (currentNode.TryGetProperty("entry", out var entryArray) && entryIndex.Value < entryArray.GetArrayLength())
+                    {
+                        currentNode = entryArray[entryIndex.Value];
+                        
+                        if (currentNode.TryGetProperty("resource", out var resource))
+                        {
+                            pointer.Append("/resource");
+                            var actualResourceType = "resource";
+                            if (resource.TryGetProperty("resourceType", out var rtProp) && rtProp.ValueKind == JsonValueKind.String)
+                            {
+                                actualResourceType = rtProp.GetString() ?? "resource";
+                            }
+                            breadcrumbs.Add(actualResourceType);
+                            currentNode = resource;
+                        }
+                        else
+                        {
+                            exists = false;
+                            missingParents.Add("resource");
+                        }
+                    }
+                    else
+                    {
+                        exists = false;
+                        missingParents.Add($"entry[{entryIndex.Value}]");
+                    }
+                }
+                else
+                {
+                    exists = false;
+                    missingParents.Add(resourceType ?? "entry[0]");
+                }
+            }
             
             // Process each segment
             foreach (var segment in segments)
@@ -91,12 +157,31 @@ public class SmartPathNavigationService : ISmartPathNavigationService
                 }
                 else if (segment.Type == SegmentType.Property)
                 {
-                    pointer.Append($"/{segment.PropertyName}");
-                    breadcrumbs.Add(segment.PropertyName);
-                    
                     if (currentNode.TryGetProperty(segment.PropertyName, out var prop))
                     {
-                        currentNode = prop;
+                        // If property is an array and no explicit index, take first element
+                        if (prop.ValueKind == JsonValueKind.Array)
+                        {
+                            pointer.Append($"/{segment.PropertyName}/0");
+                            breadcrumbs.Add($"{segment.PropertyName}[0]");
+                            
+                            if (prop.GetArrayLength() > 0)
+                            {
+                                currentNode = prop[0];
+                            }
+                            else
+                            {
+                                exists = false;
+                                missingParents.Add($"{segment.PropertyName}[0]");
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            pointer.Append($"/{segment.PropertyName}");
+                            breadcrumbs.Add(segment.PropertyName);
+                            currentNode = prop;
+                        }
                     }
                     else
                     {
@@ -107,22 +192,34 @@ public class SmartPathNavigationService : ISmartPathNavigationService
                 }
                 else if (segment.Type == SegmentType.WhereClause)
                 {
-                    // Handle where() filter - find matching index
-                    var matchIndex = EvaluateWhereClause(currentNode, segment.WhereExpression);
-                    if (matchIndex >= 0)
+                    // First access the property (should be an array)
+                    if (currentNode.TryGetProperty(segment.PropertyName, out var arrayProp))
                     {
-                        pointer.Append($"/{matchIndex}");
-                        breadcrumbs.Add($"[{matchIndex}]");
+                        pointer.Append($"/{segment.PropertyName}");
                         
-                        if (currentNode.ValueKind == JsonValueKind.Array && matchIndex < currentNode.GetArrayLength())
+                        // Then evaluate where() filter - find matching index
+                        var matchIndex = EvaluateWhereClause(arrayProp, segment.WhereExpression);
+                        if (matchIndex >= 0)
                         {
-                            currentNode = currentNode[matchIndex];
+                            pointer.Append($"/{matchIndex}");
+                            breadcrumbs.Add($"{segment.PropertyName}[{matchIndex}]");
+                            
+                            if (arrayProp.ValueKind == JsonValueKind.Array && matchIndex < arrayProp.GetArrayLength())
+                            {
+                                currentNode = arrayProp[matchIndex];
+                            }
+                        }
+                        else
+                        {
+                            exists = false;
+                            missingParents.Add($"{segment.PropertyName}.where({segment.WhereExpression})");
+                            break;
                         }
                     }
                     else
                     {
                         exists = false;
-                        missingParents.Add($"where({segment.WhereExpression})");
+                        missingParents.Add(segment.PropertyName);
                         break;
                     }
                 }
@@ -200,42 +297,88 @@ public class SmartPathNavigationService : ISmartPathNavigationService
     {
         var segments = new List<PathSegment>();
         
-        // Match patterns: entry[0], Observation, component.where(...), valueString
-        var pattern = @"(\w+)(\[(\d+)\])?(\\.where\(([^)]+)\))?";
-        var matches = Regex.Matches(path, pattern);
+        // Split by dots, but handle where() clauses and array indices
+        // Match patterns: property, property[index], property.where(condition)
+        var parts = new List<string>();
+        var currentPart = "";
+        var parenDepth = 0;
         
-        foreach (Match match in matches)
+        for (int i = 0; i < path.Length; i++)
         {
-            var propertyName = match.Groups[1].Value;
-            var hasIndex = match.Groups[2].Success;
-            var index = hasIndex ? int.Parse(match.Groups[3].Value) : -1;
-            var hasWhere = match.Groups[4].Success;
-            var whereExpr = hasWhere ? match.Groups[5].Value : null;
+            var ch = path[i];
             
-            if (hasIndex)
+            if (ch == '(')
             {
-                segments.Add(new PathSegment
-                {
-                    Type = SegmentType.ArrayIndex,
-                    PropertyName = propertyName,
-                    Index = index
-                });
+                parenDepth++;
+                currentPart += ch;
             }
-            else if (hasWhere)
+            else if (ch == ')')
+            {
+                parenDepth--;
+                currentPart += ch;
+            }
+            else if (ch == '.' && parenDepth == 0)
+            {
+                // Only split on dots that are not inside parentheses
+                // But check if next part is "where(" - if so, include it in current part
+                if (i + 6 < path.Length && path.Substring(i + 1, 6) == "where(")
+                {
+                    currentPart += ch; // Include the dot
+                }
+                else
+                {
+                    if (currentPart.Length > 0)
+                    {
+                        parts.Add(currentPart);
+                        currentPart = "";
+                    }
+                }
+            }
+            else
+            {
+                currentPart += ch;
+            }
+        }
+        
+        if (currentPart.Length > 0)
+            parts.Add(currentPart);
+        
+        // Now parse each part
+        foreach (var part in parts)
+        {
+            // Check for where clause: property.where(condition)
+            var whereMatch = Regex.Match(part, @"^(\w+)\.where\(([^)]+)\)$");
+            if (whereMatch.Success)
             {
                 segments.Add(new PathSegment
                 {
                     Type = SegmentType.WhereClause,
-                    PropertyName = propertyName,
-                    WhereExpression = whereExpr
+                    PropertyName = whereMatch.Groups[1].Value,
+                    WhereExpression = whereMatch.Groups[2].Value
                 });
+                continue;
             }
-            else
+            
+            // Check for array index: property[index]
+            var indexMatch = Regex.Match(part, @"^(\w+)\[(\d+)\]$");
+            if (indexMatch.Success)
+            {
+                segments.Add(new PathSegment
+                {
+                    Type = SegmentType.ArrayIndex,
+                    PropertyName = indexMatch.Groups[1].Value,
+                    Index = int.Parse(indexMatch.Groups[2].Value)
+                });
+                continue;
+            }
+            
+            // Simple property
+            if (Regex.IsMatch(part, @"^\w+$"))
             {
                 segments.Add(new PathSegment
                 {
                     Type = SegmentType.Property,
-                    PropertyName = propertyName
+                    PropertyName = part
                 });
             }
         }
