@@ -33,6 +33,13 @@ public static class TestHelper
             ?? throw new InvalidOperationException("Failed to deserialize rules");
     }
 
+    public static CodeMasterDefinition LoadCodeMasterFixture(string filename)
+    {
+        var json = LoadFixture(filename);
+        return JsonSerializer.Deserialize<CodeMasterDefinition>(json) 
+            ?? throw new InvalidOperationException("Failed to deserialize CodeMaster");
+    }
+
     public static CodeMasterDefinition CreateSampleCodeMaster()
     {
         return new CodeMasterDefinition

@@ -1,0 +1,97 @@
+{
+  "version": "1.0",
+  "screeningTypes": [
+    {
+      "code": "HS",
+      "display": "Hearing Screening",
+      "questions": [
+        {
+          "code": "SQ-001",
+          "display": "Did the child respond to sound?",
+          "multiValue": false,
+          "dataType": "string",
+          "allowedAnswers": [
+            {
+              "code": "Yes",
+              "display": "Yes"
+            },
+            {
+              "code": "No",
+              "display": "No"
+            }
+          ]
+        },
+        {
+          "code": "SQ-002",
+          "display": "Hearing test frequencies",
+          "multiValue": true,
+          "dataType": "codeableConcept",
+          "allowedAnswers": [
+            {
+              "code": "500Hz – R",
+              "display": "500Hz - Response"
+            },
+            {
+              "code": "1000Hz – R",
+              "display": "1000Hz - Response"
+            },
+            {
+              "code": "1000Hz – NR",
+              "display": "1000Hz - No Response"
+            },
+            {
+              "code": "2000Hz – R",
+              "display": "2000Hz - Response"
+            },
+            {
+              "code": "2000Hz – NR",
+              "display": "2000Hz - No Response"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "VS",
+      "display": "Vision Screening",
+      "questions": [
+        {
+          "code": "VQ-001",
+          "display": "Can the child see objects clearly?",
+          "multiValue": false,
+          "dataType": "string",
+          "allowedAnswers": [
+            {
+              "code": "Yes",
+              "display": "Yes"
+            },
+            {
+              "code": "No",
+              "display": "No"
+            }
+          ]
+        },
+        {
+          "code": "VQ-002",
+          "display": "Visual acuity score",
+          "multiValue": false,
+          "dataType": "string",
+          "allowedAnswers": [
+            {
+              "code": "20/20",
+              "display": "20/20"
+            },
+            {
+              "code": "20/40",
+              "display": "20/40"
+            },
+            {
+              "code": "20/60",
+              "display": "20/60"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

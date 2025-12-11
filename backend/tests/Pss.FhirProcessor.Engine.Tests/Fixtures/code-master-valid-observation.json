@@ -1,0 +1,60 @@
+{
+  "resourceType": "Observation",
+  "id": "obs-valid-001",
+  "code": {
+    "coding": [
+      {
+        "system": "https://fhir.synapxe.sg/CodeSystem/screening-type",
+        "code": "HS",
+        "display": "Hearing Screening"
+      }
+    ]
+  },
+  "status": "final",
+  "subject": {
+    "reference": "Patient/patient-001"
+  },
+  "encounter": {
+    "reference": "Encounter/encounter-001"
+  },
+  "performer": [
+    {
+      "reference": "Practitioner/practitioner-001"
+    }
+  ],
+  "component": [
+    {
+      "code": {
+        "coding": [
+          {
+            "system": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire",
+            "code": "SQ-001",
+            "display": "Did the child respond to sound?"
+          }
+        ]
+      },
+      "valueString": "Yes"
+    },
+    {
+      "code": {
+        "coding": [
+          {
+            "system": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire",
+            "code": "SQ-002",
+            "display": "Hearing test frequencies"
+          }
+        ]
+      },
+      "valueCodeableConcept": {
+        "coding": [
+          {
+            "code": "500Hz – R"
+          },
+          {
+            "code": "1000Hz – NR"
+          }
+        ]
+      }
+    }
+  ]
+}
