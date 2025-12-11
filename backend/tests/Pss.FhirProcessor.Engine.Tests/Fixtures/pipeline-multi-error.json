@@ -1,0 +1,46 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:patient-001",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "patient-001",
+        "gender": "male"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:observation-001",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "observation-001",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://example.org",
+              "code": "MH-001"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "urn:uuid:patient-999"
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://example.org/questions",
+                  "code": "SQ-001"
+                }
+              ]
+            },
+            "valueString": "INVALID"
+          }
+        ]
+      }
+    }
+  ]
+}

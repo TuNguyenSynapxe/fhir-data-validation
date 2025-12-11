@@ -1,0 +1,55 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:patient-001",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "patient-001",
+        "name": [
+          {
+            "family": "Doe",
+            "given": ["John"]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://example.org/fhir/Practitioner/prac-001",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "prac-001",
+        "name": [
+          {
+            "family": "Smith",
+            "given": ["Jane"]
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-001",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "8867-4"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "urn:uuid:patient-001"
+        },
+        "performer": [
+          {
+            "reference": "https://example.org/fhir/Practitioner/prac-001"
+          }
+        ]
+      }
+    }
+  ]
+}

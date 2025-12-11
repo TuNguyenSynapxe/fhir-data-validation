@@ -1,0 +1,67 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:guid-001",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "guid-001"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "prac-123"
+      }
+    },
+    {
+      "fullUrl": "https://server.example.com/Patient/abs-456",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "abs-456"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-001",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "8867-4"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "urn:uuid:guid-001"
+        },
+        "performer": [
+          {
+            "reference": "Practitioner/prac-123"
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-002",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "8867-4"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "https://server.example.com/Patient/abs-456"
+        }
+      }
+    }
+  ]
+}

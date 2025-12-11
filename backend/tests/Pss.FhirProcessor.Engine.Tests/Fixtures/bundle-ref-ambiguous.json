@@ -1,0 +1,37 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:AAA",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "AAA"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "AAA"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-001",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "8867-4"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "urn:uuid:AAA"
+        }
+      }
+    }
+  ]
+}

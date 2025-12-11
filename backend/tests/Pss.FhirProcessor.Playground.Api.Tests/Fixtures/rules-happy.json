@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "R001",
+      "resourceType": "Patient",
+      "path": "name",
+      "type": "Required",
+      "message": "Patient name is required"
+    },
+    {
+      "id": "R002",
+      "resourceType": "Patient",
+      "path": "gender",
+      "type": "Required",
+      "message": "Patient gender is required"
+    }
+  ]
+}

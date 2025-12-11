@@ -72,10 +72,24 @@ public class ReferenceResolver : IReferenceResolver
         // Use reflection to find all ResourceReference properties
         var references = FindAllReferences(resource);
         
+        // Deduplicate references - keep only the first occurrence of each unique reference string
+        var seenReferences = new HashSet<string>();
+        var uniqueReferences = new List<(string Path, ResourceReference Reference)>();
+        
         foreach (var (refPath, reference) in references)
         {
             if (string.IsNullOrEmpty(reference.Reference))
                 continue;
+                
+            // Only process each reference string once
+            if (seenReferences.Add(reference.Reference))
+            {
+                uniqueReferences.Add((refPath, reference));
+            }
+        }
+        
+        foreach (var (refPath, reference) in uniqueReferences)
+        {
             
             // Check if reference exists in bundle
             if (!resourceLookup.ContainsKey(reference.Reference))
@@ -141,8 +155,14 @@ public class ReferenceResolver : IReferenceResolver
         if (string.IsNullOrEmpty(basePath))
             basePath = resource.TypeName;
         
-        // Get all properties
-        var properties = resourceType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+        // Get all properties but exclude base infrastructure properties to avoid duplicates
+        // Exclude properties from Element, BackboneElement, Base, Resource base classes
+        var properties = resourceType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.Name != "Children" && // Internal FHIR element structure
+                       p.Name != "ElementId" &&
+                       p.Name != "Extension" &&  // These are already in typed properties
+                       p.DeclaringType != typeof(Base) &&
+                       p.GetIndexParameters().Length == 0); // Skip indexer properties
         
         foreach (var prop in properties)
         {
@@ -244,20 +264,21 @@ public class ReferenceResolver : IReferenceResolver
             types.Add(reference.Type);
         }
         
-        // Infer from common FHIR patterns
-        if (path.Contains(".subject"))
+        // Infer from common FHIR patterns (case-insensitive)
+        var lowerPath = path.ToLowerInvariant();
+        if (lowerPath.Contains(".subject"))
         {
             types.AddRange(new[] { "Patient", "Group", "Device", "Location" });
         }
-        else if (path.Contains(".performer") || path.Contains(".practitioner"))
+        else if (lowerPath.Contains(".performer") || lowerPath.Contains(".practitioner"))
         {
             types.AddRange(new[] { "Practitioner", "PractitionerRole", "Organization" });
         }
-        else if (path.Contains(".encounter"))
+        else if (lowerPath.Contains(".encounter"))
         {
             types.Add("Encounter");
         }
-        else if (path.Contains(".location"))
+        else if (lowerPath.Contains(".location"))
         {
             types.Add("Location");
         }

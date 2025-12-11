@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "resourceType": "Patient",
+      "path": "name",
+      "type": "Required"
+    },
+    {
+      "resourceType": "Patient",
+      "path": "gender",
+      "type": "Required"
+    },
+    {
+      "resourceType": "Patient",
+      "path": "birthDate",
+      "type": "Required"
+    }
+  ]
+}

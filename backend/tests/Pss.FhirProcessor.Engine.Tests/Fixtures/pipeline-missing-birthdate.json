@@ -1,0 +1,26 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:patient-001",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "patient-001",
+        "identifier": [
+          {
+            "system": "http://example.org/nric",
+            "value": "S1234567D"
+          }
+        ],
+        "name": [
+          {
+            "family": "Simpson",
+            "given": ["Homer"]
+          }
+        ],
+        "gender": "male"
+      }
+    }
+  ]
+}

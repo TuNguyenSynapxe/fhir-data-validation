@@ -1,0 +1,37 @@
+[
+  {
+    "severity": "error",
+    "location": ["Patient.name"],
+    "message": "Required element 'name' is missing",
+    "code": "required",
+    "expression": ["Patient.name"]
+  },
+  {
+    "severity": "warning",
+    "location": ["Patient.gender"],
+    "message": "Gender value is not in the preferred value set",
+    "code": "code-invalid",
+    "expression": ["Patient.gender"]
+  },
+  {
+    "severity": "error",
+    "location": ["Observation.code"],
+    "message": "Code is required for Observation resource",
+    "code": "required",
+    "expression": ["Observation.code"]
+  },
+  {
+    "severity": "error",
+    "location": ["Observation.status"],
+    "message": "Invalid status value",
+    "code": "value",
+    "expression": ["Observation.status"]
+  },
+  {
+    "severity": "warning",
+    "location": ["Observation.subject"],
+    "message": "Subject reference cannot be resolved",
+    "code": "not-found",
+    "expression": ["Observation.subject"]
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:patient-001",
+      "resource": {
+        "id": "patient-001",
+        "gender": "male"
+      }
+    }
+  ]
+}

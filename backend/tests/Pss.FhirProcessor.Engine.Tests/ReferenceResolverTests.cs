@@ -1,0 +1,722 @@
+using Hl7.Fhir.Model;
+using Pss.FhirProcessor.Engine.Services;
+using FluentAssertions;
+
+namespace Pss.FhirProcessor.Engine.Tests;
+
+public class ReferenceResolverTests
+{
+    private readonly ReferenceResolver _resolver;
+
+    public ReferenceResolverTests()
+    {
+        _resolver = new ReferenceResolver();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_UrnUuidReference_FoundTrue()
+    {
+        // Arrange
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    FullUrl = "urn:uuid:patient-001",
+                    Resource = new Patient
+                    {
+                        Id = "patient-001"
+                    }
+                },
+                new Bundle.EntryComponent
+                {
+                    FullUrl = "urn:uuid:obs-001",
+                    Resource = new Observation
+                    {
+                        Id = "obs-001",
+                        Subject = new ResourceReference("urn:uuid:patient-001")
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _resolver.ValidateAsync(bundle);
+
+        // Assert
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_ResourceTypeIdReference_FoundTrue()
+    {
+        // Arrange
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    Resource = new Patient
+                    {
+                        Id = "123"
+                    }
+                },
+                new Bundle.EntryComponent
+                {
+                    Resource = new Observation
+                    {
+                        Id = "obs-001",
+                        Subject = new ResourceReference("Patient/123")
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _resolver.ValidateAsync(bundle);
+
+        // Assert
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_AbsoluteUrlReference_FoundTrue()
+    {
+        // Arrange
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    FullUrl = "https://example.org/fhir/Patient/123",
+                    Resource = new Patient
+                    {
+                        Id = "123"
+                    }
+                },
+                new Bundle.EntryComponent
+                {
+                    Resource = new Observation
+                    {
+                        Id = "obs-001",
+                        Subject = new ResourceReference("https://example.org/fhir/Patient/123")
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _resolver.ValidateAsync(bundle);
+
+        // Assert
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_WrongResourceType_ReturnsTypeMismatchError()
+    {
+        // Arrange
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    Resource = new Patient
+                    {
+                        Id = "123"
+                    }
+                },
+                new Bundle.EntryComponent
+                {
+                    Resource = new Observation
+                    {
+                        Id = "obs-001",
+                        // Referencing Patient but expecting Encounter
+                        Encounter = new ResourceReference("Patient/123")
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _resolver.ValidateAsync(bundle);
+
+        // Assert
+        errors.Should().HaveCount(1);
+        var error = errors[0];
+        error.ErrorCode.Should().Be("REFERENCE_TYPE_MISMATCH");
+        error.Details.Should().ContainKey("expectedTypes");
+        error.Details.Should().ContainKey("actualType");
+        error.Details!["actualType"].Should().Be("Patient");
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_MissingReferenceTarget_ReturnsNotFoundError()
+    {
+        // Arrange
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    Resource = new Observation
+                    {
+                        Id = "obs-001",
+                        Subject = new ResourceReference("Patient/999")
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _resolver.ValidateAsync(bundle);
+
+        // Assert
+        errors.Should().HaveCount(1);
+        var error = errors[0];
+        error.ErrorCode.Should().Be("REFERENCE_NOT_FOUND");
+        error.Reference.Should().Be("Patient/999");
+        error.Message.Should().Contain("not found");
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_MultipleMatchesPreferFullUrl_ResolvesCorrectly()
+    {
+        // Arrange - urn:uuid should be preferred over resourceType/id
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    FullUrl = "urn:uuid:AAA",
+                    Resource = new Patient
+                    {
+                        Id = "AAA"
+                    }
+                },
+                new Bundle.EntryComponent
+                {
+                    Resource = new Observation
+                    {
+                        Id = "obs-001",
+                        Subject = new ResourceReference("urn:uuid:AAA")
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _resolver.ValidateAsync(bundle);
+
+        // Assert
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_NestedReferencePath_ValidatesCorrectly()
+    {
+        // Arrange
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    Resource = new Patient
+                    {
+                        Id = "123"
+                    }
+                },
+                new Bundle.EntryComponent
+                {
+                    Resource = new Observation
+                    {
+                        Id = "obs-001",
+                        Subject = new ResourceReference("Patient/123")
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _resolver.ValidateAsync(bundle);
+
+        // Assert
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_ReferenceInArray_ValidatesCorrectly()
+    {
+        // Arrange
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    Resource = new Organization
+                    {
+                        Id = "ABC"
+                    }
+                },
+                new Bundle.EntryComponent
+                {
+                    Resource = new Observation
+                    {
+                        Id = "obs-001",
+                        Performer = new List<ResourceReference>
+                        {
+                            new ResourceReference("Organization/ABC")
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _resolver.ValidateAsync(bundle);
+
+        // Assert
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_CaseSensitiveIds_DistinguishesCorrectly()
+    {
+        // Arrange
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    Resource = new Patient
+                    {
+                        Id = "Abc"
+                    }
+                },
+                new Bundle.EntryComponent
+                {
+                    Resource = new Observation
+                    {
+                        Id = "obs-001",
+                        // Wrong case - should not match
+                        Subject = new ResourceReference("Patient/ABC")
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _resolver.ValidateAsync(bundle);
+
+        // Assert
+        errors.Should().HaveCount(1);
+        errors[0].ErrorCode.Should().Be("REFERENCE_NOT_FOUND");
+        errors[0].Reference.Should().Be("Patient/ABC");
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_CaseSensitiveCorrectCase_Resolves()
+    {
+        // Arrange
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    Resource = new Patient
+                    {
+                        Id = "Abc"
+                    }
+                },
+                new Bundle.EntryComponent
+                {
+                    Resource = new Observation
+                    {
+                        Id = "obs-001",
+                        Subject = new ResourceReference("Patient/Abc")
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _resolver.ValidateAsync(bundle);
+
+        // Assert
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_CircularReferences_NoInfiniteLoop()
+    {
+        // Arrange - Patient references Encounter, Encounter references Patient
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    Resource = new Patient
+                    {
+                        Id = "patient-001",
+                        GeneralPractitioner = new List<ResourceReference>
+                        {
+                            new ResourceReference("Practitioner/prac-001")
+                        }
+                    }
+                },
+                new Bundle.EntryComponent
+                {
+                    Resource = new Practitioner
+                    {
+                        Id = "prac-001"
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _resolver.ValidateAsync(bundle);
+
+        // Assert - Should complete without infinite loop
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_DeepResourcePath_ValidatesCorrectly()
+    {
+        // Arrange - Deep path: Encounter.participant[0].individual.reference
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    Resource = new Practitioner
+                    {
+                        Id = "prac-001"
+                    }
+                },
+                new Bundle.EntryComponent
+                {
+                    Resource = new Encounter
+                    {
+                        Id = "enc-001",
+                        Participant = new List<Encounter.ParticipantComponent>
+                        {
+                            new Encounter.ParticipantComponent
+                            {
+                                Individual = new ResourceReference("Practitioner/prac-001")
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _resolver.ValidateAsync(bundle);
+
+        // Assert
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_EmptyBundle_HandlesGracefully()
+    {
+        // Arrange
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>()
+        };
+
+        // Act
+        var errors = await _resolver.ValidateAsync(bundle);
+
+        // Assert
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_MixedFormatBundle_ValidatesBoth()
+    {
+        // Arrange
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    FullUrl = "urn:uuid:patient-001",
+                    Resource = new Patient
+                    {
+                        Id = "patient-001"
+                    }
+                },
+                new Bundle.EntryComponent
+                {
+                    Resource = new Practitioner
+                    {
+                        Id = "prac-002"
+                    }
+                },
+                new Bundle.EntryComponent
+                {
+                    Resource = new Observation
+                    {
+                        Id = "obs-001",
+                        Subject = new ResourceReference("urn:uuid:patient-001"),
+                        Performer = new List<ResourceReference>
+                        {
+                            new ResourceReference("Practitioner/prac-002")
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _resolver.ValidateAsync(bundle);
+
+        // Assert
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_EntryWithoutResource_HandlesGracefully()
+    {
+        // Arrange
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    FullUrl = "urn:uuid:deleted-001"
+                    // No Resource
+                },
+                new Bundle.EntryComponent
+                {
+                    Resource = new Observation
+                    {
+                        Id = "obs-001",
+                        Subject = new ResourceReference("urn:uuid:deleted-001")
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _resolver.ValidateAsync(bundle);
+
+        // Assert
+        errors.Should().HaveCount(1);
+        errors[0].ErrorCode.Should().Be("REFERENCE_NOT_FOUND");
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_MultipleReferencesInResource_ValidatesAll()
+    {
+        // Arrange
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    Resource = new Patient
+                    {
+                        Id = "patient-001"
+                    }
+                },
+                new Bundle.EntryComponent
+                {
+                    Resource = new Encounter
+                    {
+                        Id = "enc-001"
+                    }
+                },
+                new Bundle.EntryComponent
+                {
+                    Resource = new Practitioner
+                    {
+                        Id = "prac-001"
+                    }
+                },
+                new Bundle.EntryComponent
+                {
+                    Resource = new Observation
+                    {
+                        Id = "obs-001",
+                        Subject = new ResourceReference("Patient/patient-001"),
+                        Encounter = new ResourceReference("Encounter/enc-001"),
+                        Performer = new List<ResourceReference>
+                        {
+                            new ResourceReference("Practitioner/prac-001")
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _resolver.ValidateAsync(bundle);
+
+        // Assert
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_OneValidOneInvalidReference_ReturnsOneError()
+    {
+        // Arrange
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    Resource = new Patient
+                    {
+                        Id = "patient-001"
+                    }
+                },
+                new Bundle.EntryComponent
+                {
+                    Resource = new Observation
+                    {
+                        Id = "obs-001",
+                        Subject = new ResourceReference("Patient/patient-001"),
+                        Encounter = new ResourceReference("Encounter/missing-999")
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _resolver.ValidateAsync(bundle);
+
+        // Assert
+        errors.Should().HaveCount(1);
+        errors[0].ErrorCode.Should().Be("REFERENCE_NOT_FOUND");
+        errors[0].Reference.Should().Be("Encounter/missing-999");
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_SubjectTypeMismatch_ReturnsError()
+    {
+        // Arrange
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    Resource = new Encounter
+                    {
+                        Id = "enc-001"
+                    }
+                },
+                new Bundle.EntryComponent
+                {
+                    Resource = new Observation
+                    {
+                        Id = "obs-001",
+                        // Subject should be Patient/Group/Device/Location, not Encounter
+                        Subject = new ResourceReference("Encounter/enc-001")
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _resolver.ValidateAsync(bundle);
+
+        // Assert
+        errors.Should().HaveCount(1);
+        errors[0].ErrorCode.Should().Be("REFERENCE_TYPE_MISMATCH");
+        errors[0].Details!["actualType"].Should().Be("Encounter");
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_EmptyReferenceString_IgnoresReference()
+    {
+        // Arrange
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    Resource = new Observation
+                    {
+                        Id = "obs-001",
+                        Subject = new ResourceReference("") // Empty reference
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _resolver.ValidateAsync(bundle);
+
+        // Assert
+        errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_NullReference_IgnoresReference()
+    {
+        // Arrange
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    Resource = new Observation
+                    {
+                        Id = "obs-001",
+                        Subject = null // Null reference
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _resolver.ValidateAsync(bundle);
+
+        // Assert
+        errors.Should().BeEmpty();
+    }
+}
