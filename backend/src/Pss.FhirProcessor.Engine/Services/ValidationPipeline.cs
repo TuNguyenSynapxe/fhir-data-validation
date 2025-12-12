@@ -46,15 +46,36 @@ public class ValidationPipeline : IValidationPipeline
         try
         {
             // Step 1: Input Parsing
-            var bundle = ParseBundle(request.BundleJson);
-            if (bundle == null)
+            Bundle? bundle;
+            try
+            {
+                bundle = ParseBundle(request.BundleJson);
+                if (bundle == null)
+                {
+                    response.Errors.Add(new ValidationError
+                    {
+                        Source = "FHIR",
+                        Severity = "error",
+                        ErrorCode = "INVALID_BUNDLE",
+                        Message = "Failed to parse FHIR Bundle - bundle is null or empty"
+                    });
+                    
+                    FinalizeSummary(response, stopwatch);
+                    return response;
+                }
+            }
+            catch (Exception parseEx)
             {
                 response.Errors.Add(new ValidationError
                 {
                     Source = "FHIR",
                     Severity = "error",
-                    ErrorCode = "INVALID_BUNDLE",
-                    Message = "Failed to parse FHIR Bundle"
+                    ErrorCode = "BUNDLE_PARSE_ERROR",
+                    Message = $"Failed to parse FHIR Bundle: {parseEx.Message}",
+                    Details = new Dictionary<string, object>
+                    {
+                        ["exception"] = parseEx.ToString()
+                    }
                 });
                 
                 FinalizeSummary(response, stopwatch);
@@ -131,8 +152,10 @@ public class ValidationPipeline : IValidationPipeline
             var parser = new FhirJsonParser();
             return parser.Parse<Bundle>(bundleJson);
         }
-        catch
+        catch (Exception ex)
         {
+            // Log the actual parsing error for debugging
+            Console.WriteLine($"Bundle parsing error: {ex.Message}");
             return null;
         }
     }

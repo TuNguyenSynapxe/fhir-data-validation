@@ -136,7 +136,31 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         
         var result = EvaluateFhirPath(resource, rule.Path, rule, entryIndex, errors);
         
-        if (!errors.Any(e => e.ErrorCode == "RULE_DEFINITION_ERROR") && (result == null || !result.Any()))
+        Console.WriteLine($"[ValidateRequired] Rule: {rule.Id}, Path: {rule.Path}, ResourceType: {rule.ResourceType}");
+        Console.WriteLine($"[ValidateRequired] Result count: {result?.Count() ?? 0}");
+        
+        // Check if result is missing OR if all values are empty/whitespace
+        var isMissing = result == null || !result.Any();
+        var isAllEmpty = false;
+        
+        if (!isMissing)
+        {
+            foreach (var r in result)
+            {
+                var strValue = GetValueAsString(r);
+                Console.WriteLine($"[ValidateRequired] Value: '{strValue}', IsNullOrWhiteSpace: {string.IsNullOrWhiteSpace(strValue)}");
+            }
+            
+            isAllEmpty = result.All(r => 
+            {
+                var strValue = GetValueAsString(r);
+                return string.IsNullOrWhiteSpace(strValue);
+            });
+        }
+        
+        Console.WriteLine($"[ValidateRequired] isMissing: {isMissing}, isAllEmpty: {isAllEmpty}");
+        
+        if (!errors.Any(e => e.ErrorCode == "RULE_DEFINITION_ERROR") && (isMissing || isAllEmpty))
         {
             errors.Add(new RuleValidationError
             {

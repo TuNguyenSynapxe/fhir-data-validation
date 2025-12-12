@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "fhirVersion": "R4",
+  "rules": [
+    {
+      "id": "patient-family-required",
+      "type": "Required",
+      "resourceType": "Patient",
+      "path": "name.family",
+      "severity": "error",
+      "message": "Family name is mandatory"
+    }
+  ]
+}

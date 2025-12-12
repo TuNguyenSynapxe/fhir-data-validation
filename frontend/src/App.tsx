@@ -1,18 +1,24 @@
-import React from 'react'
-import { Playground } from './pages/Playground'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import AppRouter from './routes/AppRouter';
 
-export const App: React.FC = () => {
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5000,
+    },
+  },
+});
+
+export default function App() {
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="px-4 py-3 border-b bg-white">
-        <h1 className="text-lg font-semibold">FHIR Processor V2 – Playground</h1>
-        <p className="text-xs text-slate-500">
-          Paste a FHIR Bundle and validate against your rules.json.
-        </p>
-      </header>
-      <main className="p-4">
-        <Playground />
-      </main>
-    </div>
-  )
+    <QueryClientProvider client={queryClient}>
+      <div className="min-h-screen bg-gray-50">
+        <AppRouter />
+      </div>
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
+  );
 }

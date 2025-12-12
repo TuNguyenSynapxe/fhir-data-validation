@@ -118,8 +118,14 @@ public class ProjectService : IProjectService
         // Use override bundle if provided, otherwise use project's sample bundle
         var bundleJson = bundleJsonOverride ?? project.SampleBundleJson;
         
+        _logger.LogInformation("Validating project {ProjectId}, bundleJson length: {Length}, override: {Override}", 
+            id, bundleJson?.Length ?? 0, bundleJsonOverride != null);
+        
         if (string.IsNullOrEmpty(bundleJson))
+        {
+            _logger.LogWarning("No bundle JSON for project {ProjectId}. SampleBundleJson is null or empty.", id);
             throw new InvalidOperationException("No bundle JSON provided for validation");
+        }
         
         // Build validation request
         var request = new ValidationRequest
@@ -130,7 +136,7 @@ public class ProjectService : IProjectService
             FhirVersion = project.FhirVersion
         };
         
-        _logger.LogInformation("Validating project {ProjectId}", id);
+        _logger.LogInformation("Validating project {ProjectId} with bundle of {Length} chars", id, bundleJson.Length);
         
         // Call the Engine for validation
         var result = await _validationPipeline.ValidateAsync(request);
