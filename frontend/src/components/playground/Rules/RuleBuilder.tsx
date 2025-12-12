@@ -18,6 +18,8 @@ interface RuleBuilderProps {
   onRulesChange: (rules: Rule[]) => void;
   onSave: () => void;
   hasChanges?: boolean;
+  projectBundle?: object;
+  hl7Samples?: any[];
 }
 
 export const RuleBuilder: React.FC<RuleBuilderProps> = ({
@@ -25,6 +27,8 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({
   onRulesChange,
   onSave,
   hasChanges = false,
+  projectBundle,
+  hl7Samples,
 }) => {
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -110,11 +114,14 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({
         )}
       </div>
 
+      {/* Drawer context is read-only by design */}
       <RuleEditorModal
         rule={editingRule}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         onSave={handleSaveRule}
+        projectBundle={projectBundle}
+        hl7Samples={hl7Samples}
       />
     </div>
   );

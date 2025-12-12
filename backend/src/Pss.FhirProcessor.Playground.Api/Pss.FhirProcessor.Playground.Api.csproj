@@ -9,6 +9,14 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <EnableDefaultContentItems>false</EnableDefaultContentItems>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Copy sample data files to output directory -->
+    <Content Include="data\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 
 </Project>

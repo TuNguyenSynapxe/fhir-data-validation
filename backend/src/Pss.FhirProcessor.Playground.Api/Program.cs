@@ -1,6 +1,22 @@
 using Pss.FhirProcessor.Engine.DependencyInjection;
+using Pss.FhirProcessor.Playground.Api.Commands;
 using Pss.FhirProcessor.Playground.Api.Services;
 using Pss.FhirProcessor.Playground.Api.Storage;
+
+// Check for command-line commands
+if (args.Length > 0 && args[0] == "import-fhir-examples")
+{
+    var host = Host.CreateDefaultBuilder(args)
+        .ConfigureLogging(logging =>
+        {
+            logging.ClearProviders();
+            logging.AddConsole();
+        })
+        .Build();
+
+    var exitCode = await ImportExamplesCommand.ExecuteAsync(args, host);
+    return exitCode;
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,6 +50,8 @@ app.UseHttpsRedirection();
 app.MapControllers();
 
 app.Run();
+
+return 0;
 
 // Make Program accessible for integration tests
 public partial class Program { }

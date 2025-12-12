@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Save, FileJson, List, AlertCircle } from 'lucide-react';
 import { BundleTree } from './BundleTree';
 import { BundleJsonEditor } from './BundleJsonEditor';
+// Samples intentionally not available in Project Edit
 
 interface BundleTabsProps {
   bundleJson: string;
@@ -24,7 +25,7 @@ export const BundleTabs: React.FC<BundleTabsProps> = ({
   const [selectedPath, setSelectedPath] = useState<string>();
   const [localValue, setLocalValue] = useState(bundleJson);
   const [parseError, setParseError] = useState<string | null>(null);
-  const debounceTimerRef = useRef<number | undefined>();
+  const debounceTimerRef = useRef<number | undefined>(undefined);
 
   // Sync local value when prop changes
   useEffect(() => {
@@ -96,6 +97,9 @@ export const BundleTabs: React.FC<BundleTabsProps> = ({
     setActiveTab(tab);
   };
 
+  // Samples intentionally not available in Project Edit
+  // Project bundle comes ONLY from project API
+  
   // Check if bundle is empty
   const isBundleEmpty = !bundleJson || bundleJson.trim() === '' || bundleJson.trim() === '{}';
 
@@ -155,7 +159,7 @@ export const BundleTabs: React.FC<BundleTabsProps> = ({
             <div className="text-center">
               <FileJson className="w-12 h-12 mx-auto mb-3 text-gray-400" />
               <p className="text-sm font-medium">No bundle loaded</p>
-              <p className="text-xs mt-1">Switch to JSON Editor to create a bundle</p>
+              <p className="text-xs mt-1">Use JSON Editor to create or paste a FHIR bundle</p>
             </div>
           </div>
         ) : activeTab === 'tree' ? (

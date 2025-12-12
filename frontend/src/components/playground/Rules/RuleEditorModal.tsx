@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import FhirPathSelectorDrawer from '../../FhirPathSelectorDrawer';
 
 interface Rule {
   id: string;
@@ -16,6 +17,8 @@ interface RuleEditorModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (rule: Rule) => void;
+  projectBundle?: object;
+  hl7Samples?: any[];
 }
 
 const RULE_TYPES = [
@@ -48,6 +51,8 @@ export const RuleEditorModal: React.FC<RuleEditorModalProps> = ({
   isOpen,
   onClose,
   onSave,
+  projectBundle,
+  hl7Samples,
 }) => {
   const [formData, setFormData] = useState<Rule>({
     id: '',
@@ -58,6 +63,7 @@ export const RuleEditorModal: React.FC<RuleEditorModalProps> = ({
     message: '',
     params: {}
   });
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   useEffect(() => {
     if (rule) {
@@ -137,16 +143,25 @@ export const RuleEditorModal: React.FC<RuleEditorModalProps> = ({
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 FHIRPath *
               </label>
-              <input
-                type="text"
-                value={formData.path}
-                onChange={(e) => handleChange('path', e.target.value)}
-                placeholder="e.g. name.family"
-                className="w-full px-3 py-2 border rounded font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={formData.path}
+                  readOnly
+                  placeholder="Click 'Select FHIRPath' to choose a path"
+                  className="flex-1 px-3 py-2 border rounded font-mono text-sm bg-gray-50 cursor-not-allowed focus:outline-none"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsDrawerOpen(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors whitespace-nowrap"
+                >
+                  Select FHIRPath
+                </button>
+              </div>
               <p className="text-xs text-gray-500 mt-1">
-                Enter the FHIRPath expression to validate
+                Use the selector to choose a FHIRPath expression
               </p>
             </div>
 
@@ -205,6 +220,20 @@ export const RuleEditorModal: React.FC<RuleEditorModalProps> = ({
           </div>
         </form>
       </div>
+
+      {/* FHIRPath Selector Drawer */}
+      {/* Drawer context is read-only by design */}
+      <FhirPathSelectorDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        onSelect={(path) => {
+          handleChange('path', path);
+          setIsDrawerOpen(false);
+        }}
+        resourceType={formData.resourceType}
+        projectBundle={projectBundle}
+        hl7Samples={hl7Samples}
+      />
     </div>
   );
 };

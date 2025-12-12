@@ -16,6 +16,7 @@ import { CodeMasterEditor } from '../components/playground/CodeMaster/CodeMaster
 import { RuleSetMetadata } from '../components/playground/Metadata/RuleSetMetadata';
 import { ValidationPanel } from '../components/playground/Validation/ValidationPanel';
 import type { ValidationResult } from '../types/validation';
+import type { FhirSampleMetadata } from '../types/fhirSample';
 
 interface Rule {
   id: string;
@@ -48,6 +49,24 @@ export default function PlaygroundPage() {
   const [rules, setRules] = useState<Rule[]>([]);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [activeTab, setActiveTab] = useState<'rules' | 'codemaster' | 'metadata'>('rules');
+  const [hl7Samples, setHl7Samples] = useState<FhirSampleMetadata[]>([]);
+
+  // Load HL7 samples once on mount (read-only for drawer)
+  useEffect(() => {
+    const loadHl7Samples = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const response = await fetch(`${apiUrl}/api/fhir/samples?version=R4`);
+        if (response.ok) {
+          const samples: FhirSampleMetadata[] = await response.json();
+          setHl7Samples(samples);
+        }
+      } catch (error) {
+        console.error('Failed to load HL7 samples:', error);
+      }
+    };
+    loadHl7Samples();
+  }, []);
 
   // Parse rules JSON to extract rules array
   useEffect(() => {
@@ -163,6 +182,14 @@ export default function PlaygroundPage() {
   }
 
   const renderRightPanel = () => {
+    // Parse project bundle for drawer (read-only)
+    let projectBundle: object | undefined;
+    try {
+      projectBundle = bundleJson ? JSON.parse(bundleJson) : undefined;
+    } catch {
+      projectBundle = undefined;
+    }
+
     switch (activeTab) {
       case 'rules':
         return (
@@ -171,6 +198,8 @@ export default function PlaygroundPage() {
             onRulesChange={handleRulesChange}
             onSave={handleSaveRules}
             hasChanges={saveRulesMutation.isPending}
+            projectBundle={projectBundle}
+            hl7Samples={hl7Samples}
           />
         );
       case 'codemaster':
