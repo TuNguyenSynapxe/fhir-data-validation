@@ -2,11 +2,7 @@ import { useState } from 'react';
 import { useCreateProject } from '../../hooks/useProjects';
 import { Plus, Loader2 } from 'lucide-react';
 
-interface ProjectToolbarProps {
-  onProjectCreated?: () => void;
-}
-
-export default function ProjectToolbar({ onProjectCreated }: ProjectToolbarProps) {
+export default function ProjectToolbar() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -29,7 +25,7 @@ export default function ProjectToolbar({ onProjectCreated }: ProjectToolbarProps
       setName('');
       setDescription('');
       setShowForm(false);
-      onProjectCreated?.();
+      // TanStack Query auto-invalidates projects list
     } catch (error) {
       console.error('Failed to create project:', error);
     }

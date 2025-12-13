@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import BundleTreeView from './BundleTreeView';
 import FhirSampleTreeView from './FhirSampleTreeView';
 import ManualFhirPathInput from './ManualFhirPathInput';
+import FhirPathRefinementPanel from './FhirPathRefinementPanel';
 import type { FhirSampleMetadata } from '../types/fhirSample';
 
 /**
@@ -40,28 +41,38 @@ const FhirPathSelectorDrawer: React.FC<FhirPathSelectorDrawerProps> = ({
   hl7Samples,
 }) => {
   // Drawer context is read-only by design
-  const [selectedPath, setSelectedPath] = useState<string>('');
+  const [basePath, setBasePath] = useState<string>(''); // Base path from tree/manual
+  const [refinedPath, setRefinedPath] = useState<string>(''); // Refined path from panel
   const [activeTab, setActiveTab] = useState<TabType>('project');
+  const [selectedHl7SampleJson, setSelectedHl7SampleJson] = useState<any>(undefined); // Track selected HL7 sample JSON
 
   const handlePathSelected = (path: string) => {
-    // Store selected FHIRPath string in local state only
-    setSelectedPath(path);
+    // Store base FHIRPath string in local state only
+    setBasePath(path);
+  };
+
+  const handleRefinedPathChange = (path: string) => {
+    // Store refined FHIRPath from refinement panel
+    setRefinedPath(path);
   };
 
   if (!isOpen) return null;
 
   const handleInsertPath = () => {
-    if (selectedPath.trim()) {
+    // Use refined path if available, otherwise fall back to base path
+    const finalPath = refinedPath || basePath;
+    if (finalPath.trim()) {
       // Drawer context is read-only by design
       // CRITICAL: Only return FHIRPath string, no metadata, no side effects
-      onSelect(selectedPath);
+      onSelect(finalPath);
       onClose();
     }
   };
 
   const handleCancel = () => {
     // Drawer state is destroyed on close (ephemeral)
-    setSelectedPath('');
+    setBasePath('');
+    setRefinedPath('');
     setActiveTab('project');
     onClose();
   };
@@ -141,23 +152,24 @@ const FhirPathSelectorDrawer: React.FC<FhirPathSelectorDrawerProps> = ({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
-          {/* Selected Path Preview */}
+          {/* Base Path Preview */}
           <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Selected FHIRPath:
+              Selected Base Path:
             </label>
             <div className="font-mono text-sm text-gray-900 bg-white px-3 py-2 rounded border border-gray-300">
-              {selectedPath || <span className="text-gray-400 italic">No path selected</span>}
+              {basePath || <span className="text-gray-400 italic">No path selected</span>}
             </div>
           </div>
 
-          {/* Tab 1: Project Bundle - Read-only tree view */}
+          {/* Tab 1: Project Bundle - Read-only tree view filtered by resource type */}
           {activeTab === 'project' && (
             <div>
               {projectBundle ? (
                 <BundleTreeView 
                   bundleJson={JSON.stringify(projectBundle, null, 2)} 
                   onSelectPath={handlePathSelected}
+                  resourceTypeFilter={resourceType}
                 />
               ) : (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
@@ -176,6 +188,7 @@ const FhirPathSelectorDrawer: React.FC<FhirPathSelectorDrawerProps> = ({
                 resourceType={resourceType} 
                 onSelectPath={handlePathSelected}
                 hl7Samples={hl7Samples}
+                onSampleLoaded={setSelectedHl7SampleJson}
               />
             </div>
           )}
@@ -183,7 +196,7 @@ const FhirPathSelectorDrawer: React.FC<FhirPathSelectorDrawerProps> = ({
           {activeTab === 'manual' && (
             <div>
               <ManualFhirPathInput 
-                value={selectedPath} 
+                value={basePath} 
                 onChange={handlePathSelected}
               />
               
@@ -192,7 +205,7 @@ const FhirPathSelectorDrawer: React.FC<FhirPathSelectorDrawerProps> = ({
                 <ul className="space-y-1 text-xs text-blue-800">
                   <li>
                     <button
-                      onClick={() => setSelectedPath('id')}
+                      onClick={() => setBasePath('id')}
                       className="hover:underline"
                     >
                       id
@@ -200,7 +213,7 @@ const FhirPathSelectorDrawer: React.FC<FhirPathSelectorDrawerProps> = ({
                   </li>
                   <li>
                     <button
-                      onClick={() => setSelectedPath('meta.versionId')}
+                      onClick={() => setBasePath('meta.versionId')}
                       className="hover:underline"
                     >
                       meta.versionId
@@ -208,7 +221,7 @@ const FhirPathSelectorDrawer: React.FC<FhirPathSelectorDrawerProps> = ({
                   </li>
                   <li>
                     <button
-                      onClick={() => setSelectedPath('identifier.value')}
+                      onClick={() => setBasePath('identifier.value')}
                       className="hover:underline"
                     >
                       identifier.value
@@ -216,7 +229,7 @@ const FhirPathSelectorDrawer: React.FC<FhirPathSelectorDrawerProps> = ({
                   </li>
                   <li>
                     <button
-                      onClick={() => setSelectedPath('name.family')}
+                      onClick={() => setBasePath('name.family')}
                       className="hover:underline"
                     >
                       name.family
@@ -226,15 +239,25 @@ const FhirPathSelectorDrawer: React.FC<FhirPathSelectorDrawerProps> = ({
               </div>
             </div>
           )}
+
+          {/* Path Refinement Panel - Appears after base path is selected */}
+          {basePath && (
+            <FhirPathRefinementPanel
+              basePath={basePath}
+              onRefinedPathChange={handleRefinedPathChange}
+              projectBundle={activeTab === 'project' ? projectBundle : undefined}
+              hlSample={activeTab === 'hl7' ? selectedHl7SampleJson : undefined}
+            />
+          )}
         </div>
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-600">
-              {selectedPath && (
+              {(refinedPath || basePath) && (
                 <span>
-                  Current: <code className="text-xs bg-gray-200 px-2 py-1 rounded">{selectedPath}</code>
+                  Current: <code className="text-xs bg-gray-200 px-2 py-1 rounded">{refinedPath || basePath}</code>
                 </span>
               )}
             </div>
@@ -247,9 +270,9 @@ const FhirPathSelectorDrawer: React.FC<FhirPathSelectorDrawerProps> = ({
               </button>
               <button
                 onClick={handleInsertPath}
-                disabled={!selectedPath.trim()}
+                disabled={!(refinedPath || basePath).trim()}
                 className={`px-4 py-2 text-sm font-medium text-white rounded-md transition-colors ${
-                  selectedPath.trim()
+                  (refinedPath || basePath).trim()
                     ? 'bg-blue-600 hover:bg-blue-700'
                     : 'bg-gray-400 cursor-not-allowed'
                 }`}

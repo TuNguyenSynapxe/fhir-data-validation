@@ -5,7 +5,7 @@ import ProjectToolbar from '../components/projects/ProjectToolbar';
 import ProjectList from '../components/projects/ProjectList';
 
 export default function ProjectsPage() {
-  const { data: projects, isLoading, error, refetch } = useProjects();
+  const { data: projects, isLoading, error } = useProjects();
 
   return (
     <AppLayout>
@@ -15,7 +15,7 @@ export default function ProjectsPage() {
           <p className="text-gray-600">Manage your FHIR validation projects</p>
         </div>
 
-        <ProjectToolbar onProjectCreated={refetch} />
+        <ProjectToolbar />
 
         {isLoading && (
           <div className="flex items-center justify-center py-12">
@@ -39,7 +39,7 @@ export default function ProjectsPage() {
         )}
 
         {!isLoading && !error && projects && (
-          <ProjectList projects={projects} onProjectDeleted={refetch} />
+          <ProjectList projects={projects} />
         )}
       </div>
     </AppLayout>

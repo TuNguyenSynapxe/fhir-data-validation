@@ -24,6 +24,7 @@ interface FhirSampleTreeViewProps {
   resourceType: string;
   onSelectPath: (path: string) => void; // Returns FHIRPath string ONLY
   hl7Samples?: FhirSampleMetadata[]; // Read-only HL7 samples from parent
+  onSampleLoaded?: (sampleData: any) => void; // Optional callback when sample is loaded
 }
 
 interface TreeNode {
@@ -38,7 +39,8 @@ interface TreeNode {
 const FhirSampleTreeView: React.FC<FhirSampleTreeViewProps> = ({ 
   resourceType, 
   onSelectPath,
-  hl7Samples = []
+  hl7Samples = [],
+  onSampleLoaded
 }) => {
   // Drawer context is read-only by design
   // LOCAL STATE - Isolated within drawer, never touches project bundle
@@ -78,6 +80,11 @@ const FhirSampleTreeView: React.FC<FhirSampleTreeViewProps> = ({
 
       const sampleJson = await sampleResponse.json();
       setSampleData(sampleJson);
+
+      // Notify parent if callback provided (for value suggestions)
+      if (onSampleLoaded) {
+        onSampleLoaded(sampleJson);
+      }
 
       // Auto-expand root level
       setExpandedNodes(new Set([resourceType]));

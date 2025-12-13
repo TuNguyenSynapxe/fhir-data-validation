@@ -8,10 +8,9 @@ dayjs.extend(relativeTime);
 
 interface ProjectListProps {
   projects: ProjectMetadata[];
-  onProjectDeleted?: () => void;
 }
 
-export default function ProjectList({ projects, onProjectDeleted }: ProjectListProps) {
+export default function ProjectList({ projects }: ProjectListProps) {
   const navigate = useNavigate();
 
   if (projects.length === 0) {

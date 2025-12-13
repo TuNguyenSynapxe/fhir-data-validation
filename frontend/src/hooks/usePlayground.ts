@@ -1,103 +1,56 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as projectsApi from '../api/projectsApi';
 
+// Server state managed by TanStack Query by design
+// Project metadata, bundle, rules, and validation results are server-owned data
+
 export function useProject(id: string) {
-  const [data, setData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    if (!id) return;
-
-    let cancelled = false;
-    setIsLoading(true);
-    
-    projectsApi.getProject(id)
-      .then(result => {
-        if (!cancelled) {
-          setData(result);
-          setError(null);
-        }
-      })
-      .catch(err => {
-        if (!cancelled) {
-          setError(err);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
-
-  return { data, isLoading, error };
+  return useQuery({
+    queryKey: ['project', id],
+    queryFn: () => projectsApi.getProject(id),
+    enabled: !!id,
+  });
 }
 
 export function useSaveBundle(id: string) {
-  const [isPending, setIsPending] = useState(false);
+  const queryClient = useQueryClient();
 
-  const mutateAsync = useCallback(async (json: string) => {
-    setIsPending(true);
-    try {
-      const result = await projectsApi.saveBundle(id, json);
-      return result;
-    } finally {
-      setIsPending(false);
-    }
-  }, [id]);
-
-  return { mutateAsync, isPending };
+  return useMutation({
+    mutationFn: (json: string) => projectsApi.saveBundle(id, json),
+    onSuccess: () => {
+      // Invalidate project data and validation results
+      queryClient.invalidateQueries({ queryKey: ['project', id] });
+    },
+  });
 }
 
 export function useSaveRules(id: string) {
-  const [isPending, setIsPending] = useState(false);
+  const queryClient = useQueryClient();
 
-  const mutateAsync = useCallback(async (json: string) => {
-    setIsPending(true);
-    try {
-      const result = await projectsApi.saveRules(id, json);
-      return result;
-    } finally {
-      setIsPending(false);
-    }
-  }, [id]);
-
-  return { mutateAsync, isPending };
+  return useMutation({
+    mutationFn: (json: string) => projectsApi.saveRules(id, json),
+    onSuccess: () => {
+      // Invalidate project data
+      queryClient.invalidateQueries({ queryKey: ['project', id] });
+    },
+  });
 }
 
 export function useSaveCodeMaster(id: string) {
-  const [isPending, setIsPending] = useState(false);
+  const queryClient = useQueryClient();
 
-  const mutateAsync = useCallback(async (json: string) => {
-    setIsPending(true);
-    try {
-      const result = await projectsApi.saveCodeMaster(id, json);
-      return result;
-    } finally {
-      setIsPending(false);
-    }
-  }, [id]);
-
-  return { mutateAsync, isPending };
+  return useMutation({
+    mutationFn: (json: string) => projectsApi.saveCodeMaster(id, json),
+    onSuccess: () => {
+      // Invalidate project data
+      queryClient.invalidateQueries({ queryKey: ['project', id] });
+    },
+  });
 }
 
 export function useValidateProject(id: string) {
-  const [isPending, setIsPending] = useState(false);
-
-  const mutateAsync = useCallback(async () => {
-    setIsPending(true);
-    try {
-      const result = await projectsApi.validateProject(id);
-      return result;
-    } finally {
-      setIsPending(false);
-    }
-  }, [id]);
-
-  return { mutateAsync, isPending };
+  return useMutation({
+    mutationFn: () => projectsApi.validateProject(id),
+    // Validation results are returned directly, no cache invalidation needed
+  });
 }

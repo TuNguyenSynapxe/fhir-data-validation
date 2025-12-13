@@ -3,6 +3,7 @@ import React, { useState, useMemo } from 'react';
 interface BundleTreeViewProps {
   bundleJson: string;
   onSelectPath: (path: string) => void;
+  resourceTypeFilter?: string; // Filter to show only specific resource type
 }
 
 interface TreeNode {
@@ -15,7 +16,7 @@ interface TreeNode {
   isPrimitive?: boolean;
 }
 
-const BundleTreeView: React.FC<BundleTreeViewProps> = ({ bundleJson, onSelectPath }) => {
+const BundleTreeView: React.FC<BundleTreeViewProps> = ({ bundleJson, onSelectPath, resourceTypeFilter }) => {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [selectedPath, setSelectedPath] = useState<string>('');
 
@@ -28,7 +29,12 @@ const BundleTreeView: React.FC<BundleTreeViewProps> = ({ bundleJson, onSelectPat
       }
 
       return bundle.entry
-        .filter((entry: any) => entry.resource && entry.resource.resourceType)
+        .filter((entry: any) => {
+          if (!entry.resource || !entry.resource.resourceType) return false;
+          // Filter by resource type if specified
+          if (resourceTypeFilter && entry.resource.resourceType !== resourceTypeFilter) return false;
+          return true;
+        })
         .map((entry: any, entryIndex: number) => {
           const resource = entry.resource;
           const resourceType = resource.resourceType;
@@ -45,7 +51,7 @@ const BundleTreeView: React.FC<BundleTreeViewProps> = ({ bundleJson, onSelectPat
       console.error('Failed to parse bundle JSON:', error);
       return [];
     }
-  }, [bundleJson]);
+  }, [bundleJson, resourceTypeFilter]);
 
   // Build tree nodes from object recursively
   function buildTreeFromObject(
@@ -219,8 +225,18 @@ const BundleTreeView: React.FC<BundleTreeViewProps> = ({ bundleJson, onSelectPat
   if (!treeData || treeData.length === 0) {
     return (
       <div className="p-4 text-center text-gray-500 bg-gray-50 rounded-md">
-        <p className="text-sm">No resources found in bundle.</p>
-        <p className="text-xs mt-1">Please provide a valid FHIR R4 bundle with entries.</p>
+        <p className="text-sm">
+          {resourceTypeFilter 
+            ? `No ${resourceTypeFilter} resources found in bundle.`
+            : 'No resources found in bundle.'
+          }
+        </p>
+        <p className="text-xs mt-1">
+          {resourceTypeFilter
+            ? `The bundle does not contain any ${resourceTypeFilter} resources.`
+            : 'Please provide a valid FHIR R4 bundle with entries.'
+          }
+        </p>
       </div>
     );
   }
@@ -228,7 +244,9 @@ const BundleTreeView: React.FC<BundleTreeViewProps> = ({ bundleJson, onSelectPat
   return (
     <div className="border border-gray-200 rounded-md bg-white">
       <div className="p-3 bg-gray-50 border-b border-gray-200">
-        <h4 className="text-sm font-semibold text-gray-700">Bundle Resources</h4>
+        <h4 className="text-sm font-semibold text-gray-700">
+          {resourceTypeFilter ? `${resourceTypeFilter} Resources` : 'Bundle Resources'}
+        </h4>
         <p className="text-xs text-gray-500 mt-1">
           Click on any element to select its FHIRPath
         </p>
