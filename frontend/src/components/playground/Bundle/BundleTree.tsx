@@ -122,7 +122,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
     onSelect({
       key: String(nodeKey),
       value,
-      path,
+      path: path.map(String),
       jsonPointer,
       fhirPath,
       type,
@@ -240,7 +240,6 @@ const TreeNodeWrapper: React.FC<Omit<TreeNodeProps, 'isExpanded' | 'isSelected' 
 export const BundleTree: React.FC<BundleTreeProps> = ({
   bundleJson,
   onNodeSelect,
-  selectedPath,
 }) => {
   const [selectedJsonPointer, setSelectedJsonPointer] = useState<string>('');
 

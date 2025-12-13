@@ -7,7 +7,6 @@ import {
   useSaveBundle,
   useSaveRules,
   useSaveCodeMaster,
-  useValidateProject,
 } from '../hooks/usePlayground';
 import PlaygroundLayout from '../layouts/PlaygroundLayout';
 import { BundleTabs } from '../components/playground/Bundle/BundleTabs';
@@ -15,7 +14,7 @@ import { RuleBuilder } from '../components/playground/Rules/RuleBuilder';
 import { CodeMasterEditor } from '../components/playground/CodeMaster/CodeMasterEditor';
 import { RuleSetMetadata } from '../components/playground/Metadata/RuleSetMetadata';
 import { ValidationPanel } from '../components/playground/Validation/ValidationPanel';
-import type { ValidationResult } from '../types/validation';
+
 import type { FhirSampleMetadata } from '../types/fhirSample';
 
 interface Rule {
@@ -41,15 +40,17 @@ export default function PlaygroundPage() {
   const saveBundleMutation = useSaveBundle(projectId);
   const saveRulesMutation = useSaveRules(projectId);
   const saveCodeMasterMutation = useSaveCodeMaster(projectId);
-  const validateMutation = useValidateProject(projectId);
+
 
   const [bundleJson, setBundleJson] = useState('');
-  const [rulesJson, setRulesJson] = useState('');
   const [codeMasterJson, setCodeMasterJson] = useState('');
   const [rules, setRules] = useState<Rule[]>([]);
-  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [activeTab, setActiveTab] = useState<'rules' | 'codemaster' | 'metadata'>('rules');
   const [hl7Samples, setHl7Samples] = useState<FhirSampleMetadata[]>([]);
+  
+  // Track original values for change detection
+  const [originalBundleJson, setOriginalBundleJson] = useState('');
+  const [originalCodeMasterJson, setOriginalCodeMasterJson] = useState('');
 
   // Load HL7 samples once on mount (read-only for drawer)
   useEffect(() => {
@@ -71,9 +72,14 @@ export default function PlaygroundPage() {
   // Parse rules JSON to extract rules array
   useEffect(() => {
     if (project) {
-      setBundleJson(project.sampleBundleJson || '{}');
-      setRulesJson(project.rulesJson || '{}');
-      setCodeMasterJson(project.codeMasterJson || '{}');
+      const bundle = project.sampleBundleJson || '{}';
+      const codeMaster = project.codeMasterJson || '{}';
+      
+      setBundleJson(bundle);
+      setOriginalBundleJson(bundle);
+      
+      setCodeMasterJson(codeMaster);
+      setOriginalCodeMasterJson(codeMaster);
 
       // Parse rules JSON to get rules array
       try {
@@ -88,6 +94,7 @@ export default function PlaygroundPage() {
   const handleSaveBundle = async () => {
     try {
       await saveBundleMutation.mutateAsync(bundleJson);
+      setOriginalBundleJson(bundleJson);
     } catch (error) {
       console.error('Failed to save bundle:', error);
     }
@@ -98,31 +105,21 @@ export default function PlaygroundPage() {
       // Reconstruct the full rules JSON with metadata
       const rulesObject = {
         version: '1.0',
-        fhirVersion: project?.fhirVersion || 'R4',
+        fhirVersion: 'R4',
         rules: rules,
       };
       const rulesJsonString = JSON.stringify(rulesObject, null, 2);
       await saveRulesMutation.mutateAsync(rulesJsonString);
-      setRulesJson(rulesJsonString);
     } catch (error) {
       console.error('Failed to save rules:', error);
     }
   };
-
   const handleSaveCodeMaster = async () => {
     try {
       await saveCodeMasterMutation.mutateAsync(codeMasterJson);
+      setOriginalCodeMasterJson(codeMasterJson);
     } catch (error) {
       console.error('Failed to save code master:', error);
-    }
-  };
-
-  const handleRunValidation = async () => {
-    try {
-      const result = await validateMutation.mutateAsync();
-      setValidationResult(result);
-    } catch (error) {
-      console.error('Validation failed:', error);
     }
   };
 
@@ -133,15 +130,17 @@ export default function PlaygroundPage() {
   const handleExportRules = () => {
     const rulesObject = {
       version: '1.0',
-      fhirVersion: project?.fhirVersion || 'R4',
+      fhirVersion: 'R4',
       rules: rules,
     };
     const blob = new Blob([JSON.stringify(rulesObject, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${project?.name || 'rules'}-export.json`;
+    a.download = `${project?.name || 'rules'}_rules.json`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
@@ -208,7 +207,7 @@ export default function PlaygroundPage() {
             value={codeMasterJson}
             onChange={setCodeMasterJson}
             onSave={handleSaveCodeMaster}
-            hasChanges={false}
+            hasChanges={codeMasterJson !== originalCodeMasterJson}
             isSaving={saveCodeMasterMutation.isPending}
           />
         );
@@ -217,7 +216,7 @@ export default function PlaygroundPage() {
           <RuleSetMetadata
             version="1.0"
             project={project.name}
-            fhirVersion={project.fhirVersion}
+            fhirVersion="R4"
             onVersionChange={() => {}}
             onProjectChange={() => {}}
             onFhirVersionChange={() => {}}
@@ -266,7 +265,7 @@ export default function PlaygroundPage() {
               bundleJson={bundleJson}
               onBundleChange={setBundleJson}
               onSave={handleSaveBundle}
-              hasChanges={false}
+              hasChanges={bundleJson !== originalBundleJson}
               isSaving={saveBundleMutation.isPending}
             />
           }

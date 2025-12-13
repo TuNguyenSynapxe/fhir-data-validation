@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { ProjectMetadata } from '../types/project';
+
 import * as projectsApi from '../api/projectsApi';
 
 // Server state managed by TanStack Query by design

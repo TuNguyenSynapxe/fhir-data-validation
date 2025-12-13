@@ -9,6 +9,11 @@ namespace Pss.FhirProcessor.Engine.Interfaces;
 public interface IUnifiedErrorModelBuilder
 {
     /// <summary>
+    /// Enhances a Firely parsing error (from deserialization) with navigation context
+    /// </summary>
+    Task<ValidationError> EnhanceFirelyParsingErrorAsync(ValidationError error, string? rawBundleJson, CancellationToken cancellationToken = default);
+    
+    /// <summary>
     /// Converts Firely OperationOutcome issues to unified error format
     /// </summary>
     Task<List<ValidationError>> FromFirelyIssuesAsync(OperationOutcome outcome, Bundle bundle, CancellationToken cancellationToken = default);

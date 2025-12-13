@@ -3,13 +3,19 @@ import { ValidationErrorItem } from './ValidationErrorItem';
 import { CheckCircle2 } from 'lucide-react';
 
 interface ValidationError {
-  id: string;
-  severity: 'error' | 'warning' | 'information';
-  source: 'Firely' | 'BusinessRules' | 'CodeMaster' | 'Reference';
+  source: string; // FHIR, Business, CodeMaster, Reference
+  severity: string; // error, warning, info
+  resourceType?: string;
+  path?: string;
+  jsonPointer?: string;
+  errorCode?: string;
   message: string;
-  location?: string;
-  fhirPath?: string;
-  details?: string;
+  details?: Record<string, any>;
+  navigation?: {
+    jsonPointer?: string;
+    breadcrumb?: string;
+    resourceIndex?: number;
+  };
 }
 
 interface ValidationResultListProps {
@@ -33,9 +39,9 @@ export const ValidationResultList: React.FC<ValidationResultListProps> = ({
 
   return (
     <div className="divide-y divide-gray-100">
-      {errors.map((error) => (
+      {errors.map((error, index) => (
         <ValidationErrorItem 
-          key={error.id} 
+          key={`error-${index}-${error.errorCode || 'unknown'}`} 
           error={error} 
           onClick={() => onErrorClick?.(error)}
         />

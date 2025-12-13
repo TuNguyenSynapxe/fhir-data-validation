@@ -1,31 +1,28 @@
 import React, { useState } from 'react';
-import FhirSchemaTreeViewWithCoverage from '../components/FhirSchemaTreeViewWithCoverage';
-import { analyzeCoverage } from '../utils/ruleCoverageEngine';
+import RuleCoveragePanel from '../components/rules/RuleCoveragePanel';
 import type { 
-  CoverageContext, 
-  CoverageNode, 
   ValidationRule,
   RuleSuggestion,
   SchemaNode 
 } from '../types/ruleCoverage';
 
 /**
- * CoverageDemo - Demo page for rule coverage visualization
+ * CoverageDemo - Demo page showing RuleCoveragePanel usage
+ * 
+ * NOTE: This demo now uses the reusable RuleCoveragePanel component.
+ * The panel is designed to be embedded in the Project Edit → Rules screen.
  * 
  * Requirements:
- * - Demonstrate coverage analysis with mock data
- * - Show coverage indicators in schema tree
- * - Display coverage summary statistics
- * - Read-only visualization
+ * - Demonstrate RuleCoveragePanel with mock data
+ * - Show how to integrate the panel
+ * - Display usage example
  * 
  * Constraints:
- * - No actual validation
  * - Mock data only
  * - No persistence
  */
 const CoverageDemo: React.FC = () => {
   const [resourceType] = useState('Patient');
-  const [selectedPath, setSelectedPath] = useState<string>('');
 
   // Mock rules for demo
   const mockRules: ValidationRule[] = [
@@ -156,178 +153,80 @@ const CoverageDemo: React.FC = () => {
     },
   ];
 
-  // Run coverage analysis with mock data
-  const coverageContext: CoverageContext = {
-    resourceType: 'Patient',
-    schemaTree: mockSchemaTree,
-    existingRules: mockRules,
-    suggestions: mockSuggestions,
-  };
-
-  const coverageResult = analyzeCoverage(coverageContext);
-
-  const handlePathSelect = (path: string) => {
-    setSelectedPath(path);
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Rule Coverage Visualization Demo
+            RuleCoveragePanel - Integration Demo
           </h1>
           <p className="text-gray-600">
-            Explore how validation rules cover the FHIR R4 schema structure
+            This demo shows the reusable RuleCoveragePanel component with mock data.
           </p>
-        </div>
-
-        {/* Coverage Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm text-gray-600 mb-1">Total Nodes</div>
-            <div className="text-3xl font-bold text-gray-900">
-              {coverageResult.summary.totalNodes}
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm text-gray-600 mb-1">Covered</div>
-            <div className="text-3xl font-bold text-green-600">
-              {coverageResult.summary.coveredNodes}
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              {coverageResult.summary.coveragePercentage.toFixed(1)}% coverage
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm text-gray-600 mb-1">Suggested</div>
-            <div className="text-3xl font-bold text-blue-600">
-              {coverageResult.summary.suggestedNodes}
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm text-gray-600 mb-1">Uncovered</div>
-            <div className="text-3xl font-bold text-gray-600">
-              {coverageResult.summary.uncoveredNodes}
-            </div>
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 className="text-sm font-semibold text-blue-900 mb-2">Usage Example:</h3>
+            <code className="text-xs text-blue-800 block">
+              {`<RuleCoveragePanel
+  resourceType="${resourceType}"
+  schemaTree={schemaTree}
+  rules={rules}
+  suggestions={suggestions}
+/>`}
+            </code>
           </div>
         </div>
 
-        {/* Match Type Breakdown */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
+        {/* Mock Data Display */}
+        <div className="grid grid-cols-2 gap-4 mb-8">
+          <div className="bg-white rounded-lg shadow p-4">
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">
+              Mock Rules ({mockRules.length})
+            </h3>
+            <div className="space-y-1 text-xs text-gray-600">
+              {mockRules.map(r => (
+                <div key={r.id}>• {r.fhirPath}</div>
+              ))}
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4">
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">
+              Mock Suggestions ({mockSuggestions.length})
+            </h3>
+            <div className="space-y-1 text-xs text-gray-600">
+              {mockSuggestions.map(s => (
+                <div key={s.id}>• {s.preview.fhirPath}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* The Actual Panel Component */}
+        <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Coverage Match Types
+            Panel Preview (Collapsed by Default)
           </h2>
-          <div className="grid grid-cols-3 gap-6">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    fillRule="evenodd"
-                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <span className="text-sm font-medium text-gray-700">Exact Matches</span>
-              </div>
-              <div className="text-2xl font-bold text-gray-900">
-                {coverageResult.summary.exactMatches}
-              </div>
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-                <span className="text-sm font-medium text-gray-700">Wildcard Matches</span>
-              </div>
-              <div className="text-2xl font-bold text-gray-900">
-                {coverageResult.summary.wildcardMatches}
-              </div>
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    fillRule="evenodd"
-                    d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <span className="text-sm font-medium text-gray-700">Parent Matches</span>
-              </div>
-              <div className="text-2xl font-bold text-gray-900">
-                {coverageResult.summary.parentMatches}
-              </div>
-            </div>
-          </div>
+          <RuleCoveragePanel
+            resourceType={resourceType}
+            schemaTree={mockSchemaTree}
+            rules={mockRules}
+            suggestions={mockSuggestions}
+          />
         </div>
 
-        {/* Schema Tree with Coverage */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                Schema Tree with Coverage
-              </h2>
-              <p className="text-sm text-gray-600 mb-4">
-                Hover over coverage indicators to see details. Green = covered by rule, Blue = suggested rule available, Grey = no coverage.
-              </p>
-              <FhirSchemaTreeViewWithCoverage
-                resourceType={resourceType}
-                onSelectPath={handlePathSelect}
-                coverageNodes={coverageResult.nodes}
-              />
-            </div>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Selected Path */}
-            {selectedPath && (
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-sm font-semibold text-gray-900 mb-2">
-                  Selected Path
-                </h3>
-                <code className="text-xs bg-blue-50 text-blue-900 px-2 py-1 rounded block break-all">
-                  {selectedPath}
-                </code>
-              </div>
-            )}
-
-            {/* Active Rules */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">
-                Active Rules ({mockRules.length})
-              </h3>
-              <div className="space-y-2">
-                {mockRules.map((rule) => (
-                  <div key={rule.id} className="text-xs">
-                    <code className="bg-green-50 text-green-900 px-2 py-1 rounded block break-all">
-                      {rule.fhirPath}
-                    </code>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Suggestions */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">
-                Suggestions ({mockSuggestions.length})
-              </h3>
-              <div className="space-y-2">
-                {mockSuggestions.map((suggestion) => (
-                  <div key={suggestion.id} className="text-xs">
-                    <code className="bg-blue-50 text-blue-900 px-2 py-1 rounded block break-all">
-                      {suggestion.preview.fhirPath}
-                    </code>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+        {/* Integration Notes */}
+        <div className="mt-8 bg-gray-100 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-3">
+            Integration Notes
+          </h3>
+          <ul className="space-y-2 text-sm text-gray-700">
+            <li>✅ Panel is collapsed by default to save space</li>
+            <li>✅ Click header to expand/collapse</li>
+            <li>✅ All data passed via props (no API calls)</li>
+            <li>✅ Read-only visualization (no rule editing)</li>
+            <li>✅ Reuses all existing demo logic</li>
+            <li>✅ Can be embedded in RuleBuilder component</li>
+          </ul>
         </div>
       </div>
     </div>

@@ -16,7 +16,54 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
         _navigationService = navigationService;
     }
     
-    public async Task<List<ValidationError>> FromFirelyIssuesAsync(OperationOutcome outcome, Bundle bundle, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Enhances a Firely parsing error with navigation context
+    /// Used for errors caught during Bundle deserialization (before OperationOutcome is available)
+    /// </summary>
+    public async Task<ValidationError> EnhanceFirelyParsingErrorAsync(ValidationError error, string? rawBundleJson, CancellationToken cancellationToken = default)
+    {
+        // If error already has navigation, return as-is
+        if (error.Navigation != null)
+            return error;
+        
+        // Try to add navigation context if we have a path and the bundle is parseable
+        if (!string.IsNullOrEmpty(error.Path) && !string.IsNullOrEmpty(rawBundleJson))
+        {
+            try
+            {
+                // Attempt to parse bundle for navigation context
+                // If this fails, we just return the error without navigation
+                var parser = new Hl7.Fhir.Serialization.FhirJsonParser();
+                var bundle = parser.Parse<Bundle>(rawBundleJson);
+                
+                if (bundle != null)
+                {
+                    var navigation = await _navigationService.ResolvePathAsync(
+                        bundle, 
+                        error.Path, 
+                        error.ResourceType, 
+                        cancellationToken);
+                    
+                    error.Navigation = navigation;
+                    
+                    // Update JsonPointer if navigation provided one
+                    if (!string.IsNullOrEmpty(navigation?.JsonPointer))
+                    {
+                        error.JsonPointer = navigation.JsonPointer;
+                    }
+                }
+            }
+            catch
+            {
+                // Parsing failed - this is expected for deserialization errors
+                // Just return the error without navigation enhancement
+            }
+        }
+        
+        return error;
+    }
+    
+    public async Task<List<ValidationError>> FromFirelyIssuesAsync(OperationOutcome outcome, Bundle? bundle, CancellationToken cancellationToken = default)
     {
         var errors = new List<ValidationError>();
         
@@ -25,15 +72,28 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
         
         foreach (var issue in outcome.Issue)
         {
-            // Skip informational messages unless it's an actual validation issue
+            // Skip informational messages about successful validation
             if (issue.Severity == OperationOutcome.IssueSeverity.Information && 
-                issue.Diagnostics?.Contains("passed") == true)
+                (issue.Diagnostics?.Contains("passed") == true || 
+                 issue.Diagnostics?.Contains("no issues") == true))
                 continue;
             
             var path = issue.Expression?.FirstOrDefault() ?? issue.Location?.FirstOrDefault();
-            var navigation = path != null 
-                ? await _navigationService.ResolvePathAsync(bundle, path, null, cancellationToken)
-                : null;
+            
+            // Try to resolve navigation if bundle is available
+            // If bundle is null (structural validation before POCO parsing), navigation will be null
+            NavigationInfo? navigation = null;
+            if (bundle != null && path != null)
+            {
+                try
+                {
+                    navigation = await _navigationService.ResolvePathAsync(bundle, path, null, cancellationToken);
+                }
+                catch
+                {
+                    // Navigation resolution failed - this is ok, we'll just have no navigation info
+                }
+            }
             
             errors.Add(new ValidationError
             {
@@ -42,11 +102,12 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 ResourceType = ExtractResourceType(path),
                 Path = path,
                 JsonPointer = navigation?.JsonPointer,
-                ErrorCode = issue.Code?.ToString()?.ToUpperInvariant(),
+                ErrorCode = issue.Code?.ToString()?.ToUpperInvariant()?.Replace("-", "_"),
                 Message = issue.Diagnostics ?? issue.Details?.Text ?? "FHIR validation error",
                 Details = new Dictionary<string, object>
                 {
-                    ["issueType"] = issue.Code?.ToString() ?? "Unknown"
+                    ["issueType"] = issue.Code?.ToString() ?? "Unknown",
+                    ["severity"] = issue.Severity?.ToString() ?? "Unknown"
                 },
                 Navigation = navigation
             });

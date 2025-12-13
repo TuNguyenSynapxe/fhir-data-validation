@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Plus } from 'lucide-react';
 import { RuleCard } from './RuleCard';
 import { RuleEditorModal } from './RuleEditorModal';
+import RuleCoveragePanel from '../../rules/RuleCoveragePanel';
+import type { SchemaNode, ValidationRule } from '../../../types/ruleCoverage';
 
 interface Rule {
   id: string;
@@ -32,6 +34,61 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({
 }) => {
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [schemaTree, setSchemaTree] = useState<SchemaNode[]>([]);
+  const [isLoadingSchema, setIsLoadingSchema] = useState(false);
+
+  // Determine resource type from rules (use first rule's resourceType or default to Patient)
+  const resourceType = useMemo(() => {
+    return rules.length > 0 ? rules[0].resourceType : 'Patient';
+  }, [rules]);
+
+  // Fetch schema tree when resource type changes
+  useEffect(() => {
+    const fetchSchema = async () => {
+      if (!resourceType) return;
+
+      setIsLoadingSchema(true);
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const response = await fetch(`${apiUrl}/api/fhir/schema/${resourceType}`);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch schema: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // Convert backend schema to SchemaNode format
+        const convertNode = (node: any): SchemaNode => ({
+          path: node.path || '',
+          name: node.elementName || '',
+          type: node.type || 'Element',
+          cardinality: `${node.min || 0}..${node.max || '1'}`,
+          children: node.children?.map((child: any) => convertNode(child)) || [],
+        });
+
+        setSchemaTree([convertNode(data)]);
+      } catch (error) {
+        console.error('Failed to load schema:', error);
+        setSchemaTree([]);
+      } finally {
+        setIsLoadingSchema(false);
+      }
+    };
+
+    fetchSchema();
+  }, [resourceType]);
+
+  // Convert playground rules to ValidationRule format
+  const validationRules: ValidationRule[] = useMemo(() => {
+    return rules.map(rule => ({
+      id: rule.id,
+      fhirPath: rule.path,
+      operator: rule.type,
+      value: rule.params?.value,
+      message: rule.message,
+    }));
+  }, [rules]);
 
   const handleAddRule = () => {
     const newRule: Rule = {
@@ -111,6 +168,18 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({
               onDelete={handleDeleteRule}
             />
           ))
+        )}
+
+        {/* Rule Coverage Panel */}
+        {!isLoadingSchema && schemaTree.length > 0 && (
+          <div className="mt-4">
+            <RuleCoveragePanel
+              resourceType={resourceType}
+              schemaTree={schemaTree}
+              rules={validationRules}
+              suggestions={[]}
+            />
+          </div>
         )}
       </div>
 

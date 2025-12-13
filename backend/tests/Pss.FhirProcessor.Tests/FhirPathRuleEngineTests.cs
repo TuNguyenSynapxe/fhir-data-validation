@@ -2,6 +2,7 @@ using Xunit;
 using Hl7.Fhir.Model;
 using Pss.FhirProcessor.Engine.Services;
 using Pss.FhirProcessor.Engine.Models;
+using Pss.FhirProcessor.Engine.Interfaces;
 
 namespace Pss.FhirProcessor.Tests;
 
@@ -11,7 +12,9 @@ public class FhirPathRuleEngineTests
     public async System.Threading.Tasks.Task Invalid_FHIRPath_Should_Produce_RuleDefinitionError()
     {
         // Arrange
-        var engine = new FhirPathRuleEngine();
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
+        var modelResolver = new FhirR4ModelResolverService(logger);
+        var engine = new FhirPathRuleEngine(modelResolver);
         
         var bundle = new Bundle
         {
@@ -85,7 +88,9 @@ public class FhirPathRuleEngineTests
     public async System.Threading.Tasks.Task Invalid_FHIRPath_Should_Not_Stop_Other_Rules()
     {
         // Arrange
-        var engine = new FhirPathRuleEngine();
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
+        var modelResolver = new FhirR4ModelResolverService(logger);
+        var engine = new FhirPathRuleEngine(modelResolver);
         
         var bundle = new Bundle
         {
@@ -161,7 +166,9 @@ public class FhirPathRuleEngineTests
     public async System.Threading.Tasks.Task Valid_FHIRPath_Should_Work_Normally()
     {
         // Arrange
-        var engine = new FhirPathRuleEngine();
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
+        var modelResolver = new FhirR4ModelResolverService(logger);
+        var engine = new FhirPathRuleEngine(modelResolver);
         
         var bundle = new Bundle
         {

@@ -14,13 +14,19 @@ import {
 import { ValidationResultList } from './ValidationResultList';
 
 interface ValidationError {
-  id: string;
-  severity: 'error' | 'warning' | 'information';
-  source: 'Firely' | 'BusinessRules' | 'CodeMaster' | 'Reference';
+  source: string; // FHIR, Business, CodeMaster, Reference
+  severity: string; // error, warning, info
+  resourceType?: string;
+  path?: string;
+  jsonPointer?: string;
+  errorCode?: string;
   message: string;
-  location?: string;
-  fhirPath?: string;
-  details?: string;
+  details?: Record<string, any>;
+  navigation?: {
+    jsonPointer?: string;
+    breadcrumb?: string;
+    resourceIndex?: number;
+  };
 }
 
 interface ValidationResult {
@@ -50,18 +56,19 @@ interface ValidationPanelProps {
 /**
  * Get color classes for source badge
  */
-const getSourceBadgeColor = (source: ValidationError['source']): string => {
-  switch (source) {
-    case 'Firely':
-      return 'bg-blue-100 text-blue-800 border-blue-200';
-    case 'BusinessRules':
-      return 'bg-purple-100 text-purple-800 border-purple-200';
-    case 'CodeMaster':
-      return 'bg-orange-100 text-orange-800 border-orange-200';
-    case 'Reference':
-      return 'bg-red-100 text-red-800 border-red-200';
-    default:
-      return 'bg-gray-100 text-gray-800 border-gray-200';
+const getSourceBadgeColor = (source: string): string => {
+  const normalizedSource = source.toLowerCase();
+  
+  if (normalizedSource === 'fhir' || normalizedSource === 'firely') {
+    return 'bg-blue-100 text-blue-800 border-blue-200';
+  } else if (normalizedSource === 'business' || normalizedSource === 'businessrules') {
+    return 'bg-purple-100 text-purple-800 border-purple-200';
+  } else if (normalizedSource === 'codemaster') {
+    return 'bg-orange-100 text-orange-800 border-orange-200';
+  } else if (normalizedSource === 'reference') {
+    return 'bg-red-100 text-red-800 border-red-200';
+  } else {
+    return 'bg-gray-100 text-gray-800 border-gray-200';
   }
 };
 
@@ -99,7 +106,8 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
     const startTime = Date.now();
 
     try {
-      const response = await fetch(`/api/projects/${projectId}/validate`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/projects/${projectId}/validate`, {
         method: 'POST',
       });
 
@@ -112,21 +120,27 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
       const executionTimeMs = Date.now() - startTime;
       
       // Transform API response to ValidationResult format
+      // Backend returns: { errors: [], summary: {...}, metadata: {...} }
+      const errors = data.errors || [];
       const validationResult: ValidationResult = {
-        isValid: data.isValid || false,
-        errors: data.errors || [],
-        timestamp: new Date().toISOString(),
-        executionTimeMs: data.executionTimeMs || executionTimeMs,
+        isValid: errors.length === 0,
+        errors: errors,
+        timestamp: data.metadata?.timestamp || new Date().toISOString(),
+        executionTimeMs: data.metadata?.processingTimeMs || executionTimeMs,
         summary: {
-          total: data.errors?.length || 0,
-          errors: data.errors?.filter((e: ValidationError) => e.severity === 'error').length || 0,
-          warnings: data.errors?.filter((e: ValidationError) => e.severity === 'warning').length || 0,
-          information: data.errors?.filter((e: ValidationError) => e.severity === 'information').length || 0,
+          total: data.summary?.totalErrors || errors.length,
+          errors: data.summary?.errorCount || errors.filter((e: ValidationError) => e.severity === 'error').length,
+          warnings: data.summary?.warningCount || errors.filter((e: ValidationError) => e.severity === 'warning').length,
+          information: data.summary?.infoCount || errors.filter((e: ValidationError) => e.severity === 'info' || e.severity === 'information').length,
           bySource: {
-            firely: data.errors?.filter((e: ValidationError) => e.source === 'Firely').length || 0,
-            businessRules: data.errors?.filter((e: ValidationError) => e.source === 'BusinessRules').length || 0,
-            codeMaster: data.errors?.filter((e: ValidationError) => e.source === 'CodeMaster').length || 0,
-            reference: data.errors?.filter((e: ValidationError) => e.source === 'Reference').length || 0,
+            firely: data.summary?.fhirErrorCount || errors.filter((e: ValidationError) => 
+              e.source?.toLowerCase() === 'fhir' || e.source?.toLowerCase() === 'firely').length,
+            businessRules: data.summary?.businessErrorCount || errors.filter((e: ValidationError) => 
+              e.source?.toLowerCase() === 'business' || e.source?.toLowerCase() === 'businessrules').length,
+            codeMaster: data.summary?.codeMasterErrorCount || errors.filter((e: ValidationError) => 
+              e.source?.toLowerCase() === 'codemaster').length,
+            reference: data.summary?.referenceErrorCount || errors.filter((e: ValidationError) => 
+              e.source?.toLowerCase() === 'reference').length,
           },
         },
       };

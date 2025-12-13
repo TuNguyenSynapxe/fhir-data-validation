@@ -188,7 +188,8 @@ public static class TestHelper
 
     public static IFhirPathRuleEngine CreateRuleEngine()
     {
-        return new FhirPathRuleEngine();
+        var modelResolver = CreateModelResolver();
+        return new FhirPathRuleEngine(modelResolver);
     }
 
     public static ICodeMasterEngine CreateCodeMasterEngine()
@@ -208,7 +209,15 @@ public static class TestHelper
 
     public static IFirelyValidationService CreateFirelyValidationService()
     {
-        return new FirelyValidationService();
+        var modelResolver = CreateModelResolver();
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FirelyValidationService>.Instance;
+        return new FirelyValidationService(modelResolver, logger);
+    }
+    
+    private static IFhirModelResolverService CreateModelResolver()
+    {
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
+        return new FhirR4ModelResolverService(logger);
     }
 
     public static IUnifiedErrorModelBuilder CreateErrorModelBuilder()

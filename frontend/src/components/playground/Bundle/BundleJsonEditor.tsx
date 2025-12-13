@@ -12,7 +12,6 @@ export const BundleJsonEditor: React.FC<BundleJsonEditorProps> = ({
   value,
   onChange,
   readOnly = false,
-  highlightedPath,
 }) => {
   const handleEditorChange = (value: string | undefined) => {
     onChange(value || '');
