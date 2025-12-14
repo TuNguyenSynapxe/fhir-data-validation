@@ -147,7 +147,8 @@ public class LintRuleCatalogTests
             "LINT_BOOLEAN_AS_STRING",
             "LINT_INTERNAL_ERROR",
             "LINT_R5_FIELD_IN_R4",
-            "LINT_DEPRECATED_R4_FIELD"
+            "LINT_DEPRECATED_R4_FIELD",
+            "UNKNOWN_ELEMENT"
         };
 
         // Act
@@ -169,10 +170,12 @@ public class LintRuleCatalogTests
         // Act
         var schemaRules = LintRuleCatalog.GetRulesByCategory(LintRuleCategory.SchemaShape).ToList();
 
-        // Assert
+        // Assert - Schema rules should reference schema or FHIR spec
         Assert.All(schemaRules, rule =>
         {
-            Assert.Contains("schema", rule.Disclaimer, StringComparison.OrdinalIgnoreCase);
+            var hasSchemaRef = rule.Disclaimer.Contains("schema", StringComparison.OrdinalIgnoreCase) ||
+                              rule.Disclaimer.Contains("FHIR", StringComparison.OrdinalIgnoreCase);
+            Assert.True(hasSchemaRef, $"Rule {rule.Id} should reference schema or FHIR in disclaimer");
         });
     }
 

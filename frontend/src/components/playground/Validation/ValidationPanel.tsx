@@ -95,6 +95,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
   const [isOpen, setIsOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [validationMode, setValidationMode] = useState<'fast' | 'debug'>('fast');
 
   /**
    * Run validation
@@ -109,6 +110,12 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const response = await fetch(`${apiUrl}/api/projects/${projectId}/validate`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          validationMode: validationMode,
+        }),
       });
 
       if (!response.ok) {
@@ -256,6 +263,41 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
                 )}
                 {isLoading ? 'Running...' : 'Run Validation'}
               </button>
+
+              {/* Validation Mode Toggle */}
+              <div className="flex items-center gap-1 px-2 py-1 bg-gray-100 rounded">
+                <span className="text-xs text-gray-600 mr-1">Mode:</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setValidationMode('fast');
+                  }}
+                  disabled={isLoading}
+                  className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                    validationMode === 'fast'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  title="Fast mode - Production validation without lint checks"
+                >
+                  Fast
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setValidationMode('debug');
+                  }}
+                  disabled={isLoading}
+                  className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                    validationMode === 'debug'
+                      ? 'bg-orange-600 text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  title="Debug mode - Includes lint pre-validation checks"
+                >
+                  Debug
+                </button>
+              </div>
 
               <button
                 onClick={(e) => {

@@ -18,5 +18,5 @@ public interface IProjectService
     Task<Project> UpdateSampleBundleAsync(Guid id, string bundleJson);
     
     Task<object> ExportRulePackageAsync(Guid id);
-    Task<ValidationResponse> ValidateProjectAsync(Guid id, string? bundleJsonOverride = null);
+    Task<ValidationResponse> ValidateProjectAsync(Guid id, string? bundleJsonOverride = null, string? validationMode = null);
 }

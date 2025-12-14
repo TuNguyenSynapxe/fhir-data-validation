@@ -108,7 +108,7 @@ public class ProjectService : IProjectService
         return package;
     }
 
-    public async Task<ValidationResponse> ValidateProjectAsync(Guid id, string? bundleJsonOverride = null)
+    public async Task<ValidationResponse> ValidateProjectAsync(Guid id, string? bundleJsonOverride = null, string? validationMode = null)
     {
         var project = await _repository.GetAsync(id);
         
@@ -118,8 +118,8 @@ public class ProjectService : IProjectService
         // Use override bundle if provided, otherwise use project's sample bundle
         var bundleJson = bundleJsonOverride ?? project.SampleBundleJson;
         
-        _logger.LogInformation("Validating project {ProjectId}, bundleJson length: {Length}, override: {Override}", 
-            id, bundleJson?.Length ?? 0, bundleJsonOverride != null);
+        _logger.LogInformation("Validating project {ProjectId}, bundleJson length: {Length}, override: {Override}, mode: {ValidationMode}", 
+            id, bundleJson?.Length ?? 0, bundleJsonOverride != null, validationMode ?? "default");
         
         if (string.IsNullOrEmpty(bundleJson))
         {
@@ -133,7 +133,8 @@ public class ProjectService : IProjectService
             BundleJson = bundleJson,
             RulesJson = project.RulesJson,
             CodeMasterJson = project.CodeMasterJson,
-            FhirVersion = project.FhirVersion
+            FhirVersion = project.FhirVersion,
+            ValidationMode = validationMode
         };
         
         _logger.LogInformation("Validating project {ProjectId} with bundle of {Length} chars", id, bundleJson.Length);

@@ -199,7 +199,7 @@ public class ProjectsController : ControllerBase
     {
         try
         {
-            var result = await _projectService.ValidateProjectAsync(id, request?.BundleJson);
+            var result = await _projectService.ValidateProjectAsync(id, request?.BundleJson, request?.ValidationMode);
             return Ok(result);
         }
         catch (InvalidOperationException ex)

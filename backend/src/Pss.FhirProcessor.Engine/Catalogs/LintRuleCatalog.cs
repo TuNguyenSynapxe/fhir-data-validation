@@ -183,6 +183,18 @@ public static class LintRuleCatalog
         Disclaimer = "This check uses FHIR schema cardinality. " + DefaultDisclaimer
     };
 
+    public static readonly LintRuleDefinition UnknownElement = new()
+    {
+        Id = "UNKNOWN_ELEMENT",
+        Category = LintRuleCategory.SchemaShape,
+        Title = "Unknown FHIR element",
+        Description = "Element does not exist in the FHIR specification for this resource",
+        Severity = "Warning",
+        Confidence = "High",
+        ApplicableFhirVersions = new List<string> { "R4", "R5" },
+        Disclaimer = "Best-effort check. Extensions or custom elements may be valid. Final validation is performed by the FHIR engine."
+    };
+
     #endregion
 
     #region Primitive Category
@@ -290,6 +302,7 @@ public static class LintRuleCatalog
         // Schema Shape
         ExpectedArray,
         ExpectedObject,
+        UnknownElement,
 
         // Primitive
         InvalidDate,

@@ -171,6 +171,7 @@ public class LintCatalogIntegrationTests
             "LINT_RESOURCE_TYPE_NOT_STRING",
             "LINT_EXPECTED_ARRAY",
             "LINT_EXPECTED_OBJECT",
+            "UNKNOWN_ELEMENT",
             "LINT_INVALID_DATE",
             "LINT_INVALID_DATETIME",
             "LINT_BOOLEAN_AS_STRING",

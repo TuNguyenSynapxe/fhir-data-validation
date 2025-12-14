@@ -27,8 +27,24 @@ export interface ValidationError {
   };
 }
 
+export interface LintIssue {
+  ruleId: string;
+  category: string;
+  severity: string;
+  confidence: string;
+  title: string;
+  description: string;
+  message: string;
+  disclaimer?: string;
+  resourceType?: string;
+  jsonPointer?: string;
+  fhirPath?: string;
+  details?: Record<string, unknown>;
+}
+
 export interface ValidationResponse {
   errors: ValidationError[];
+  lintIssues?: LintIssue[];
   summary: {
     totalErrors: number;
     errorCount: number;
@@ -38,6 +54,7 @@ export interface ValidationResponse {
     businessErrorCount: number;
     codeMasterErrorCount: number;
     referenceErrorCount: number;
+    lintErrorCount?: number;
   };
   metadata: {
     timestamp: string;

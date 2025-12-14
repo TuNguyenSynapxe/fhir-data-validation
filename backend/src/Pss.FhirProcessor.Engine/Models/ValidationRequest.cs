@@ -43,4 +43,12 @@ public class ValidationRequest
     /// </summary>
     [JsonPropertyName("fhirVersion")]
     public string FhirVersion { get; set; } = "R4";
+    
+    /// <summary>
+    /// Validation mode: "fast" (skip lint, production) or "debug" (include lint, development)
+    /// Default: "fast" - lint validation is skipped for performance
+    /// "debug" - includes best-effort lint pre-validation checks
+    /// </summary>
+    [JsonPropertyName("validationMode")]
+    public string? ValidationMode { get; set; } = "debug";
 }

@@ -31,7 +31,8 @@ public class LintFirelyIntegrationTests
         var request = new Pss.FhirProcessor.Engine.Models.ValidationRequest
         {
             BundleJson = invalidBundle,
-            FhirVersion = "R4"
+            FhirVersion = "R4",
+            ValidationMode = "debug" // Enable lint validation
         };
 
         // Act
@@ -73,7 +74,8 @@ public class LintFirelyIntegrationTests
         var request = new Pss.FhirProcessor.Engine.Models.ValidationRequest
         {
             BundleJson = bundleWithMultipleLintIssues,
-            FhirVersion = "R4"
+            FhirVersion = "R4",
+            ValidationMode = "debug" // Enable lint validation
         };
 
         // Act
@@ -119,7 +121,8 @@ public class LintFirelyIntegrationTests
         var request = new Pss.FhirProcessor.Engine.Models.ValidationRequest
         {
             BundleJson = validBundle,
-            FhirVersion = "R4"
+            FhirVersion = "R4",
+            ValidationMode = "debug" // Enable lint validation to verify no errors
         };
 
         // Act
@@ -150,7 +153,8 @@ public class LintFirelyIntegrationTests
         var request = new Pss.FhirProcessor.Engine.Models.ValidationRequest
         {
             BundleJson = bundleWithLintIssues,
-            FhirVersion = "R4"
+            FhirVersion = "R4",
+            ValidationMode = "debug" // Enable lint validation
         };
 
         // Act

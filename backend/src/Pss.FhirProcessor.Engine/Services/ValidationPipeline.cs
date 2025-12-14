@@ -61,11 +61,16 @@ public class ValidationPipeline : IValidationPipeline
             }
             
             // Step 1: Lint Validation (best-effort, non-authoritative)
-            // Runs on raw JSON, collects multiple structural issues for improved UX
+            // Only runs in "debug" mode for development/troubleshooting
+            // In "fast" mode (default), lint is skipped for performance
             // Does NOT block Firely validation - all lint errors are advisory
-            var lintIssues = await _lintService.ValidateAsync(request.BundleJson, request.FhirVersion, cancellationToken);
-            var lintErrors = await _errorBuilder.FromLintIssuesAsync(lintIssues, null, cancellationToken);
-            response.Errors.AddRange(lintErrors);
+            var validationMode = request.ValidationMode ?? "fast";
+            if (validationMode.Equals("debug", StringComparison.OrdinalIgnoreCase))
+            {
+                var lintIssues = await _lintService.ValidateAsync(request.BundleJson, request.FhirVersion, cancellationToken);
+                var lintErrors = await _errorBuilder.FromLintIssuesAsync(lintIssues, null, cancellationToken);
+                response.Errors.AddRange(lintErrors);
+            }
             
             // Step 2: Firely Structural Validation (authoritative)
             // This is the source of truth for FHIR compliance
