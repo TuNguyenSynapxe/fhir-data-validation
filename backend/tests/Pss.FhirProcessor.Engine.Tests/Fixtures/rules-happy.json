@@ -3,7 +3,7 @@
   "rules": [
     {
       "resourceType": "Patient",
-      "path": "name",
+      "path": "name.family",
       "type": "Required"
     },
     {

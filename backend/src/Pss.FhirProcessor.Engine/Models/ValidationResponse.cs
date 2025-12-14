@@ -43,6 +43,9 @@ public class ValidationSummary
     [JsonPropertyName("infoCount")]
     public int InfoCount { get; set; }
     
+    [JsonPropertyName("lintErrorCount")]
+    public int LintErrorCount { get; set; }
+    
     [JsonPropertyName("fhirErrorCount")]
     public int FhirErrorCount { get; set; }
     

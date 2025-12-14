@@ -226,8 +226,30 @@ public static class TestHelper
         return new UnifiedErrorModelBuilder(navigationService);
     }
 
+    public static ILintValidationService CreateLintValidationService()
+    {
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<LintValidationService>.Instance;
+        var schemaService = CreateFhirSchemaService();
+        return new LintValidationService(logger, schemaService);
+    }
+    
+    public static IFhirSchemaService CreateFhirSchemaService()
+    {
+        var modelResolver = CreateModelResolver();
+        var expansionService = CreateSchemaExpansionService();
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirSchemaService>.Instance;
+        return new FhirSchemaService(modelResolver, expansionService, logger);
+    }
+    
+    public static ISchemaExpansionService CreateSchemaExpansionService()
+    {
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<SchemaExpansionService>.Instance;
+        return new SchemaExpansionService(logger);
+    }
+
     public static IValidationPipeline CreateValidationPipeline()
     {
+        var lintService = CreateLintValidationService();
         var firelyService = CreateFirelyValidationService();
         var ruleEngine = CreateRuleEngine();
         var codeMasterEngine = CreateCodeMasterEngine();
@@ -235,6 +257,7 @@ public static class TestHelper
         var errorModelBuilder = CreateErrorModelBuilder();
 
         return new ValidationPipeline(
+            lintService,
             firelyService,
             ruleEngine,
             codeMasterEngine,

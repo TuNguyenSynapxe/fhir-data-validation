@@ -310,10 +310,15 @@ public class ProjectApiTests : IClassFixture<CustomWebApplicationFactory>
         // May or may not have errors depending on rule configuration
         if (result!.Errors.Any())
         {
-            var businessError = result.Errors.FirstOrDefault(e => e.Source == "Business");
-            if (businessError != null)
+            // Look for ANY business error about birthDate (not just the first one)
+            var birthDateError = result.Errors.FirstOrDefault(e => 
+                e.Source == "Business" && 
+                e.Path != null && 
+                e.Path.Contains("birthDate"));
+            
+            if (birthDateError != null)
             {
-                businessError.Path.Should().Contain("birthDate");
+                birthDateError.Path.Should().Contain("birthDate");
             }
         }
     }

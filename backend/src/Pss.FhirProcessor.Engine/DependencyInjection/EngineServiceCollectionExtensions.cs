@@ -29,6 +29,7 @@ public static class EngineServiceCollectionExtensions
         
         // Register validation services
         services.AddScoped<IValidationPipeline, ValidationPipeline>();
+        services.AddScoped<ILintValidationService, LintValidationService>(); // Pre-FHIR best-effort lint layer
         services.AddScoped<IFirelyValidationService, FirelyValidationService>();
         services.AddScoped<IFhirPathRuleEngine, FhirPathRuleEngine>();
         services.AddScoped<ICodeMasterEngine, CodeMasterEngine>();

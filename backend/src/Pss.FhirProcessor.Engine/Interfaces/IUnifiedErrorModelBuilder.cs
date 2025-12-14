@@ -32,4 +32,10 @@ public interface IUnifiedErrorModelBuilder
     /// Converts reference errors to unified error format
     /// </summary>
     Task<List<ValidationError>> FromReferenceErrorsAsync(List<ReferenceValidationError> errors, Bundle bundle, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Converts lint issues to unified error format.
+    /// Lint errors are best-effort structural checks marked with source="LINT".
+    /// </summary>
+    Task<List<ValidationError>> FromLintIssuesAsync(IReadOnlyList<LintIssue> lintIssues, Bundle? bundle, CancellationToken cancellationToken = default);
 }

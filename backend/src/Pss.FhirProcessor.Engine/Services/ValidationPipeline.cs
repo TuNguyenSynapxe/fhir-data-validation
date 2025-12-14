@@ -10,9 +10,11 @@ namespace Pss.FhirProcessor.Engine.Services;
 
 /// <summary>
 /// Orchestrates the complete validation pipeline as defined in docs/05_validation_pipeline.md
+/// Pipeline: JSON sanity → Lint (best-effort) → Firely (authoritative) → Business Rules → CodeMaster → References
 /// </summary>
 public class ValidationPipeline : IValidationPipeline
 {
+    private readonly ILintValidationService _lintService;
     private readonly IFirelyValidationService _firelyService;
     private readonly IFhirPathRuleEngine _ruleEngine;
     private readonly ICodeMasterEngine _codeMasterEngine;
@@ -20,12 +22,14 @@ public class ValidationPipeline : IValidationPipeline
     private readonly IUnifiedErrorModelBuilder _errorBuilder;
     
     public ValidationPipeline(
+        ILintValidationService lintService,
         IFirelyValidationService firelyService,
         IFhirPathRuleEngine ruleEngine,
         ICodeMasterEngine codeMasterEngine,
         IReferenceResolver referenceResolver,
         IUnifiedErrorModelBuilder errorBuilder)
     {
+        _lintService = lintService;
         _firelyService = firelyService;
         _ruleEngine = ruleEngine;
         _codeMasterEngine = codeMasterEngine;
@@ -46,7 +50,7 @@ public class ValidationPipeline : IValidationPipeline
         
         try
         {
-            // Step 1: Basic JSON validation (not FHIR structural)
+            // Step 0: Basic JSON validation (not FHIR structural)
             // Check for empty/null input and valid JSON syntax only
             var jsonValidation = ValidateBasicJson(request.BundleJson);
             if (!jsonValidation.IsValid)
@@ -56,9 +60,16 @@ public class ValidationPipeline : IValidationPipeline
                 return response;
             }
             
-            // Step 2: Firely Structural Validation (node-based, collects ALL issues)
-            // This uses node-based validation to collect all structural issues without fail-fast
-            // Pass raw JSON to avoid POCO deserialization issues
+            // Step 1: Lint Validation (best-effort, non-authoritative)
+            // Runs on raw JSON, collects multiple structural issues for improved UX
+            // Does NOT block Firely validation - all lint errors are advisory
+            var lintIssues = await _lintService.ValidateAsync(request.BundleJson, request.FhirVersion, cancellationToken);
+            var lintErrors = await _errorBuilder.FromLintIssuesAsync(lintIssues, null, cancellationToken);
+            response.Errors.AddRange(lintErrors);
+            
+            // Step 2: Firely Structural Validation (authoritative)
+            // This is the source of truth for FHIR compliance
+            // Uses node-based validation to collect structural issues
             var firelyOutcome = await _firelyService.ValidateAsync(request.BundleJson, request.FhirVersion, cancellationToken);
             var firelyErrors = await _errorBuilder.FromFirelyIssuesAsync(firelyOutcome, null, cancellationToken);
             response.Errors.AddRange(firelyErrors);
@@ -90,7 +101,7 @@ public class ValidationPipeline : IValidationPipeline
                 Console.WriteLine($"Bundle POCO parsing failed (expected if structural errors exist): {bundleParseResult.Errors.FirstOrDefault()?.Message}");
             }
             
-            // Step 4: Business Rule Validation (FHIRPath)
+            // Step 3: Business Rule Validation (FHIRPath)
             // Only run if bundle was successfully parsed
             if (bundle != null && ruleSet?.Rules != null && ruleSet.Rules.Any())
             {
@@ -99,7 +110,7 @@ public class ValidationPipeline : IValidationPipeline
                 response.Errors.AddRange(businessErrors);
             }
             
-            // Step 5: CodeMaster Validation
+            // Step 4: CodeMaster Validation
             // Only run if bundle was successfully parsed
             if (bundle != null && codeMaster?.ScreeningTypes != null && codeMaster.ScreeningTypes.Any())
             {
@@ -108,7 +119,7 @@ public class ValidationPipeline : IValidationPipeline
                 response.Errors.AddRange(cmErrors);
             }
             
-            // Step 6: Reference Validation
+            // Step 5: Reference Validation
             // Only run if bundle was successfully parsed
             if (bundle != null)
             {
@@ -117,7 +128,7 @@ public class ValidationPipeline : IValidationPipeline
                 response.Errors.AddRange(refErrors);
             }
             
-            // Steps 6-8: Error aggregation, navigation mapping, and unified model assembly
+            // Step 6: Error aggregation, navigation mapping, and unified model assembly
             // (Already done in error builder methods above)
             
             // Finalize summary
@@ -356,6 +367,7 @@ public class ValidationPipeline : IValidationPipeline
         response.Summary.WarningCount = response.Errors.Count(e => e.Severity == "warning");
         response.Summary.InfoCount = response.Errors.Count(e => e.Severity == "info");
         
+        response.Summary.LintErrorCount = response.Errors.Count(e => e.Source == "LINT");
         response.Summary.FhirErrorCount = response.Errors.Count(e => e.Source == "FHIR");
         response.Summary.BusinessErrorCount = response.Errors.Count(e => e.Source == "Business");
         response.Summary.CodeMasterErrorCount = response.Errors.Count(e => e.Source == "CodeMaster");

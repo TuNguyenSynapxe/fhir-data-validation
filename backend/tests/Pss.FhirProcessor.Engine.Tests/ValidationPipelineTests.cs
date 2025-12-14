@@ -139,7 +139,7 @@ public class ValidationPipelineTests
 
         // Assert
         result.Errors.Should().ContainSingle();
-        result.Errors[0].ErrorCode.Should().Be("INVALID_BUNDLE");
+        result.Errors[0].ErrorCode.Should().Be("INVALID_JSON");
         result.Errors[0].Source.Should().Be("FHIR");
         result.Errors[0].Severity.Should().Be("error");
     }

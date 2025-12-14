@@ -203,6 +203,57 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
         };
     }
     
+    /// <summary>
+    /// Converts lint issues to unified validation errors.
+    /// Lint errors are marked with source="LINT" and are advisory/best-effort.
+    /// </summary>
+    public async Task<List<ValidationError>> FromLintIssuesAsync(
+        IReadOnlyList<LintIssue> lintIssues,
+        Bundle? bundle,
+        CancellationToken cancellationToken = default)
+    {
+        var errors = new List<ValidationError>();
+        
+        foreach (var issue in lintIssues)
+        {
+            var error = new ValidationError
+            {
+                Source = "LINT", // Clearly marks this as best-effort lint check
+                Severity = issue.Severity,
+                ErrorCode = issue.RuleId,
+                Message = issue.Message,
+                ResourceType = issue.ResourceType,
+                Path = issue.FhirPath,
+                JsonPointer = issue.JsonPointer,
+                Details = issue.Details ?? new Dictionary<string, object>()
+            };
+            
+            // Try to resolve navigation if we have a bundle and a path
+            if (bundle != null && !string.IsNullOrEmpty(issue.FhirPath))
+            {
+                try
+                {
+                    var navigation = await _navigationService.ResolvePathAsync(
+                        bundle,
+                        issue.FhirPath,
+                        issue.ResourceType,
+                        cancellationToken);
+                    
+                    error.Navigation = navigation;
+                }
+                catch
+                {
+                    // Navigation resolution failed - this is OK for lint errors
+                    // They already have JsonPointer for basic location
+                }
+            }
+            
+            errors.Add(error);
+        }
+        
+        return errors;
+    }
+    
     private string? ExtractResourceType(string? path)
     {
         if (string.IsNullOrEmpty(path))

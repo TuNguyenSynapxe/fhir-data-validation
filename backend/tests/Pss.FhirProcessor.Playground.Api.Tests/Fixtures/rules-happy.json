@@ -4,9 +4,9 @@
     {
       "id": "R001",
       "resourceType": "Patient",
-      "path": "name",
+      "path": "name.family",
       "type": "Required",
-      "message": "Patient name is required"
+      "message": "Patient family name is required"
     },
     {
       "id": "R002",
