@@ -51,3 +51,5 @@ dist/
 # Environment files
 appsettings.Development.json
 *.env
+**/temp/
+*.zip
