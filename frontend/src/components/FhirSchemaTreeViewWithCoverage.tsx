@@ -72,8 +72,7 @@ const FhirSchemaTreeViewWithCoverage: React.FC<FhirSchemaTreeViewWithCoveragePro
       setSchemaData([]);
 
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        const response = await fetch(`${apiUrl}/api/fhir/schema/${resourceType}`);
+        const response = await fetch(`/api/fhir/schema/${resourceType}`);
         
         if (!response.ok) {
           throw new Error(`Failed to fetch schema: ${response.status} ${response.statusText}`);

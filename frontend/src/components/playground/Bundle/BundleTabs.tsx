@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useImperativeHandle, forwardRef } from 'react';
 import { Save, FileJson, List, AlertCircle } from 'lucide-react';
 import { BundleTree } from './BundleTree';
 import { BundleJsonEditor } from './BundleJsonEditor';
@@ -13,19 +13,37 @@ interface BundleTabsProps {
   onSelectNode?: (path: string) => void;
 }
 
-export const BundleTabs: React.FC<BundleTabsProps> = ({
+export interface BundleTabsRef {
+  switchToTreeView: () => void;
+  navigateToPath: (jsonPointer: string) => void;
+}
+
+export const BundleTabs = forwardRef<BundleTabsRef, BundleTabsProps>(({
   bundleJson,
   onBundleChange,
   onSave,
   isSaving = false,
   hasChanges = false,
   onSelectNode,
-}) => {
+}, ref) => {
   const [activeTab, setActiveTab] = useState<'tree' | 'json'>('tree');
   const [selectedPath, setSelectedPath] = useState<string>();
   const [localValue, setLocalValue] = useState(bundleJson);
   const [parseError, setParseError] = useState<string | null>(null);
   const debounceTimerRef = useRef<number | undefined>(undefined);
+  
+  // Expose imperative methods via ref
+  useImperativeHandle(ref, () => ({
+    switchToTreeView: () => {
+      if (!parseError) {
+        setActiveTab('tree');
+      }
+    },
+    navigateToPath: (jsonPointer: string) => {
+      setSelectedPath(jsonPointer);
+      onSelectNode?.(jsonPointer);
+    },
+  }));
 
   // Sync local value when prop changes
   useEffect(() => {
@@ -190,4 +208,4 @@ export const BundleTabs: React.FC<BundleTabsProps> = ({
       </div>
     </div>
   );
-};
+});

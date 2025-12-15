@@ -177,7 +177,26 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         var errors = new List<RuleValidationError>();
         
         if (rule.Params == null || !rule.Params.ContainsKey("value"))
+        {
+            errors.Add(new RuleValidationError
+            {
+                RuleId = rule.Id,
+                RuleType = rule.Type,
+                Severity = "error",
+                ResourceType = rule.ResourceType,
+                Path = rule.Path,
+                ErrorCode = "RULE_CONFIGURATION_ERROR",
+                Message = $"Rule '{rule.Id}' (FixedValue) is missing required parameter 'value'.",
+                Details = new Dictionary<string, object>
+                {
+                    ["ruleType"] = "FixedValue",
+                    ["missingParams"] = new[] { "value" }
+                },
+                EntryIndex = entryIndex,
+                ResourceId = resource.Id
+            });
             return errors;
+        }
         
         var result = EvaluateFhirPath(resource, rule.Path, rule, entryIndex, errors);
         
@@ -220,7 +239,26 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         var errors = new List<RuleValidationError>();
         
         if (rule.Params == null || !rule.Params.ContainsKey("values"))
+        {
+            errors.Add(new RuleValidationError
+            {
+                RuleId = rule.Id,
+                RuleType = rule.Type,
+                Severity = "error",
+                ResourceType = rule.ResourceType,
+                Path = rule.Path,
+                ErrorCode = "RULE_CONFIGURATION_ERROR",
+                Message = $"Rule '{rule.Id}' (AllowedValues) is missing required parameter 'values'.",
+                Details = new Dictionary<string, object>
+                {
+                    ["ruleType"] = "AllowedValues",
+                    ["missingParams"] = new[] { "values" }
+                },
+                EntryIndex = entryIndex,
+                ResourceId = resource.Id
+            });
             return errors;
+        }
         
         var result = EvaluateFhirPath(resource, rule.Path, rule, entryIndex, errors);
         
@@ -263,7 +301,26 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         var errors = new List<RuleValidationError>();
         
         if (rule.Params == null || !rule.Params.ContainsKey("pattern"))
+        {
+            errors.Add(new RuleValidationError
+            {
+                RuleId = rule.Id,
+                RuleType = rule.Type,
+                Severity = "error",
+                ResourceType = rule.ResourceType,
+                Path = rule.Path,
+                ErrorCode = "RULE_CONFIGURATION_ERROR",
+                Message = $"Rule '{rule.Id}' (Regex) is missing required parameter 'pattern'.",
+                Details = new Dictionary<string, object>
+                {
+                    ["ruleType"] = "Regex",
+                    ["missingParams"] = new[] { "pattern" }
+                },
+                EntryIndex = entryIndex,
+                ResourceId = resource.Id
+            });
             return errors;
+        }
         
         var result = EvaluateFhirPath(resource, rule.Path, rule, entryIndex, errors);
         
@@ -310,8 +367,27 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
     {
         var errors = new List<RuleValidationError>();
         
-        if (rule.Params == null)
+        if (rule.Params == null || (!rule.Params.ContainsKey("min") && !rule.Params.ContainsKey("max")))
+        {
+            errors.Add(new RuleValidationError
+            {
+                RuleId = rule.Id,
+                RuleType = rule.Type,
+                Severity = "error",
+                ResourceType = rule.ResourceType,
+                Path = rule.Path,
+                ErrorCode = "RULE_CONFIGURATION_ERROR",
+                Message = $"Rule '{rule.Id}' (ArrayLength) is missing required parameters. At least one of 'min' or 'max' must be specified.",
+                Details = new Dictionary<string, object>
+                {
+                    ["ruleType"] = "ArrayLength",
+                    ["missingParams"] = new[] { "min or max" }
+                },
+                EntryIndex = entryIndex,
+                ResourceId = resource.Id
+            });
             return errors;
+        }
         
         var result = EvaluateFhirPath(resource, rule.Path, rule, entryIndex, errors);
         
@@ -378,7 +454,26 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         var errors = new List<RuleValidationError>();
         
         if (rule.Params == null || !rule.Params.ContainsKey("system"))
+        {
+            errors.Add(new RuleValidationError
+            {
+                RuleId = rule.Id,
+                RuleType = rule.Type,
+                Severity = "error",
+                ResourceType = rule.ResourceType,
+                Path = rule.Path,
+                ErrorCode = "RULE_CONFIGURATION_ERROR",
+                Message = $"Rule '{rule.Id}' (CodeSystem) is missing required parameter 'system'.",
+                Details = new Dictionary<string, object>
+                {
+                    ["ruleType"] = "CodeSystem",
+                    ["missingParams"] = new[] { "system" }
+                },
+                EntryIndex = entryIndex,
+                ResourceId = resource.Id
+            });
             return errors;
+        }
         
         var result = EvaluateFhirPath(resource, rule.Path, rule, entryIndex, errors);
         

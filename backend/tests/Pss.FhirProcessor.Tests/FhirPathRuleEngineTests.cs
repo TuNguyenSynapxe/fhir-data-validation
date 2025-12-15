@@ -219,4 +219,311 @@ public class FhirPathRuleEngineTests
         // Assert - should be empty because family name exists
         Assert.Empty(errors);
     }
+
+    [Fact]
+    public async System.Threading.Tasks.Task FixedValue_MissingParam_ReturnsConfigurationError()
+    {
+        // Arrange
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
+        var modelResolver = new FhirR4ModelResolverService(logger);
+        var engine = new FhirPathRuleEngine(modelResolver);
+
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    FullUrl = "urn:uuid:patient-001",
+                    Resource = new Patient
+                    {
+                        Id = "patient-001",
+                        Gender = AdministrativeGender.Male
+                    }
+                }
+            }
+        };
+
+        var ruleSet = new RuleSet
+        {
+            Version = "1.0",
+            FhirVersion = "4.0.1",
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "FV1",
+                    Type = "FixedValue",
+                    ResourceType = "Patient",
+                    Path = "Patient.gender",
+                    Severity = "error",
+                    ErrorCode = "INVALID_GENDER",
+                    Message = "Gender must be fixed value",
+                    Params = new Dictionary<string, object>() // Missing "value" param
+                }
+            }
+        };
+
+        // Act
+        var errors = await engine.ValidateAsync(bundle, ruleSet, CancellationToken.None);
+
+        // Assert
+        Assert.Single(errors);
+        var error = errors[0];
+        Assert.Equal("RULE_CONFIGURATION_ERROR", error.ErrorCode);
+        Assert.Equal("FV1", error.RuleId);
+        Assert.Equal("FixedValue", error.RuleType);
+        Assert.Contains("missing required parameter 'value'", error.Message);
+        Assert.NotNull(error.Details);
+        Assert.True(error.Details.ContainsKey("missingParams"));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task AllowedValues_MissingParam_ReturnsConfigurationError()
+    {
+        // Arrange
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
+        var modelResolver = new FhirR4ModelResolverService(logger);
+        var engine = new FhirPathRuleEngine(modelResolver);
+
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    FullUrl = "urn:uuid:patient-001",
+                    Resource = new Patient
+                    {
+                        Id = "patient-001",
+                        Gender = AdministrativeGender.Male
+                    }
+                }
+            }
+        };
+
+        var ruleSet = new RuleSet
+        {
+            Version = "1.0",
+            FhirVersion = "4.0.1",
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "AV1",
+                    Type = "AllowedValues",
+                    ResourceType = "Patient",
+                    Path = "Patient.gender",
+                    Severity = "error",
+                    ErrorCode = "INVALID_GENDER",
+                    Message = "Gender must be in allowed list",
+                    Params = new Dictionary<string, object>() // Missing "values" param
+                }
+            }
+        };
+
+        // Act
+        var errors = await engine.ValidateAsync(bundle, ruleSet, CancellationToken.None);
+
+        // Assert
+        Assert.Single(errors);
+        var error = errors[0];
+        Assert.Equal("RULE_CONFIGURATION_ERROR", error.ErrorCode);
+        Assert.Equal("AV1", error.RuleId);
+        Assert.Equal("AllowedValues", error.RuleType);
+        Assert.Contains("missing required parameter 'values'", error.Message);
+        Assert.NotNull(error.Details);
+        Assert.True(error.Details.ContainsKey("missingParams"));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task Regex_MissingParam_ReturnsConfigurationError()
+    {
+        // Arrange
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
+        var modelResolver = new FhirR4ModelResolverService(logger);
+        var engine = new FhirPathRuleEngine(modelResolver);
+
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    FullUrl = "urn:uuid:patient-001",
+                    Resource = new Patient
+                    {
+                        Id = "patient-001",
+                        Name = new List<HumanName>
+                        {
+                            new HumanName { Family = "Test123" }
+                        }
+                    }
+                }
+            }
+        };
+
+        var ruleSet = new RuleSet
+        {
+            Version = "1.0",
+            FhirVersion = "4.0.1",
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "RX1",
+                    Type = "Regex",
+                    ResourceType = "Patient",
+                    Path = "Patient.name.family",
+                    Severity = "error",
+                    ErrorCode = "INVALID_FAMILY_FORMAT",
+                    Message = "Family name format is invalid",
+                    Params = new Dictionary<string, object>() // Missing "pattern" param
+                }
+            }
+        };
+
+        // Act
+        var errors = await engine.ValidateAsync(bundle, ruleSet, CancellationToken.None);
+
+        // Assert
+        Assert.Single(errors);
+        var error = errors[0];
+        Assert.Equal("RULE_CONFIGURATION_ERROR", error.ErrorCode);
+        Assert.Equal("RX1", error.RuleId);
+        Assert.Equal("Regex", error.RuleType);
+        Assert.Contains("missing required parameter 'pattern'", error.Message);
+        Assert.NotNull(error.Details);
+        Assert.True(error.Details.ContainsKey("missingParams"));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ArrayLength_MissingBothParams_ReturnsConfigurationError()
+    {
+        // Arrange
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
+        var modelResolver = new FhirR4ModelResolverService(logger);
+        var engine = new FhirPathRuleEngine(modelResolver);
+
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    FullUrl = "urn:uuid:patient-001",
+                    Resource = new Patient
+                    {
+                        Id = "patient-001",
+                        Name = new List<HumanName>
+                        {
+                            new HumanName { Given = new List<string> { "John" } }
+                        }
+                    }
+                }
+            }
+        };
+
+        var ruleSet = new RuleSet
+        {
+            Version = "1.0",
+            FhirVersion = "4.0.1",
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "AL1",
+                    Type = "ArrayLength",
+                    ResourceType = "Patient",
+                    Path = "Patient.name.given",
+                    Severity = "error",
+                    ErrorCode = "INVALID_GIVEN_COUNT",
+                    Message = "Given name count is invalid",
+                    Params = new Dictionary<string, object>() // Missing both "min" and "max" params
+                }
+            }
+        };
+
+        // Act
+        var errors = await engine.ValidateAsync(bundle, ruleSet, CancellationToken.None);
+
+        // Assert
+        Assert.Single(errors);
+        var error = errors[0];
+        Assert.Equal("RULE_CONFIGURATION_ERROR", error.ErrorCode);
+        Assert.Equal("AL1", error.RuleId);
+        Assert.Equal("ArrayLength", error.RuleType);
+        Assert.Contains("missing required parameters", error.Message);
+        Assert.NotNull(error.Details);
+        Assert.True(error.Details.ContainsKey("missingParams"));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task CodeSystem_MissingParam_ReturnsConfigurationError()
+    {
+        // Arrange
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
+        var modelResolver = new FhirR4ModelResolverService(logger);
+        var engine = new FhirPathRuleEngine(modelResolver);
+
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    FullUrl = "urn:uuid:patient-001",
+                    Resource = new Patient
+                    {
+                        Id = "patient-001",
+                        MaritalStatus = new CodeableConcept
+                        {
+                            Coding = new List<Coding>
+                            {
+                                new Coding("http://terminology.hl7.org/CodeSystem/v3-MaritalStatus", "M")
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        var ruleSet = new RuleSet
+        {
+            Version = "1.0",
+            FhirVersion = "4.0.1",
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "CS1",
+                    Type = "CodeSystem",
+                    ResourceType = "Patient",
+                    Path = "Patient.maritalStatus",
+                    Severity = "error",
+                    ErrorCode = "INVALID_MARITAL_SYSTEM",
+                    Message = "Marital status must use correct system",
+                    Params = new Dictionary<string, object>() // Missing "system" param
+                }
+            }
+        };
+
+        // Act
+        var errors = await engine.ValidateAsync(bundle, ruleSet, CancellationToken.None);
+
+        // Assert
+        Assert.Single(errors);
+        var error = errors[0];
+        Assert.Equal("RULE_CONFIGURATION_ERROR", error.ErrorCode);
+        Assert.Equal("CS1", error.RuleId);
+        Assert.Equal("CodeSystem", error.RuleType);
+        Assert.Contains("missing required parameter 'system'", error.Message);
+        Assert.NotNull(error.Details);
+        Assert.True(error.Details.ContainsKey("missingParams"));
+    }
 }

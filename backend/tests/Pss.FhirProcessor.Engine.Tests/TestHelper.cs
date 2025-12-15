@@ -250,6 +250,7 @@ public static class TestHelper
     public static IValidationPipeline CreateValidationPipeline()
     {
         var lintService = CreateLintValidationService();
+        var specHintService = new SpecHintService();
         var firelyService = CreateFirelyValidationService();
         var ruleEngine = CreateRuleEngine();
         var codeMasterEngine = CreateCodeMasterEngine();
@@ -258,6 +259,7 @@ public static class TestHelper
 
         return new ValidationPipeline(
             lintService,
+            specHintService,
             firelyService,
             ruleEngine,
             codeMasterEngine,

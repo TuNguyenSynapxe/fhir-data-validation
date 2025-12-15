@@ -307,6 +307,9 @@ public class LintValidationService : ILintValidationService
 
         var schema = _schemaCache[resourceType];
 
+        // Check for missing required fields at the resource level
+        CheckMissingRequiredFields(resource, fhirPath, jsonPath, schema, resourceType, issues);
+
         // Iterate through all properties and apply best-effort validation
         foreach (var property in resource.EnumerateObject())
         {
@@ -420,6 +423,9 @@ public class LintValidationService : ILintValidationService
         // Recurse into nested objects and arrays with type-aware schema context
         if (value.ValueKind == JsonValueKind.Object)
         {
+            // Check for missing required fields in this nested object (backbone element or complex datatype)
+            CheckMissingRequiredFields(value, fhirPath, jsonPath, childSchemaContext, resourceType, issues);
+
             foreach (var childProperty in value.EnumerateObject())
             {
                 var childJsonPath = $"{jsonPath}/{childProperty.Name}";
@@ -443,6 +449,10 @@ public class LintValidationService : ILintValidationService
             {
                 if (item.ValueKind == JsonValueKind.Object)
                 {
+                    // Check for missing required fields in array item objects
+                    var itemJsonPath = $"{jsonPath}/{index}";
+                    CheckMissingRequiredFields(item, fhirPath, itemJsonPath, childSchemaContext, resourceType, issues);
+
                     foreach (var childProperty in item.EnumerateObject())
                     {
                         var childJsonPath = $"{jsonPath}/{index}/{childProperty.Name}";
@@ -498,31 +508,39 @@ public class LintValidationService : ILintValidationService
         
         if (element.IsArray && !isJsonArray)
         {
+            var schemaCardinality = element.Max == "*" ? "an array (0..*)" : $"an array (0..{element.Max})";
             issues.Add(CreateIssue(
                 "LINT_EXPECTED_ARRAY",
-                $"Property '{propertyName}' should be an array (max={element.Max})",
+                $"Property '{propertyName}' is defined as {schemaCardinality} in FHIR specification. This payload uses a different structure.",
                 jsonPointer: jsonPath,
                 fhirPath: fhirPath,
                 resourceType: resourceType,
                 details: new Dictionary<string, object>
                 {
                     ["schemaPath"] = element.Path,
-                    ["schemaMax"] = element.Max
+                    ["schemaMax"] = element.Max,
+                    ["confidence"] = "high",
+                    ["note"] = "Firely is permissive and may accept this payload. Other FHIR servers may reject it.",
+                    ["disclaimer"] = "This is a best-effort portability check. Final validation is performed by the FHIR engine."
                 }
             ));
         }
         else if (!element.IsArray && isJsonArray)
         {
+            var schemaCardinality = element.Max == "1" ? "a single object (0..1)" : $"a single object (0..{element.Max})";
             issues.Add(CreateIssue(
                 "LINT_EXPECTED_OBJECT",
-                $"Property '{propertyName}' should be a single object (max={element.Max})",
+                $"Property '{propertyName}' is defined as {schemaCardinality} in FHIR specification. This payload uses a different structure.",
                 jsonPointer: jsonPath,
                 fhirPath: fhirPath,
                 resourceType: resourceType,
                 details: new Dictionary<string, object>
                 {
                     ["schemaPath"] = element.Path,
-                    ["schemaMax"] = element.Max
+                    ["schemaMax"] = element.Max,
+                    ["confidence"] = "high",
+                    ["note"] = "Firely is permissive and may accept this payload. Other FHIR servers may reject it.",
+                    ["disclaimer"] = "This is a best-effort portability check. Final validation is performed by the FHIR engine."
                 }
             ));
         }
@@ -603,8 +621,9 @@ public class LintValidationService : ILintValidationService
         }
 
         // Find the property element in the current schema
-        var propertyPath = $"{parentFhirPath}.{propertyName}";
-        var element = FindElementInSchema(currentSchema, propertyPath);
+        // IMPORTANT: When already in a type-aware schema context (e.g., already in Reference schema),
+        // search by element name, not full path, because datatype schemas don't have resource paths
+        var element = FindChildByElementName(currentSchema, propertyName);
 
         if (element == null)
         {
@@ -616,6 +635,21 @@ public class LintValidationService : ILintValidationService
         if (!string.IsNullOrEmpty(element.Type))
         {
             var dataType = element.Type;
+
+            // Map schema type names to actual FHIR datatype names
+            // Some schema types use different names than the actual datatypes
+            var typeMapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "ResourceReference", "Reference" },
+                { "Code`1", "Code" },  // Generic code with value set binding
+                { "FhirUri", "uri" },
+                { "Id", "id" }
+            };
+
+            if (typeMapping.ContainsKey(dataType))
+            {
+                dataType = typeMapping[dataType];
+            }
 
             // Primitive types don't have child properties
             var primitiveTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -674,17 +708,29 @@ public class LintValidationService : ILintValidationService
             return;
         }
 
-        // Exclusions - do not validate these standard FHIR elements
-        var exclusions = new HashSet<string>
+        // Exclusions - standard FHIR elements that should not be validated for unknown elements
+        // IMPORTANT: Only exclude these at the RESOURCE level, not at datatype level
+        // (e.g., Reference.id and Reference.extension are valid properties that should be validated)
+        var resourceLevelExclusions = new HashSet<string>
         {
             "resourceType",
-            "id",
             "meta",
-            "extension",
-            "modifierExtension"
+            "implicitRules",
+            "language",
+            "text",
+            "contained"
         };
 
-        if (exclusions.Contains(propertyName))
+        // Check if we're at the resource level (schema path equals element name, e.g., "Patient" == "Patient")
+        bool isResourceLevel = currentSchemaContext.Path == currentSchemaContext.ElementName;
+
+        if (isResourceLevel && resourceLevelExclusions.Contains(propertyName))
+        {
+            return;
+        }
+
+        // Always skip extension and modifierExtension at any level (handled separately by Firely)
+        if (propertyName == "extension" || propertyName == "modifierExtension")
         {
             return;
         }
@@ -708,7 +754,7 @@ public class LintValidationService : ILintValidationService
 
             issues.Add(CreateIssue(
                 "UNKNOWN_ELEMENT",
-                $"Property '{propertyName}' does not exist in FHIR type '{schemaTypeName}'",
+                $"Property '{propertyName}' does not exist in {schemaTypeName} type. Path: '{fhirPath}'. Note: This may still parse in permissive FHIR engines.",
                 jsonPointer: jsonPath,
                 fhirPath: fhirPath,
                 resourceType: resourceTypeForError,
@@ -716,9 +762,120 @@ public class LintValidationService : ILintValidationService
                 {
                     ["propertyName"] = propertyName,
                     ["fhirPath"] = fhirPath,
-                    ["schemaContext"] = schemaTypeName
+                    ["schemaContext"] = schemaTypeName,
+                    ["confidence"] = "high",
+                    ["disclaimer"] = "This is a best-effort portability check. Final validation is performed by the FHIR engine."
                 }
             ));
+        }
+    }
+
+    /// <summary>
+    /// Checks for missing required fields (min > 0) in a resource or backbone element.
+    /// Best-effort schema-driven check to help developers understand why strict FHIR servers might reject incomplete resources.
+    /// </summary>
+    /// <param name="jsonObject">The JSON object to check for required fields</param>
+    /// <param name="parentFhirPath">Parent FHIR path for error reporting</param>
+    /// <param name="jsonPath">JSON pointer path for error reporting</param>
+    /// <param name="currentSchemaContext">Current schema node containing child definitions</param>
+    /// <param name="resourceTypeForError">Resource type for error context</param>
+    /// <param name="issues">List to add lint issues to</param>
+    private void CheckMissingRequiredFields(
+        JsonElement jsonObject,
+        string parentFhirPath,
+        string jsonPath,
+        FhirSchemaNode? currentSchemaContext,
+        string resourceTypeForError,
+        List<LintIssue> issues)
+    {
+        // Skip if no schema available (best-effort principle)
+        if (currentSchemaContext == null || jsonObject.ValueKind != JsonValueKind.Object)
+        {
+            return;
+        }
+
+        // Get all property names present in the JSON object
+        var presentProperties = new HashSet<string>(
+            jsonObject.EnumerateObject().Select(p => p.Name),
+            StringComparer.OrdinalIgnoreCase
+        );
+
+        // Standard FHIR elements that should not trigger missing field warnings
+        var standardElements = new HashSet<string>
+        {
+            "resourceType",
+            "id",
+            "meta",
+            "implicitRules",
+            "language",
+            "text",
+            "contained",
+            "extension",
+            "modifierExtension"
+        };
+
+        // Iterate through schema children to find required fields (Min > 0)
+        foreach (var child in currentSchemaContext.Children)
+        {
+            // Skip if not required
+            if (child.Min <= 0)
+            {
+                continue;
+            }
+
+            var elementName = child.ElementName;
+
+            // Skip standard elements
+            if (standardElements.Contains(elementName))
+            {
+                continue;
+            }
+
+            // Skip primitive extensions (underscore-prefixed)
+            if (elementName.StartsWith("_"))
+            {
+                continue;
+            }
+
+            // Skip choice[x] base elements - they're abstract and shouldn't be checked directly
+            // The actual concrete choice types (e.g., valueString) are separate elements
+            if (child.IsChoice && elementName.EndsWith("[x]"))
+            {
+                continue;
+            }
+
+            // Skip extension.value[x] specifically - this is handled by the FHIR engine
+            if (parentFhirPath.EndsWith(".extension") && elementName == "value[x]")
+            {
+                continue;
+            }
+
+            // Check if the required field is present in the JSON object
+            if (!presentProperties.Contains(elementName))
+            {
+                var fhirPath = $"{parentFhirPath}.{elementName}";
+                var propertyJsonPath = $"{jsonPath}/{elementName}";
+                var cardinality = $"{child.Min}..{child.Max}";
+
+                issues.Add(CreateIssue(
+                    "MISSING_REQUIRED_FIELD",
+                    $"Required field '{elementName}' ({cardinality}) is missing according to FHIR R4 schema. Note: Some FHIR engines may accept this, but strict servers may reject it.",
+                    jsonPointer: propertyJsonPath,
+                    fhirPath: fhirPath,
+                    resourceType: resourceTypeForError,
+                    details: new Dictionary<string, object>
+                    {
+                        ["fieldName"] = elementName,
+                        ["schemaPath"] = child.Path,
+                        ["schemaMin"] = child.Min,
+                        ["schemaMax"] = child.Max,
+                        ["cardinality"] = cardinality,
+                        ["confidence"] = "high",
+                        ["disclaimer"] = "Best-effort portability check. Some FHIR engines may accept incomplete resources. Final validation is performed by the FHIR engine.",
+                        ["note"] = "This field is marked as required (min > 0) in the FHIR specification but is missing from the resource."
+                    }
+                ));
+            }
         }
     }
 

@@ -71,8 +71,7 @@ const FhirSampleTreeView: React.FC<FhirSampleTreeViewProps> = ({
     setSelectedSample(sample);
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const sampleResponse = await fetch(`${apiUrl}/api/fhir/samples/R4/${sample.resourceType}/${sample.id}`);
+      const sampleResponse = await fetch(`/api/fhir/samples/R4/${sample.resourceType}/${sample.id}`);
       
       if (!sampleResponse.ok) {
         throw new Error(`Failed to load sample: ${sampleResponse.status} ${sampleResponse.statusText}`);

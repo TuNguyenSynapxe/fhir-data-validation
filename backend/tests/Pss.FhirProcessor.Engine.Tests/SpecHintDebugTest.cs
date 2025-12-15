@@ -1,0 +1,111 @@
+using Xunit;
+using Xunit.Abstractions;
+using Hl7.Fhir.Model;
+using Hl7.Fhir.Serialization;
+using Hl7.FhirPath;
+using Hl7.Fhir.ElementModel;
+using Pss.FhirProcessor.Engine.Services;
+using Task = System.Threading.Tasks.Task;
+
+namespace Pss.FhirProcessor.Engine.Tests;
+
+public class SpecHintDebugTest
+{
+    private readonly ITestOutputHelper _output;
+    private readonly FhirJsonParser _parser;
+
+    public SpecHintDebugTest(ITestOutputHelper output)
+    {
+        _output = output;
+        _parser = new FhirJsonParser();
+    }
+
+    [Fact]
+    public void Debug_FhirPath_Evaluation()
+    {
+        // Create an Encounter without status
+        var encounterJson = @"{
+            ""resourceType"": ""Encounter"",
+            ""id"": ""enc-001"",
+            ""class"": {
+                ""system"": ""http://terminology.hl7.org/CodeSystem/v3-ActCode"",
+                ""code"": ""IMP""
+            }
+        }";
+
+        var encounter = _parser.Parse<Encounter>(encounterJson);
+        _output.WriteLine($"Encounter ID: {encounter.Id}");
+        _output.WriteLine($"Encounter Status: {encounter.Status}");
+        _output.WriteLine($"Has Status: {encounter.Status != null}");
+
+        // Try FHIRPath evaluation
+        var compiler = new FhirPathCompiler();
+        
+        try
+        {
+            var compiled = compiler.Compile("status");
+            var typedElement = encounter.ToTypedElement();
+            var scopedNode = new ScopedNode(typedElement);
+            var result = compiled(scopedNode, new EvaluationContext());
+            var resultList = result.ToList();
+            
+            _output.WriteLine($"FHIRPath result count: {resultList.Count}");
+            foreach (var item in resultList)
+            {
+                _output.WriteLine($"Result item: {item} (Type: {item?.GetType().Name})");
+                if (item is ITypedElement te)
+                {
+                    _output.WriteLine($"  - Value: {te.Value}");
+                    _output.WriteLine($"  - Name: {te.Name}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _output.WriteLine($"FHIRPath evaluation failed: {ex.Message}");
+            _output.WriteLine($"Stack trace: {ex.StackTrace}");
+        }
+    }
+
+    [Fact]
+    public async Task Debug_Catalog_Loading()
+    {
+        // First, check embedded resources
+        var assembly = typeof(SpecHintService).Assembly;
+        var resources = assembly.GetManifestResourceNames();
+        _output.WriteLine("Embedded resources:");
+        foreach (var resource in resources)
+        {
+            _output.WriteLine($"  - {resource}");
+        }
+        
+        var service = new SpecHintService();
+        
+        // Create a simple bundle with an encounter without status
+        var bundleJson = @"{
+            ""resourceType"": ""Bundle"",
+            ""type"": ""collection"",
+            ""entry"": [{
+                ""resource"": {
+                    ""resourceType"": ""Encounter"",
+                    ""id"": ""enc-001"",
+                    ""class"": {
+                        ""system"": ""http://terminology.hl7.org/CodeSystem/v3-ActCode"",
+                        ""code"": ""IMP""
+                    }
+                }
+            }]
+        }";
+
+        var bundle = _parser.Parse<Bundle>(bundleJson);
+        _output.WriteLine($"\nBundle has {bundle.Entry?.Count ?? 0} entries");
+        
+        var issues = await service.CheckAsync(bundle, "R4");
+        _output.WriteLine($"Issues returned: {issues.Count}");
+        
+        foreach (var issue in issues)
+        {
+            _output.WriteLine($"  - {issue.ResourceType}.{issue.Path}: {issue.Reason}");
+        }
+    }
+}

@@ -254,6 +254,75 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
         return errors;
     }
     
+    /// <summary>
+    /// Converts spec hint issues to unified error format.
+    /// METADATA-DRIVEN: Uses IsConditional flag from issue, no path-based inference.
+    /// Spec hints are advisory and clearly marked as not enforced.
+    /// </summary>
+    public async Task<List<ValidationError>> FromSpecHintIssuesAsync(List<SpecHintIssue> issues, Bundle bundle, CancellationToken cancellationToken = default)
+    {
+        var errors = new List<ValidationError>();
+        
+        foreach (var issue in issues)
+        {
+            // METADATA-DRIVEN: Use IsConditional flag explicitly (no path parsing)
+            bool isConditional = issue.IsConditional;
+            
+            var error = new ValidationError
+            {
+                Source = "SPEC_HINT",
+                Severity = issue.Severity,
+                ResourceType = issue.ResourceType,
+                Path = issue.Path,
+                JsonPointer = issue.JsonPointer,
+                ErrorCode = isConditional ? "SPEC_REQUIRED_CONDITIONAL" : "MISSING_REQUIRED_FIELD",
+                Message = isConditional
+                    ? $"According to HL7 FHIR R4, '{GetFieldName(issue.Path)}' is mandatory when its parent is present. {issue.Reason}. " +
+                      "This is advisory only and does not block validation."
+                    : $"HL7 FHIR specification marks '{issue.Path}' as required, but it is missing. {issue.Reason}. " +
+                      "This is advisory only and does not block validation.",
+                Details = new Dictionary<string, object>
+                {
+                    ["reason"] = issue.Reason,
+                    ["advisory"] = true,
+                    ["source"] = "HL7",
+                    ["isConditional"] = isConditional,
+                    ["appliesToEach"] = issue.AppliesToEach
+                }
+            };
+            
+            // Add condition to details if present
+            if (!string.IsNullOrWhiteSpace(issue.Condition))
+            {
+                error.Details["condition"] = issue.Condition;
+            }
+            
+            // Add navigation context
+            if (!string.IsNullOrEmpty(issue.Path))
+            {
+                try
+                {
+                    var navigation = await _navigationService.ResolvePathAsync(
+                        bundle, 
+                        issue.Path, 
+                        issue.ResourceType, 
+                        cancellationToken);
+                    
+                    error.Navigation = navigation;
+                }
+                catch
+                {
+                    // Navigation resolution failed - this is OK
+                    // Spec hints already have JsonPointer for basic location
+                }
+            }
+            
+            errors.Add(error);
+        }
+        
+        return errors;
+    }
+    
     private string? ExtractResourceType(string? path)
     {
         if (string.IsNullOrEmpty(path))
@@ -270,5 +339,24 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
         }
         
         return null;
+    }
+    
+    /// <summary>
+    /// Extracts the field name from a path for clearer error messaging.
+    /// Example: "Patient.communication[2].language" → "language"
+    /// </summary>
+    private string GetFieldName(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return path;
+        
+        // Get last segment after last dot
+        var lastDotIndex = path.LastIndexOf('.');
+        if (lastDotIndex >= 0 && lastDotIndex < path.Length - 1)
+        {
+            return path.Substring(lastDotIndex + 1);
+        }
+        
+        return path;
     }
 }

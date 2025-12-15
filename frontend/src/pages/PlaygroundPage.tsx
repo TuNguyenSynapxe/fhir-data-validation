@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, AlertCircle, Download } from 'lucide-react';
 import dayjs from 'dayjs';
@@ -10,10 +10,11 @@ import {
 } from '../hooks/usePlayground';
 import PlaygroundLayout from '../layouts/PlaygroundLayout';
 import { BundleTabs } from '../components/playground/Bundle/BundleTabs';
-import { RuleBuilder } from '../components/playground/Rules/RuleBuilder';
+import { RulesPanel } from '../components/playground/Rules/RulesPanel';
 import { CodeMasterEditor } from '../components/playground/CodeMaster/CodeMasterEditor';
 import { RuleSetMetadata } from '../components/playground/Metadata/RuleSetMetadata';
 import { ValidationPanel } from '../components/playground/Validation/ValidationPanel';
+
 
 import type { FhirSampleMetadata } from '../types/fhirSample';
 
@@ -51,13 +52,20 @@ export default function PlaygroundPage() {
   // Track original values for change detection
   const [originalBundleJson, setOriginalBundleJson] = useState('');
   const [originalCodeMasterJson, setOriginalCodeMasterJson] = useState('');
+  
+  // Navigation state for Smart Path
+  const [navigationFeedback, setNavigationFeedback] = useState<string | null>(null);
+  const bundleTabsRef = useRef<{ switchToTreeView: () => void; navigateToPath: (path: string) => void }>(null);
+  
+  // TreeView focus state for context dimming
+  const [treeViewFocused, setTreeViewFocused] = useState(false);
+  const focusTimeoutRef = useRef<number | undefined>(undefined);
 
   // Load HL7 samples once on mount (read-only for drawer)
   useEffect(() => {
     const loadHl7Samples = async () => {
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        const response = await fetch(`${apiUrl}/api/fhir/samples?version=R4`);
+        const response = await fetch(`/api/fhir/samples?version=R4`);
         if (response.ok) {
           const samples: FhirSampleMetadata[] = await response.json();
           setHl7Samples(samples);
@@ -67,6 +75,13 @@ export default function PlaygroundPage() {
       }
     };
     loadHl7Samples();
+    
+    // Cleanup focus timeout on unmount
+    return () => {
+      if (focusTimeoutRef.current) {
+        clearTimeout(focusTimeoutRef.current);
+      }
+    };
   }, []);
 
   // Parse rules JSON to extract rules array
@@ -125,6 +140,56 @@ export default function PlaygroundPage() {
 
   const handleRulesChange = (updatedRules: Rule[]) => {
     setRules(updatedRules);
+  };
+  
+  /**
+   * Handle click on dimmed panels to clear focus mode
+   */
+  const handleClearFocus = () => {
+    if (treeViewFocused) {
+      setTreeViewFocused(false);
+      if (focusTimeoutRef.current) {
+        clearTimeout(focusTimeoutRef.current);
+      }
+    }
+  };
+
+  /**
+   * Handle Smart Path navigation from validation errors
+   * @param jsonPointer - JSON Pointer path like "/entry/0/resource/extension/0/valueCodeableConcept"
+   */
+  const handleNavigateToPath = (jsonPointer: string) => {
+    try {
+      if (!jsonPointer) {
+        setNavigationFeedback('No navigation path available for this error');
+        setTimeout(() => setNavigationFeedback(null), 5000);
+        return;
+      }
+
+      // Switch to tree view and navigate directly using the jsonPointer
+      bundleTabsRef.current?.switchToTreeView();
+      bundleTabsRef.current?.navigateToPath(jsonPointer);
+      
+      // Activate TreeView focus mode
+      setTreeViewFocused(true);
+      
+      // Clear any previous timeout
+      if (focusTimeoutRef.current) {
+        clearTimeout(focusTimeoutRef.current);
+      }
+      
+      // Auto-clear focus after 0.5 seconds
+      focusTimeoutRef.current = setTimeout(() => {
+        setTreeViewFocused(false);
+      }, 500);
+      
+      // Clear any previous feedback
+      setNavigationFeedback(null);
+    } catch (error) {
+      console.error('Navigation error:', error);
+      setNavigationFeedback('Failed to navigate to field');
+      setTimeout(() => setNavigationFeedback(null), 5000);
+    }
   };
 
   const handleExportRules = () => {
@@ -192,13 +257,14 @@ export default function PlaygroundPage() {
     switch (activeTab) {
       case 'rules':
         return (
-          <RuleBuilder
+          <RulesPanel
             rules={rules}
             onRulesChange={handleRulesChange}
             onSave={handleSaveRules}
             hasChanges={saveRulesMutation.isPending}
             projectBundle={projectBundle}
             hl7Samples={hl7Samples}
+            onNavigateToPath={handleNavigateToPath}
           />
         );
       case 'codemaster':
@@ -261,16 +327,26 @@ export default function PlaygroundPage() {
       <div className="flex-1 overflow-hidden">
         <PlaygroundLayout
           bundleContent={
-            <BundleTabs
-              bundleJson={bundleJson}
-              onBundleChange={setBundleJson}
-              onSave={handleSaveBundle}
-              hasChanges={bundleJson !== originalBundleJson}
-              isSaving={saveBundleMutation.isPending}
-            />
+            <div className={`h-full transition-all duration-200 ${
+              treeViewFocused ? 'ring-2 ring-blue-400 ring-opacity-50 shadow-lg' : ''
+            }`}>
+              <BundleTabs
+                ref={bundleTabsRef}
+                bundleJson={bundleJson}
+                onBundleChange={setBundleJson}
+                onSave={handleSaveBundle}
+                hasChanges={bundleJson !== originalBundleJson}
+                isSaving={saveBundleMutation.isPending}
+              />
+            </div>
           }
           rulesContent={
-            <div className="flex flex-col h-full">
+            <div 
+              className={`flex flex-col h-full transition-all duration-200 ${
+                treeViewFocused ? 'opacity-40 pointer-events-none' : ''
+              }`}
+              onClick={handleClearFocus}
+            >
               {/* Tab Navigation */}
               <div className="flex border-b bg-gray-50">
                 <button
@@ -310,13 +386,28 @@ export default function PlaygroundPage() {
             </div>
           }
           validationContent={
-            <ValidationPanel
-              projectId={projectId}
-              onSelectError={(error) => {
-                console.log('Error selected:', error);
-                // TODO: Navigate to error location in bundle
-              }}
-            />
+            <div 
+              className={`h-full transition-all duration-200 ${
+                treeViewFocused ? 'opacity-40 pointer-events-none' : ''
+              }`}
+              onClick={handleClearFocus}
+            >
+              {navigationFeedback && (
+                <div className="px-4 py-2 bg-blue-50 border-b border-blue-200 text-sm text-blue-800">
+                  ℹ️ {navigationFeedback}
+                </div>
+              )}
+              <ValidationPanel
+                projectId={projectId}
+                onSelectError={(error) => {
+                  const jsonPointer = error.jsonPointer || error.navigation?.jsonPointer;
+                  if (jsonPointer) {
+                    handleNavigateToPath(jsonPointer);
+                  }
+                }}
+                onNavigateToPath={handleNavigateToPath}
+              />
+            </div>
           }
         />
       </div>

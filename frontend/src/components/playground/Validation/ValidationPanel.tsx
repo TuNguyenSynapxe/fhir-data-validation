@@ -12,6 +12,8 @@ import {
   Clock
 } from 'lucide-react';
 import { ValidationResultList } from './ValidationResultList';
+import { HelpTooltip } from '../../common/HelpTooltip';
+import { ValidationLayerInfo } from './ValidationLayerInfo';
 
 interface ValidationError {
   source: string; // FHIR, Business, CodeMaster, Reference
@@ -44,6 +46,8 @@ interface ValidationResult {
       businessRules: number;
       codeMaster: number;
       reference: number;
+      lint: number;
+      specHint: number;
     };
   };
 }
@@ -51,6 +55,7 @@ interface ValidationResult {
 interface ValidationPanelProps {
   projectId: string;
   onSelectError?: (error: ValidationError) => void;
+  onNavigateToPath?: (jsonPointer: string) => void;
 }
 
 /**
@@ -67,9 +72,22 @@ const getSourceBadgeColor = (source: string): string => {
     return 'bg-orange-100 text-orange-800 border-orange-200';
   } else if (normalizedSource === 'reference') {
     return 'bg-red-100 text-red-800 border-red-200';
+  } else if (normalizedSource === 'lint') {
+    return 'bg-amber-100 text-amber-800 border-amber-200';
   } else {
     return 'bg-gray-100 text-gray-800 border-gray-200';
   }
+};
+
+/**
+ * LINT help text constants
+ */
+const LINT_HELP = {
+  title: 'What is LINT?',
+  body: `LINT checks detect portability and interoperability issues based on the official FHIR specification.
+Some FHIR engines (including Firely) are permissive and may still accept this payload.
+Other FHIR servers may reject it.`,
+  footer: 'Final validation is always performed by the FHIR engine.',
 };
 
 /**
@@ -89,7 +107,8 @@ const formatTimestamp = (timestamp: string): string => {
  */
 export const ValidationPanel: React.FC<ValidationPanelProps> = ({ 
   projectId, 
-  onSelectError 
+  onSelectError,
+  onNavigateToPath 
 }) => {
   const [results, setResults] = useState<ValidationResult | null>(null);
   const [isOpen, setIsOpen] = useState(true);
@@ -107,8 +126,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
     const startTime = Date.now();
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const response = await fetch(`${apiUrl}/api/projects/${projectId}/validate`, {
+      const response = await fetch(`/api/projects/${projectId}/validate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -148,6 +166,10 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
               e.source?.toLowerCase() === 'codemaster').length,
             reference: data.summary?.referenceErrorCount || errors.filter((e: ValidationError) => 
               e.source?.toLowerCase() === 'reference').length,
+            lint: data.summary?.lintErrorCount || errors.filter((e: ValidationError) => 
+              e.source?.toLowerCase() === 'lint').length,
+            specHint: errors.filter((e: ValidationError) => 
+              e.source?.toLowerCase() === 'spec_hint' || e.source?.toLowerCase() === 'spechint').length,
           },
         },
       };
@@ -196,6 +218,9 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
           <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
             Problems
           </span>
+          
+          {/* Validation Layer Info Tooltip */}
+          <ValidationLayerInfo />
           
           {/* Summary badges */}
           {summary && (
@@ -316,6 +341,18 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
             {summary && hasErrors && (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-gray-500 mr-1">By source:</span>
+                {summary.bySource.lint > 0 && (
+                  <div className="flex items-center gap-1">
+                    <span className={`text-xs px-2 py-0.5 rounded border ${getSourceBadgeColor('LINT')}`}>
+                      LINT: {summary.bySource.lint}
+                    </span>
+                    <HelpTooltip 
+                      title={LINT_HELP.title}
+                      body={LINT_HELP.body}
+                      footer={LINT_HELP.footer}
+                    />
+                  </div>
+                )}
                 {summary.bySource.firely > 0 && (
                   <span className={`text-xs px-2 py-0.5 rounded border ${getSourceBadgeColor('Firely')}`}>
                     Firely: {summary.bySource.firely}
@@ -334,6 +371,11 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
                 {summary.bySource.reference > 0 && (
                   <span className={`text-xs px-2 py-0.5 rounded border ${getSourceBadgeColor('Reference')}`}>
                     Reference: {summary.bySource.reference}
+                  </span>
+                )}
+                {summary.bySource.specHint > 0 && (
+                  <span className={`text-xs px-2 py-0.5 rounded border ${getSourceBadgeColor('SPEC_HINT')}`}>
+                    SPEC_HINT: {summary.bySource.specHint}
                   </span>
                 )}
               </div>
@@ -370,10 +412,11 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
               </div>
             )}
 
-            {!error && !isLoading && results && (
-              <ValidationResultList 
-                errors={results.errors} 
+            {results && results.errors && results.errors.length > 0 && (
+              <ValidationResultList
+                errors={results.errors}
                 onErrorClick={handleErrorClick}
+                onNavigateToPath={onNavigateToPath}
               />
             )}
           </div>

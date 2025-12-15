@@ -1,0 +1,84 @@
+{
+  "version": "4.0.1",
+  "description": "HL7 FHIR R4 required field hints - Advisory only, not enforced",
+  "hints": {
+    "Patient": [
+      {
+        "path": "identifier",
+        "reason": "HL7 FHIR R4 specification marks identifier as required (min cardinality = 1)",
+        "severity": "warning",
+        "source": "HL7"
+      },
+      {
+        "path": "communication.language",
+        "isConditional": true,
+        "condition": "communication.exists()",
+        "appliesToEach": true,
+        "reason": "If Patient.communication is present, language is mandatory (1..1) per HL7 FHIR R4",
+        "severity": "warning",
+        "source": "HL7"
+      },
+      {
+        "path": "contact.name",
+        "isConditional": true,
+        "condition": "contact.exists()",
+        "appliesToEach": true,
+        "reason": "If Patient.contact is present, name is mandatory (1..1) per HL7 FHIR R4",
+        "severity": "warning",
+        "source": "HL7"
+      }
+    ],
+    "Encounter": [
+      {
+        "path": "status",
+        "reason": "HL7 FHIR R4 specification marks status as required (min cardinality = 1)",
+        "severity": "warning",
+        "source": "HL7"
+      },
+      {
+        "path": "class",
+        "reason": "HL7 FHIR R4 specification marks class as required (min cardinality = 1)",
+        "severity": "warning",
+        "source": "HL7"
+      }
+    ],
+    "Observation": [
+      {
+        "path": "status",
+        "reason": "HL7 FHIR R4 specification marks status as required (min cardinality = 1)",
+        "severity": "warning",
+        "source": "HL7"
+      },
+      {
+        "path": "code",
+        "reason": "HL7 FHIR R4 specification marks code as required (min cardinality = 1)",
+        "severity": "warning",
+        "source": "HL7"
+      }
+    ],
+    "Organization": [
+      {
+        "path": "name",
+        "reason": "HL7 FHIR R4 specification marks name as required (min cardinality = 1)",
+        "severity": "warning",
+        "source": "HL7"
+      }
+    ],
+    "Location": [
+      {
+        "path": "name",
+        "reason": "HL7 FHIR R4 specification marks name as required (min cardinality = 1)",
+        "severity": "warning",
+        "source": "HL7"
+      }
+    ],
+    "HealthcareService": [
+      {
+        "path": "name",
+        "reason": "HL7 FHIR R4 specification marks name as required (min cardinality = 1)",
+        "severity": "warning",
+        "source": "HL7"
+      }
+    ]
+  }
+}

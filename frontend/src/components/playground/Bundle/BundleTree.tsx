@@ -114,11 +114,21 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   const hasChildren = type === 'object' || type === 'array';
   const jsonPointer = computeJsonPointer(path);
   const fhirPath = computeFhirPath(path);
+  const nodeRef = React.useRef<HTMLDivElement>(null);
+
+  // Scroll into view when selected
+  React.useEffect(() => {
+    if (isSelected && nodeRef.current) {
+      nodeRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [isSelected]);
 
   const handleClick = () => {
     if (hasChildren) {
       onToggle();
     }
+    // Always call onSelect - this is needed for smart path navigation
+    // The parent will handle whether to update selectedPath
     onSelect({
       key: String(nodeKey),
       value,
@@ -132,6 +142,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   const renderChildren = () => {
     if (!hasChildren || !isExpanded) return null;
 
+    const collapseKey = (onSelect as any).collapseKey;
+
     if (type === 'array') {
       return (value as any[]).map((item, index) => (
         <TreeNodeWrapper
@@ -141,6 +153,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           path={[...path, index]}
           level={level + 1}
           onSelect={onSelect}
+          externalSelectedPath={(onSelect as any).externalSelectedPath}
+          collapseKey={collapseKey}
         />
       ));
     }
@@ -154,6 +168,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           path={[...path, key]}
           level={level + 1}
           onSelect={onSelect}
+          externalSelectedPath={(onSelect as any).externalSelectedPath}
+          collapseKey={collapseKey}
         />
       ));
     }
@@ -164,6 +180,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   return (
     <div>
       <div
+        ref={nodeRef}
         className={`flex items-center py-1 px-2 cursor-pointer transition-colors ${
           isSelected ? 'bg-blue-100 border-l-2 border-blue-600' : 'hover:bg-gray-50'
         }`}
@@ -211,16 +228,122 @@ const TreeNode: React.FC<TreeNodeProps> = ({
  */
 const TreeNodeWrapper: React.FC<Omit<TreeNodeProps, 'isExpanded' | 'isSelected' | 'onToggle'> & {
   onSelect: (nodeData: NodeData) => void;
+  externalSelectedPath?: string;
+  collapseKey?: number;
 }> = (props) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [selectedJsonPointer, setSelectedJsonPointer] = useState<string>('');
-
   const jsonPointer = computeJsonPointer(props.path);
-  const isSelected = selectedJsonPointer === jsonPointer;
+  
+  // Auto-expand if this path is an ancestor of the selected path OR if this node is directly selected
+  const shouldAutoExpand = props.externalSelectedPath?.startsWith(jsonPointer + '/') || 
+                           props.externalSelectedPath === jsonPointer || 
+                           false;
+  const isSelected = props.externalSelectedPath === jsonPointer;
+  
+  // Local expansion state
+  const [isExpanded, setIsExpanded] = useState(false);
+  // Track the last collapseKey we processed - start with undefined to detect first mount
+  const lastCollapseKeyRef = React.useRef<number | undefined>(undefined);
+  const isFirstMountRef = React.useRef(true);
+  // Track pending timer to prevent multiple timers
+  const pendingTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  
+  const pathMatch = props.externalSelectedPath?.startsWith(jsonPointer + '/');
+  if (jsonPointer.startsWith('/entry/0')) {
+    console.log(`[TreeNodeWrapper] ${jsonPointer}`);
+    console.log(`  - isExpanded: ${isExpanded}`);
+    console.log(`  - shouldAutoExpand: ${shouldAutoExpand}`);
+    console.log(`  - isSelected: ${isSelected}`);
+    console.log(`  - externalSelectedPath: ${props.externalSelectedPath}`);
+    console.log(`  - collapseKey: ${props.collapseKey}`);
+    console.log(`  - pathMatch: ${pathMatch}`);
+  }
+  
+  // When collapseKey changes (external navigation), reset expansion state
+  React.useEffect(() => {
+    const hasCollapseKeyChanged = lastCollapseKeyRef.current !== props.collapseKey;
+    const isFirstMount = isFirstMountRef.current;
+    
+    if (jsonPointer.startsWith('/entry/0')) {
+      console.log(`[TreeNodeWrapper EFFECT] ${jsonPointer}`);
+      console.log(`  - isFirstMount: ${isFirstMount}`);
+      console.log(`  - hasChanged: ${hasCollapseKeyChanged}`);
+      console.log(`  - shouldAutoExpand: ${shouldAutoExpand}`);
+      console.log(`  - lastCollapseKey: ${lastCollapseKeyRef.current} -> ${props.collapseKey}`);
+    }
+    
+    // Update refs AFTER reading them
+    lastCollapseKeyRef.current = props.collapseKey;
+    
+    // On first mount, expand if on path, otherwise stay collapsed
+    if (isFirstMount) {
+      // Mark as not first mount IMMEDIATELY to prevent re-runs
+      isFirstMountRef.current = false;
+      
+      if (shouldAutoExpand) {
+        const depth = props.path.length;
+        const delay = depth * 10;
+        if (jsonPointer.startsWith('/entry/0')) {
+          console.log(`[TreeNodeWrapper ACTION] ${jsonPointer} - First mount EXPAND in ${delay}ms, SETTING TIMER`);
+        }
+        
+        // Clear any existing timer
+        if (pendingTimerRef.current) {
+          clearTimeout(pendingTimerRef.current);
+        }
+        
+        pendingTimerRef.current = setTimeout(() => {
+          if (jsonPointer.startsWith('/entry/0')) {
+            console.log(`[TreeNodeWrapper TIMER] ${jsonPointer} - TIMER FIRED - EXPANDING NOW`);
+          }
+          pendingTimerRef.current = null;
+          setIsExpanded(true);
+        }, delay);
+        
+        // Don't return cleanup - let timer fire regardless of re-renders
+        return undefined;
+      } else {
+        if (jsonPointer.startsWith('/entry/0')) {
+          console.log(`[TreeNodeWrapper ACTION] ${jsonPointer} - First mount STAY COLLAPSED`);
+        }
+        return;
+      }
+    }
+    
+    // Not first mount - only react to collapseKey changes
+    if (!hasCollapseKeyChanged) {
+      if (jsonPointer.startsWith('/entry/0')) {
+        console.log(`[TreeNodeWrapper ACTION] ${jsonPointer} - No collapseKey change, skipping`);
+      }
+      // IMPORTANT: Return undefined (not a cleanup function) to avoid clearing pending timers
+      return undefined;
+    }
+    
+    if (shouldAutoExpand) {
+      const depth = props.path.length;
+      const delay = depth * 10;
+      if (jsonPointer.startsWith('/entry/0')) {
+        console.log(`[TreeNodeWrapper ACTION] ${jsonPointer} - CollapseKey changed, EXPAND in ${delay}ms`);
+      }
+      
+      const timer = setTimeout(() => {
+        if (jsonPointer.startsWith('/entry/0')) {
+          console.log(`[TreeNodeWrapper TIMER] ${jsonPointer} - EXPANDING NOW`);
+        }
+        setIsExpanded(true);
+      }, delay);
+      
+      return () => clearTimeout(timer);
+    } else {
+      if (jsonPointer.startsWith('/entry/0')) {
+        console.log(`[TreeNodeWrapper ACTION] ${jsonPointer} - CollapseKey changed, COLLAPSING`);
+      }
+      setIsExpanded(false);
+    }
+  }, [props.collapseKey]); // Don't include shouldAutoExpand - it causes re-runs on parent expansion
 
-  const handleSelect = (nodeData: NodeData) => {
-    setSelectedJsonPointer(nodeData.jsonPointer);
-    props.onSelect(nodeData);
+  const handleToggle = () => {
+    console.log(`[TreeNodeWrapper] ${jsonPointer} - TOGGLE ${isExpanded} -> ${!isExpanded}`);
+    setIsExpanded(prev => !prev);
   };
 
   return (
@@ -228,8 +351,8 @@ const TreeNodeWrapper: React.FC<Omit<TreeNodeProps, 'isExpanded' | 'isSelected' 
       {...props}
       isExpanded={isExpanded}
       isSelected={isSelected}
-      onToggle={() => setIsExpanded(!isExpanded)}
-      onSelect={handleSelect}
+      onToggle={handleToggle}
+      onSelect={props.onSelect}
     />
   );
 };
@@ -240,8 +363,37 @@ const TreeNodeWrapper: React.FC<Omit<TreeNodeProps, 'isExpanded' | 'isSelected' 
 export const BundleTree: React.FC<BundleTreeProps> = ({
   bundleJson,
   onNodeSelect,
+  selectedPath,
 }) => {
-  const [selectedJsonPointer, setSelectedJsonPointer] = useState<string>('');
+  const [internalSelectedPath, setInternalSelectedPath] = useState<string>('');
+  const [collapseKey, setCollapseKey] = useState<number>(0);
+  
+  // Use external selectedPath if provided, otherwise use internal state
+  const activeSelectedPath = selectedPath || internalSelectedPath;
+  
+  console.log('[BundleTree] RENDER - selectedPath:', selectedPath, 'activeSelectedPath:', activeSelectedPath, 'collapseKey:', collapseKey);
+  
+  // Track previous selectedPath to detect external changes only
+  const prevSelectedPathRef = React.useRef<string | undefined>(selectedPath);
+  
+  // Increment collapse key when external selected path changes to reset all expansions
+  // Only trigger on external navigation, not on internal selection changes
+  React.useEffect(() => {
+    console.log('[BundleTree] selectedPath EFFECT - selectedPath:', selectedPath, 'prev:', prevSelectedPathRef.current);
+    // Only increment collapseKey if:
+    // 1. selectedPath is truthy (external navigation happened)
+    // 2. selectedPath actually changed from previous value
+    // 3. selectedPath is different from current internalSelectedPath (not coming from our own handleNodeSelect)
+    if (selectedPath && selectedPath !== prevSelectedPathRef.current) {
+      console.log('[BundleTree] External navigation detected - incrementing collapseKey');
+      setCollapseKey(prev => {
+        console.log('[BundleTree] collapseKey:', prev, '->', prev + 1);
+        return prev + 1;
+      });
+    }
+    
+    prevSelectedPathRef.current = selectedPath;
+  }, [selectedPath]);
 
   const parsedBundle = useMemo(() => {
     try {
@@ -252,9 +404,20 @@ export const BundleTree: React.FC<BundleTreeProps> = ({
   }, [bundleJson]);
 
   const handleNodeSelect = (nodeData: NodeData) => {
-    setSelectedJsonPointer(nodeData.jsonPointer);
-    onNodeSelect?.(nodeData.jsonPointer);
+    setInternalSelectedPath(nodeData.jsonPointer);
+    // Don't call onNodeSelect for internal tree clicks
+    // This prevents the selection from flowing back through BundleTabs as selectedPath
+    // and triggering a collapseKey increment
+    // onNodeSelect?.(nodeData.jsonPointer);
   };
+  
+  // Augment the callback with external selected path for children to access
+  const handleNodeSelectWithPath = Object.assign(handleNodeSelect, {
+    externalSelectedPath: activeSelectedPath,
+    collapseKey: collapseKey
+  });
+  
+  console.log('[BundleTree] Augmented callback - externalSelectedPath:', activeSelectedPath, 'collapseKey:', collapseKey);
 
   if (!parsedBundle) {
     return (
@@ -302,18 +465,20 @@ export const BundleTree: React.FC<BundleTreeProps> = ({
               value={value}
               path={[key]}
               level={0}
-              onSelect={handleNodeSelect}
+              onSelect={handleNodeSelectWithPath}
+              externalSelectedPath={activeSelectedPath}
+              collapseKey={collapseKey}
             />
           ))}
         </div>
       </div>
 
-      {selectedJsonPointer && (
+      {activeSelectedPath && (
         <div className="border-t bg-gray-50 px-3 py-2 flex-shrink-0">
           <div className="text-xs">
             <span className="font-semibold text-gray-600">Path:</span>
             <code className="ml-2 text-gray-800 bg-gray-100 px-1.5 py-0.5 rounded font-mono">
-              {selectedJsonPointer}
+              {activeSelectedPath}
             </code>
           </div>
         </div>

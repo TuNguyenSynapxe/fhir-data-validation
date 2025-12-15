@@ -10,11 +10,12 @@ namespace Pss.FhirProcessor.Engine.Services;
 
 /// <summary>
 /// Orchestrates the complete validation pipeline as defined in docs/05_validation_pipeline.md
-/// Pipeline: JSON sanity → Lint (best-effort) → Firely (authoritative) → Business Rules → CodeMaster → References
+/// Pipeline: JSON sanity → Lint (best-effort) → SPEC_HINT (advisory, debug only) → Firely (authoritative) → Business Rules → CodeMaster → References
 /// </summary>
 public class ValidationPipeline : IValidationPipeline
 {
     private readonly ILintValidationService _lintService;
+    private readonly ISpecHintService _specHintService;
     private readonly IFirelyValidationService _firelyService;
     private readonly IFhirPathRuleEngine _ruleEngine;
     private readonly ICodeMasterEngine _codeMasterEngine;
@@ -23,6 +24,7 @@ public class ValidationPipeline : IValidationPipeline
     
     public ValidationPipeline(
         ILintValidationService lintService,
+        ISpecHintService specHintService,
         IFirelyValidationService firelyService,
         IFhirPathRuleEngine ruleEngine,
         ICodeMasterEngine codeMasterEngine,
@@ -30,6 +32,7 @@ public class ValidationPipeline : IValidationPipeline
         IUnifiedErrorModelBuilder errorBuilder)
     {
         _lintService = lintService;
+        _specHintService = specHintService;
         _firelyService = firelyService;
         _ruleEngine = ruleEngine;
         _codeMasterEngine = codeMasterEngine;
@@ -70,6 +73,26 @@ public class ValidationPipeline : IValidationPipeline
                 var lintIssues = await _lintService.ValidateAsync(request.BundleJson, request.FhirVersion, cancellationToken);
                 var lintErrors = await _errorBuilder.FromLintIssuesAsync(lintIssues, null, cancellationToken);
                 response.Errors.AddRange(lintErrors);
+            }
+            
+            // Step 1.5: SPEC_HINT - Advisory HL7 Required Field Hints (debug mode only)
+            // Surfaces HL7 FHIR required field guidance without enforcing validation
+            // Does NOT block validation, does NOT overlap with Firely
+            // Only checks for missing HL7-mandated fields to help developers
+            if (validationMode.Equals("debug", StringComparison.OrdinalIgnoreCase))
+            {
+                // Parse bundle for spec hint checking (needed before Firely)
+                // Uses lenient parser to allow SPEC_HINT to run even with structural errors
+                var earlyParseResult = ParseBundleWithContext(request.BundleJson);
+                if (earlyParseResult.Success && earlyParseResult.Bundle != null)
+                {
+                    var specHintIssues = await _specHintService.CheckAsync(earlyParseResult.Bundle, request.FhirVersion, cancellationToken);
+                    if (specHintIssues.Any())
+                    {
+                        var specHintErrors = await _errorBuilder.FromSpecHintIssuesAsync(specHintIssues, earlyParseResult.Bundle, cancellationToken);
+                        response.Errors.AddRange(specHintErrors);
+                    }
+                }
             }
             
             // Step 2: Firely Structural Validation (authoritative)
@@ -210,9 +233,15 @@ public class ValidationPipeline : IValidationPipeline
         
         // Check 3: Firely POCO deserialization
         // This is where enum errors, type mismatches, and structural issues are caught
+        // Use lenient parser settings to allow SPEC_HINT to run even with structural errors
         try
         {
-            var parser = new FhirJsonParser();
+            var parserSettings = new ParserSettings
+            {
+                AcceptUnknownMembers = true,  // Ignore unknown properties (for SPEC_HINT)
+                AllowUnrecognizedEnums = true // Allow invalid enum values
+            };
+            var parser = new FhirJsonParser(parserSettings);
             var bundle = parser.Parse<Bundle>(bundleJson);
             
             if (bundle == null)

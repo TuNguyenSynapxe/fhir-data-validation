@@ -73,11 +73,21 @@ const getSourceBadgeColor = (source: string): string => {
     return 'bg-orange-100 text-orange-800 border-orange-300';
   } else if (normalizedSource === 'reference') {
     return 'bg-red-100 text-red-800 border-red-300';
+  } else if (normalizedSource === 'lint') {
+    return 'bg-amber-100 text-amber-800 border-amber-300';
+  } else if (normalizedSource === 'spec_hint' || normalizedSource === 'spechint') {
+    return 'bg-cyan-100 text-cyan-800 border-cyan-300';
   } else {
     return 'bg-gray-100 text-gray-800 border-gray-300';
   }
 };
 
+/**
+ * ValidationErrorItem Component
+ * 
+ * Generic error card for Firely, Business Rules, CodeMaster, and Reference errors.
+ * NOTE: LINT errors are handled by LintIssueCard component.
+ */
 export const ValidationErrorItem: React.FC<ValidationErrorItemProps> = ({ 
   error, 
   onClick 

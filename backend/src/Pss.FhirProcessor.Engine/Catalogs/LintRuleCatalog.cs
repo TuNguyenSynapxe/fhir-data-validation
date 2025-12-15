@@ -195,6 +195,18 @@ public static class LintRuleCatalog
         Disclaimer = "Best-effort check. Extensions or custom elements may be valid. Final validation is performed by the FHIR engine."
     };
 
+    public static readonly LintRuleDefinition MissingRequiredField = new()
+    {
+        Id = "MISSING_REQUIRED_FIELD",
+        Category = LintRuleCategory.SchemaShape,
+        Title = "Missing required field",
+        Description = "A required field (min > 0 in FHIR schema) is missing from the resource",
+        Severity = "Warning",
+        Confidence = "High",
+        ApplicableFhirVersions = new List<string> { "R4", "R5" },
+        Disclaimer = "Best-effort portability check. Some FHIR engines may accept incomplete resources. Final validation is performed by the FHIR engine."
+    };
+
     #endregion
 
     #region Primitive Category
@@ -303,6 +315,7 @@ public static class LintRuleCatalog
         ExpectedArray,
         ExpectedObject,
         UnknownElement,
+        MissingRequiredField,
 
         // Primitive
         InvalidDate,

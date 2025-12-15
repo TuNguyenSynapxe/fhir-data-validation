@@ -114,10 +114,28 @@ public class LintTypeAwareSchemaTests
         // Act
         var issues = await _lintService.ValidateAsync(json, "R4");
 
+        // Debug output
+        var allIssues = issues.ToList();
+        var unknownElementIssues = issues.Where(i => i.RuleId == "UNKNOWN_ELEMENT").ToList();
+        
         // Assert - Should flag 'invalidProp' as unknown in Reference datatype
         var invalidIssue = issues.FirstOrDefault(i => 
             i.RuleId == "UNKNOWN_ELEMENT" && 
             i.Message.Contains("invalidProp"));
+        
+        // If not found, provide helpful diagnostic
+        if (invalidIssue == null)
+        {
+            var diagnostic = $"Expected UNKNOWN_ELEMENT for 'invalidProp' but got:\n";
+            diagnostic += $"Total issues: {allIssues.Count}\n";
+            diagnostic += $"UNKNOWN_ELEMENT issues: {unknownElementIssues.Count}\n";
+            foreach (var issue in unknownElementIssues)
+            {
+                diagnostic += $"  - {issue.Message}\n";
+            }
+            Assert.Fail(diagnostic);
+        }
+        
         Assert.NotNull(invalidIssue);
         Assert.Contains("Reference", invalidIssue.Message);
     }
@@ -188,7 +206,8 @@ public class LintTypeAwareSchemaTests
             i.RuleId == "UNKNOWN_ELEMENT" && 
             i.Message.Contains("invalidField"));
         Assert.NotNull(invalidIssue);
-        Assert.Contains("Period", invalidIssue.Message);
+        Assert.Contains("does not exist in Period type", invalidIssue.Message);
+        Assert.Contains("Encounter.period.invalidField", invalidIssue.Message);
     }
 
     [Fact]
@@ -247,7 +266,8 @@ public class LintTypeAwareSchemaTests
             i.RuleId == "UNKNOWN_ELEMENT" && 
             i.Message.Contains("reference"));
         Assert.NotNull(referenceIssue);
-        Assert.Contains("HumanName", referenceIssue.Message);
+        Assert.Contains("does not exist in HumanName type", referenceIssue.Message);
+        Assert.Contains("Patient.name.reference", referenceIssue.Message);
     }
 
     [Fact]

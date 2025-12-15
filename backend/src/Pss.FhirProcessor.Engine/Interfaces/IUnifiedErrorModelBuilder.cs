@@ -38,4 +38,11 @@ public interface IUnifiedErrorModelBuilder
     /// Lint errors are best-effort structural checks marked with source="LINT".
     /// </summary>
     Task<List<ValidationError>> FromLintIssuesAsync(IReadOnlyList<LintIssue> lintIssues, Bundle? bundle, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Converts spec hint issues to unified error format.
+    /// Spec hints are advisory HL7 required field guidance marked with source="SPEC_HINT".
+    /// These are non-blocking and informational only.
+    /// </summary>
+    Task<List<ValidationError>> FromSpecHintIssuesAsync(List<SpecHintIssue> issues, Bundle bundle, CancellationToken cancellationToken = default);
 }

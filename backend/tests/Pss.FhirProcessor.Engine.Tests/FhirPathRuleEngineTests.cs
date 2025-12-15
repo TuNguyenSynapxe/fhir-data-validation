@@ -307,4 +307,297 @@ public class FhirPathRuleEngineTests
         // All should pass
         Assert.Empty(errors);
     }
+
+    #region Parameter Validation Tests
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_FixedValue_MissingValueParam_ReturnsConfigurationError()
+    {
+        // Arrange
+        var bundle = TestHelper.CreateSimplePatientBundle(gender: "male");
+        var ruleSet = new RuleSet
+        {
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "FV-MISSING-PARAM",
+                    Type = "FixedValue",
+                    ResourceType = "Patient",
+                    Path = "gender",
+                    Message = "Gender must be female",
+                    Params = new Dictionary<string, object>() // Missing "value" key
+                }
+            }
+        };
+
+        // Act
+        var errors = await _engine.ValidateAsync(bundle, ruleSet);
+
+        // Assert
+        Assert.Single(errors);
+        Assert.Equal("RULE_CONFIGURATION_ERROR", errors[0].ErrorCode);
+        Assert.Equal("FV-MISSING-PARAM", errors[0].RuleId);
+        Assert.Contains("missing required parameter 'value'", errors[0].Message);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_AllowedValues_MissingValuesParam_ReturnsConfigurationError()
+    {
+        // Arrange
+        var bundle = TestHelper.CreateSimplePatientBundle(gender: "other");
+        var ruleSet = new RuleSet
+        {
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "AV-MISSING-PARAM",
+                    Type = "AllowedValues",
+                    ResourceType = "Patient",
+                    Path = "gender",
+                    Message = "Invalid gender value",
+                    Params = new Dictionary<string, object>() // Missing "values" key
+                }
+            }
+        };
+
+        // Act
+        var errors = await _engine.ValidateAsync(bundle, ruleSet);
+
+        // Assert
+        Assert.Single(errors);
+        Assert.Equal("RULE_CONFIGURATION_ERROR", errors[0].ErrorCode);
+        Assert.Equal("AV-MISSING-PARAM", errors[0].RuleId);
+        Assert.Contains("missing required parameter 'values'", errors[0].Message);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_Regex_MissingPatternParam_ReturnsConfigurationError()
+    {
+        // Arrange
+        var bundle = TestHelper.CreateSimplePatientBundle(familyName: "Smith123");
+        var ruleSet = new RuleSet
+        {
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "REGEX-MISSING-PARAM",
+                    Type = "Regex",
+                    ResourceType = "Patient",
+                    Path = "name.family",
+                    Message = "Invalid name format",
+                    Params = new Dictionary<string, object>() // Missing "pattern" key
+                }
+            }
+        };
+
+        // Act
+        var errors = await _engine.ValidateAsync(bundle, ruleSet);
+
+        // Assert
+        Assert.Single(errors);
+        Assert.Equal("RULE_CONFIGURATION_ERROR", errors[0].ErrorCode);
+        Assert.Equal("REGEX-MISSING-PARAM", errors[0].RuleId);
+        Assert.Contains("missing required parameter 'pattern'", errors[0].Message);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_ArrayLength_MissingBothMinMaxParams_ReturnsConfigurationError()
+    {
+        // Arrange
+        var bundle = TestHelper.CreateSimplePatientBundle();
+        var ruleSet = new RuleSet
+        {
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "AL-MISSING-PARAMS",
+                    Type = "ArrayLength",
+                    ResourceType = "Patient",
+                    Path = "name",
+                    Message = "Name count must be valid",
+                    Params = new Dictionary<string, object>() // Missing both "min" and "max"
+                }
+            }
+        };
+
+        // Act
+        var errors = await _engine.ValidateAsync(bundle, ruleSet);
+
+        // Assert
+        Assert.Single(errors);
+        Assert.Equal("RULE_CONFIGURATION_ERROR", errors[0].ErrorCode);
+        Assert.Equal("AL-MISSING-PARAMS", errors[0].RuleId);
+        Assert.Contains("At least one of 'min' or 'max' must be specified", errors[0].Message);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_ArrayLength_WithOnlyMin_NoConfigurationError()
+    {
+        // Arrange
+        var bundle = TestHelper.CreateSimplePatientBundle();
+        var ruleSet = new RuleSet
+        {
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "AL-MIN-ONLY",
+                    Type = "ArrayLength",
+                    ResourceType = "Patient",
+                    Path = "name",
+                    Message = "Must have at least 1 name",
+                    Params = new Dictionary<string, object> { { "min", 1 } } // Only min, no max - should be valid
+                }
+            }
+        };
+
+        // Act
+        var errors = await _engine.ValidateAsync(bundle, ruleSet);
+
+        // Assert
+        // Should not contain configuration error
+        Assert.DoesNotContain(errors, e => e.ErrorCode == "RULE_CONFIGURATION_ERROR");
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_CodeSystem_MissingSystemParam_ReturnsConfigurationError()
+    {
+        // Arrange
+        var observation = new Observation
+        {
+            Id = "obs-1",
+            Status = ObservationStatus.Final,
+            Code = new CodeableConcept
+            {
+                Coding = new List<Coding>
+                {
+                    new Coding
+                    {
+                        System = "http://loinc.org",
+                        Code = "12345-6"
+                    }
+                }
+            }
+        };
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent { Resource = observation }
+            }
+        };
+        var ruleSet = new RuleSet
+        {
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "CS-MISSING-PARAM",
+                    Type = "CodeSystem",
+                    ResourceType = "Observation",
+                    Path = "code.coding",
+                    Message = "Invalid code system",
+                    Params = new Dictionary<string, object>() // Missing "system" key
+                }
+            }
+        };
+
+        // Act
+        var errors = await _engine.ValidateAsync(bundle, ruleSet);
+
+        // Assert
+        Assert.Single(errors);
+        Assert.Equal("RULE_CONFIGURATION_ERROR", errors[0].ErrorCode);
+        Assert.Equal("CS-MISSING-PARAM", errors[0].RuleId);
+        Assert.Contains("missing required parameter 'system'", errors[0].Message);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_MultipleRulesWithMissingParams_AllReturnConfigurationErrors()
+    {
+        // Arrange
+        var bundle = TestHelper.CreateSimplePatientBundle(gender: "male");
+        var ruleSet = new RuleSet
+        {
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "R1-BAD",
+                    Type = "FixedValue",
+                    ResourceType = "Patient",
+                    Path = "gender",
+                    Message = "Test message",
+                    Params = new Dictionary<string, object>() // Missing params
+                },
+                new RuleDefinition
+                {
+                    Id = "R2-BAD",
+                    Type = "Regex",
+                    ResourceType = "Patient",
+                    Path = "name.family",
+                    Message = "Test message",
+                    Params = new Dictionary<string, object>() // Missing params
+                },
+                new RuleDefinition
+                {
+                    Id = "R3-GOOD",
+                    Type = "Required",
+                    ResourceType = "Patient",
+                    Path = "name.family",
+                    Message = "Family name required"
+                }
+            }
+        };
+
+        // Act
+        var errors = await _engine.ValidateAsync(bundle, ruleSet);
+
+        // Assert - Should have 2 configuration errors, R3 should still execute normally
+        Assert.Equal(2, errors.Count(e => e.ErrorCode == "RULE_CONFIGURATION_ERROR"));
+        Assert.Contains(errors, e => e.RuleId == "R1-BAD" && e.ErrorCode == "RULE_CONFIGURATION_ERROR");
+        Assert.Contains(errors, e => e.RuleId == "R2-BAD" && e.ErrorCode == "RULE_CONFIGURATION_ERROR");
+        // R3 should not produce an error since family name exists
+        Assert.DoesNotContain(errors, e => e.RuleId == "R3-GOOD");
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_ConfigurationError_HasCorrectDetails()
+    {
+        // Arrange
+        var bundle = TestHelper.CreateSimplePatientBundle();
+        var ruleSet = new RuleSet
+        {
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "CHECK-DETAILS",
+                    Type = "FixedValue",
+                    ResourceType = "Patient",
+                    Path = "gender",
+                    Message = "Test message",
+                    Params = new Dictionary<string, object>()
+                }
+            }
+        };
+
+        // Act
+        var errors = await _engine.ValidateAsync(bundle, ruleSet);
+
+        // Assert
+        var error = errors.Single();
+        Assert.Equal("RULE_CONFIGURATION_ERROR", error.ErrorCode);
+        Assert.NotNull(error.Details);
+        Assert.True(error.Details.ContainsKey("ruleType"));
+        Assert.True(error.Details.ContainsKey("missingParams"));
+        Assert.Equal("FixedValue", error.Details["ruleType"]);
+    }
+
+    #endregion
 }
