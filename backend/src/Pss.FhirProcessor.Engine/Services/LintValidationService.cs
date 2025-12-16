@@ -752,9 +752,12 @@ public class LintValidationService : ILintValidationService
                 ? currentSchemaContext.Path  // Root element (resource or datatype name)
                 : currentSchemaContext.Type; // Nested element type
 
+            // Format message to be resource-agnostic and clearly state the violated type
+            var message = $"Property '{propertyName}' is not defined on the FHIR `{schemaTypeName}` type. Found at path: '{fhirPath}'. Note: This may still parse in permissive FHIR engines.";
+
             issues.Add(CreateIssue(
                 "UNKNOWN_ELEMENT",
-                $"Property '{propertyName}' does not exist in {schemaTypeName} type. Path: '{fhirPath}'. Note: This may still parse in permissive FHIR engines.",
+                message,
                 jsonPointer: jsonPath,
                 fhirPath: fhirPath,
                 resourceType: resourceTypeForError,

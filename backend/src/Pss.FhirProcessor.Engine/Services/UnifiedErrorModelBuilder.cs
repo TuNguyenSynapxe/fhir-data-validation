@@ -42,6 +42,7 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                         bundle, 
                         error.Path, 
                         error.ResourceType, 
+                        null,
                         cancellationToken);
                     
                     error.Navigation = navigation;
@@ -87,7 +88,7 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
             {
                 try
                 {
-                    navigation = await _navigationService.ResolvePathAsync(bundle, path, null, cancellationToken);
+                    navigation = await _navigationService.ResolvePathAsync(bundle, path, null, null, cancellationToken);
                 }
                 catch
                 {
@@ -122,7 +123,7 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
         
         foreach (var error in errors)
         {
-            var navigation = await _navigationService.ResolvePathAsync(bundle, error.Path, error.ResourceType, cancellationToken);
+            var navigation = await _navigationService.ResolvePathAsync(bundle, error.Path, error.ResourceType, null, cancellationToken);
             
             validationErrors.Add(new ValidationError
             {
@@ -147,7 +148,7 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
         
         foreach (var error in errors)
         {
-            var navigation = await _navigationService.ResolvePathAsync(bundle, error.Path, error.ResourceType, cancellationToken);
+            var navigation = await _navigationService.ResolvePathAsync(bundle, error.Path, error.ResourceType, null, cancellationToken);
             
             validationErrors.Add(new ValidationError
             {
@@ -172,7 +173,7 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
         
         foreach (var error in errors)
         {
-            var navigation = await _navigationService.ResolvePathAsync(bundle, error.Path, error.ResourceType, cancellationToken);
+            var navigation = await _navigationService.ResolvePathAsync(bundle, error.Path, error.ResourceType, error.EntryIndex, cancellationToken);
             
             validationErrors.Add(new ValidationError
             {
@@ -237,6 +238,7 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                         bundle,
                         issue.FhirPath,
                         issue.ResourceType,
+                        null,
                         cancellationToken);
                     
                     error.Navigation = navigation;
@@ -302,6 +304,7 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                         bundle, 
                         issue.Path, 
                         issue.ResourceType, 
+                        null,
                         cancellationToken);
                     
                     error.Navigation = navigation;

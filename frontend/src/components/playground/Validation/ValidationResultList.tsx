@@ -3,6 +3,7 @@ import { ErrorCard } from './ErrorCard';
 import { GroupedErrorCard } from './GroupedErrorCard';
 import { CheckCircle2 } from 'lucide-react';
 import { normalizeSource, getLayerSortPriority } from '../../../utils/validationLayers';
+import type { SourceFilterState } from './ValidationSourceFilter';
 
 interface ValidationError {
   source: string; // LINT, SPEC_HINT, FHIR, Business, CodeMaster, Reference
@@ -24,6 +25,8 @@ interface ValidationResultListProps {
   errors: ValidationError[];
   onErrorClick?: (error: ValidationError) => void;
   onNavigateToPath?: (jsonPointer: string) => void;
+  sourceFilters?: SourceFilterState;
+  showExplanations?: boolean;
 }
 
 /**
@@ -73,20 +76,43 @@ const groupErrors = (errors: ValidationError[]): {
 export const ValidationResultList: React.FC<ValidationResultListProps> = ({ 
   errors, 
   onErrorClick,
-  onNavigateToPath 
+  onNavigateToPath,
+  sourceFilters,
+  showExplanations = false
 }) => {
-  if (errors.length === 0) {
+  // Apply source filtering
+  const filteredErrors = sourceFilters ? errors.filter(error => {
+    const source = normalizeSource(error.source);
+    const filterMap: Record<string, keyof SourceFilterState> = {
+      'LINT': 'lint',
+      'Reference': 'reference',
+      'FHIR': 'firely',
+      'PROJECT': 'business',
+      'CodeMaster': 'codeMaster',
+      'SPEC_HINT': 'specHint',
+    };
+    const filterKey = filterMap[source];
+    return filterKey ? sourceFilters[filterKey] : true;
+  }) : errors;
+
+  if (filteredErrors.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center">
         <CheckCircle2 className="w-16 h-16 text-green-500 mb-3" />
-        <p className="text-sm font-medium text-green-700">Validation Passed</p>
-        <p className="text-xs text-gray-500 mt-1">No issues found in your FHIR bundle</p>
+        <p className="text-sm font-medium text-green-700">
+          {errors.length === 0 ? 'Validation Passed' : 'No Matching Results'}
+        </p>
+        <p className="text-xs text-gray-500 mt-1">
+          {errors.length === 0 
+            ? 'No issues found in your FHIR bundle' 
+            : 'All findings filtered out by current source selection'}
+        </p>
       </div>
     );
   }
 
   // Group errors by source + errorCode
-  const { grouped, ungrouped } = groupErrors(errors);
+  const { grouped, ungrouped } = groupErrors(filteredErrors);
   
   // Sort grouped entries by layer priority
   const sortedGroupedKeys = Array.from(grouped.keys()).sort((a, b) => {
@@ -112,8 +138,10 @@ export const ValidationResultList: React.FC<ValidationResultListProps> = ({
             errors={groupErrors}
             errorCode={errorCode}
             source={source}
+            allErrors={errors} // Pass all errors for override detection
             onClick={onErrorClick}
             onNavigateToPath={onNavigateToPath}
+            showExplanations={showExplanations}
           />
         );
       })}
@@ -123,6 +151,7 @@ export const ValidationResultList: React.FC<ValidationResultListProps> = ({
         <ErrorCard
           key={`ungrouped-${index}-${error.source}-${error.errorCode || 'unknown'}`}
           error={error}
+          allErrors={errors} // Pass all errors for override detection
           onClick={() => onErrorClick?.(error)}
         />
       ))}

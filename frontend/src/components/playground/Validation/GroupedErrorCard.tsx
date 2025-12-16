@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
-import { AlertCircle, AlertTriangle, Info, ChevronDown, ChevronRight, XCircle, CheckCircle, MapPin } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Info, ChevronDown, ChevronRight, XCircle, CheckCircle } from 'lucide-react';
 import { getLayerMetadata } from '../../../utils/validationLayers';
+import { getExplanationTemplate } from '../../../utils/validationExplanations';
+import { formatSmartPath, getScopedSegments, extractFullJsonPath, convertToJsonPath } from '../../../utils/smartPathFormatting';
+import { SmartPathBreadcrumb } from './SmartPathBreadcrumb';
+import { PathInfoTooltip } from './PathInfoTooltip';
+import { getBlockingStatusDisplay } from '../../../utils/validationOverrides';
 
 interface ValidationError {
   source: string;
@@ -22,8 +27,10 @@ interface GroupedErrorCardProps {
   errors: ValidationError[];
   errorCode: string;
   source: string;
+  allErrors?: ValidationError[]; // All errors for override detection
   onClick?: (error: ValidationError) => void;
   onNavigateToPath?: (jsonPointer: string) => void;
+  showExplanations?: boolean;
 }
 
 /**
@@ -64,29 +71,103 @@ const groupByResourceType = (errors: ValidationError[]): Map<string, ValidationE
  * - Expandable/collapsible
  * - Shared explanation
  */
+/**
+ * Deduplicate errors by normalized path
+ */
+const deduplicateByPath = (errors: ValidationError[]): Map<string, ValidationError[]> => {
+  const pathGroups = new Map<string, ValidationError[]>();
+  
+  errors.forEach(error => {
+    const normalizedPath = error.navigation?.jsonPointer || error.jsonPointer || error.path || 'unknown';
+    if (!pathGroups.has(normalizedPath)) {
+      pathGroups.set(normalizedPath, []);
+    }
+    pathGroups.get(normalizedPath)!.push(error);
+  });
+  
+  return pathGroups;
+};
+
 export const GroupedErrorCard: React.FC<GroupedErrorCardProps> = ({ 
   errors, 
   errorCode,
   source,
+  allErrors = [],
   onClick,
-  onNavigateToPath 
+  onNavigateToPath,
+  showExplanations = false
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isBannerVisible, setIsBannerVisible] = useState(true);
   
   const metadata = getLayerMetadata(source);
   const firstError = errors[0];
+  
+  // Get blocking status with override detection (use first error as representative)
+  const blockingStatus = getBlockingStatusDisplay(firstError, allErrors);
   const SeverityIcon = getSeverityIcon(firstError.severity);
   
-  // Check if this is a SPEC_HINT group
-  const isSpecHint = source === 'SPEC_HINT' || source === 'spec_hint';
+  // Get explanation template for this error group
+  const explanationTemplate = getExplanationTemplate({
+    source,
+    code: errorCode,
+    path: firstError.path,
+    message: firstError.message
+  });
   
-  // Group by resourceType
+  // Deduplicate by path, then group by resourceType
+  const deduplicatedPaths = deduplicateByPath(errors);
   const resourceGroups = groupByResourceType(errors);
   
   // Create headline with count - Format: [Label] — [Error Code] ([Count] occurrences)
-  const totalCount = errors.length;
-  const headline = `${metadata.displayName} — ${errorCode || 'Validation Issue'} (${totalCount} occurrence${totalCount > 1 ? 's' : ''})`;
+  const totalCount = deduplicatedPaths.size; // Count unique paths
+  const headline = `${metadata.displayName} — ${errorCode || 'Validation Issue'} (${totalCount} location${totalCount > 1 ? 's' : ''})`;
+
+  // Generate smart summary message for UNKNOWN_ELEMENT (resource-agnostic)
+  const generateSmartSummary = (): { message: string; metadata?: string } => {
+    // Special handling for UNKNOWN_ELEMENT related to extensions
+    if (errorCode === 'UNKNOWN_ELEMENT' && source === 'LINT') {
+      // Extract property name from first error
+      const propertyName = firstError.details?.propertyName || 
+                          firstError.message.match(/Property '([^']+)'/)?.[1] ||
+                          'unknown property';
+      
+      // Get resource type counts
+      const resourceCounts = new Map<string, number>();
+      errors.forEach(error => {
+        const resType = error.resourceType || 'Unknown';
+        resourceCounts.set(resType, (resourceCounts.get(resType) || 0) + 1);
+      });
+
+      // Check if it's an Extension type issue
+      const isExtensionIssue = firstError.message.includes('`Extension` type') || 
+                               firstError.details?.schemaContext === 'Extension';
+
+      if (isExtensionIssue && resourceCounts.size > 1) {
+        // Multiple resources affected
+        const resourceSummary = Array.from(resourceCounts.entries())
+          .sort((a, b) => b[1] - a[1]) // Sort by count descending
+          .map(([type, count]) => `${type} (${count})`)
+          .join(', ');
+
+        return {
+          message: `Property '${propertyName}' is not defined on the FHIR R4 Extension type and appears in extension elements across multiple resources.`,
+          metadata: `Affected resources: ${resourceSummary}`
+        };
+      } else if (isExtensionIssue && resourceCounts.size === 1) {
+        // Single resource type
+        const [[resourceType, count]] = Array.from(resourceCounts.entries());
+        return {
+          message: `Property '${propertyName}' is not defined on the FHIR R4 Extension type and appears in ${resourceType} extension elements.`,
+          metadata: count > 1 ? `Found in ${count} locations` : undefined
+        };
+      }
+    }
+
+    // Default: use first error message
+    return { message: firstError.message };
+  };
+
+  const { message: summaryMessage, metadata: summaryMetadata } = generateSmartSummary();
 
   return (
     <div className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors border-l-4 ${metadata.borderColor}`}>
@@ -122,53 +203,88 @@ export const GroupedErrorCard: React.FC<GroupedErrorCardProps> = ({
             <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded border ${
               metadata.isBlocking 
                 ? 'bg-red-50 text-red-700 border-red-200' 
-                : 'bg-green-50 text-green-700 border-green-200'
+                : blockingStatus.isOverridden
+                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                  : 'bg-green-50 text-green-700 border-green-200'
             }`}>
               {metadata.isBlocking ? (
                 <>
                   <XCircle className="w-3 h-3" />
-                  <span className="font-semibold">Blocking: YES</span>
+                  <span className="font-semibold">{blockingStatus.text}</span>
+                </>
+              ) : blockingStatus.isOverridden ? (
+                <>
+                  <AlertTriangle className="w-3 h-3" />
+                  <span className="font-semibold">{blockingStatus.text}</span>
                 </>
               ) : (
                 <>
                   <CheckCircle className="w-3 h-3" />
-                  <span className="font-semibold">Does NOT block validation</span>
+                  <span className="font-semibold">{blockingStatus.text}</span>
                 </>
               )}
             </div>
           </div>
 
-          {/* Standard explanation text */}
-          <p className={`text-xs italic mb-2 ${metadata.textColor}`}>
-            {metadata.explanation}
-          </p>
+          {/* Compact summary (always visible) */}
+          <div className="mb-2">
+            <p className="text-xs text-gray-600">
+              {summaryMessage}
+            </p>
+            {summaryMetadata && (
+              <p className="text-xs text-gray-500 italic mt-1">
+                {summaryMetadata}
+              </p>
+            )}
+          </div>
 
-          {/* SPEC_HINT Explanation Banner */}
-          {isSpecHint && isBannerVisible && (
-            <div className="mb-3 p-3 bg-cyan-50 border border-cyan-200 rounded-lg">
-              <div className="flex items-start gap-2">
-                <Info className="w-4 h-4 text-cyan-700 flex-shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-cyan-900 mb-1">
-                    Why am I seeing this?
-                  </p>
-                  <div className="text-xs text-cyan-800 space-y-1">
-                    <p>HL7 FHIR specifications define required fields to ensure interoperability.</p>
-                    <p>Some FHIR engines (including Firely) do not strictly enforce all required fields.</p>
-                    <p>These warnings help build portable, standards-aligned bundles but do not block validation.</p>
-                  </div>
-                </div>
-                <button
-                  className="flex-shrink-0 text-cyan-600 hover:text-cyan-800 text-xs font-medium"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsBannerVisible(false);
-                  }}
-                  title="Dismiss"
-                >
-                  ✕
-                </button>
+          {/* Progressive disclosure: Explanations (when enabled) */}
+          {showExplanations && (
+            <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded">
+              {/* What this means */}
+              <div className="mb-2">
+                <p className="text-xs font-semibold text-gray-900 mb-1">
+                  What this means
+                </p>
+                <p className="text-xs text-gray-700 leading-relaxed">
+                  {explanationTemplate.whatThisMeans}
+                </p>
               </div>
+
+              {/* How to fix */}
+              {explanationTemplate.howToFix.length > 0 && (
+                <div className="mb-2">
+                  <p className="text-xs font-semibold text-gray-900 mb-1">
+                    How to fix
+                  </p>
+                  <ul className="text-xs text-gray-700 space-y-1 list-disc list-inside">
+                    {explanationTemplate.howToFix.map((step, index) => (
+                      <li key={index} className="leading-relaxed">{step}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Optional note */}
+              {explanationTemplate.note && (
+                <div className="mt-2 pt-2 border-t border-gray-300">
+                  <p className="text-xs text-gray-600 italic leading-relaxed">
+                    {explanationTemplate.note}
+                  </p>
+                </div>
+              )}
+
+              {/* Details (fallback or diagnostic info) */}
+              {explanationTemplate.details && (
+                <div className="mt-2 pt-2 border-t border-gray-300">
+                  <p className="text-xs font-semibold text-gray-700 mb-1">
+                    Details
+                  </p>
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    {explanationTemplate.details}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -184,71 +300,87 @@ export const GroupedErrorCard: React.FC<GroupedErrorCardProps> = ({
             ))}
           </div>
 
-          {/* Expandable list of individual errors */}
+          {/* Expandable list of deduplicated paths */}
           {isExpanded && (
             <div className="mt-3 space-y-2 border-t border-gray-200 pt-3">
-              {Array.from(resourceGroups.entries()).map(([resourceType, groupErrors]) => (
-                <div key={resourceType}>
-                  {/* Resource type header */}
-                  {resourceGroups.size > 1 && (
-                    <h4 className="text-xs font-semibold text-gray-700 mb-1">
-                      {resourceType}
-                    </h4>
-                  )}
-                  
-                  {/* Individual errors */}
-                  <div className="space-y-1">
-                    {groupErrors.map((error, index) => {
-                      const displayPath = error.path || error.navigation?.breadcrumb || 'Unknown';
-                      const jsonPointer = error.jsonPointer || error.navigation?.jsonPointer;
-                      
-                      return (
-                        <div
-                          key={index}
-                          className={`p-2 rounded border hover:bg-opacity-70 transition-colors cursor-pointer ${metadata.bgColor}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onClick?.(error);
-                          }}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              {/* Path - prominent and clickable */}
-                              {displayPath && (
-                                <button
-                                  className="text-sm font-mono font-semibold text-blue-700 hover:text-blue-900 hover:underline text-left mb-1 block"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (jsonPointer) {
-                                      onNavigateToPath?.(jsonPointer);
-                                    }
-                                  }}
-                                  title={jsonPointer ? "Click to locate this field in the bundle" : "No navigation available"}
-                                  disabled={!jsonPointer}
-                                >
-                                  {displayPath}
-                                </button>
-                              )}
+              {/* Group deduplicated paths by resourceType for display */}
+              {Array.from(resourceGroups.entries()).map(([resourceType, groupErrors]) => {
+                // Deduplicate within this resource type
+                const resourceDeduplicatedPaths = deduplicateByPath(groupErrors);
+                
+                return (
+                  <div key={resourceType}>
+                    {/* Resource type header */}
+                    {resourceGroups.size > 1 && (
+                      <h4 className="text-xs font-semibold text-gray-700 mb-1">
+                        {resourceType}
+                      </h4>
+                    )}
+                    
+                    {/* Deduplicated paths */}
+                    <div className="space-y-2 pl-2">
+                      {Array.from(resourceDeduplicatedPaths.entries()).map(([path, pathErrors]) => {
+                        const error = pathErrors[0]; // Use first error as representative
+                        const displayPath = error.path || error.navigation?.breadcrumb || 'Unknown';
+                        const jsonPointer = error.jsonPointer || error.navigation?.jsonPointer;
+                        const count = pathErrors.length;
+                        
+                        // Format smart path with breadcrumbs
+                        const formattedPath = formatSmartPath(displayPath, resourceType);
+                        const scopedSegments = getScopedSegments(formattedPath.segments, resourceType);
+                        const jsonPath = convertToJsonPath(jsonPointer);
+                        
+                        // Determine row background based on source
+                        const isLint = source === 'LINT';
+                        const rowBgColor = isLint 
+                          ? 'bg-amber-50/40 border-amber-200/60 hover:bg-amber-50/60' 
+                          : 'bg-gray-50/50 border-gray-200/60 hover:bg-gray-50/80';
+                        
+                        return (
+                          <div
+                            key={path}
+                            className={`group/row p-2.5 rounded-md border transition-all ${rowBgColor} ${
+                              jsonPointer ? 'hover:shadow-sm cursor-pointer' : ''
+                            }`}
+                            onClick={(e) => {
+                              if (jsonPointer) {
+                                e.stopPropagation();
+                                onClick?.(error);
+                              }
+                            }}
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              {/* Smart Path Breadcrumb */}
+                              <div className="flex-1 min-w-0">
+                                <SmartPathBreadcrumb
+                                  resourceType={resourceType}
+                                  segments={scopedSegments}
+                                  onNavigate={jsonPointer ? () => onNavigateToPath?.(jsonPointer) : undefined}
+                                />
+                              </div>
                               
-                              {/* Message - secondary, reduced */}
-                              {error.message && !error.message.includes(displayPath || '') && (
-                                <p className="text-xs text-gray-600 italic">
-                                  {error.message}
-                                </p>
-                              )}
+                              {/* Right side: count + info icon */}
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                {count > 1 && (
+                                  <span className="text-xs text-gray-600 font-medium px-2 py-0.5 bg-white/70 rounded">
+                                    {count}×
+                                  </span>
+                                )}
+                                
+                                {/* Path Info Tooltip */}
+                                <PathInfoTooltip
+                                  fhirPath={formattedPath.fullPath}
+                                  jsonPath={jsonPath}
+                                />
+                              </div>
                             </div>
-                            
-                            {/* Navigation icon */}
-                            {jsonPointer && (
-                              <MapPin className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                            )}
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

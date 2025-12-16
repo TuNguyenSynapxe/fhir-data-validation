@@ -30,6 +30,7 @@ public class UnifiedErrorModelBuilderTests
                 It.IsAny<Bundle>(),
                 It.IsAny<string>(),
                 It.IsAny<string?>(),
+                It.IsAny<int?>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new NavigationInfo
             {
@@ -95,7 +96,7 @@ public class UnifiedErrorModelBuilderTests
         };
 
         _navigationServiceMock
-            .Setup(s => s.ResolvePathAsync(_testBundle, "Patient.name", null, It.IsAny<CancellationToken>()))
+            .Setup(s => s.ResolvePathAsync(_testBundle, "Patient.name", null, It.IsAny<int?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new NavigationInfo
             {
                 Exists = false,
@@ -146,7 +147,7 @@ public class UnifiedErrorModelBuilderTests
         };
 
         _navigationServiceMock
-            .Setup(s => s.ResolvePathAsync(_testBundle, "Observation.value", "Observation", It.IsAny<CancellationToken>()))
+            .Setup(s => s.ResolvePathAsync(_testBundle, "Observation.value", "Observation", It.IsAny<int?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new NavigationInfo
             {
                 Exists = false,
@@ -461,7 +462,7 @@ public class UnifiedErrorModelBuilderTests
         };
 
         _navigationServiceMock
-            .Setup(s => s.ResolvePathAsync(_testBundle, "Patient.birthDate", "Patient", It.IsAny<CancellationToken>()))
+            .Setup(s => s.ResolvePathAsync(_testBundle, "Patient.birthDate", "Patient", It.IsAny<int?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new NavigationInfo
             {
                 Exists = false,
@@ -556,7 +557,7 @@ public class UnifiedErrorModelBuilderTests
         };
 
         _navigationServiceMock
-            .Setup(s => s.ResolvePathAsync(_testBundle, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(s => s.ResolvePathAsync(_testBundle, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Bundle b, string path, string? rt, CancellationToken ct) => new NavigationInfo
             {
                 Exists = false,
@@ -864,6 +865,7 @@ public class UnifiedErrorModelBuilderTests
                 _testBundle,
                 "Observation.performer[0].reference",
                 "Observation",
+                It.IsAny<int?>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new NavigationInfo
             {

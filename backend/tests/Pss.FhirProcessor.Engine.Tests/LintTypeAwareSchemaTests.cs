@@ -206,7 +206,7 @@ public class LintTypeAwareSchemaTests
             i.RuleId == "UNKNOWN_ELEMENT" && 
             i.Message.Contains("invalidField"));
         Assert.NotNull(invalidIssue);
-        Assert.Contains("does not exist in Period type", invalidIssue.Message);
+        Assert.Contains("is not defined on the FHIR `Period` type", invalidIssue.Message);
         Assert.Contains("Encounter.period.invalidField", invalidIssue.Message);
     }
 
@@ -266,7 +266,7 @@ public class LintTypeAwareSchemaTests
             i.RuleId == "UNKNOWN_ELEMENT" && 
             i.Message.Contains("reference"));
         Assert.NotNull(referenceIssue);
-        Assert.Contains("does not exist in HumanName type", referenceIssue.Message);
+        Assert.Contains("is not defined on the FHIR `HumanName` type", referenceIssue.Message);
         Assert.Contains("Patient.name.reference", referenceIssue.Message);
     }
 

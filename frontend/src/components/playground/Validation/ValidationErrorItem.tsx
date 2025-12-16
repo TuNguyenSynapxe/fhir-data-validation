@@ -1,5 +1,8 @@
 import React from 'react';
-import { AlertCircle, AlertTriangle, Info, MapPin } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Info } from 'lucide-react';
+import { formatSmartPath, getScopedSegments, convertToJsonPath } from '../../../utils/smartPathFormatting';
+import { SmartPathBreadcrumb } from './SmartPathBreadcrumb';
+import { PathInfoTooltip } from './PathInfoTooltip';
 
 interface ValidationError {
   source: string; // FHIR, Business, CodeMaster, Reference
@@ -136,22 +139,29 @@ export const ValidationErrorItem: React.FC<ValidationErrorItemProps> = ({
                 {error.resourceType}
               </span>
             )}
-
-            {/* Location */}
-            {(error.path || error.navigation?.breadcrumb) && (
-              <span className="flex items-center gap-1 text-xs text-gray-600">
-                <MapPin className="w-3 h-3" />
-                {error.navigation?.breadcrumb || error.path}
-              </span>
-            )}
           </div>
 
-          {/* FHIRPath or JSON Pointer */}
+          {/* FHIRPath - Smart Breadcrumb */}
           {(error.path || error.jsonPointer) && (
-            <div className="mt-2">
-              <code className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded font-mono">
-                {error.path || error.jsonPointer}
-              </code>
+            <div className="group/row mt-2 p-2.5 bg-gray-50/50 rounded-md border border-gray-200/60 hover:bg-gray-50/80 transition-all">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <SmartPathBreadcrumb
+                    resourceType={error.resourceType}
+                    segments={getScopedSegments(
+                      formatSmartPath(error.path || error.jsonPointer || '', error.resourceType).segments,
+                      error.resourceType
+                    )}
+                    onNavigate={onClick}
+                  />
+                </div>
+                
+                {/* Path Info Tooltip */}
+                <PathInfoTooltip
+                  fhirPath={error.path || error.jsonPointer || ''}
+                  jsonPath={convertToJsonPath(error.jsonPointer || error.navigation?.jsonPointer)}
+                />
+              </div>
             </div>
           )}
 

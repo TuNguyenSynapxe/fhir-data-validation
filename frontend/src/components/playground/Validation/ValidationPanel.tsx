@@ -12,8 +12,8 @@ import {
   Clock
 } from 'lucide-react';
 import { ValidationResultList } from './ValidationResultList';
-import { HelpTooltip } from '../../common/HelpTooltip';
 import { ValidationLayerInfo } from './ValidationLayerInfo';
+import { ValidationSourceFilter, type SourceFilterState } from './ValidationSourceFilter';
 import type { SystemRuleSuggestion } from '../../../api/projects';
 
 interface ValidationError {
@@ -62,38 +62,6 @@ interface ValidationPanelProps {
 }
 
 /**
- * Get color classes for source badge
- */
-const getSourceBadgeColor = (source: string): string => {
-  const normalizedSource = source.toLowerCase();
-  
-  if (normalizedSource === 'fhir' || normalizedSource === 'firely') {
-    return 'bg-blue-100 text-blue-800 border-blue-200';
-  } else if (normalizedSource === 'business' || normalizedSource === 'businessrules') {
-    return 'bg-purple-100 text-purple-800 border-purple-200';
-  } else if (normalizedSource === 'codemaster') {
-    return 'bg-orange-100 text-orange-800 border-orange-200';
-  } else if (normalizedSource === 'reference') {
-    return 'bg-red-100 text-red-800 border-red-200';
-  } else if (normalizedSource === 'lint') {
-    return 'bg-amber-100 text-amber-800 border-amber-200';
-  } else {
-    return 'bg-gray-100 text-gray-800 border-gray-200';
-  }
-};
-
-/**
- * LINT help text constants
- */
-const LINT_HELP = {
-  title: 'What is LINT?',
-  body: `LINT checks detect portability and interoperability issues based on the official FHIR specification.
-Some FHIR engines (including Firely) are permissive and may still accept this payload.
-Other FHIR servers may reject it.`,
-  footer: 'Final validation is always performed by the FHIR engine.',
-};
-
-/**
  * Format timestamp for display
  */
 const formatTimestamp = (timestamp: string): string => {
@@ -120,6 +88,38 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationMode, setValidationMode] = useState<'fast' | 'debug'>('fast');
+  
+  // Source filtering state
+  const [sourceFilters, setSourceFilters] = useState<SourceFilterState>(() => {
+    const stored = localStorage.getItem(`validation-filters-${projectId}`);
+    return stored ? JSON.parse(stored) : {
+      lint: true,
+      reference: true,
+      firely: true,
+      business: true,
+      codeMaster: true,
+      specHint: true,
+    };
+  });
+
+  // Explanations toggle state
+  const [showExplanations, setShowExplanations] = useState<boolean>(() => {
+    const stored = localStorage.getItem(`validation-explanations-${projectId}`);
+    return stored === 'true';
+  });
+
+  // Persist filter state
+  const handleFilterChange = (filters: SourceFilterState) => {
+    setSourceFilters(filters);
+    localStorage.setItem(`validation-filters-${projectId}`, JSON.stringify(filters));
+  };
+
+  // Persist explanations toggle
+  const handleExplanationsToggle = () => {
+    const newValue = !showExplanations;
+    setShowExplanations(newValue);
+    localStorage.setItem(`validation-explanations-${projectId}`, String(newValue));
+  };
 
   /**
    * Run validation
@@ -266,18 +266,26 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
           )}
         </div>
 
-        {/* Timestamp and execution time */}
-        {results && (
-          <div className="flex items-center gap-3 text-xs text-gray-500">
-            <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              Last run: {formatTimestamp(results.timestamp)}
-            </span>
-            <span>
-              {results.executionTimeMs}ms
-            </span>
-          </div>
-        )}
+        {/* Timestamp, FHIR version, and execution time */}
+        <div className="flex items-center gap-3 text-xs text-gray-500">
+          {results && (
+            <>
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                Last run: {formatTimestamp(results.timestamp)}
+              </span>
+              <span>
+                {results.executionTimeMs}ms
+              </span>
+            </>
+          )}
+          <span 
+            className="text-gray-600 font-medium"
+            title="Validation performed against HL7 FHIR R4 (4.0.1)"
+          >
+            FHIR R4 (4.0.1)
+          </span>
+        </div>
       </div>
 
       {/* Collapsible content */}
@@ -348,51 +356,38 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
                 <RotateCcw className="w-4 h-4" />
                 Reset
               </button>
+
+              {/* Source filter dropdown */}
+              {summary && hasErrors && (
+                <ValidationSourceFilter
+                  filters={sourceFilters}
+                  onChange={handleFilterChange}
+                  counts={{
+                    lint: summary?.bySource?.lint || 0,
+                    reference: summary?.bySource?.reference || 0,
+                    firely: summary?.bySource?.firely || 0,
+                    business: summary?.bySource?.businessRules || 0,
+                    codeMaster: summary?.bySource?.codeMaster || 0,
+                    specHint: summary?.bySource?.specHint || 0,
+                  }}
+                />
+              )}
+
+              {/* Show explanations toggle */}
+              {results && hasErrors && (
+                <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showExplanations}
+                    onChange={handleExplanationsToggle}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span>Show explanations</span>
+                </label>
+              )}
             </div>
 
-            {/* Source badges */}
-            {summary && hasErrors && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 mr-1">By source:</span>
-                {summary.bySource.lint > 0 && (
-                  <div className="flex items-center gap-1">
-                    <span className={`text-xs px-2 py-0.5 rounded border ${getSourceBadgeColor('LINT')}`}>
-                      LINT: {summary.bySource.lint}
-                    </span>
-                    <HelpTooltip 
-                      title={LINT_HELP.title}
-                      body={LINT_HELP.body}
-                      footer={LINT_HELP.footer}
-                    />
-                  </div>
-                )}
-                {summary.bySource.firely > 0 && (
-                  <span className={`text-xs px-2 py-0.5 rounded border ${getSourceBadgeColor('Firely')}`}>
-                    Firely: {summary.bySource.firely}
-                  </span>
-                )}
-                {summary.bySource.businessRules > 0 && (
-                  <span className={`text-xs px-2 py-0.5 rounded border ${getSourceBadgeColor('BusinessRules')}`}>
-                    Rules: {summary.bySource.businessRules}
-                  </span>
-                )}
-                {summary.bySource.codeMaster > 0 && (
-                  <span className={`text-xs px-2 py-0.5 rounded border ${getSourceBadgeColor('CodeMaster')}`}>
-                    CodeMaster: {summary.bySource.codeMaster}
-                  </span>
-                )}
-                {summary.bySource.reference > 0 && (
-                  <span className={`text-xs px-2 py-0.5 rounded border ${getSourceBadgeColor('Reference')}`}>
-                    Reference: {summary.bySource.reference}
-                  </span>
-                )}
-                {summary.bySource.specHint > 0 && (
-                  <span className={`text-xs px-2 py-0.5 rounded border ${getSourceBadgeColor('SPEC_HINT')}`}>
-                    SPEC_HINT: {summary.bySource.specHint}
-                  </span>
-                )}
-              </div>
-            )}
+            {/* Legacy source badges removed - now using ValidationSourceFilter */}
           </div>
 
           {/* Results area */}
@@ -430,6 +425,8 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
                 errors={results.errors}
                 onErrorClick={handleErrorClick}
                 onNavigateToPath={onNavigateToPath}
+                sourceFilters={sourceFilters}
+                showExplanations={showExplanations}
               />
             )}
           </div>

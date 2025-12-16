@@ -51,7 +51,7 @@ const extractHeadline = (message: string, details?: Record<string, any>): string
   // Try to extract property name from details or message
   const propertyName = details?.propertyName || details?.property;
   
-  if (propertyName && message.includes('does not exist')) {
+  if (propertyName && (message.includes('does not exist') || message.includes('is not defined'))) {
     return `Unknown field: ${propertyName}`;
   } else if (message.includes('expected') && message.includes('array')) {
     return `Field should be an array${propertyName ? `: ${propertyName}` : ''}`;

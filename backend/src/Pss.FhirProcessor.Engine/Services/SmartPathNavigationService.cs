@@ -13,7 +13,7 @@ namespace Pss.FhirProcessor.Engine.Services;
 /// </summary>
 public class SmartPathNavigationService : ISmartPathNavigationService
 {
-    public async Task<NavigationInfo> ResolvePathAsync(Bundle bundle, string path, string? resourceType = null, CancellationToken cancellationToken = default)
+    public async Task<NavigationInfo> ResolvePathAsync(Bundle bundle, string path, string? resourceType = null, int? entryIndex = null, CancellationToken cancellationToken = default)
     {
         var navInfo = new NavigationInfo();
         
@@ -65,34 +65,37 @@ public class SmartPathNavigationService : ISmartPathNavigationService
                     segmentStartIndex = 0;
                 }
                 
-                // Find entry index
-                int? entryIndex = null;
-                if (!string.IsNullOrEmpty(targetResourceType))
+                // Find entry index - use provided entryIndex if available
+                int? targetEntryIndex = entryIndex;
+                if (!targetEntryIndex.HasValue)
                 {
-                    // Find first entry matching resource type
-                    for (int i = 0; i < bundle.Entry.Count; i++)
+                    if (!string.IsNullOrEmpty(targetResourceType))
                     {
-                        if (bundle.Entry[i].Resource?.TypeName == targetResourceType)
+                        // Find first entry matching resource type
+                        for (int i = 0; i < bundle.Entry.Count; i++)
                         {
-                            entryIndex = i;
-                            break;
+                            if (bundle.Entry[i].Resource?.TypeName == targetResourceType)
+                            {
+                                targetEntryIndex = i;
+                                break;
+                            }
                         }
                     }
-                }
-                else
-                {
-                    entryIndex = 0; // Default to first entry
+                    else
+                    {
+                        targetEntryIndex = 0; // Default to first entry
+                    }
                 }
                 
-                if (entryIndex.HasValue && entryIndex.Value < bundle.Entry.Count)
+                if (targetEntryIndex.HasValue && targetEntryIndex.Value < bundle.Entry.Count)
                 {
                     // Navigate to entry[index].resource
-                    pointer.Append($"/entry/{entryIndex.Value}");
-                    breadcrumbs.Add($"entry[{entryIndex.Value}]");
+                    pointer.Append($"/entry/{targetEntryIndex.Value}");
+                    breadcrumbs.Add($"entry[{targetEntryIndex.Value}]");
                     
-                    if (currentNode.TryGetProperty("entry", out var entryArray) && entryIndex.Value < entryArray.GetArrayLength())
+                    if (currentNode.TryGetProperty("entry", out var entryArray) && targetEntryIndex.Value < entryArray.GetArrayLength())
                     {
-                        currentNode = entryArray[entryIndex.Value];
+                        currentNode = entryArray[targetEntryIndex.Value];
                         
                         if (currentNode.TryGetProperty("resource", out var resource))
                         {
@@ -114,7 +117,7 @@ public class SmartPathNavigationService : ISmartPathNavigationService
                     else
                     {
                         exists = false;
-                        missingParents.Add($"entry[{entryIndex.Value}]");
+                        missingParents.Add($"entry[{targetEntryIndex.Value}]");
                     }
                 }
                 else
@@ -132,19 +135,19 @@ public class SmartPathNavigationService : ISmartPathNavigationService
                 if (segment.Type == SegmentType.EntryReference)
                 {
                     // Resolve entry index
-                    var entryIndex = segment.ResourceType != null 
+                    var resolvedEntryIndex = segment.ResourceType != null 
                         ? FindEntryIndexByResourceId(bundle, segment.ResourceType, segment.ResourceId ?? "")
                         : FindEntryIndexByReference(bundle, segment.Value);
                     
-                    if (entryIndex.HasValue)
+                    if (resolvedEntryIndex.HasValue)
                     {
-                        pointer.Append($"/entry/{entryIndex.Value}");
-                        breadcrumbs.Add($"entry[{entryIndex.Value}]");
+                        pointer.Append($"/entry/{resolvedEntryIndex.Value}");
+                        breadcrumbs.Add($"entry[{resolvedEntryIndex.Value}]");
                         
                         if (currentNode.TryGetProperty("entry", out var entryArray) &&
-                            entryIndex.Value < entryArray.GetArrayLength())
+                            resolvedEntryIndex.Value < entryArray.GetArrayLength())
                         {
-                            currentNode = entryArray[entryIndex.Value];
+                            currentNode = entryArray[resolvedEntryIndex.Value];
                             breadcrumbs.Add(segment.ResourceType ?? "resource");
                             
                             if (currentNode.TryGetProperty("resource", out var resource))

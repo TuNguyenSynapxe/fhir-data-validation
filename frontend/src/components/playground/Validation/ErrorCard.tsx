@@ -1,6 +1,10 @@
 import React from 'react';
-import { AlertCircle, AlertTriangle, Info, MapPin, XCircle, CheckCircle } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Info, XCircle, CheckCircle } from 'lucide-react';
 import { getLayerMetadata } from '../../../utils/validationLayers';
+import { formatSmartPath, getScopedSegments, convertToJsonPath } from '../../../utils/smartPathFormatting';
+import { SmartPathBreadcrumb } from './SmartPathBreadcrumb';
+import { PathInfoTooltip } from './PathInfoTooltip';
+import { getBlockingStatusDisplay } from '../../../utils/validationOverrides';
 
 interface ValidationError {
   source: string;
@@ -20,6 +24,7 @@ interface ValidationError {
 
 interface ErrorCardProps {
   error: ValidationError;
+  allErrors?: ValidationError[]; // All errors for override detection
   onClick?: () => void;
 }
 
@@ -54,13 +59,16 @@ const getSeverityColor = (severity: string): string => {
  * - Standard explanation text
  * - Smart path navigation
  */
-export const ErrorCard: React.FC<ErrorCardProps> = ({ error, onClick }) => {
+export const ErrorCard: React.FC<ErrorCardProps> = ({ error, allErrors = [], onClick }) => {
   const metadata = getLayerMetadata(error.source);
   const SeverityIcon = getSeverityIcon(error.severity);
   const severityColor = getSeverityColor(error.severity);
   
   const fhirPath = error.details?.fhirPath || error.path;
   const hasNavigation = error.jsonPointer || error.navigation?.jsonPointer;
+  
+  // Get blocking status with override detection
+  const blockingStatus = getBlockingStatusDisplay(error, allErrors);
 
   return (
     <div
@@ -89,17 +97,24 @@ export const ErrorCard: React.FC<ErrorCardProps> = ({ error, onClick }) => {
             <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded border ${
               metadata.isBlocking 
                 ? 'bg-red-50 text-red-700 border-red-200' 
-                : 'bg-green-50 text-green-700 border-green-200'
+                : blockingStatus.isOverridden
+                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                  : 'bg-green-50 text-green-700 border-green-200'
             }`}>
               {metadata.isBlocking ? (
                 <>
                   <XCircle className="w-3 h-3" />
-                  <span className="font-semibold">Blocking: YES</span>
+                  <span className="font-semibold">{blockingStatus.text}</span>
+                </>
+              ) : blockingStatus.isOverridden ? (
+                <>
+                  <AlertTriangle className="w-3 h-3" />
+                  <span className="font-semibold">{blockingStatus.text}</span>
                 </>
               ) : (
                 <>
                   <CheckCircle className="w-3 h-3" />
-                  <span className="font-semibold">Does NOT block validation</span>
+                  <span className="font-semibold">{blockingStatus.text}</span>
                 </>
               )}
             </div>
@@ -124,34 +139,32 @@ export const ErrorCard: React.FC<ErrorCardProps> = ({ error, onClick }) => {
             {metadata.explanation}
           </p>
 
-          {/* FHIR Path */}
+          {/* FHIR Path - Smart Breadcrumb */}
           {fhirPath && (
-            <div className="mb-2">
-              <button
-                className="text-sm font-mono font-semibold text-blue-700 hover:text-blue-900 hover:underline cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClick?.();
-                }}
-              >
-                {fhirPath}
-              </button>
+            <div className="group/row mb-2 p-2.5 bg-gray-50/50 rounded-md border border-gray-200/60 hover:bg-gray-50/80 transition-all">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <SmartPathBreadcrumb
+                    resourceType={error.resourceType}
+                    segments={getScopedSegments(
+                      formatSmartPath(fhirPath, error.resourceType).segments,
+                      error.resourceType
+                    )}
+                    onNavigate={hasNavigation ? onClick : undefined}
+                  />
+                </div>
+                
+                {/* Path Info Tooltip */}
+                <PathInfoTooltip
+                  fhirPath={fhirPath}
+                  jsonPath={convertToJsonPath(error.jsonPointer || error.navigation?.jsonPointer)}
+                />
+              </div>
             </div>
           )}
 
-          {/* Navigation */}
-          {hasNavigation ? (
-            <button
-              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"
-              onClick={(e) => {
-                e.stopPropagation();
-                onClick?.();
-              }}
-            >
-              <MapPin className="w-3 h-3" />
-              Jump to field
-            </button>
-          ) : (
+          {/* Navigation hint */}
+          {!hasNavigation && (
             <span className="text-xs text-gray-400 italic">
               Location not available
             </span>

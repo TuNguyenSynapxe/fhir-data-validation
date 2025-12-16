@@ -15,7 +15,7 @@ public interface ISmartPathNavigationService
     /// - Existence flag
     /// - Missing parent nodes
     /// </summary>
-    Task<NavigationInfo> ResolvePathAsync(Bundle bundle, string path, string? resourceType = null, CancellationToken cancellationToken = default);
+    Task<NavigationInfo> ResolvePathAsync(Bundle bundle, string path, string? resourceType = null, int? entryIndex = null, CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Finds the entry index for a resource by reference (urn:uuid or resourceType/id)
