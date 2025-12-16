@@ -53,3 +53,6 @@ appsettings.Development.json
 *.env
 **/temp/
 *.zip
+
+# FHIR Spec backups (local only)
+**/StructureDefinitions.backup/

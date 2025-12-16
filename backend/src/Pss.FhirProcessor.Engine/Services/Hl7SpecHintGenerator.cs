@@ -35,8 +35,9 @@ public class Hl7SpecHintGenerator
     /// <summary>
     /// Generates SpecHint catalog from StructureDefinition JSON files.
     /// Gracefully handles errors - returns empty list if generation fails.
+    /// Scans /resources, /datatypes, and /base subdirectories for organized spec files.
     /// </summary>
-    /// <param name="structureDefinitionDirectory">Directory containing StructureDefinition-*.json files</param>
+    /// <param name="structureDefinitionDirectory">Base directory containing resources/, datatypes/, and base/ subdirectories</param>
     /// <param name="fhirVersion">FHIR version string (e.g., "R4")</param>
     /// <returns>Dictionary mapping ResourceType to list of SpecHints</returns>
     public Dictionary<string, List<SpecHint>> GenerateHints(string structureDefinitionDirectory, string fhirVersion = "R4")
@@ -51,15 +52,16 @@ public class Hl7SpecHintGenerator
                 return hints;
             }
 
-            var jsonFiles = Directory.GetFiles(structureDefinitionDirectory, "StructureDefinition-*.json");
+            // Scan all subdirectories (resources, datatypes, base) for StructureDefinition files
+            var jsonFiles = Directory.GetFiles(structureDefinitionDirectory, "StructureDefinition-*.json", SearchOption.AllDirectories);
             
             if (jsonFiles.Length == 0)
             {
-                _logger.LogWarning("No StructureDefinition files found in {Directory}. Returning empty hints.", structureDefinitionDirectory);
+                _logger.LogWarning("No StructureDefinition files found in {Directory} (searched recursively). Returning empty hints.", structureDefinitionDirectory);
                 return hints;
             }
 
-            _logger.LogInformation("Processing {Count} StructureDefinition files from {Directory}", jsonFiles.Length, structureDefinitionDirectory);
+            _logger.LogInformation("Processing {Count} StructureDefinition files from {Directory} (curated subset)", jsonFiles.Length, structureDefinitionDirectory);
 
             foreach (var file in jsonFiles)
             {
