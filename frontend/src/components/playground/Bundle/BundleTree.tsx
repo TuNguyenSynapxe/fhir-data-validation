@@ -245,7 +245,7 @@ const TreeNodeWrapper: React.FC<Omit<TreeNodeProps, 'isExpanded' | 'isSelected' 
   const lastCollapseKeyRef = React.useRef<number | undefined>(undefined);
   const isFirstMountRef = React.useRef(true);
   // Track pending timer to prevent multiple timers
-  const pendingTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const pendingTimerRef = React.useRef<number | null>(null);
   
   const pathMatch = props.externalSelectedPath?.startsWith(jsonPointer + '/');
   if (jsonPointer.startsWith('/entry/0')) {
@@ -362,7 +362,7 @@ const TreeNodeWrapper: React.FC<Omit<TreeNodeProps, 'isExpanded' | 'isSelected' 
  */
 export const BundleTree: React.FC<BundleTreeProps> = ({
   bundleJson,
-  onNodeSelect,
+  onNodeSelect: _onNodeSelect,
   selectedPath,
 }) => {
   const [internalSelectedPath, setInternalSelectedPath] = useState<string>('');

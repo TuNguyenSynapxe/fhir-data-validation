@@ -256,6 +256,7 @@ public static class TestHelper
         var codeMasterEngine = CreateCodeMasterEngine();
         var referenceResolver = CreateReferenceResolver();
         var errorModelBuilder = CreateErrorModelBuilder();
+        var suggestionService = CreateSystemRuleSuggestionService();
 
         return new ValidationPipeline(
             lintService,
@@ -264,6 +265,13 @@ public static class TestHelper
             ruleEngine,
             codeMasterEngine,
             referenceResolver,
-            errorModelBuilder);
+            errorModelBuilder,
+            suggestionService);
+    }
+    
+    public static ISystemRuleSuggestionService CreateSystemRuleSuggestionService()
+    {
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<SystemRuleSuggestionService>.Instance;
+        return new SystemRuleSuggestionService(logger);
     }
 }

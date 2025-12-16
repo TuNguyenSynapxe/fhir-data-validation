@@ -170,7 +170,9 @@ public class ReferenceResolver : IReferenceResolver
             if (value == null)
                 continue;
             
-            var propPath = $"{basePath}.{prop.Name}";
+            // Use JSON property name (camelCase) instead of C# property name (PascalCase)
+            var jsonPropertyName = GetJsonPropertyName(prop);
+            var propPath = $"{basePath}.{jsonPropertyName}";
             
             // Check if property is a ResourceReference
             if (value is ResourceReference resourceRef)
@@ -222,7 +224,9 @@ public class ReferenceResolver : IReferenceResolver
             if (value == null)
                 continue;
             
-            var propPath = $"{basePath}.{prop.Name}";
+            // Use JSON property name (camelCase) instead of C# property name (PascalCase)
+            var jsonPropertyName = GetJsonPropertyName(prop);
+            var propPath = $"{basePath}.{jsonPropertyName}";
             
             if (value is ResourceReference resourceRef)
             {
@@ -284,5 +288,26 @@ public class ReferenceResolver : IReferenceResolver
         }
         
         return types;
+    }
+    
+    /// <summary>
+    /// Get the JSON property name from a C# property using FHIR attributes.
+    /// Falls back to camelCase conversion if no attribute found.
+    /// </summary>
+    private string GetJsonPropertyName(PropertyInfo prop)
+    {
+        // Check for FhirElementAttribute which contains the JSON name
+        var fhirAttr = prop.GetCustomAttribute<FhirElementAttribute>();
+        if (fhirAttr != null && !string.IsNullOrEmpty(fhirAttr.Name))
+        {
+            return fhirAttr.Name;
+        }
+        
+        // Fallback: Convert PascalCase to camelCase
+        var name = prop.Name;
+        if (string.IsNullOrEmpty(name))
+            return name;
+            
+        return char.ToLowerInvariant(name[0]) + name.Substring(1);
     }
 }

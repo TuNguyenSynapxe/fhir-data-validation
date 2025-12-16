@@ -82,7 +82,7 @@ const getExplanation = (errorCode?: string): string => {
 /**
  * Check if error is extension-related
  */
-const isExtensionRelated = (path?: string, details?: Record<string, any>): boolean => {
+const isExtensionRelated = (path?: string): boolean => {
   const pathToCheck = path || '';
   return pathToCheck.includes('.extension') || pathToCheck.includes('.modifierExtension');
 };
@@ -99,7 +99,7 @@ export const LintIssueCard: React.FC<LintIssueCardProps> = ({ error, onClick }) 
   const headline = extractHeadline(error.message, error.details);
   const explanation = getExplanation(error.errorCode);
   const fhirPath = error.details?.fhirPath || error.path;
-  const isExtension = isExtensionRelated(error.path, error.details);
+  const isExtension = isExtensionRelated(error.path);
 
   return (
     <div

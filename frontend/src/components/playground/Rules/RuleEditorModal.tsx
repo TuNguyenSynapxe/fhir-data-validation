@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, AlertCircle } from 'lucide-react';
 import FhirPathSelectorDrawer from '../../FhirPathSelectorDrawer';
 
 interface Rule {
@@ -21,14 +21,27 @@ interface RuleEditorModalProps {
   hl7Samples?: any[];
 }
 
+// Backend-supported rule types (EXACT match with FhirPathRuleEngine.cs)
 const RULE_TYPES = [
   'Required',
-  'Pattern',
-  'ValueSet',
-  'Range',
-  'Length',
-  'Custom'
-];
+  'FixedValue',
+  'AllowedValues',
+  'Regex',
+  'ArrayLength',
+  'CodeSystem',
+  'CustomFHIRPath'
+] as const;
+
+// Rule type descriptions for UI guidance
+const RULE_TYPE_DESCRIPTIONS: Record<string, string> = {
+  'Required': 'Validates that a field or element is present and not empty',
+  'FixedValue': 'Validates that a field matches a specific fixed value',
+  'AllowedValues': 'Validates that a field value is in a list of allowed values',
+  'Regex': 'Validates that a field value matches a regular expression pattern',
+  'ArrayLength': 'Validates that an array has a specific minimum or maximum length',
+  'CodeSystem': 'Validates that a code uses the correct coding system',
+  'CustomFHIRPath': 'Custom FHIRPath expression validation'
+};
 
 const RESOURCE_TYPES = [
   'Patient',
@@ -64,6 +77,7 @@ export const RuleEditorModal: React.FC<RuleEditorModalProps> = ({
     params: {}
   });
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [paramErrors, setParamErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (rule) {
@@ -73,17 +87,122 @@ export const RuleEditorModal: React.FC<RuleEditorModalProps> = ({
 
   if (!isOpen || !rule) return null;
 
+  // Validate required parameters based on rule type
+  const validateParams = (): boolean => {
+    const errors: Record<string, string> = {};
+    const params = formData.params || {};
+
+    switch (formData.type) {
+      case 'FixedValue':
+        if (!params.value && params.value !== 0 && params.value !== false) {
+          errors.value = 'Fixed value is required';
+        }
+        break;
+      case 'AllowedValues':
+        if (!params.values || !Array.isArray(params.values) || params.values.length === 0) {
+          errors.values = 'At least one allowed value is required';
+        }
+        break;
+      case 'Regex':
+        if (!params.pattern) {
+          errors.pattern = 'Regex pattern is required';
+        } else {
+          // Validate regex syntax
+          try {
+            new RegExp(params.pattern);
+          } catch (e) {
+            errors.pattern = 'Invalid regex pattern';
+          }
+        }
+        break;
+      case 'ArrayLength':
+        if (params.min === undefined && params.max === undefined) {
+          errors.arrayLength = 'At least one of min or max is required';
+        }
+        if (params.min !== undefined && (isNaN(params.min) || params.min < 0)) {
+          errors.min = 'Min must be a non-negative number';
+        }
+        if (params.max !== undefined && (isNaN(params.max) || params.max < 0)) {
+          errors.max = 'Max must be a non-negative number';
+        }
+        if (params.min !== undefined && params.max !== undefined && params.min > params.max) {
+          errors.arrayLength = 'Min cannot be greater than max';
+        }
+        break;
+      case 'CodeSystem':
+        if (!params.system) {
+          errors.system = 'Code system URL is required';
+        }
+        break;
+    }
+
+    setParamErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.path || !formData.message) {
       alert('Path and Message are required');
       return;
     }
+    
+    if (!validateParams()) {
+      return;
+    }
+    
     onSave(formData);
   };
 
   const handleChange = (field: keyof Rule, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    // Clear param errors when type changes
+    if (field === 'type') {
+      setParamErrors({});
+    }
+  };
+
+  const handleParamChange = (paramKey: string, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      params: { ...(prev.params || {}), [paramKey]: value }
+    }));
+    // Clear specific param error when user types
+    setParamErrors((prev) => {
+      const updated = { ...prev };
+      delete updated[paramKey];
+      return updated;
+    });
+  };
+
+  const isFormValid = (): boolean => {
+    if (!formData.path || !formData.message) return false;
+    
+    const params = formData.params || {};
+    
+    switch (formData.type) {
+      case 'FixedValue':
+        return params.value !== undefined && params.value !== null && params.value !== '';
+      case 'AllowedValues':
+        return params.values && Array.isArray(params.values) && params.values.length > 0;
+      case 'Regex':
+        if (!params.pattern) return false;
+        try {
+          new RegExp(params.pattern);
+          return true;
+        } catch {
+          return false;
+        }
+      case 'ArrayLength':
+        return (params.min !== undefined || params.max !== undefined) &&
+               (params.min === undefined || (!isNaN(params.min) && params.min >= 0)) &&
+               (params.max === undefined || (!isNaN(params.max) && params.max >= 0)) &&
+               (params.min === undefined || params.max === undefined || params.min <= params.max);
+      case 'CodeSystem':
+        return !!params.system;
+      default:
+        return true;
+    }
   };
 
   return (
@@ -165,6 +284,217 @@ export const RuleEditorModal: React.FC<RuleEditorModalProps> = ({
               </p>
             </div>
 
+            {/* Rule Type Description */}
+            <div className="bg-blue-50 border border-blue-200 rounded p-3">
+              <p className="text-xs text-blue-800">
+                <strong>ℹ️ {formData.type}:</strong> {RULE_TYPE_DESCRIPTIONS[formData.type]}
+              </p>
+            </div>
+
+            {/* Parameter Fields - Conditional based on rule type */}
+            {formData.type === 'FixedValue' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Fixed Value *
+                </label>
+                <input
+                  type="text"
+                  value={formData.params?.value || ''}
+                  onChange={(e) => handleParamChange('value', e.target.value)}
+                  placeholder="Enter the expected fixed value"
+                  className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 ${
+                    paramErrors.value ? 'border-red-500 focus:ring-red-500' : 'focus:ring-blue-500'
+                  }`}
+                  required
+                />
+                {paramErrors.value && (
+                  <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {paramErrors.value}
+                  </p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  The field value must exactly match this value
+                </p>
+              </div>
+            )}
+
+            {formData.type === 'AllowedValues' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Allowed Values (JSON Array) *
+                </label>
+                <textarea
+                  value={
+                    formData.params?.values
+                      ? JSON.stringify(formData.params.values, null, 2)
+                      : '[]'
+                  }
+                  onChange={(e) => {
+                    try {
+                      const parsed = JSON.parse(e.target.value);
+                      if (Array.isArray(parsed)) {
+                        handleParamChange('values', parsed);
+                      }
+                    } catch {
+                      // Invalid JSON, keep typing
+                    }
+                  }}
+                  placeholder='["value1", "value2", "value3"]'
+                  rows={4}
+                  className={`w-full px-3 py-2 border rounded font-mono text-sm focus:outline-none focus:ring-2 ${
+                    paramErrors.values ? 'border-red-500 focus:ring-red-500' : 'focus:ring-blue-500'
+                  }`}
+                  required
+                />
+                {paramErrors.values && (
+                  <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {paramErrors.values}
+                  </p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  Must be a valid JSON array. The field value must be one of these values.
+                </p>
+              </div>
+            )}
+
+            {formData.type === 'Regex' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Regex Pattern *
+                </label>
+                <input
+                  type="text"
+                  value={formData.params?.pattern || ''}
+                  onChange={(e) => handleParamChange('pattern', e.target.value)}
+                  placeholder="^[A-Z][a-z]+$"
+                  className={`w-full px-3 py-2 border rounded font-mono text-sm focus:outline-none focus:ring-2 ${
+                    paramErrors.pattern ? 'border-red-500 focus:ring-red-500' : 'focus:ring-blue-500'
+                  }`}
+                  required
+                />
+                {paramErrors.pattern && (
+                  <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {paramErrors.pattern}
+                  </p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  JavaScript regular expression pattern (without delimiters)
+                </p>
+              </div>
+            )}
+
+            {formData.type === 'ArrayLength' && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Min Length
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.params?.min ?? ''}
+                      onChange={(e) => handleParamChange('min', e.target.value ? parseInt(e.target.value) : undefined)}
+                      placeholder="0"
+                      className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 ${
+                        paramErrors.min ? 'border-red-500 focus:ring-red-500' : 'focus:ring-blue-500'
+                      }`}
+                    />
+                    {paramErrors.min && (
+                      <p className="text-xs text-red-600 mt-1">{paramErrors.min}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Max Length
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.params?.max ?? ''}
+                      onChange={(e) => handleParamChange('max', e.target.value ? parseInt(e.target.value) : undefined)}
+                      placeholder="10"
+                      className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 ${
+                        paramErrors.max ? 'border-red-500 focus:ring-red-500' : 'focus:ring-blue-500'
+                      }`}
+                    />
+                    {paramErrors.max && (
+                      <p className="text-xs text-red-600 mt-1">{paramErrors.max}</p>
+                    )}
+                  </div>
+                </div>
+                {paramErrors.arrayLength && (
+                  <p className="text-xs text-red-600 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {paramErrors.arrayLength}
+                  </p>
+                )}
+                <p className="text-xs text-gray-500">
+                  At least one of min or max is required
+                </p>
+              </div>
+            )}
+
+            {formData.type === 'CodeSystem' && (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Code System URL *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.params?.system || ''}
+                    onChange={(e) => handleParamChange('system', e.target.value)}
+                    placeholder="http://terminology.hl7.org/CodeSystem/v3-MaritalStatus"
+                    className={`w-full px-3 py-2 border rounded font-mono text-sm focus:outline-none focus:ring-2 ${
+                      paramErrors.system ? 'border-red-500 focus:ring-red-500' : 'focus:ring-blue-500'
+                    }`}
+                    required
+                  />
+                  {paramErrors.system && (
+                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {paramErrors.system}
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    The required coding system URL
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Allowed Codes (Optional JSON Array)
+                  </label>
+                  <textarea
+                    value={
+                      formData.params?.codes
+                        ? JSON.stringify(formData.params.codes, null, 2)
+                        : '[]'
+                    }
+                    onChange={(e) => {
+                      try {
+                        const parsed = JSON.parse(e.target.value);
+                        if (Array.isArray(parsed)) {
+                          handleParamChange('codes', parsed);
+                        }
+                      } catch {
+                        // Invalid JSON, keep typing
+                      }
+                    }}
+                    placeholder='["M", "S", "D"]'
+                    rows={3}
+                    className="w-full px-3 py-2 border rounded font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Optional: Restrict to specific codes within the system
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Severity */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -213,7 +543,12 @@ export const RuleEditorModal: React.FC<RuleEditorModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              disabled={!isFormValid()}
+              className={`px-4 py-2 rounded transition-colors ${
+                isFormValid()
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
             >
               Save Rule
             </button>

@@ -14,6 +14,7 @@ import {
 import { ValidationResultList } from './ValidationResultList';
 import { HelpTooltip } from '../../common/HelpTooltip';
 import { ValidationLayerInfo } from './ValidationLayerInfo';
+import type { SystemRuleSuggestion } from '../../../api/projects';
 
 interface ValidationError {
   source: string; // FHIR, Business, CodeMaster, Reference
@@ -56,6 +57,8 @@ interface ValidationPanelProps {
   projectId: string;
   onSelectError?: (error: ValidationError) => void;
   onNavigateToPath?: (jsonPointer: string) => void;
+  onSuggestionsReceived?: (suggestions: SystemRuleSuggestion[]) => void;
+  onValidationStart?: () => void; // Called when validation starts
 }
 
 /**
@@ -108,7 +111,9 @@ const formatTimestamp = (timestamp: string): string => {
 export const ValidationPanel: React.FC<ValidationPanelProps> = ({ 
   projectId, 
   onSelectError,
-  onNavigateToPath 
+  onNavigateToPath,
+  onSuggestionsReceived,
+  onValidationStart
 }) => {
   const [results, setResults] = useState<ValidationResult | null>(null);
   const [isOpen, setIsOpen] = useState(true);
@@ -122,6 +127,9 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
   const handleRunValidation = async () => {
     setIsLoading(true);
     setError(null);
+    
+    // Notify parent that validation is starting (triggers mode switch)
+    onValidationStart?.();
 
     const startTime = Date.now();
 
@@ -176,6 +184,11 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
 
       setResults(validationResult);
       setIsOpen(true); // Auto-expand after validation
+      
+      // Notify parent component if suggestions are available
+      if (data.suggestions && data.suggestions.length > 0 && onSuggestionsReceived) {
+        onSuggestionsReceived(data.suggestions);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Validation failed');
       console.error('Validation error:', err);

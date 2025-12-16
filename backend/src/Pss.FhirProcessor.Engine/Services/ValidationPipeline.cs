@@ -21,6 +21,7 @@ public class ValidationPipeline : IValidationPipeline
     private readonly ICodeMasterEngine _codeMasterEngine;
     private readonly IReferenceResolver _referenceResolver;
     private readonly IUnifiedErrorModelBuilder _errorBuilder;
+    private readonly ISystemRuleSuggestionService _suggestionService;
     
     public ValidationPipeline(
         ILintValidationService lintService,
@@ -29,7 +30,8 @@ public class ValidationPipeline : IValidationPipeline
         IFhirPathRuleEngine ruleEngine,
         ICodeMasterEngine codeMasterEngine,
         IReferenceResolver referenceResolver,
-        IUnifiedErrorModelBuilder errorBuilder)
+        IUnifiedErrorModelBuilder errorBuilder,
+        ISystemRuleSuggestionService suggestionService)
     {
         _lintService = lintService;
         _specHintService = specHintService;
@@ -38,6 +40,7 @@ public class ValidationPipeline : IValidationPipeline
         _codeMasterEngine = codeMasterEngine;
         _referenceResolver = referenceResolver;
         _errorBuilder = errorBuilder;
+        _suggestionService = suggestionService;
     }
     
     public async Task<ValidationResponse> ValidateAsync(ValidationRequest request, CancellationToken cancellationToken = default)
@@ -158,6 +161,33 @@ public class ValidationPipeline : IValidationPipeline
             
             // Step 6: Error aggregation, navigation mapping, and unified model assembly
             // (Already done in error builder methods above)
+            
+            // Step 7: System Rule Suggestions (debug mode only)
+            // Generates deterministic pattern-based rule suggestions from sample data
+            // Only runs if Firely validation succeeded and debug mode is enabled
+            if (validationMode.Equals("debug", StringComparison.OrdinalIgnoreCase) && 
+                bundle != null && 
+                !response.Errors.Any(e => e.Source == "FHIR" && e.Severity == "error"))
+            {
+                var specHintIssues = response.Errors
+                    .Where(e => e.Source == "SPEC_HINT")
+                    .Select(e => new SpecHintIssue
+                    {
+                        ResourceType = e.ResourceType ?? "",
+                        Path = e.Path ?? "",
+                        Reason = e.Message,
+                        Severity = e.Severity
+                    })
+                    .ToList();
+                    
+                var suggestions = await _suggestionService.GenerateSuggestionsAsync(
+                    bundle, 
+                    ruleSet, 
+                    specHintIssues, 
+                    cancellationToken);
+                    
+                response.Suggestions = suggestions;
+            }
             
             // Finalize summary
             FinalizeSummary(response, stopwatch);

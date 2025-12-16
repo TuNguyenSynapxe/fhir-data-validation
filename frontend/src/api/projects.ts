@@ -42,9 +42,70 @@ export interface LintIssue {
   details?: Record<string, unknown>;
 }
 
+export type SemanticType = 
+  | 'TerminologyBoundField'
+  | 'ReferenceField'
+  | 'StatusOrLifecycleField'
+  | 'IdentifierField'
+  | 'FreeTextField'
+  | 'CodedAnswerField'
+  | 'Unknown';
+
+export type SemanticSubType =
+  | 'None'
+  | 'IdentifierNamespace'
+  | 'IdentifierValue'
+  | 'InstanceContactData'
+  | 'HumanReadableLabel'
+  | 'DerivedText'
+  | 'FreeNarrative'
+  | 'CodedConceptDisplay'
+  | 'ReferenceDisplay';
+
+export type BetterRuleCandidate =
+  | 'None'
+  | 'Regex'
+  | 'ValueSetBinding'
+  | 'ReferenceExists'
+  | 'ArrayLength'
+  | 'NonEmptyString'
+  | 'FixedValueIGDefined'
+  | 'TerminologyBinding';
+
+export type ObservationType =
+  | 'ConstantValue'
+  | 'SmallValueSet'
+  | 'AlwaysPresent'
+  | 'PatternDetected'
+  | 'ReferenceTargetConsistent'
+  | 'ArrayLengthConsistent'
+  | 'InstanceData'
+  | 'NoPattern';
+
+export interface SystemRuleSuggestion {
+  suggestionId: string;
+  semanticType: SemanticType;
+  semanticSubType: SemanticSubType;
+  observationType: ObservationType;
+  ruleType: string | null; // null if observation shouldn't become a rule
+  resourceType: string;
+  path: string;
+  params: Record<string, unknown>;
+  confidence: 'high' | 'medium' | 'low';
+  reasoning: string;
+  betterRuleCandidate?: BetterRuleCandidate;
+  sampleEvidence: {
+    resourceCount: number;
+    exampleValues: string[];
+    context?: Record<string, unknown>;
+  };
+  source: string;
+}
+
 export interface ValidationResponse {
   errors: ValidationError[];
   lintIssues?: LintIssue[];
+  suggestions?: SystemRuleSuggestion[];
   summary: {
     totalErrors: number;
     errorCount: number;

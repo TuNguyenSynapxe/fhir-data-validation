@@ -126,9 +126,8 @@ export const GroupedLintIssueCard: React.FC<GroupedLintIssueCardProps> = ({
           {isExpanded && (
             <div className="ml-6 mt-3 space-y-2">
               {errors.map((error, index) => {
-                const displayPath = error.path || error.navigation?.breadcrumb || 'Unknown';
-                const jsonPointer = error.jsonPointer || error.navigation?.jsonPointer;
                 const propertyName = error.details?.propertyName || error.details?.property;
+                const fhirPathValue = error.details?.fhirPath || error.path;
                 
                 return (
                   <div
@@ -146,9 +145,9 @@ export const GroupedLintIssueCard: React.FC<GroupedLintIssueCardProps> = ({
                             {propertyName}
                           </p>
                         )}
-                        {fhirPath && (
+                        {fhirPathValue && (
                           <code className="text-xs font-mono text-gray-600 break-all">
-                            {fhirPath}
+                            {fhirPathValue}
                           </code>
                         )}
                       </div>

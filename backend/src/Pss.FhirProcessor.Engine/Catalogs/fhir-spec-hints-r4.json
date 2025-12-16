@@ -1,83 +1,46 @@
 {
   "version": "4.0.1",
-  "description": "HL7 FHIR R4 required field hints - Advisory only, not enforced",
+  "description": "Manual SPEC_HINT catalog - Fallback for rules NOT auto-generated from HL7 StructureDefinitions. Advisory only, not enforced.",
+  "_comment": "REFACTORED 2025-12-15: Removed all hints that are auto-generated from HL7 R4 StructureDefinitions (min>0 rules). Only implementation guidance and best practices remain.",
+  "_removed_categories": [
+    "Simple required fields with min=1 in HL7 StructureDefinitions (now auto-generated)",
+    "Examples removed: Encounter.status, Encounter.class, Observation.status, Observation.code"
+  ],
   "hints": {
-    "Patient": [
-      {
-        "path": "identifier",
-        "reason": "HL7 FHIR R4 specification marks identifier as required (min cardinality = 1)",
-        "severity": "warning",
-        "source": "HL7"
-      },
-      {
-        "path": "communication.language",
-        "isConditional": true,
-        "condition": "communication.exists()",
-        "appliesToEach": true,
-        "reason": "If Patient.communication is present, language is mandatory (1..1) per HL7 FHIR R4",
-        "severity": "warning",
-        "source": "HL7"
-      },
-      {
-        "path": "contact.name",
-        "isConditional": true,
-        "condition": "contact.exists()",
-        "appliesToEach": true,
-        "reason": "If Patient.contact is present, name is mandatory (1..1) per HL7 FHIR R4",
-        "severity": "warning",
-        "source": "HL7"
-      }
-    ],
-    "Encounter": [
-      {
-        "path": "status",
-        "reason": "HL7 FHIR R4 specification marks status as required (min cardinality = 1)",
-        "severity": "warning",
-        "source": "HL7"
-      },
-      {
-        "path": "class",
-        "reason": "HL7 FHIR R4 specification marks class as required (min cardinality = 1)",
-        "severity": "warning",
-        "source": "HL7"
-      }
-    ],
-    "Observation": [
-      {
-        "path": "status",
-        "reason": "HL7 FHIR R4 specification marks status as required (min cardinality = 1)",
-        "severity": "warning",
-        "source": "HL7"
-      },
-      {
-        "path": "code",
-        "reason": "HL7 FHIR R4 specification marks code as required (min cardinality = 1)",
-        "severity": "warning",
-        "source": "HL7"
-      }
-    ],
     "Organization": [
       {
         "path": "name",
-        "reason": "HL7 FHIR R4 specification marks name as required (min cardinality = 1)",
+        "reason": "Implementation best practice: Organization should have a name for usability, though HL7 FHIR R4 does not mandate it (min=0)",
         "severity": "warning",
-        "source": "HL7"
+        "source": "Manual",
+        "origin": "manual",
+        "rationale": "HL7 R4 StructureDefinition has Organization.name with min=0, but a name is essential for practical use",
+        "isConditional": false,
+        "appliesToEach": false
       }
     ],
     "Location": [
       {
         "path": "name",
-        "reason": "HL7 FHIR R4 specification marks name as required (min cardinality = 1)",
+        "reason": "Implementation best practice: Location should have a name for identification, though HL7 FHIR R4 does not mandate it (min=0)",
         "severity": "warning",
-        "source": "HL7"
+        "source": "Manual",
+        "origin": "manual",
+        "rationale": "HL7 R4 StructureDefinition has Location.name with min=0, but a name is essential for practical use",
+        "isConditional": false,
+        "appliesToEach": false
       }
     ],
     "HealthcareService": [
       {
         "path": "name",
-        "reason": "HL7 FHIR R4 specification marks name as required (min cardinality = 1)",
+        "reason": "Implementation best practice: HealthcareService should have a name for clarity, though HL7 FHIR R4 does not mandate it (min=0)",
         "severity": "warning",
-        "source": "HL7"
+        "source": "Manual",
+        "origin": "manual",
+        "rationale": "HL7 R4 StructureDefinition has HealthcareService.name with min=0, but a name is essential for practical use",
+        "isConditional": false,
+        "appliesToEach": false
       }
     ]
   }

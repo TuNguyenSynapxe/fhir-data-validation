@@ -4,6 +4,8 @@ import { RuleFilters, type RuleFilterState } from './RuleFilters';
 import { RuleNavigator } from './RuleNavigator';
 import { RuleList } from './RuleList';
 import { RuleEditorModal } from './RuleEditorModal';
+import { SuggestedRulesPanel } from './SuggestedRulesPanel';
+import type { SystemRuleSuggestion } from '../../../api/projects';
 
 interface Rule {
   id: string;
@@ -26,6 +28,7 @@ interface RulesPanelProps {
   projectBundle?: object;
   hl7Samples?: any[];
   onNavigateToPath?: (path: string) => void;
+  suggestions?: SystemRuleSuggestion[];
 }
 
 export const RulesPanel: React.FC<RulesPanelProps> = ({
@@ -36,6 +39,7 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
   projectBundle,
   hl7Samples,
   onNavigateToPath,
+  suggestions = [],
 }) => {
   const [filters, setFilters] = useState<RuleFilterState>({
     searchQuery: '',
@@ -47,6 +51,7 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
   const [selectedResourceType, setSelectedResourceType] = useState<string | null>(null);
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
 
   // Extract available filter options
   const availableResourceTypes = useMemo(() => {
@@ -183,6 +188,43 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  // Filter out dismissed suggestions
+  const visibleSuggestions = useMemo(() => {
+    return suggestions.filter(s => !dismissedSuggestions.has(s.suggestionId));
+  }, [suggestions, dismissedSuggestions]);
+
+  // Handle applying a suggestion - convert to editable rule
+  const handleApplySuggestion = (suggestion: SystemRuleSuggestion) => {
+    // Only allow converting suggestions that have a rule type
+    if (!suggestion.ruleType) {
+      return; // Observation-only, cannot convert to rule
+    }
+    
+    // Convert suggestion to Rule format
+    const newRule: Rule = {
+      id: `rule-${Date.now()}`, // Temporary ID
+      type: suggestion.ruleType,
+      resourceType: suggestion.resourceType,
+      path: suggestion.path,
+      severity: 'error', // Default severity
+      message: `${suggestion.ruleType} validation for ${suggestion.resourceType}.${suggestion.path}`,
+      params: suggestion.params,
+      origin: 'system-suggested',
+    };
+
+    // Open editor modal with pre-filled suggestion data
+    setEditingRule(newRule);
+    setIsModalOpen(true);
+
+    // Remove from suggestions after applying
+    setDismissedSuggestions(prev => new Set(prev).add(suggestion.suggestionId));
+  };
+
+  // Handle dismissing a suggestion
+  const handleDismissSuggestion = (suggestionId: string) => {
+    setDismissedSuggestions(prev => new Set(prev).add(suggestionId));
+  };
+
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Header */}
@@ -233,6 +275,15 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
 
         {/* Rule List */}
         <div className="flex-1 overflow-y-auto p-4">
+          {/* Suggested Rules Section - appears above project rules */}
+          <SuggestedRulesPanel
+            suggestions={visibleSuggestions}
+            onApplySuggestion={handleApplySuggestion}
+            onDismissSuggestion={handleDismissSuggestion}
+            onNavigateToPath={onNavigateToPath}
+          />
+
+          {/* Project Rules Section */}
           <RuleList
             rules={filteredRules}
             onEditRule={handleEditRule}

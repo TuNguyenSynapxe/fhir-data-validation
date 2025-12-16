@@ -10,11 +10,8 @@ import {
 } from '../hooks/usePlayground';
 import PlaygroundLayout from '../layouts/PlaygroundLayout';
 import { BundleTabs } from '../components/playground/Bundle/BundleTabs';
-import { RulesPanel } from '../components/playground/Rules/RulesPanel';
-import { CodeMasterEditor } from '../components/playground/CodeMaster/CodeMasterEditor';
-import { RuleSetMetadata } from '../components/playground/Metadata/RuleSetMetadata';
-import { ValidationPanel } from '../components/playground/Validation/ValidationPanel';
-
+import { RightPanelContainer } from '../components/common/RightPanelContainer';
+import { RightPanelMode } from '../types/rightPanel';
 
 import type { FhirSampleMetadata } from '../types/fhirSample';
 
@@ -48,6 +45,10 @@ export default function PlaygroundPage() {
   const [rules, setRules] = useState<Rule[]>([]);
   const [activeTab, setActiveTab] = useState<'rules' | 'codemaster' | 'metadata'>('rules');
   const [hl7Samples, setHl7Samples] = useState<FhirSampleMetadata[]>([]);
+  const [ruleSuggestions, setRuleSuggestions] = useState<any[]>([]);
+  
+  // Right Panel Mode (default: Rules)
+  const [rightPanelMode, setRightPanelMode] = useState<RightPanelMode>(RightPanelMode.Rules);
   
   // Track original values for change detection
   const [originalBundleJson, setOriginalBundleJson] = useState('');
@@ -140,6 +141,13 @@ export default function PlaygroundPage() {
 
   const handleRulesChange = (updatedRules: Rule[]) => {
     setRules(updatedRules);
+  };
+  
+  /**
+   * Handle validation start - switch to Validation mode
+   */
+  const handleValidationStart = () => {
+    setRightPanelMode(RightPanelMode.Validation);
   };
   
   /**
@@ -245,53 +253,13 @@ export default function PlaygroundPage() {
     );
   }
 
-  const renderRightPanel = () => {
-    // Parse project bundle for drawer (read-only)
-    let projectBundle: object | undefined;
-    try {
-      projectBundle = bundleJson ? JSON.parse(bundleJson) : undefined;
-    } catch {
-      projectBundle = undefined;
-    }
-
-    switch (activeTab) {
-      case 'rules':
-        return (
-          <RulesPanel
-            rules={rules}
-            onRulesChange={handleRulesChange}
-            onSave={handleSaveRules}
-            hasChanges={saveRulesMutation.isPending}
-            projectBundle={projectBundle}
-            hl7Samples={hl7Samples}
-            onNavigateToPath={handleNavigateToPath}
-          />
-        );
-      case 'codemaster':
-        return (
-          <CodeMasterEditor
-            value={codeMasterJson}
-            onChange={setCodeMasterJson}
-            onSave={handleSaveCodeMaster}
-            hasChanges={codeMasterJson !== originalCodeMasterJson}
-            isSaving={saveCodeMasterMutation.isPending}
-          />
-        );
-      case 'metadata':
-        return (
-          <RuleSetMetadata
-            version="1.0"
-            project={project.name}
-            fhirVersion="R4"
-            onVersionChange={() => {}}
-            onProjectChange={() => {}}
-            onFhirVersionChange={() => {}}
-            onSave={handleSaveRules}
-            hasChanges={false}
-          />
-        );
-    }
-  };
+  // Parse project bundle for drawer (read-only)
+  let projectBundle: object | undefined;
+  try {
+    projectBundle = bundleJson ? JSON.parse(bundleJson) : undefined;
+  } catch {
+    projectBundle = undefined;
+  }
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
@@ -341,73 +309,38 @@ export default function PlaygroundPage() {
             </div>
           }
           rulesContent={
-            <div 
-              className={`flex flex-col h-full transition-all duration-200 ${
-                treeViewFocused ? 'opacity-40 pointer-events-none' : ''
-              }`}
-              onClick={handleClearFocus}
-            >
-              {/* Tab Navigation */}
-              <div className="flex border-b bg-gray-50">
-                <button
-                  onClick={() => setActiveTab('rules')}
-                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'rules'
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Rules
-                </button>
-                <button
-                  onClick={() => setActiveTab('codemaster')}
-                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'codemaster'
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  CodeMaster
-                </button>
-                <button
-                  onClick={() => setActiveTab('metadata')}
-                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'metadata'
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Metadata
-                </button>
-              </div>
-
-              {/* Tab Content */}
-              <div className="flex-1 overflow-hidden">{renderRightPanel()}</div>
-            </div>
-          }
-          validationContent={
-            <div 
-              className={`h-full transition-all duration-200 ${
-                treeViewFocused ? 'opacity-40 pointer-events-none' : ''
-              }`}
-              onClick={handleClearFocus}
-            >
-              {navigationFeedback && (
-                <div className="px-4 py-2 bg-blue-50 border-b border-blue-200 text-sm text-blue-800">
-                  ℹ️ {navigationFeedback}
-                </div>
-              )}
-              <ValidationPanel
-                projectId={projectId}
-                onSelectError={(error) => {
-                  const jsonPointer = error.jsonPointer || error.navigation?.jsonPointer;
-                  if (jsonPointer) {
-                    handleNavigateToPath(jsonPointer);
-                  }
-                }}
-                onNavigateToPath={handleNavigateToPath}
-              />
-            </div>
+            <RightPanelContainer
+              currentMode={rightPanelMode}
+              onModeChange={setRightPanelMode}
+              showModeTabs={true}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              rules={rules}
+              onRulesChange={handleRulesChange}
+              onSaveRules={handleSaveRules}
+              hasRulesChanges={saveRulesMutation.isPending}
+              projectBundle={projectBundle}
+              hl7Samples={hl7Samples}
+              ruleSuggestions={ruleSuggestions}
+              codeMasterJson={codeMasterJson}
+              onCodeMasterChange={setCodeMasterJson}
+              onSaveCodeMaster={handleSaveCodeMaster}
+              hasCodeMasterChanges={codeMasterJson !== originalCodeMasterJson}
+              isSavingCodeMaster={saveCodeMasterMutation.isPending}
+              projectName={project.name}
+              projectId={projectId}
+              onSelectError={(error) => {
+                const jsonPointer = error.jsonPointer || error.navigation?.jsonPointer;
+                if (jsonPointer) {
+                  handleNavigateToPath(jsonPointer);
+                }
+              }}
+              onSuggestionsReceived={setRuleSuggestions}
+              onValidationStart={handleValidationStart}
+              onNavigateToPath={handleNavigateToPath}
+              isDimmed={treeViewFocused}
+              onClearFocus={handleClearFocus}
+            />
           }
         />
       </div>

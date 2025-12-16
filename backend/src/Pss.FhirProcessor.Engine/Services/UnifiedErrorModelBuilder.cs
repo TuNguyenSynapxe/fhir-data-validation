@@ -276,11 +276,7 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 Path = issue.Path,
                 JsonPointer = issue.JsonPointer,
                 ErrorCode = isConditional ? "SPEC_REQUIRED_CONDITIONAL" : "MISSING_REQUIRED_FIELD",
-                Message = isConditional
-                    ? $"According to HL7 FHIR R4, '{GetFieldName(issue.Path)}' is mandatory when its parent is present. {issue.Reason}. " +
-                      "This is advisory only and does not block validation."
-                    : $"HL7 FHIR specification marks '{issue.Path}' as required, but it is missing. {issue.Reason}. " +
-                      "This is advisory only and does not block validation.",
+                Message = $"{issue.Reason} This is advisory only and does not block validation.",
                 Details = new Dictionary<string, object>
                 {
                     ["reason"] = issue.Reason,

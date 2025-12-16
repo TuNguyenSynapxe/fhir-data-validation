@@ -37,17 +37,42 @@ public class SmartPathNavigationService : ISmartPathNavigationService
             var json = fhirSerializer.SerializeToString(bundle);
             var currentNode = JsonDocument.Parse(json).RootElement;
             
-            // If path doesn't start with "entry", assume it's relative to first resource (or specified resourceType)
+            // If path doesn't start with "entry", check if first segment is a resource type
+            int segmentStartIndex = 0;
             if (segments.Count > 0 && segments[0].PropertyName != "entry")
             {
-                // Find entry index - either by resourceType or default to 0
+                // Check if first segment is a FHIR resource type
+                var firstSegment = segments[0].PropertyName;
+                var isResourceType = bundle.Entry.Any(e => e.Resource?.TypeName == firstSegment);
+                
+                string? targetResourceType = null;
+                if (isResourceType)
+                {
+                    // First segment is a resource type, use it to find the entry
+                    targetResourceType = firstSegment;
+                    segmentStartIndex = 1; // Skip first segment, continue from second
+                }
+                else if (!string.IsNullOrEmpty(resourceType))
+                {
+                    // Use provided resourceType parameter
+                    targetResourceType = resourceType;
+                    segmentStartIndex = 0; // Process all segments
+                }
+                else
+                {
+                    // Default to first entry
+                    targetResourceType = null;
+                    segmentStartIndex = 0;
+                }
+                
+                // Find entry index
                 int? entryIndex = null;
-                if (!string.IsNullOrEmpty(resourceType))
+                if (!string.IsNullOrEmpty(targetResourceType))
                 {
                     // Find first entry matching resource type
                     for (int i = 0; i < bundle.Entry.Count; i++)
                     {
-                        if (bundle.Entry[i].Resource?.TypeName == resourceType)
+                        if (bundle.Entry[i].Resource?.TypeName == targetResourceType)
                         {
                             entryIndex = i;
                             break;
@@ -95,12 +120,14 @@ public class SmartPathNavigationService : ISmartPathNavigationService
                 else
                 {
                     exists = false;
-                    missingParents.Add(resourceType ?? "entry[0]");
+                    missingParents.Add(targetResourceType ?? "entry[0]");
                 }
             }
             
-            // Process each segment
-            foreach (var segment in segments)
+            // Process remaining segments (skip segments already processed as resource type)
+            for (int i = segmentStartIndex; i < segments.Count; i++)
+            {
+                var segment = segments[i];
             {
                 if (segment.Type == SegmentType.EntryReference)
                 {
@@ -224,6 +251,7 @@ public class SmartPathNavigationService : ISmartPathNavigationService
                     }
                 }
             }
+            } // End of for loop
             
             navInfo.JsonPointer = pointer.ToString();
             navInfo.Breadcrumbs = breadcrumbs;

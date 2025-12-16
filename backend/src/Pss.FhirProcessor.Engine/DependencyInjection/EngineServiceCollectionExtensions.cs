@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Pss.FhirProcessor.Engine.Interfaces;
 using Pss.FhirProcessor.Engine.Services;
 
@@ -30,13 +31,31 @@ public static class EngineServiceCollectionExtensions
         // Register validation services
         services.AddScoped<IValidationPipeline, ValidationPipeline>();
         services.AddScoped<ILintValidationService, LintValidationService>(); // Pre-FHIR best-effort lint layer
-        services.AddScoped<ISpecHintService, SpecHintService>(); // Advisory HL7 required field hints (debug only)
+        
+        // Register Hl7SpecHintGenerator for auto-generating hints
+        services.AddSingleton<Hl7SpecHintGenerator>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<Hl7SpecHintGenerator>>();
+            return new Hl7SpecHintGenerator(logger);
+        });
+        
+        // Register SpecHintService with auto-generation support
+        services.AddScoped<ISpecHintService>(sp =>
+        {
+            var generator = sp.GetRequiredService<Hl7SpecHintGenerator>();
+            var logger = sp.GetRequiredService<ILogger<SpecHintService>>();
+            return new SpecHintService(generator, logger);
+        });
+        
         services.AddScoped<IFirelyValidationService, FirelyValidationService>();
         services.AddScoped<IFhirPathRuleEngine, FhirPathRuleEngine>();
         services.AddScoped<ICodeMasterEngine, CodeMasterEngine>();
         services.AddScoped<IReferenceResolver, ReferenceResolver>();
         services.AddScoped<ISmartPathNavigationService, SmartPathNavigationService>();
         services.AddScoped<IUnifiedErrorModelBuilder, UnifiedErrorModelBuilder>();
+        
+        // Register System Rule Suggestion Service (deterministic pattern analysis)
+        services.AddScoped<ISystemRuleSuggestionService, SystemRuleSuggestionService>();
 
         return services;
     }
