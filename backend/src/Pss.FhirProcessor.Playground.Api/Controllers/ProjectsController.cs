@@ -170,6 +170,28 @@ public class ProjectsController : ControllerBase
     }
 
     /// <summary>
+    /// Update validation settings for a project (runtime configuration, separate from rules)
+    /// </summary>
+    [HttpPost("{id}/validation-settings")]
+    public async Task<ActionResult<Project>> UpdateValidationSettings(Guid id, [FromBody] SaveValidationSettingsRequest request)
+    {
+        try
+        {
+            var project = await _projectService.UpdateValidationSettingsAsync(id, request.ValidationSettingsJson);
+            return Ok(project);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating validation settings for project {ProjectId}", id);
+            return StatusCode(500, new { error = "Failed to update validation settings", message = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Export rule package (rules + codemaster) for external teams
     /// </summary>
     [HttpGet("{id}/export")]

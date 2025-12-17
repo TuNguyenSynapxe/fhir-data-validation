@@ -14,5 +14,5 @@ public interface IReferenceResolver
     /// - Reference type matches allowed target types
     /// - Reference format is valid (urn:uuid, resourceType/id)
     /// </summary>
-    Task<List<ReferenceValidationError>> ValidateAsync(Bundle bundle, CancellationToken cancellationToken = default);
+    Task<List<ReferenceValidationError>> ValidateAsync(Bundle bundle, ValidationSettings? settings = null, CancellationToken cancellationToken = default);
 }

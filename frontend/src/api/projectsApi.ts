@@ -39,6 +39,12 @@ export async function saveCodeMaster(id: string, json: string): Promise<void> {
   });
 }
 
+export async function saveValidationSettings(id: string, json: string): Promise<void> {
+  await httpClient.post(`/api/projects/${id}/validation-settings`, {
+    validationSettingsJson: json,
+  });
+}
+
 export async function saveBundle(id: string, json: string): Promise<void> {
   await httpClient.post(`/api/projects/${id}/bundle`, {
     bundleJson: json,

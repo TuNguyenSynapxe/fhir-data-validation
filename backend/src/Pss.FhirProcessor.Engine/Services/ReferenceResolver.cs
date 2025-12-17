@@ -3,6 +3,7 @@ using Hl7.Fhir.Model;
 using Hl7.Fhir.Introspection;
 using Pss.FhirProcessor.Engine.Models;
 using Pss.FhirProcessor.Engine.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace Pss.FhirProcessor.Engine.Services;
 
@@ -11,9 +12,19 @@ namespace Pss.FhirProcessor.Engine.Services;
 /// </summary>
 public class ReferenceResolver : IReferenceResolver
 {
-    public async Task<List<ReferenceValidationError>> ValidateAsync(Bundle bundle, CancellationToken cancellationToken = default)
+    private readonly ILogger<ReferenceResolver>? _logger;
+    
+    public ReferenceResolver(ILogger<ReferenceResolver>? logger = null)
+    {
+        _logger = logger;
+    }
+    
+    public async Task<List<ReferenceValidationError>> ValidateAsync(Bundle bundle, ValidationSettings? settings = null, CancellationToken cancellationToken = default)
     {
         var errors = new List<ReferenceValidationError>();
+        
+        var policy = settings?.ReferenceResolutionPolicy ?? "InBundleOnly";
+        _logger?.LogInformation("Reference validation starting with policy: {Policy}", policy);
         
         // Build a lookup of available resources
         var resourceLookup = BuildResourceLookup(bundle);
@@ -25,9 +36,11 @@ public class ReferenceResolver : IReferenceResolver
             if (entry.Resource == null)
                 continue;
             
-            var refErrors = ValidateResourceReferences(entry.Resource, i, resourceLookup);
+            var refErrors = ValidateResourceReferences(entry.Resource, i, resourceLookup, settings);
             errors.AddRange(refErrors);
         }
+        
+        _logger?.LogInformation("Reference validation complete: {ErrorCount} errors found", errors.Count);
         
         return await System.Threading.Tasks.Task.FromResult(errors);
     }
@@ -65,7 +78,8 @@ public class ReferenceResolver : IReferenceResolver
     private List<ReferenceValidationError> ValidateResourceReferences(
         Resource resource,
         int entryIndex,
-        Dictionary<string, (string ResourceType, string ResourceId, int EntryIndex)> resourceLookup)
+        Dictionary<string, (string ResourceType, string ResourceId, int EntryIndex)> resourceLookup,
+        ValidationSettings? settings = null)
     {
         var errors = new List<ReferenceValidationError>();
         
@@ -94,13 +108,29 @@ public class ReferenceResolver : IReferenceResolver
             // Check if reference exists in bundle
             if (!resourceLookup.ContainsKey(reference.Reference))
             {
+                // Determine severity based on validation settings
+                var severity = "error";
+                var message = $"Referenced resource not found: {reference.Reference}";
+                
+                // Apply AllowExternal policy: downgrade to warning if external references are allowed
+                var policy = settings?.ReferenceResolutionPolicy ?? "InBundleOnly";
+                
+                _logger?.LogInformation("Reference not found: {Reference}, Policy: {Policy}", reference.Reference, policy);
+                
+                if (policy.Equals("AllowExternal", StringComparison.OrdinalIgnoreCase))
+                {
+                    severity = "warning";
+                    message = $"Reference not resolved: {reference.Reference}. External references are allowed by project settings.";
+                    _logger?.LogInformation("Downgraded to warning due to AllowExternal policy");
+                }
+                
                 errors.Add(new ReferenceValidationError
                 {
-                    Severity = "error",
+                    Severity = severity,
                     ResourceType = resource.TypeName,
                     Path = refPath,
                     ErrorCode = "REFERENCE_NOT_FOUND",
-                    Message = $"Referenced resource not found: {reference.Reference}",
+                    Message = message,
                     Details = new Dictionary<string, object>
                     {
                         ["reference"] = reference.Reference

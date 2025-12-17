@@ -135,6 +135,19 @@ public class ProjectRepository : IProjectRepository
         return project;
     }
 
+    public async Task<Project> SaveValidationSettingsAsync(Guid id, string validationSettingsJson)
+    {
+        var project = await GetAsync(id);
+        if (project == null)
+            throw new InvalidOperationException($"Project {id} not found");
+        
+        project.ValidationSettingsJson = validationSettingsJson;
+        project.UpdatedAt = DateTime.UtcNow;
+        
+        await SaveProjectAsync(project);
+        return project;
+    }
+
     public Task<bool> DeleteAsync(Guid id)
     {
         var filePath = GetProjectFilePath(id);

@@ -13,6 +13,7 @@ public interface IProjectRepository
     Task<Project> SaveRulesAsync(Guid id, string rulesJson);
     Task<Project> SaveCodeMasterAsync(Guid id, string codeMasterJson);
     Task<Project> SaveSampleBundleAsync(Guid id, string bundleJson);
+    Task<Project> SaveValidationSettingsAsync(Guid id, string validationSettingsJson);
     Task<bool> DeleteAsync(Guid id);
     Task<bool> ExistsAsync(Guid id);
 }

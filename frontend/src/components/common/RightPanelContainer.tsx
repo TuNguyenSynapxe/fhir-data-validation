@@ -19,8 +19,8 @@ interface RightPanelContainerProps {
   showModeTabs?: boolean; // Control whether to show mode tabs
   
   // Rules mode props
-  activeTab?: 'rules' | 'codemaster' | 'metadata';
-  onTabChange?: (tab: 'rules' | 'codemaster' | 'metadata') => void;
+  activeTab?: 'rules' | 'codemaster' | 'metadata' | 'settings';
+  onTabChange?: (tab: 'rules' | 'codemaster' | 'metadata' | 'settings') => void;
   rules?: Rule[];
   onRulesChange?: (rules: Rule[]) => void;
   onSaveRules?: () => void;
@@ -28,6 +28,13 @@ interface RightPanelContainerProps {
   projectBundle?: object;
   hl7Samples?: any[];
   ruleSuggestions?: any[];
+  
+  // Validation Settings props
+  validationSettings?: any;
+  onValidationSettingsChange?: (settings: any) => void;
+  onSaveValidationSettings?: () => void;
+  hasValidationSettingsChanges?: boolean;
+  isSavingValidationSettings?: boolean;
   
   // CodeMaster mode props
   codeMasterJson?: string;
@@ -136,6 +143,16 @@ export const RightPanelContainer: React.FC<RightPanelContainerProps> = ({
             }`}
           >
             Metadata
+          </button>
+          <button
+            onClick={() => onTabChange?.('settings')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'settings'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Validation Settings
           </button>
         </div>
       )}

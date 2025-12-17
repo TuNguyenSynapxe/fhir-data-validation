@@ -55,6 +55,14 @@ const extractNormalizedPath = (error: ValidationError): string | null => {
  * @returns True if the error blocks validation
  */
 export const isBlockingError = (error: ValidationError): boolean => {
+  // CRITICAL: Check actual severity first
+  // Backend may downgrade errors to warnings based on validation settings
+  // (e.g., AllowExternal policy downgrades reference errors to warnings)
+  if (error.severity === 'warning') {
+    return false;
+  }
+  
+  // For errors, use source metadata to determine blocking status
   const metadata = getLayerMetadata(error.source);
   return metadata.isBlocking;
 };
@@ -113,9 +121,11 @@ export const getBlockingStatusDisplay = (
   error: ValidationError,
   allErrors: ValidationError[]
 ): { text: string; isOverridden: boolean } => {
-  const metadata = getLayerMetadata(error.source);
+  // CRITICAL: Use isBlockingError() which checks actual severity first
+  // This respects backend validation settings (e.g., AllowExternal policy)
+  const blocking = isBlockingError(error);
   
-  if (metadata.isBlocking) {
+  if (blocking) {
     return {
       text: 'Blocking: YES',
       isOverridden: false

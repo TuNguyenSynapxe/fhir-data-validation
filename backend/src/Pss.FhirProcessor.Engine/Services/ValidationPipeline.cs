@@ -152,9 +152,10 @@ public class ValidationPipeline : IValidationPipeline
             
             // Step 5: Reference Validation
             // Only run if bundle was successfully parsed
+            // Pass validation settings to apply reference resolution policies
             if (bundle != null)
             {
-                var referenceErrors = await _referenceResolver.ValidateAsync(bundle, cancellationToken);
+                var referenceErrors = await _referenceResolver.ValidateAsync(bundle, request.ValidationSettings, cancellationToken);
                 var refErrors = await _errorBuilder.FromReferenceErrorsAsync(referenceErrors, bundle, cancellationToken);
                 response.Errors.AddRange(refErrors);
             }

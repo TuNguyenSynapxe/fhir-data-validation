@@ -14,4 +14,9 @@ public class Project
     public string? RulesJson { get; set; }
     public string? CodeMasterJson { get; set; }
     public string? SampleBundleJson { get; set; }
+    
+    /// <summary>
+    /// Runtime validation settings (separate from rule definitions)
+    /// </summary>
+    public string? ValidationSettingsJson { get; set; }
 }

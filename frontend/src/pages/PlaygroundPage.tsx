@@ -7,7 +7,10 @@ import {
   useSaveBundle,
   useSaveRules,
   useSaveCodeMaster,
+  useSaveValidationSettings,
 } from '../hooks/usePlayground';
+import type { ValidationSettings } from '../types/validationSettings';
+import { DEFAULT_VALIDATION_SETTINGS } from '../types/validationSettings';
 import PlaygroundLayout from '../layouts/PlaygroundLayout';
 import { BundleTabs } from '../components/playground/Bundle/BundleTabs';
 import { RightPanelContainer } from '../components/common/RightPanelContainer';
@@ -38,12 +41,13 @@ export default function PlaygroundPage() {
   const saveBundleMutation = useSaveBundle(projectId);
   const saveRulesMutation = useSaveRules(projectId);
   const saveCodeMasterMutation = useSaveCodeMaster(projectId);
-
+  const saveValidationSettingsMutation = useSaveValidationSettings(projectId);
 
   const [bundleJson, setBundleJson] = useState('');
   const [codeMasterJson, setCodeMasterJson] = useState('');
+  const [validationSettings, setValidationSettings] = useState<ValidationSettings>(DEFAULT_VALIDATION_SETTINGS);
   const [rules, setRules] = useState<Rule[]>([]);
-  const [activeTab, setActiveTab] = useState<'rules' | 'codemaster' | 'metadata'>('rules');
+  const [activeTab, setActiveTab] = useState<'rules' | 'codemaster' | 'metadata' | 'settings'>('rules');
   const [hl7Samples, setHl7Samples] = useState<FhirSampleMetadata[]>([]);
   const [ruleSuggestions, setRuleSuggestions] = useState<any[]>([]);
   
@@ -53,6 +57,7 @@ export default function PlaygroundPage() {
   // Track original values for change detection
   const [originalBundleJson, setOriginalBundleJson] = useState('');
   const [originalCodeMasterJson, setOriginalCodeMasterJson] = useState('');
+  const [originalValidationSettings, setOriginalValidationSettings] = useState<ValidationSettings>(DEFAULT_VALIDATION_SETTINGS);
   
   // Navigation state for Smart Path
   const [navigationFeedback, setNavigationFeedback] = useState<string | null>(null);
@@ -85,7 +90,7 @@ export default function PlaygroundPage() {
     };
   }, []);
 
-  // Parse rules JSON to extract rules array
+  // Parse rules JSON to extract rules array and load settings
   useEffect(() => {
     if (project) {
       const bundle = project.sampleBundleJson || '{}';
@@ -103,6 +108,22 @@ export default function PlaygroundPage() {
         setRules(parsed.rules || []);
       } catch {
         setRules([]);
+      }
+      
+      // Parse validation settings JSON
+      try {
+        const settingsJson = (project as any).validationSettingsJson;
+        if (settingsJson) {
+          const parsed = JSON.parse(settingsJson);
+          setValidationSettings(parsed);
+          setOriginalValidationSettings(parsed);
+        } else {
+          setValidationSettings(DEFAULT_VALIDATION_SETTINGS);
+          setOriginalValidationSettings(DEFAULT_VALIDATION_SETTINGS);
+        }
+      } catch {
+        setValidationSettings(DEFAULT_VALIDATION_SETTINGS);
+        setOriginalValidationSettings(DEFAULT_VALIDATION_SETTINGS);
       }
     }
   }, [project]);
@@ -136,6 +157,16 @@ export default function PlaygroundPage() {
       setOriginalCodeMasterJson(codeMasterJson);
     } catch (error) {
       console.error('Failed to save code master:', error);
+    }
+  };
+  
+  const handleSaveValidationSettings = async () => {
+    try {
+      const settingsJson = JSON.stringify(validationSettings, null, 2);
+      await saveValidationSettingsMutation.mutateAsync(settingsJson);
+      setOriginalValidationSettings(validationSettings);
+    } catch (error) {
+      console.error('Failed to save validation settings:', error);
     }
   };
 
@@ -327,6 +358,11 @@ export default function PlaygroundPage() {
               onSaveCodeMaster={handleSaveCodeMaster}
               hasCodeMasterChanges={codeMasterJson !== originalCodeMasterJson}
               isSavingCodeMaster={saveCodeMasterMutation.isPending}
+              validationSettings={validationSettings}
+              onValidationSettingsChange={setValidationSettings}
+              onSaveValidationSettings={handleSaveValidationSettings}
+              hasValidationSettingsChanges={JSON.stringify(validationSettings) !== JSON.stringify(originalValidationSettings)}
+              isSavingValidationSettings={saveValidationSettingsMutation.isPending}
               projectName={project.name}
               projectId={projectId}
               onSelectError={(error) => {

@@ -201,13 +201,13 @@ export const GroupedErrorCard: React.FC<GroupedErrorCardProps> = ({
 
             {/* Blocking indicator */}
             <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded border ${
-              metadata.isBlocking 
+              blockingStatus.text === 'Blocking: YES'
                 ? 'bg-red-50 text-red-700 border-red-200' 
                 : blockingStatus.isOverridden
                   ? 'bg-amber-50 text-amber-700 border-amber-200'
                   : 'bg-green-50 text-green-700 border-green-200'
             }`}>
-              {metadata.isBlocking ? (
+              {blockingStatus.text === 'Blocking: YES' ? (
                 <>
                   <XCircle className="w-3 h-3" />
                   <span className="font-semibold">{blockingStatus.text}</span>

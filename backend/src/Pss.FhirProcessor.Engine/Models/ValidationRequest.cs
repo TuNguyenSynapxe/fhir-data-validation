@@ -51,4 +51,11 @@ public class ValidationRequest
     /// </summary>
     [JsonPropertyName("validationMode")]
     public string? ValidationMode { get; set; } = "fast";
+    
+    /// <summary>
+    /// Runtime validation settings (optional)
+    /// Controls validation behavior without modifying rule definitions
+    /// </summary>
+    [JsonPropertyName("validationSettings")]
+    public ValidationSettings? ValidationSettings { get; set; }
 }

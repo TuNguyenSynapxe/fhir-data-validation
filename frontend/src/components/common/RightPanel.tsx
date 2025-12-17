@@ -4,6 +4,8 @@ import { RulesPanel } from '../playground/Rules/RulesPanel';
 import { ValidationPanel } from '../playground/Validation/ValidationPanel';
 import { CodeMasterEditor } from '../playground/CodeMaster/CodeMasterEditor';
 import { RuleSetMetadata } from '../playground/Metadata/RuleSetMetadata';
+import { ValidationSettingsEditor } from '../playground/Settings/ValidationSettingsEditor';
+import { DEFAULT_VALIDATION_SETTINGS } from '../../types/validationSettings';
 
 interface Rule {
   id: string;
@@ -20,7 +22,7 @@ interface RightPanelProps {
   currentMode: RightPanelMode;
   
   // Rules mode props
-  activeTab?: 'rules' | 'codemaster' | 'metadata';
+  activeTab?: 'rules' | 'codemaster' | 'metadata' | 'settings';
   rules?: Rule[];
   onRulesChange?: (rules: Rule[]) => void;
   onSaveRules?: () => void;
@@ -28,6 +30,13 @@ interface RightPanelProps {
   projectBundle?: object;
   hl7Samples?: any[];
   ruleSuggestions?: any[];
+  
+  // Validation Settings props
+  validationSettings?: any;
+  onValidationSettingsChange?: (settings: any) => void;
+  onSaveValidationSettings?: () => void;
+  hasValidationSettingsChanges?: boolean;
+  isSavingValidationSettings?: boolean;
   
   // CodeMaster mode props
   codeMasterJson?: string;
@@ -80,6 +89,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   hasCodeMasterChanges = false,
   isSavingCodeMaster = false,
   projectName = '',
+  validationSettings,
+  onValidationSettingsChange,
+  onSaveValidationSettings,
+  hasValidationSettingsChanges = false,
+  isSavingValidationSettings = false,
   projectId,
   onSelectError,
   onSuggestionsReceived,
@@ -125,6 +139,16 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             onFhirVersionChange={() => {}}
             onSave={onSaveRules || (() => {})}
             hasChanges={false}
+          />
+        );
+      case 'settings':
+        return (
+          <ValidationSettingsEditor
+            settings={validationSettings || DEFAULT_VALIDATION_SETTINGS}
+            onSettingsChange={onValidationSettingsChange || (() => {})}
+            onSave={onSaveValidationSettings || (() => {})}
+            hasChanges={hasValidationSettingsChanges}
+            isSaving={isSavingValidationSettings}
           />
         );
       default:

@@ -86,6 +86,14 @@ public class ProjectService : IProjectService
         return project;
     }
 
+    public async Task<Project> UpdateValidationSettingsAsync(Guid id, string validationSettingsJson)
+    {
+        var project = await _repository.SaveValidationSettingsAsync(id, validationSettingsJson);
+        _logger.LogInformation("Updated validation settings for project {ProjectId}", id);
+        
+        return project;
+    }
+
     public async Task<object> ExportRulePackageAsync(Guid id)
     {
         var project = await _repository.GetAsync(id);
@@ -127,6 +135,22 @@ public class ProjectService : IProjectService
             throw new InvalidOperationException("No bundle JSON provided for validation");
         }
         
+        // Parse validation settings if available
+        ValidationSettings? validationSettings = null;
+        if (!string.IsNullOrEmpty(project.ValidationSettingsJson))
+        {
+            try
+            {
+                validationSettings = System.Text.Json.JsonSerializer.Deserialize<ValidationSettings>(project.ValidationSettingsJson);
+                _logger.LogInformation("Loaded validation settings for project {ProjectId}: ReferencePolicy={Policy}", 
+                    id, validationSettings?.ReferenceResolutionPolicy ?? "null");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to parse validation settings for project {ProjectId}, using defaults", id);
+            }
+        }
+        
         // Build validation request
         var request = new ValidationRequest
         {
@@ -134,7 +158,8 @@ public class ProjectService : IProjectService
             RulesJson = project.RulesJson,
             CodeMasterJson = project.CodeMasterJson,
             FhirVersion = project.FhirVersion,
-            ValidationMode = validationMode
+            ValidationMode = validationMode,
+            ValidationSettings = validationSettings
         };
         
         _logger.LogInformation("Validating project {ProjectId} with bundle of {Length} chars", id, bundleJson.Length);

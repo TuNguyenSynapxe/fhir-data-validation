@@ -48,6 +48,18 @@ export function useSaveCodeMaster(id: string) {
   });
 }
 
+export function useSaveValidationSettings(id: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (json: string) => projectsApi.saveValidationSettings(id, json),
+    onSuccess: () => {
+      // Invalidate project data
+      queryClient.invalidateQueries({ queryKey: ['project', id] });
+    },
+  });
+}
+
 export function useValidateProject(id: string) {
   return useMutation({
     mutationFn: () => projectsApi.validateProject(id),

@@ -545,19 +545,20 @@ public class SpecHintService : ISpecHintService
         _logger?.LogDebug("BaseDirectory for StructureDefinition search: {BaseDirectory}", baseDirectory);
         
         // Try multiple potential locations
+        // UPDATED: Changed from "StructureDefinitions" to root fhir/r4 folder (contains resources/, base/, datatypes/ subdirectories)
         var potentialPaths = new[]
         {
-            // Development: bin/Debug/net8.0/ -> ../../../../../specs/fhir/r4/StructureDefinitions/
-            Path.Combine(baseDirectory, "..", "..", "..", "..", "..", "specs", "fhir", normalizedVersion.ToLower(), "StructureDefinitions"),
+            // Development: bin/Debug/net8.0/ -> ../../../../../specs/fhir/r4/
+            Path.Combine(baseDirectory, "..", "..", "..", "..", "..", "specs", "fhir", normalizedVersion.ToLower()),
             
-            // Published: /specs/fhir/r4/StructureDefinitions/ (relative to bin)
-            Path.Combine(baseDirectory, "specs", "fhir", normalizedVersion.ToLower(), "StructureDefinitions"),
+            // Published: /specs/fhir/r4/ (relative to bin)
+            Path.Combine(baseDirectory, "specs", "fhir", normalizedVersion.ToLower()),
             
-            // Alternative: /specs/fhir/R4/StructureDefinitions/
-            Path.Combine(baseDirectory, "specs", "fhir", normalizedVersion, "StructureDefinitions"),
+            // Alternative: /specs/fhir/R4/
+            Path.Combine(baseDirectory, "specs", "fhir", normalizedVersion),
             
             // Development alternate: from Engine project (4 levels up)
-            Path.Combine(baseDirectory, "..", "..", "..", "..", "specs", "fhir", normalizedVersion.ToLower(), "StructureDefinitions")
+            Path.Combine(baseDirectory, "..", "..", "..", "..", "specs", "fhir", normalizedVersion.ToLower())
         };
 
         foreach (var path in potentialPaths)

@@ -99,12 +99,18 @@ public class Hl7SpecHintGenerator
     /// </summary>
     private (string ResourceType, List<SpecHint> Hints)? ProcessStructureDefinition(string filePath, string fhirVersion)
     {
+        _logger.LogDebug("Processing StructureDefinition file: {FilePath}", filePath);
+        
         var json = File.ReadAllText(filePath);
         var structureDefinition = _parser.Parse<StructureDefinition>(json);
+
+        _logger.LogDebug("Parsed StructureDefinition: Name={Name}, Kind={Kind}, Type={Type}", 
+            structureDefinition.Name, structureDefinition.Kind, structureDefinition.Type);
 
         // Only process base resource types (not profiles or extensions)
         if (structureDefinition.Kind != StructureDefinition.StructureDefinitionKind.Resource)
         {
+            _logger.LogDebug("Skipping non-resource type: {Name} (Kind={Kind})", structureDefinition.Name, structureDefinition.Kind);
             return null;
         }
 
@@ -112,28 +118,45 @@ public class Hl7SpecHintGenerator
         var resourceType = structureDefinition.Type;
         if (string.IsNullOrWhiteSpace(resourceType))
         {
+            _logger.LogWarning("Skipping StructureDefinition with no type: {Name}", structureDefinition.Name);
             return null;
         }
 
         // Filter to major FHIR resources only (not infrastructural types)
         if (IsInfrastructuralType(resourceType))
         {
+            _logger.LogDebug("Skipping infrastructural type: {ResourceType}", resourceType);
             return null;
         }
+
+        _logger.LogInformation("Processing resource type: {ResourceType} from file {FileName}", 
+            resourceType, Path.GetFileName(filePath));
 
         var hints = new List<SpecHint>();
 
         // Process snapshot elements (complete expanded view)
         if (structureDefinition.Snapshot?.Element != null)
         {
+            _logger.LogDebug("Processing {Count} elements for {ResourceType}", 
+                structureDefinition.Snapshot.Element.Count, resourceType);
+            
             // Build constraint lookup for conditional requirements
             var constraints = BuildConstraintLookup(structureDefinition);
 
+            var processedCount = 0;
             foreach (var element in structureDefinition.Snapshot.Element)
             {
                 var elementHints = ExtractHintsFromElement(element, resourceType, fhirVersion, constraints, structureDefinition.Snapshot.Element);
                 hints.AddRange(elementHints);
+                processedCount++;
             }
+            
+            _logger.LogInformation("Processed {ProcessedCount} elements, generated {HintCount} hints for {ResourceType}", 
+                processedCount, hints.Count, resourceType);
+        }
+        else
+        {
+            _logger.LogWarning("No snapshot elements found for {ResourceType}", resourceType);
         }
 
         return (resourceType, hints);
@@ -169,27 +192,108 @@ public class Hl7SpecHintGenerator
             // RULE: Check if element is required (min > 0)
             if (element.Min.HasValue && element.Min.Value > 0u)
             {
+                _logger.LogDebug("Processing required element: Path={Path}, ResourceType={ResourceType}, Min={Min}, Max={Max}",
+                    element.Path, resourceType, element.Min.Value, element.Max);
+
                 // Extract relative path (remove resource type prefix)
-                var relativePath = element.Path.Substring(resourceType.Length + 1);
+                // Handle case where path doesn't start with resourceType (shouldn't happen but defensive)
+                string relativePath;
+                var expectedPrefix = resourceType + ".";
+                
+                _logger.LogDebug("Checking path format: Path='{Path}', ExpectedPrefix='{Prefix}', StartsWith={StartsWith}",
+                    element.Path, expectedPrefix, element.Path.StartsWith(expectedPrefix));
+                
+                if (element.Path.StartsWith(expectedPrefix))
+                {
+                    try
+                    {
+                        relativePath = element.Path.Substring(resourceType.Length + 1);
+                        _logger.LogDebug("Successfully extracted relative path: '{RelativePath}' from '{FullPath}'",
+                            relativePath, element.Path);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Substring failed: Path='{Path}', ResourceType='{ResourceType}', Length={Length}",
+                            element.Path, resourceType, resourceType.Length);
+                        relativePath = element.Path;
+                    }
+                }
+                else
+                {
+                    // Path doesn't have expected format, use as-is
+                    _logger.LogWarning("Unexpected path format: Path='{Path}', ResourceType='{ResourceType}', Expected='{Expected}'",
+                        element.Path, resourceType, expectedPrefix);
+                    relativePath = element.Path;
+                }
 
                 // Check if parent element is optional (implicit conditional)
                 var parentPath = GetParentPath(element.Path);
+                _logger.LogDebug("Parent path analysis: Element='{Path}', ParentPath='{ParentPath}'",
+                    element.Path, parentPath ?? "<null>");
+                
                 var parentElement = parentPath != null 
                     ? allElements.FirstOrDefault(e => e.Path == parentPath) 
                     : null;
-                var isImplicitConditional = parentElement != null && parentElement.Min.GetValueOrDefault(0) == 0;
+                
+                if (parentElement != null)
+                {
+                    _logger.LogDebug("Found parent element: Path='{Path}', Min={Min}, Max={Max}",
+                        parentElement.Path, parentElement.Min, parentElement.Max);
+                }
+                else if (parentPath != null)
+                {
+                    _logger.LogDebug("Parent element not found in schema: ParentPath='{ParentPath}'", parentPath);
+                }
+                
+                // GUARD: Root-level required fields should NOT be conditional
+                // When parentPath equals the resourceType (e.g., "Observation" for "Observation.status"),
+                // the field is a direct child of the resource root. These should be simple required hints,
+                // not conditional, because they're always required when the resource exists.
+                var isRootLevelField = parentPath == resourceType;
+                
+                var isImplicitConditional = parentElement != null 
+                    && parentElement.Min.GetValueOrDefault(0) == 0 
+                    && !isRootLevelField; // NEW: Exclude root-level fields from conditional treatment
 
                 // Check if has explicit condition property
                 var hasExplicitCondition = element.Condition != null && element.Condition.Any();
+                
+                _logger.LogDebug("Condition analysis: Element='{Path}', IsImplicit={IsImplicit}, HasExplicit={HasExplicit}, IsRootLevel={IsRootLevel}",
+                    element.Path, isImplicitConditional, hasExplicitCondition, isRootLevelField);
 
                 if (isImplicitConditional)
                 {
                     // IMPLICIT conditional: required child of optional parent
-                    var parentRelativePath = parentPath!.Substring(resourceType.Length + 1);
+                    // Handle case where parentPath equals resourceType (root level fields)
+                    _logger.LogDebug("Processing implicit conditional: ParentPath='{ParentPath}', ResourceType='{ResourceType}', Equals={Equals}",
+                        parentPath, resourceType, parentPath == resourceType);
+                    
+                    string parentRelativePath;
+                    if (parentPath == resourceType)
+                    {
+                        parentRelativePath = "";
+                        _logger.LogDebug("Root-level parent detected, using empty parent relative path");
+                    }
+                    else
+                    {
+                        try
+                        {
+                            parentRelativePath = parentPath!.Substring(resourceType.Length + 1);
+                            _logger.LogDebug("Extracted parent relative path: '{ParentRelativePath}' from '{ParentPath}'",
+                                parentRelativePath, parentPath);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Parent substring failed: ParentPath='{ParentPath}', ResourceType='{ResourceType}', Length={Length}",
+                                parentPath, resourceType, resourceType.Length);
+                            parentRelativePath = "";
+                        }
+                    }
+                    
                     var appliesToEach = parentElement!.Max == "*";
                     
-                    _logger.LogDebug("Detected implicit conditional: {Path} (parent: {ParentPath}, appliesToEach: {AppliesToEach})",
-                        element.Path, parentPath, appliesToEach);
+                    _logger.LogInformation("Creating implicit conditional hint: Path='{Path}', RelativePath='{RelativePath}', ParentPath='{ParentPath}', AppliesToEach={AppliesToEach}",
+                        element.Path, relativePath, parentRelativePath, appliesToEach);
                     
                     hints.Add(new SpecHint
                     {
@@ -205,12 +309,17 @@ public class Hl7SpecHintGenerator
                 else if (hasExplicitCondition)
                 {
                     // EXPLICIT conditional - need to extract condition expression from constraint
+                    _logger.LogInformation("Creating explicit conditional hint: Path='{Path}', Conditions={Conditions}",
+                        element.Path, string.Join(", ", element.Condition ?? Array.Empty<string>()));
                     var conditionalHints = ExtractConditionalHints(element, relativePath, resourceType, fhirVersion, constraints, allElements);
                     hints.AddRange(conditionalHints);
+                    _logger.LogDebug("Extracted {Count} conditional hints for '{Path}'", conditionalHints.Count, element.Path);
                 }
                 else
                 {
                     // Simple required field (no conditionality)
+                    _logger.LogInformation("Creating simple required hint: Path='{Path}', RelativePath='{RelativePath}', Min={Min}",
+                        element.Path, relativePath, element.Min!.Value);
                     hints.Add(new SpecHint
                     {
                         Path = relativePath,
@@ -222,10 +331,17 @@ public class Hl7SpecHintGenerator
                     });
                 }
             }
+            else
+            {
+                _logger.LogDebug("Skipping element (not required or Min not set): Path='{Path}', Min={Min}",
+                    element.Path, element.Min);
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to extract hints from element: {Path}. Skipping.", element.Path);
+            _logger.LogError(ex, "Failed to extract hints from element: Path='{Path}', ResourceType='{ResourceType}', Min={Min}, Max={Max}. Exception: {Message}",
+                element.Path, resourceType, element.Min, element.Max, ex.Message);
+            _logger.LogError("Stack trace: {StackTrace}", ex.StackTrace);
         }
 
         return hints;
