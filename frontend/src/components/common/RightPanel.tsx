@@ -5,7 +5,6 @@ import { ValidationPanel } from '../playground/Validation/ValidationPanel';
 import { CodeMasterEditor } from '../playground/CodeMaster/CodeMasterEditor';
 import { RuleSetMetadata } from '../playground/Metadata/RuleSetMetadata';
 import { ValidationSettingsEditor } from '../playground/Settings/ValidationSettingsEditor';
-import { ExperimentalFeaturesSettings } from '../playground/Settings/ExperimentalFeaturesSettings';
 import { OverviewPanel } from '../playground/Overview/OverviewPanel';
 import { DEFAULT_VALIDATION_SETTINGS } from '../../types/validationSettings';
 import type {
@@ -121,7 +120,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   const { isDimmed = false, onClearFocus } = ui;
   
   // Destructure features props
-  const { projectFeatures, onFeaturesUpdated, isAdmin = true } = features;
+  const { projectFeatures } = features;
   // Render Rules mode (with tabs)
   const renderRulesMode = () => {
     switch (activeTab) {
@@ -178,36 +177,34 @@ export const RightPanel: React.FC<RightPanelProps> = ({
           />
         );
       case 'settings':
-        return (
-          <div className="flex flex-col h-full overflow-y-auto">
-            <ValidationSettingsEditor
-              settings={validationSettings || DEFAULT_VALIDATION_SETTINGS}
-              onSettingsChange={onValidationSettingsChange || (() => {})}
-              onSave={onSaveValidationSettings || (() => {})}
-              hasChanges={hasValidationSettingsChanges}
-              isSaving={isSavingValidationSettings}
-            />
-            {/* Experimental Features Section - Admin Only */}
-            {isAdmin && projectId && onFeaturesUpdated && (
-              <div className="border-t border-gray-200">
-                <ExperimentalFeaturesSettings
-                  projectId={projectId}
-                  features={projectFeatures || {}}
-                  onFeaturesUpdated={onFeaturesUpdated}
-                />
-              </div>
-            )}
-          </div>
-        );
+        // Settings moved to Validation mode
+        return null;
       default:
         return null;
     }
   };
 
-  // Render Validation mode
+  // Render Validation mode (L2 tabs: Run | Results | Settings)
   const renderValidationMode = () => {
     if (!projectId) return null;
     
+    // Handle Settings tab under Validation mode
+    if (activeTab === 'settings') {
+      return (
+        <div className="flex flex-col h-full overflow-y-auto">
+          <ValidationSettingsEditor
+            settings={validationSettings || DEFAULT_VALIDATION_SETTINGS}
+            onSettingsChange={onValidationSettingsChange || (() => {})}
+            onSave={onSaveValidationSettings || (() => {})}
+            hasChanges={hasValidationSettingsChanges}
+            isSaving={isSavingValidationSettings}
+          />
+          {/* Experimental Features Section - Hidden per requirements */}
+        </div>
+      );
+    }
+    
+    // Run and Results tabs show ValidationPanel (it handles both)
     return (
       <ValidationPanel
         projectId={projectId}

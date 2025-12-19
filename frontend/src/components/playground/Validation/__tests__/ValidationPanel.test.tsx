@@ -13,7 +13,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { ValidationPanel } from '../ValidationPanel';
-import { ProjectValidationProvider } from '../../../contexts/project-validation/ProjectValidationContext';
+import { ProjectValidationProvider } from '../../../contexts/project-validation/ProjectValidationContext.tsx';
 import type { ValidationResult } from '../../../contexts/project-validation/useProjectValidation';
 
 // Mock the useValidationState hook to return stable state
@@ -212,6 +212,13 @@ describe('ValidationPanel', () => {
         },
       };
 
+      renderValidationPanel(validationResult);
+
+      // Should show execution time
+      expect(screen.getByText('250ms')).toBeInTheDocument();
+    });
+  });
+
   describe('validation states', () => {
     it('should show running state when isValidating is true', () => {
       renderValidationPanel(null, true);
@@ -343,3 +350,4 @@ describe('ValidationPanel', () => {
       expect(screen.getByText('100ms')).toBeInTheDocument();
     });
   });
+});

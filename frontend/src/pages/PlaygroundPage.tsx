@@ -51,7 +51,7 @@ export default function PlaygroundPage() {
   const [codeMasterJson, setCodeMasterJson] = useState('');
   const [validationSettings, setValidationSettings] = useState<ValidationSettings>(DEFAULT_VALIDATION_SETTINGS);
   const [rules, setRules] = useState<Rule[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'rules' | 'codemaster' | 'metadata' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'rules' | 'codemaster' | 'metadata' | 'settings' | 'run' | 'results'>('overview');
   const [hl7Samples, setHl7Samples] = useState<FhirSampleMetadata[]>([]);
   const [ruleSuggestions, setRuleSuggestions] = useState<any[]>([]);
   

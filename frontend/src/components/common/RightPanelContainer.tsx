@@ -74,13 +74,29 @@ export const RightPanelContainer: React.FC<RightPanelContainerProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Mode Tabs - Top level navigation between Rules/Validation/Observations */}
+      {/* L1 Tabs - Top level navigation: Overview | Rules | Validation | Observations */}
       {showModeTabs && (
         <div className="flex border-b bg-gray-100 flex-shrink-0">
           <button
-            onClick={() => onModeChange?.(RightPanelMode.Rules)}
+            onClick={() => {
+              onModeChange?.(RightPanelMode.Rules);
+              onTabChange?.('overview');
+            }}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              currentMode === RightPanelMode.Rules
+              currentMode === RightPanelMode.Rules && activeTab === 'overview'
+                ? 'border-blue-600 text-blue-600 bg-white'
+                : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}
+          >
+            📊 Overview
+          </button>
+          <button
+            onClick={() => {
+              onModeChange?.(RightPanelMode.Rules);
+              onTabChange?.('rules');
+            }}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              currentMode === RightPanelMode.Rules && activeTab !== 'overview'
                 ? 'border-blue-600 text-blue-600 bg-white'
                 : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             }`}
@@ -88,7 +104,10 @@ export const RightPanelContainer: React.FC<RightPanelContainerProps> = ({
             📋 Rules
           </button>
           <button
-            onClick={() => onModeChange?.(RightPanelMode.Validation)}
+            onClick={() => {
+              onModeChange?.(RightPanelMode.Validation);
+              onTabChange?.('run');
+            }}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
               currentMode === RightPanelMode.Validation
                 ? 'border-blue-600 text-blue-600 bg-white'
@@ -107,19 +126,9 @@ export const RightPanelContainer: React.FC<RightPanelContainerProps> = ({
         </div>
       )}
 
-      {/* Sub-Tabs - Only visible in Rules mode */}
-      {showSubTabs && (
+      {/* L2 Tabs - Rules mode: Rules | CodeMaster | Metadata */}
+      {showSubTabs && activeTab !== 'overview' && (
         <div className="flex border-b bg-gray-50 flex-shrink-0">
-          <button
-            onClick={() => onTabChange?.('overview')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'overview'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Overview
-          </button>
           <button
             onClick={() => onTabChange?.('rules')}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
@@ -150,6 +159,32 @@ export const RightPanelContainer: React.FC<RightPanelContainerProps> = ({
           >
             Metadata
           </button>
+        </div>
+      )}
+
+      {/* L2 Tabs - Validation mode: Run | Results | Settings */}
+      {currentMode === RightPanelMode.Validation && (
+        <div className="flex border-b bg-gray-50 flex-shrink-0">
+          <button
+            onClick={() => onTabChange?.('run')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'run' || !activeTab
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Run
+          </button>
+          <button
+            onClick={() => onTabChange?.('results')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'results'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Results
+          </button>
           <button
             onClick={() => onTabChange?.('settings')}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
@@ -158,7 +193,7 @@ export const RightPanelContainer: React.FC<RightPanelContainerProps> = ({
                 : 'border-transparent text-gray-600 hover:text-gray-900'
             }`}
           >
-            Validation Settings
+            Settings
           </button>
         </div>
       )}

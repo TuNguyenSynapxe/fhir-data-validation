@@ -173,6 +173,6 @@ export interface ModeControlProps {
   currentMode: RightPanelMode;
   onModeChange?: (mode: RightPanelMode) => void;
   showModeTabs?: boolean;
-  activeTab?: 'overview' | 'rules' | 'codemaster' | 'metadata' | 'settings';
-  onTabChange?: (tab: 'overview' | 'rules' | 'codemaster' | 'metadata' | 'settings') => void;
+  activeTab?: 'overview' | 'rules' | 'codemaster' | 'metadata' | 'settings' | 'run' | 'results';
+  onTabChange?: (tab: 'overview' | 'rules' | 'codemaster' | 'metadata' | 'settings' | 'run' | 'results') => void;
 }

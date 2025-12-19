@@ -204,14 +204,7 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
     openBasicRuleModal();
   };
 
-  const handleSelectAdvancedRule = () => {
-    if (showFailedBlocking) {
-      // Don't open drawer when validation has failed
-      return;
-    }
-    setIsModeSelectorOpen(false);
-    setIsAdvancedDrawerOpen(true);
-  };
+  // handleSelectAdvancedRule removed - Advanced Rules (Preview) is hidden
 
   const handleEditRule = (rule: Rule) => {
     if (showFailedBlocking) {
@@ -605,7 +598,6 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
         isOpen={isModeSelectorOpen}
         onClose={() => setIsModeSelectorOpen(false)}
         onSelectBasic={handleSelectBasicRule}
-        onSelectAdvanced={handleSelectAdvancedRule}
       />
 
       {/* Advanced Rules Drawer */}

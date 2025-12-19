@@ -1,18 +1,17 @@
 import React from 'react';
-import { X, FileText, Sparkles } from 'lucide-react';
+import { X, FileText } from 'lucide-react';
 
 interface RuleModeSelectorModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectBasic: () => void;
-  onSelectAdvanced: () => void;
+  // onSelectAdvanced removed as Advanced Rules (Preview) is hidden
 }
 
 export const RuleModeSelectorModal: React.FC<RuleModeSelectorModalProps> = ({
   isOpen,
   onClose,
   onSelectBasic,
-  onSelectAdvanced,
 }) => {
   if (!isOpen) return null;
 
@@ -62,8 +61,8 @@ export const RuleModeSelectorModal: React.FC<RuleModeSelectorModalProps> = ({
               </div>
             </button>
 
-            {/* Advanced Rule Option */}
-            <button
+            {/* Advanced Rule Option - Hidden per requirements */}
+            {/* <button
               onClick={onSelectAdvanced}
               className="w-full flex items-start gap-4 p-4 border-2 border-blue-200 bg-blue-50 rounded-lg hover:border-blue-500 hover:bg-blue-100 transition-all group"
             >
@@ -83,7 +82,7 @@ export const RuleModeSelectorModal: React.FC<RuleModeSelectorModalProps> = ({
                   Tree-based authoring using schema & observed data
                 </p>
               </div>
-            </button>
+            </button> */}
           </div>
         </div>
 
