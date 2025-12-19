@@ -2,85 +2,52 @@ import React from 'react';
 import { RightPanelMode } from '../../types/rightPanel';
 import { RightPanel } from './RightPanel';
 import { ValidationContextBar } from './ValidationContextBar';
+import type {
+  ModeControlProps,
+  RulesProps,
+  CodeMasterProps,
+  ValidationSettingsProps,
+  MetadataProps,
+  BundleProps,
+  NavigationProps,
+  UIStateProps,
+  FeatureFlagsProps,
+} from '../../types/rightPanelProps';
 
-interface Rule {
-  id: string;
-  type: string;
-  resourceType: string;
-  path: string;
-  severity: string;
-  message: string;
-  params?: Record<string, any>;
-}
-
+/**
+ * Right Panel Container Props (Grouped)
+ * 
+ * Props are grouped semantically to reduce prop explosion:
+ * - mode: Mode/tab navigation
+ * - rules: Rules management
+ * - codemaster: CodeMaster editor
+ * - settings: Validation settings
+ * - metadata: Project metadata
+ * - bundle: FHIR bundle data
+ * - navigation: Navigation callbacks
+ * - ui: UI state (dimming, focus)
+ * - features: Feature flags
+ * 
+ * NOTE: Core validation props removed in Phase-3 (provided via ProjectValidationContext).
+ * Only derived validation state props remain for ValidationContextBar.
+ */
 interface RightPanelContainerProps {
-  // Mode control
-  currentMode: RightPanelMode;
-  onModeChange?: (mode: RightPanelMode) => void;
-  showModeTabs?: boolean; // Control whether to show mode tabs
+  mode: ModeControlProps;
+  rules: RulesProps;
+  codemaster: CodeMasterProps;
+  settings: ValidationSettingsProps;
+  metadata: MetadataProps;
+  bundle: BundleProps;
+  navigation: NavigationProps;
+  ui: UIStateProps;
+  features: FeatureFlagsProps;
   
-  // Rules mode props
-  activeTab?: 'overview' | 'rules' | 'codemaster' | 'metadata' | 'settings';
-  onTabChange?: (tab: 'overview' | 'rules' | 'codemaster' | 'metadata' | 'settings') => void;
-  rules?: Rule[];
-  onRulesChange?: (rules: Rule[]) => void;
-  onSaveRules?: () => void;
-  hasRulesChanges?: boolean;
-  projectBundle?: object;
-  hl7Samples?: any[];
-  ruleSuggestions?: any[];
-  projectFeatures?: {
-    treeRuleAuthoring?: boolean;
-  };
-  onFeaturesUpdated?: (features: { treeRuleAuthoring?: boolean }) => void;
-  isAdmin?: boolean;
-  
-  // Validation Settings props
-  validationSettings?: any;
-  onValidationSettingsChange?: (settings: any) => void;
-  onSaveValidationSettings?: () => void;
-  hasValidationSettingsChanges?: boolean;
-  isSavingValidationSettings?: boolean;
-  
-  // CodeMaster mode props
-  codeMasterJson?: string;
-  onCodeMasterChange?: (value: string) => void;
-  onSaveCodeMaster?: () => void;
-  hasCodeMasterChanges?: boolean;
-  isSavingCodeMaster?: boolean;
-  
-  // Metadata mode props
-  projectName?: string;
-  
-  // Validation mode props
-  projectId?: string;
-  onSelectError?: (error: any) => void;
-  onSuggestionsReceived?: (suggestions: any[]) => void;
-  onValidationStart?: () => void;
-  onValidationComplete?: (result: any) => void;
-  triggerValidation?: number; // Timestamp to trigger validation externally
-  onTriggerValidation?: () => void; // Callback to request validation trigger
-  bundleJson?: string; // For ValidationState derivation
-  bundleChanged?: boolean; // For ValidationState derivation
-  rulesChanged?: boolean; // For ValidationState derivation
-  validationState?: string; // Current ValidationState
+  // Derived validation state for ValidationContextBar (computed in PlaygroundPage)
+  validationState?: string;
   validationMetadata?: {
     errorCount?: number;
     warningCount?: number;
   };
-  validationResult?: any; // Full validation result
-  ruleAlignmentStats?: {
-    observed: number;
-    notObserved: number;
-    total: number;
-  };
-  
-  // Navigation
-  onNavigateToPath?: (path: string) => void;
-  
-  // Context dimming
-  isDimmed?: boolean;
-  onClearFocus?: () => void;
 }
 
 /**
@@ -90,13 +57,19 @@ interface RightPanelContainerProps {
  * Shows sub-tabs (rules/codemaster/metadata) when in Rules mode.
  */
 export const RightPanelContainer: React.FC<RightPanelContainerProps> = ({
-  currentMode,
-  onModeChange,
-  showModeTabs = false,
-  activeTab = 'overview',
-  onTabChange,
-  ...rightPanelProps
+  mode,
+  rules,
+  codemaster,
+  settings,
+  metadata,
+  bundle,
+  navigation,
+  ui,
+  features,
+  validationState,
+  validationMetadata,
 }) => {
+  const { currentMode, onModeChange, showModeTabs = false, activeTab = 'overview', onTabChange } = mode;
   const showSubTabs = currentMode === RightPanelMode.Rules;
 
   return (
@@ -191,21 +164,13 @@ export const RightPanelContainer: React.FC<RightPanelContainerProps> = ({
       )}
 
       {/* Validation Context Bar - Sticky status strip */}
-      {rightPanelProps.validationState && (
+      {validationState && (
         <ValidationContextBar
           fhirVersion="R4"
           bundleSource="Current"
-          validationState={rightPanelProps.validationState}
-          errorCount={rightPanelProps.validationMetadata?.errorCount}
-          warningCount={rightPanelProps.validationMetadata?.warningCount}
-          onRunValidation={() => {
-            // Switch to Validation mode and trigger validation
-            if (currentMode !== RightPanelMode.Validation) {
-              onModeChange?.(RightPanelMode.Validation);
-            }
-            // Trigger validation through callback
-            rightPanelProps.onTriggerValidation?.();
-          }}
+          validationState={validationState}
+          errorCount={validationMetadata?.errorCount}
+          warningCount={validationMetadata?.warningCount}
           onViewErrors={() => {
             // Switch to Validation mode to view errors
             if (currentMode !== RightPanelMode.Validation) {
@@ -218,11 +183,17 @@ export const RightPanelContainer: React.FC<RightPanelContainerProps> = ({
       {/* Panel Content */}
       <div className="flex-1 overflow-hidden">
         <RightPanel
-          currentMode={currentMode}
-          activeTab={activeTab}
-          onTabChange={onTabChange}
-          onModeChange={onModeChange}
-          {...rightPanelProps}
+          mode={mode}
+          rules={rules}
+          codemaster={codemaster}
+          settings={settings}
+          metadata={metadata}
+          bundle={bundle}
+          navigation={navigation}
+          ui={ui}
+          features={features}
+          validationState={validationState}
+          validationMetadata={validationMetadata}
         />
       </div>
     </div>

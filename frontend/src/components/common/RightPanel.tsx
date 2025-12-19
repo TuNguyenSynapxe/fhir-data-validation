@@ -8,83 +8,43 @@ import { ValidationSettingsEditor } from '../playground/Settings/ValidationSetti
 import { ExperimentalFeaturesSettings } from '../playground/Settings/ExperimentalFeaturesSettings';
 import { OverviewPanel } from '../playground/Overview/OverviewPanel';
 import { DEFAULT_VALIDATION_SETTINGS } from '../../types/validationSettings';
+import type {
+  ModeControlProps,
+  RulesProps,
+  CodeMasterProps,
+  ValidationSettingsProps,
+  MetadataProps,
+  BundleProps,
+  NavigationProps,
+  UIStateProps,
+  FeatureFlagsProps,
+} from '../../types/rightPanelProps';
 
-interface Rule {
-  id: string;
-  type: string;
-  resourceType: string;
-  path: string;
-  severity: string;
-  message: string;
-  params?: Record<string, any>;
-}
-
+/**
+ * Right Panel Props (Grouped)
+ * 
+ * Props are grouped semantically to reduce prop explosion.
+ * This component forwards grouped props to child panels.
+ * 
+ * NOTE: Validation props removed in Phase-3 (provided via ProjectValidationContext)
+ */
 interface RightPanelProps {
-  // Mode control
-  currentMode: RightPanelMode;
+  mode: ModeControlProps;
+  rules: RulesProps;
+  codemaster: CodeMasterProps;
+  settings: ValidationSettingsProps;
+  metadata: MetadataProps;
+  bundle: BundleProps;
+  navigation: NavigationProps;
+  ui: UIStateProps;
+  features: FeatureFlagsProps;
   
-  // Rules mode props
-  activeTab?: 'overview' | 'rules' | 'codemaster' | 'metadata' | 'settings';
-  onTabChange?: (tab: 'overview' | 'rules' | 'codemaster' | 'metadata' | 'settings') => void;
-  validationResult?: any;
-  onModeChange?: (mode: RightPanelMode) => void;
-  ruleAlignmentStats?: {
-    observed: number;
-    notObserved: number;
-    total: number;
-  };
+  // Derived validation state for OverviewPanel (computed in PlaygroundPage)
+  validationState?: string;
   validationMetadata?: {
     errorCount?: number;
     warningCount?: number;
   };
-  rules?: Rule[];
-  onRulesChange?: (rules: Rule[]) => void;
-  onSaveRules?: () => void;
-  hasRulesChanges?: boolean;
-  projectBundle?: object;
-  hl7Samples?: any[];
-  ruleSuggestions?: any[];
-  projectFeatures?: {
-    treeRuleAuthoring?: boolean;
-  };
-  onFeaturesUpdated?: (features: { treeRuleAuthoring?: boolean }) => void;
-  isAdmin?: boolean;
-  
-  // Validation Settings props
-  validationSettings?: any;
-  onValidationSettingsChange?: (settings: any) => void;
-  onSaveValidationSettings?: () => void;
-  hasValidationSettingsChanges?: boolean;
-  isSavingValidationSettings?: boolean;
-  
-  // CodeMaster mode props
-  codeMasterJson?: string;
-  onCodeMasterChange?: (value: string) => void;
-  onSaveCodeMaster?: () => void;
-  hasCodeMasterChanges?: boolean;
-  isSavingCodeMaster?: boolean;
-  
-  // Metadata mode props
-  projectName?: string;
-  
-  // Validation mode props
-  projectId?: string;
-  onSelectError?: (error: any) => void;
-  onSuggestionsReceived?: (suggestions: any[]) => void;
-  onValidationStart?: () => void;
-  onValidationComplete?: (result: any) => void;
-  triggerValidation?: number; // Timestamp to trigger validation externally
-  bundleJson?: string; // For ValidationState derivation
-  bundleChanged?: boolean; // For ValidationState derivation
-  rulesChanged?: boolean; // For ValidationState derivation
-  validationState?: string; // Current ValidationState
-  
-  // Navigation
-  onNavigateToPath?: (path: string) => void;
-  
-  // Context dimming
-  isDimmed?: boolean;
-  onClearFocus?: () => void;
 }
 
 /**
@@ -99,48 +59,69 @@ interface RightPanelProps {
  * - Observations: Placeholder for future implementation
  */
 export const RightPanel: React.FC<RightPanelProps> = ({
-  currentMode,
-  activeTab = 'overview',
-  onTabChange,
-  onModeChange,
-  validationResult,
-  validationMetadata,
-  ruleAlignmentStats,
-  rules = [],
-  onRulesChange,
-  onSaveRules,
-  hasRulesChanges = false,
-  projectBundle,
-  hl7Samples = [],
-  ruleSuggestions = [],
-  codeMasterJson = '',
-  onCodeMasterChange,
-  onSaveCodeMaster,
-  hasCodeMasterChanges = false,
-  isSavingCodeMaster = false,
-  projectName = '',
-  validationSettings,
-  onValidationSettingsChange,
-  onSaveValidationSettings,
-  hasValidationSettingsChanges = false,
-  isSavingValidationSettings = false,
-  projectId,
-  onSelectError,
-  onSuggestionsReceived,
-  onValidationStart,
-  onValidationComplete,
-  triggerValidation,
-  onNavigateToPath,
-  bundleJson,
-  bundleChanged,
-  rulesChanged,
+  mode,
+  rules,
+  codemaster,
+  settings,
+  metadata,
+  bundle,
+  navigation,
+  ui,
+  features,
   validationState,
-  isDimmed = false,
-  onClearFocus,
-  projectFeatures,
-  onFeaturesUpdated,
-  isAdmin = true, // Default to true for now (no auth system)
+  validationMetadata,
 }) => {
+  // Destructure mode props
+  const { currentMode, activeTab = 'overview', onTabChange, onModeChange } = mode;
+  
+  // Destructure rules props
+  const {
+    rules: rulesData = [],
+    onRulesChange,
+    onSaveRules,
+    hasRulesChanges = false,
+    ruleAlignmentStats,
+    ruleSuggestions = [],
+  } = rules;
+  
+  // Destructure codemaster props
+  const {
+    codeMasterJson = '',
+    onCodeMasterChange,
+    onSaveCodeMaster,
+    hasCodeMasterChanges = false,
+    isSavingCodeMaster = false,
+  } = codemaster;
+  
+  // Destructure settings props
+  const {
+    validationSettings,
+    onValidationSettingsChange,
+    onSaveValidationSettings,
+    hasValidationSettingsChanges = false,
+    isSavingValidationSettings = false,
+  } = settings;
+  
+  // Destructure metadata props
+  const { projectName = '' } = metadata;
+  
+  // Destructure bundle props
+  const {
+    projectBundle,
+    bundleJson,
+    bundleChanged,
+    rulesChanged,
+    hl7Samples = [],
+  } = bundle;
+  
+  // Destructure navigation props
+  const { projectId, onNavigateToPath, onSelectError, onSuggestionsReceived } = navigation;
+  
+  // Destructure ui props
+  const { isDimmed = false, onClearFocus } = ui;
+  
+  // Destructure features props
+  const { projectFeatures, onFeaturesUpdated, isAdmin = true } = features;
   // Render Rules mode (with tabs)
   const renderRulesMode = () => {
     switch (activeTab) {
@@ -149,8 +130,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
           <OverviewPanel
             validationState={validationState}
             validationMetadata={validationMetadata}
-            validationResult={validationResult}
-            rules={rules}
+            rules={rulesData}
             bundleJson={bundleJson}
             ruleAlignmentStats={ruleAlignmentStats}
             onNavigateToValidation={() => onModeChange?.(RightPanelMode.Validation)}
@@ -161,7 +141,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
       case 'rules':
         return (
           <RulesPanel
-            rules={rules}
+            rules={rulesData}
             onRulesChange={onRulesChange || (() => {})}
             onSave={onSaveRules || (() => {})}
             hasChanges={hasRulesChanges}
@@ -169,7 +149,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             hl7Samples={hl7Samples}
             onNavigateToPath={onNavigateToPath}
             suggestions={ruleSuggestions}
-            projectId={projectId}
+            projectId={projectId!}
             features={projectFeatures}
             validationState={validationState}
           />
@@ -234,9 +214,6 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         onSelectError={onSelectError}
         onNavigateToPath={onNavigateToPath}
         onSuggestionsReceived={onSuggestionsReceived}
-        onValidationStart={onValidationStart}
-        onValidationComplete={onValidationComplete}
-        triggerValidation={triggerValidation}
         bundleJson={bundleJson}
         bundleChanged={bundleChanged}
         rulesChanged={rulesChanged}

@@ -9,6 +9,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { ValidationState } from '../../../types/validationState';
+import { useProjectValidationContext } from '../../../contexts/project-validation/ProjectValidationContext';
 
 interface Rule {
   id: string;
@@ -27,7 +28,6 @@ interface OverviewPanelProps {
     errorCount?: number;
     warningCount?: number;
   };
-  validationResult?: any;
   rules?: Rule[];
   bundleJson?: string;
   ruleAlignmentStats?: {
@@ -43,13 +43,14 @@ interface OverviewPanelProps {
 export const OverviewPanel: React.FC<OverviewPanelProps> = ({
   validationState,
   validationMetadata,
-  validationResult,
   rules = [],
   bundleJson: _bundleJson,
   ruleAlignmentStats,
   onNavigateToRules,
   onTabChange,
 }) => {
+  // Get validation result from Context
+  const { validationResult } = useProjectValidationContext();
   // Compute statistics
   const ruleCount = rules.length;
   const enabledRuleCount = rules.filter(r => r.enabled !== false).length;

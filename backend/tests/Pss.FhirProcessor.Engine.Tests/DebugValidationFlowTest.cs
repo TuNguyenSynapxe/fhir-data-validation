@@ -1,0 +1,81 @@
+using Xunit;
+using Xunit.Abstractions;
+using System.Text.Json;
+
+namespace Pss.FhirProcessor.Engine.Tests;
+
+/// <summary>
+/// Debug test to trace through the validation flow
+/// </summary>
+public class DebugValidationFlowTest
+{
+    private readonly ITestOutputHelper _output;
+
+    public DebugValidationFlowTest(ITestOutputHelper output)
+    {
+        _output = output;
+    }
+
+    [Fact]
+    public async Task TraceEncounterValidation()
+    {
+        // Arrange
+        var schemaService = TestHelper.CreateFhirSchemaService();
+        var lintService = new Services.LintValidationService(
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Services.LintValidationService>.Instance,
+            schemaService);
+
+        var json = @"{
+            ""resourceType"": ""Bundle"",
+            ""type"": ""collection"",
+            ""entry"": [{
+                ""resource"": {
+                    ""resourceType"": ""Encounter"",
+                    ""id"": ""enc-001"",
+                    ""status"": ""finished"",
+                    ""class"": {
+                        ""system"": ""http://terminology.hl7.org/CodeSystem/v3-ActCode"",
+                        ""code"": ""IMP""
+                    },
+                    ""serviceProvider"": {
+                        ""reference"": ""Organization/123"",
+                        ""invalidProp"": ""test""
+                    }
+                }
+            }]
+        }";
+
+        // Act
+        var issues = await lintService.ValidateAsync(json, "R4");
+
+        // Output
+        _output.WriteLine($"Total issues: {issues.Count}");
+        foreach (var issue in issues)
+        {
+            _output.WriteLine($"  - [{issue.RuleId}] {issue.Message}");
+            _output.WriteLine($"    FhirPath: {issue.FhirPath}");
+            _output.WriteLine($"    JsonPointer: {issue.JsonPointer}");
+        }
+
+        // Parse JSON to see structure
+        var doc = JsonDocument.Parse(json);
+        _output.WriteLine("\nJSON Structure:");
+        var entry = doc.RootElement.GetProperty("entry")[0];
+        var resource = entry.GetProperty("resource");
+        _output.WriteLine($"  Resource type: {resource.GetProperty("resourceType").GetString()}");
+        
+        if (resource.TryGetProperty("serviceProvider", out var sp))
+        {
+            _output.WriteLine($"  serviceProvider exists: YES");
+            _output.WriteLine($"    Properties:");
+            foreach (var prop in sp.EnumerateObject())
+            {
+                _output.WriteLine($"      - {prop.Name}");
+            }
+        }
+        else
+        {
+            _output.WriteLine($"  serviceProvider exists: NO");
+        }
+    }
+}

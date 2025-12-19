@@ -10,6 +10,7 @@ import { AdvancedRulesDrawer } from './AdvancedRulesDrawer';
 import type { SystemRuleSuggestion } from '../../../api/projects';
 import type { DraftRule } from '../../../types/ruleIntent';
 import { ValidationState } from '../../../types/validationState';
+import { analyzeFhirBundle, isRulePathObserved } from '../../../services/bundleAnalysisService';
 
 interface Rule {
   id: string;
@@ -68,61 +69,20 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
   const [isModeSelectorOpen, setIsModeSelectorOpen] = useState(false);
   const [isAdvancedDrawerOpen, setIsAdvancedDrawerOpen] = useState(false);
 
-  // Analyze bundle for observed resources and paths
+  // Analyze bundle for observed resources and paths using service
   const bundleAnalysis = useMemo(() => {
-    if (!projectBundle || typeof projectBundle !== 'object') {
-      return { observedResourceTypes: new Set<string>(), observedPaths: new Set<string>() };
-    }
-
-    const bundle = projectBundle as any;
-    const observedResourceTypes = new Set<string>();
-    const observedPaths = new Set<string>();
-
-    if (bundle.entry && Array.isArray(bundle.entry)) {
-      bundle.entry.forEach((entry: any) => {
-        if (entry.resource && entry.resource.resourceType) {
-          const resourceType = entry.resource.resourceType;
-          observedResourceTypes.add(resourceType);
-
-          // Recursively collect paths from the resource
-          const collectPaths = (obj: any, prefix: string) => {
-            if (!obj || typeof obj !== 'object') return;
-            
-            Object.keys(obj).forEach(key => {
-              const path = prefix ? `${prefix}.${key}` : key;
-              const fullPath = `${resourceType}.${path}`;
-              observedPaths.add(fullPath);
-              
-              if (Array.isArray(obj[key])) {
-                obj[key].forEach((item: any) => {
-                  if (item && typeof item === 'object') {
-                    collectPaths(item, path);
-                  }
-                });
-              } else if (obj[key] && typeof obj[key] === 'object') {
-                collectPaths(obj[key], path);
-              }
-            });
-          };
-
-          collectPaths(entry.resource, '');
-        }
-      });
-    }
-
-    return { observedResourceTypes, observedPaths };
+    return analyzeFhirBundle(projectBundle);
   }, [projectBundle]);
 
-  // Check if a rule's path is observed in the bundle
-  const isRulePathObserved = (rule: Rule): boolean => {
+  // Check if a rule's path is observed in the bundle (wrapper for UI logic)
+  const checkRuleObserved = (rule: Rule): boolean => {
     const fullPath = `${rule.resourceType}.${rule.path}`;
-    return bundleAnalysis.observedPaths.has(fullPath) || 
-           bundleAnalysis.observedPaths.has(rule.path);
+    return isRulePathObserved(fullPath, bundleAnalysis);
   };
 
   // Count rules with observed vs not observed paths
   const ruleAlignmentStats = useMemo(() => {
-    const observed = rules.filter(r => isRulePathObserved(r)).length;
+    const observed = rules.filter(r => checkRuleObserved(r)).length;
     const notObserved = rules.length - observed;
     return { observed, notObserved, total: rules.length };
   }, [rules, bundleAnalysis]);
@@ -192,7 +152,7 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
 
       // Observation status filter (only applies when validated)
       if (filters.observationStatus && validationState === ValidationState.Validated) {
-        const isObserved = isRulePathObserved(rule);
+        const isObserved = checkRuleObserved(rule);
         if (filters.observationStatus === 'observed' && !isObserved) {
           return false;
         }
@@ -203,7 +163,7 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
 
       return true;
     });
-  }, [rules, filters, selectedResourceType, validationState, isRulePathObserved]);
+  }, [rules, filters, selectedResourceType, validationState, bundleAnalysis]);
 
   const handleAddRule = () => {
     if (showFailedBlocking) {
@@ -521,7 +481,7 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
                 Observation indicators show which paths exist in your bundle.
               </p>
               {ruleAlignmentStats.notObserved > 0 && (() => {
-                const unobservedRules = rules.filter(r => !isRulePathObserved(r));
+                const unobservedRules = rules.filter(r => !checkRuleObserved(r));
                 const [showDetails, setShowDetails] = useState(false);
                 
                 return (
@@ -624,7 +584,7 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
             onNavigateToPath={onNavigateToPath}
             groupBy="resourceType"
             disabled={disableRuleEditing}
-            getObservationStatus={isRulePathObserved}
+            getObservationStatus={checkRuleObserved}
             showObservationIndicators={showValidatedSuccess}
           />
         </div>

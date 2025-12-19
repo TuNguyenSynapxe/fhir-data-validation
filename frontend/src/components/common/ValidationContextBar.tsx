@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertCircle, CheckCircle2, XCircle, PlayCircle, Eye, RotateCcw } from 'lucide-react';
 import { ValidationState } from '../../types/validationState';
+import { useProjectValidationContext } from '../../contexts/project-validation/ProjectValidationContext';
 
 interface ValidationContextBarProps {
   fhirVersion?: string;
@@ -8,7 +9,6 @@ interface ValidationContextBarProps {
   validationState: string;
   errorCount?: number;
   warningCount?: number;
-  onRunValidation?: () => void;
   onViewErrors?: () => void;
 }
 
@@ -17,6 +17,8 @@ interface ValidationContextBarProps {
  * 
  * Single-line status strip showing validation readiness and actions.
  * Sticky at top of right panel to provide constant context.
+ * 
+ * NOTE: Uses ProjectValidationContext for runValidation action (Phase-3)
  */
 export const ValidationContextBar: React.FC<ValidationContextBarProps> = ({
   fhirVersion = 'R4',
@@ -24,9 +26,10 @@ export const ValidationContextBar: React.FC<ValidationContextBarProps> = ({
   validationState,
   errorCount = 0,
   warningCount = 0,
-  onRunValidation,
   onViewErrors,
 }) => {
+  // Get validation action from Context
+  const { runValidation } = useProjectValidationContext();
   // Determine status display and styling based on ValidationState
   const getStatusConfig = () => {
     switch (validationState) {
@@ -140,9 +143,9 @@ export const ValidationContextBar: React.FC<ValidationContextBarProps> = ({
       {showActions && (
         <div className="flex items-center gap-2">
           {/* NotValidated: Run Validation */}
-          {canRunValidation && onRunValidation && (
+          {canRunValidation && (
             <button
-              onClick={onRunValidation}
+              onClick={() => runValidation('fast')}
               className="
                 inline-flex items-center gap-1.5 
                 px-3 py-1 
@@ -176,9 +179,9 @@ export const ValidationContextBar: React.FC<ValidationContextBarProps> = ({
           )}
 
           {/* Validated: Re-validate (optional) */}
-          {canReValidate && onRunValidation && (
+          {canReValidate && (
             <button
-              onClick={onRunValidation}
+              onClick={() => runValidation('fast')}
               className="
                 inline-flex items-center gap-1.5 
                 px-3 py-1 

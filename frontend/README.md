@@ -1,73 +1,78 @@
-# React + TypeScript + Vite
+# FHIR Processor V2 — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + TypeScript + Vite frontend for the FHIR Processor V2 Engine.
 
-Currently, two official plugins are available:
+## 📚 Documentation
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+All frontend documentation is in the `docs/` directory:
 
-## React Compiler
+- **[docs/README.md](./docs/README.md)** - Documentation navigation index
+- **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** - Frontend architecture and structure
+- **[docs/VALIDATION_FLOW.md](./docs/VALIDATION_FLOW.md)** - Complete validation pipeline guide
+- **[docs/REFACTORING_HISTORY.md](./docs/REFACTORING_HISTORY.md)** - Chronological refactoring history
+- **[docs/features/](./docs/features/)** - Feature-specific implementation guides
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🚀 Quick Start
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Install Dependencies
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Development Server
+```bash
+npm run dev
 ```
+
+### Build for Production
+```bash
+npm run build
+```
+
+### Type Check
+```bash
+npx tsc --noEmit
+```
+
+## 🏗️ Tech Stack
+
+- **React 18.3.1** - UI library
+- **TypeScript 5.x** - Type safety (strict mode)
+- **Vite 7.2.7** - Build tool (~595KB bundle)
+- **TanStack Query v5** - Server state management
+- **React Router** - SPA routing
+- **Tailwind CSS** - Utility-first styling
+
+## 📁 Project Structure
+
+```
+frontend/
+├── docs/              # Documentation
+├── public/            # Static assets
+├── src/
+│   ├── components/    # React components
+│   ├── contexts/      # React Context providers
+│   ├── hooks/         # Custom React hooks
+│   ├── pages/         # Route pages
+│   ├── services/      # Business logic (pure functions)
+│   ├── types/         # TypeScript type definitions
+│   └── utils/         # Utility functions
+├── package.json
+├── vite.config.ts
+└── tsconfig.json
+```
+
+## �� Key Features
+
+- **Validation State Machine** - NoBundle → NotValidated → Validated/Failed
+- **Tree-Based Rule Creation** - Visual rule editor with path navigation
+- **Terminology Constraints** - Code system and allowed codes validation
+- **Validation Source Labeling** - Clear distinction between error sources
+- **Prop Grouping** - Semantic prop interfaces (86% reduction)
+- **Validation Context** - Eliminates prop drilling via Context API
+
+## 🔗 Related Documentation
+
+- **Backend**: `/backend/docs/`
+- **Overall Specs**: `/docs/` (architecture, rule DSL, validation pipeline)
+- **Project Root**: Main README.md

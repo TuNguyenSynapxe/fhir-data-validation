@@ -18,6 +18,8 @@ import { RightPanelContainer } from '../components/common/RightPanelContainer';
 import { RightPanelMode } from '../types/rightPanel';
 import { useValidationState } from '../hooks/useValidationState';
 import { ValidationState } from '../types/validationState';
+import { useProjectValidation } from '../contexts/project-validation/useProjectValidation';
+import { ProjectValidationProvider } from '../contexts/project-validation/ProjectValidationContext';
 
 import type { FhirSampleMetadata } from '../types/fhirSample';
 
@@ -42,6 +44,9 @@ export default function PlaygroundPage() {
   const saveCodeMasterMutation = useSaveCodeMaster(projectId!);
   const saveValidationSettingsMutation = useSaveValidationSettings(projectId!);
 
+  // Project validation state (centralized)
+  const projectValidation = useProjectValidation(projectId!);
+
   const [bundleJson, setBundleJson] = useState('');
   const [codeMasterJson, setCodeMasterJson] = useState('');
   const [validationSettings, setValidationSettings] = useState<ValidationSettings>(DEFAULT_VALIDATION_SETTINGS);
@@ -49,8 +54,6 @@ export default function PlaygroundPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'rules' | 'codemaster' | 'metadata' | 'settings'>('overview');
   const [hl7Samples, setHl7Samples] = useState<FhirSampleMetadata[]>([]);
   const [ruleSuggestions, setRuleSuggestions] = useState<any[]>([]);
-  const [validationResult, setValidationResult] = useState<any>(null); // Store last validation result
-  const [validationTrigger, setValidationTrigger] = useState<number>(0); // Timestamp to trigger validation
   
   // Right Panel Mode (default: Rules)
   const [rightPanelMode, setRightPanelMode] = useState<RightPanelMode>(RightPanelMode.Rules);
@@ -97,9 +100,10 @@ export default function PlaygroundPage() {
   const rulesChanged = currentRulesJson !== originalRulesJson;
   
   // Compute validation state (must be called unconditionally)
+  // Uses centralized validation result from projectValidation hook
   const { state: validationState, metadata: validationMetadata } = useValidationState(
     bundleJson,
-    validationResult,
+    projectValidation.result,
     bundleChanged,
     rulesChanged
   );
@@ -226,27 +230,6 @@ export default function PlaygroundPage() {
 
   const handleRulesChange = (updatedRules: Rule[]) => {
     setRules(updatedRules);
-  };
-  
-  /**
-   * Handle validation start - switch to Validation mode
-   */
-  const handleValidationStart = () => {
-    setRightPanelMode(RightPanelMode.Validation);
-  };
-  
-  /**
-   * Handle validation completion - store results for state derivation
-   */
-  const handleValidationComplete = (result: any) => {
-    setValidationResult(result);
-  };
-  
-  /**
-   * Trigger validation from external sources (like ValidationContextBar)
-   */
-  const handleTriggerValidation = () => {
-    setValidationTrigger(Date.now());
   };
   
   /**
@@ -424,56 +407,77 @@ export default function PlaygroundPage() {
             </div>
           }
           rulesContent={
-            <RightPanelContainer
-              currentMode={rightPanelMode}
-              onModeChange={setRightPanelMode}
-              showModeTabs={true}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              rules={rules}
-              onRulesChange={handleRulesChange}
-              onSaveRules={handleSaveRules}
-              hasRulesChanges={saveRulesMutation.isPending}
-              projectBundle={projectBundle}
-              hl7Samples={hl7Samples}
-              ruleSuggestions={ruleSuggestions}
-              codeMasterJson={codeMasterJson}
-              onCodeMasterChange={setCodeMasterJson}
-              onSaveCodeMaster={handleSaveCodeMaster}
-              hasCodeMasterChanges={codeMasterJson !== originalCodeMasterJson}
-              isSavingCodeMaster={saveCodeMasterMutation.isPending}
-              validationSettings={validationSettings}
-              onValidationSettingsChange={setValidationSettings}
-              onSaveValidationSettings={handleSaveValidationSettings}
-              hasValidationSettingsChanges={JSON.stringify(validationSettings) !== JSON.stringify(originalValidationSettings)}
-              isSavingValidationSettings={saveValidationSettingsMutation.isPending}
-              projectName={project.name}
-              projectId={projectId}
-              projectFeatures={project.features}
-              onFeaturesUpdated={handleFeaturesUpdated}
-              isAdmin={true}
-              onSelectError={(error) => {
-                const jsonPointer = error.jsonPointer || error.navigation?.jsonPointer;
-                if (jsonPointer) {
-                  handleNavigateToPath(jsonPointer);
-                }
-              }}
-              onSuggestionsReceived={setRuleSuggestions}
-              onValidationStart={handleValidationStart}
-              onValidationComplete={handleValidationComplete}
-              triggerValidation={validationTrigger}
-              onTriggerValidation={handleTriggerValidation}
-              onNavigateToPath={handleNavigateToPath}
-              bundleJson={bundleJson}
-              bundleChanged={bundleChanged}
-              rulesChanged={rulesChanged}
-              validationState={validationState}
-              validationMetadata={validationMetadata}
-              validationResult={validationResult}
-              ruleAlignmentStats={ruleAlignmentStats}
-              isDimmed={treeViewFocused}
-              onClearFocus={handleClearFocus}
-            />
+            <ProjectValidationProvider
+              validationResult={projectValidation.result}
+              isValidating={projectValidation.isValidating}
+              validationError={projectValidation.error}
+              runValidation={projectValidation.runValidation}
+              clearValidationError={projectValidation.clearError}
+            >
+              <RightPanelContainer
+                mode={{
+                  currentMode: rightPanelMode,
+                  onModeChange: setRightPanelMode,
+                  showModeTabs: true,
+                  activeTab: activeTab,
+                  onTabChange: setActiveTab,
+                }}
+                rules={{
+                  rules: rules,
+                  onRulesChange: handleRulesChange,
+                  onSaveRules: handleSaveRules,
+                  hasRulesChanges: saveRulesMutation.isPending,
+                  ruleAlignmentStats: ruleAlignmentStats,
+                  ruleSuggestions: ruleSuggestions,
+                }}
+                codemaster={{
+                  codeMasterJson: codeMasterJson,
+                  onCodeMasterChange: setCodeMasterJson,
+                  onSaveCodeMaster: handleSaveCodeMaster,
+                  hasCodeMasterChanges: codeMasterJson !== originalCodeMasterJson,
+                  isSavingCodeMaster: saveCodeMasterMutation.isPending,
+                }}
+                settings={{
+                  validationSettings: validationSettings,
+                  onValidationSettingsChange: setValidationSettings,
+                  onSaveValidationSettings: handleSaveValidationSettings,
+                  hasValidationSettingsChanges: JSON.stringify(validationSettings) !== JSON.stringify(originalValidationSettings),
+                  isSavingValidationSettings: saveValidationSettingsMutation.isPending,
+                }}
+                metadata={{
+                  projectName: project.name,
+                }}
+                bundle={{
+                  projectBundle: projectBundle,
+                  bundleJson: bundleJson,
+                  bundleChanged: bundleChanged,
+                  rulesChanged: rulesChanged,
+                  hl7Samples: hl7Samples,
+                }}
+                navigation={{
+                  projectId: projectId!,
+                  onNavigateToPath: handleNavigateToPath,
+                  onSelectError: (error) => {
+                    const jsonPointer = error.jsonPointer || error.navigation?.jsonPointer;
+                    if (jsonPointer) {
+                      handleNavigateToPath(jsonPointer);
+                    }
+                  },
+                  onSuggestionsReceived: setRuleSuggestions,
+                }}
+                ui={{
+                  isDimmed: treeViewFocused,
+                  onClearFocus: handleClearFocus,
+                }}
+                features={{
+                  projectFeatures: project.features,
+                  onFeaturesUpdated: handleFeaturesUpdated,
+                  isAdmin: true,
+                }}
+                validationState={validationState}
+                validationMetadata={validationMetadata}
+              />
+            </ProjectValidationProvider>
           }
         />
       </div>

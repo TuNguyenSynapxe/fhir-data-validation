@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Play, 
   RotateCcw, 
@@ -18,52 +18,14 @@ import { ValidationSourceFilter, type SourceFilterState } from './ValidationSour
 import type { SystemRuleSuggestion } from '../../../api/projects';
 import { useValidationState } from '../../../hooks/useValidationState';
 import { ValidationState } from '../../../types/validationState';
-
-interface ValidationError {
-  source: string; // FHIR, Business, CodeMaster, Reference
-  severity: string; // error, warning, info
-  resourceType?: string;
-  path?: string;
-  jsonPointer?: string;
-  errorCode?: string;
-  message: string;
-  details?: Record<string, any>;
-  navigation?: {
-    jsonPointer?: string;
-    breadcrumb?: string;
-    resourceIndex?: number;
-  };
-}
-
-interface ValidationResult {
-  isValid: boolean;
-  errors: ValidationError[];
-  timestamp: string;
-  executionTimeMs: number;
-  summary: {
-    total: number;
-    errors: number;
-    warnings: number;
-    information: number;
-    bySource: {
-      firely: number;
-      businessRules: number;
-      codeMaster: number;
-      reference: number;
-      lint: number;
-      specHint: number;
-    };
-  };
-}
+import { useProjectValidationContext } from '../../../contexts/project-validation/ProjectValidationContext';
+import type { ValidationError } from '../../../contexts/project-validation/useProjectValidation';
 
 interface ValidationPanelProps {
   projectId: string;
   onSelectError?: (error: ValidationError) => void;
   onNavigateToPath?: (jsonPointer: string) => void;
   onSuggestionsReceived?: (suggestions: SystemRuleSuggestion[]) => void;
-  onValidationStart?: () => void; // Called when validation starts
-  onValidationComplete?: (result: ValidationResult | null) => void; // Called when validation completes
-  triggerValidation?: number; // External trigger to run validation (timestamp)
   
   // Inputs for ValidationState derivation
   bundleJson?: string; // Current bundle content
@@ -90,25 +52,27 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
   projectId, 
   onSelectError,
   onNavigateToPath,
-  onSuggestionsReceived,
-  onValidationStart,
-  onValidationComplete,
-  triggerValidation,
   bundleJson = '',
   bundleChanged = false,
   rulesChanged = false,
 }) => {
-  const [results, setResults] = useState<ValidationResult | null>(null);
+  // Get validation state/actions from Context
+  const { 
+    validationResult, 
+    isValidating, 
+    validationError, 
+    runValidation, 
+    clearValidationError 
+  } = useProjectValidationContext();
+  
+  // UI-only state (presentation, not validation lifecycle)
   const [isOpen, setIsOpen] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [validationMode, setValidationMode] = useState<'fast' | 'debug'>('fast');
-  const [lastTrigger, setLastTrigger] = useState(0);
   
   // Derive validation state from current conditions
   const { state: validationState } = useValidationState(
     bundleJson,
-    results,
+    validationResult,
     bundleChanged,
     rulesChanged
   );
@@ -148,99 +112,19 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
     localStorage.setItem(`validation-explanations-${projectId}`, String(newValue));
   };
   
-  // Respond to external validation trigger
-  useEffect(() => {
-    if (triggerValidation && triggerValidation > 0 && triggerValidation !== lastTrigger) {
-      setLastTrigger(triggerValidation);
-      handleRunValidation();
-    }
-  }, [triggerValidation]); // eslint-disable-line react-hooks/exhaustive-deps
-
   /**
-   * Run validation
+   * Run validation (via Context)
    */
   const handleRunValidation = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    // Notify parent that validation is starting (triggers mode switch)
-    onValidationStart?.();
-
-    const startTime = Date.now();
-
-    try {
-      const response = await fetch(`/api/projects/${projectId}/validate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          validationMode: validationMode,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Validation failed' }));
-        throw new Error(errorData.message || `HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
-      const executionTimeMs = Date.now() - startTime;
-      
-      // Transform API response to ValidationResult format
-      // Backend returns: { errors: [], summary: {...}, metadata: {...} }
-      const errors = data.errors || [];
-      const validationResult: ValidationResult = {
-        isValid: errors.length === 0,
-        errors: errors,
-        timestamp: data.metadata?.timestamp || new Date().toISOString(),
-        executionTimeMs: data.metadata?.processingTimeMs || executionTimeMs,
-        summary: {
-          total: data.summary?.totalErrors || errors.length,
-          errors: data.summary?.errorCount || errors.filter((e: ValidationError) => e.severity === 'error').length,
-          warnings: data.summary?.warningCount || errors.filter((e: ValidationError) => e.severity === 'warning').length,
-          information: data.summary?.infoCount || errors.filter((e: ValidationError) => e.severity === 'info' || e.severity === 'information').length,
-          bySource: {
-            firely: data.summary?.fhirErrorCount || errors.filter((e: ValidationError) => 
-              e.source?.toLowerCase() === 'fhir' || e.source?.toLowerCase() === 'firely').length,
-            businessRules: data.summary?.businessErrorCount || errors.filter((e: ValidationError) => 
-              e.source?.toLowerCase() === 'business' || e.source?.toLowerCase() === 'businessrules').length,
-            codeMaster: data.summary?.codeMasterErrorCount || errors.filter((e: ValidationError) => 
-              e.source?.toLowerCase() === 'codemaster').length,
-            reference: data.summary?.referenceErrorCount || errors.filter((e: ValidationError) => 
-              e.source?.toLowerCase() === 'reference').length,
-            lint: data.summary?.lintErrorCount || errors.filter((e: ValidationError) => 
-              e.source?.toLowerCase() === 'lint').length,
-            specHint: errors.filter((e: ValidationError) => 
-              e.source?.toLowerCase() === 'spec_hint' || e.source?.toLowerCase() === 'spechint').length,
-          },
-        },
-      };
-
-      setResults(validationResult);
-      setIsOpen(true); // Auto-expand after validation
-      
-      // Notify parent of validation completion
-      onValidationComplete?.(validationResult);
-      
-      // Notify parent component if suggestions are available
-      if (data.suggestions && data.suggestions.length > 0 && onSuggestionsReceived) {
-        onSuggestionsReceived(data.suggestions);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Validation failed');
-      console.error('Validation error:', err);
-    } finally {
-      setIsLoading(false);
-    }
+    setIsOpen(true); // Auto-expand after validation
+    await runValidation(validationMode);
   };
 
   /**
-   * Reset validation results
+   * Reset validation results (via Context)
    */
   const handleReset = () => {
-    setResults(null);
-    setError(null);
+    clearValidationError();
   };
 
   /**
@@ -250,7 +134,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
     onSelectError?.(validationError);
   };
 
-  const summary = results?.summary;
+  const summary = validationResult?.summary;
   const hasErrors = (summary?.total || 0) > 0;
 
   // Render NoBundle empty state
@@ -339,7 +223,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
                   {summary.information}
                 </span>
               )}
-              {!hasErrors && results && (
+              {!hasErrors && validationResult && (
                 <span className="flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                   <CheckCircle2 className="w-3 h-3" />
                   No issues
@@ -351,14 +235,14 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
 
         {/* Timestamp, FHIR version, and execution time */}
         <div className="flex items-center gap-3 text-xs text-gray-500">
-          {results && (
+          {validationResult && (
             <>
               <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
-                Last run: {formatTimestamp(results.timestamp)}
+                Last run: {formatTimestamp(validationResult.timestamp)}
               </span>
               <span>
-                {results.executionTimeMs}ms
+                {validationResult.executionTimeMs}ms
               </span>
             </>
           )}
@@ -382,15 +266,15 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
                   e.stopPropagation();
                   handleRunValidation();
                 }}
-                disabled={isLoading}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed rounded transition-colors"
+                disabled={isValidating}
+                className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {isLoading ? (
+                {isValidating ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Play className="w-4 h-4" />
                 )}
-                {isLoading ? 'Running...' : 'Run Validation'}
+                {isValidating ? 'Running...' : 'Run Validation'}
               </button>
 
               {/* Validation Mode Toggle */}
@@ -401,7 +285,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
                     e.stopPropagation();
                     setValidationMode('fast');
                   }}
-                  disabled={isLoading}
+                  disabled={isValidating}
                   className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
                     validationMode === 'fast'
                       ? 'bg-green-600 text-white'
@@ -416,7 +300,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
                     e.stopPropagation();
                     setValidationMode('debug');
                   }}
-                  disabled={isLoading}
+                  disabled={isValidating}
                   className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
                     validationMode === 'debug'
                       ? 'bg-orange-600 text-white'
@@ -433,7 +317,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
                   e.stopPropagation();
                   handleReset();
                 }}
-                disabled={isLoading || !results}
+                disabled={isValidating || !validationResult}
                 className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed rounded transition-colors"
               >
                 <RotateCcw className="w-4 h-4" />
@@ -457,7 +341,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
               )}
 
               {/* Show explanations toggle */}
-              {results && hasErrors && (
+              {validationResult && hasErrors && (
                 <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
                   <input
                     type="checkbox"
@@ -474,20 +358,20 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
           </div>
 
           {/* Results area */}
-          <div className="flex-1 overflow-auto">
-            {error && (
+          <div className="flex-1 overflow-y-auto">
+            {validationError && (
               <div className="p-4 m-4 bg-red-50 border border-red-200 rounded">
                 <div className="flex items-start gap-2">
                   <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="text-sm font-medium text-red-800">Validation Error</p>
-                    <p className="text-sm text-red-700 mt-1">{error}</p>
+                    <p className="text-sm text-red-700 mt-1">{validationError}</p>
                   </div>
                 </div>
               </div>
             )}
 
-            {!error && !results && !isLoading && (
+            {!validationError && !validationResult && !isValidating && (
               <div className="flex flex-col items-center justify-center h-full text-gray-400 p-8">
                 <Play className="w-12 h-12 mb-3" />
                 <p className="text-sm font-medium">No validation results</p>
@@ -508,7 +392,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
               </div>
             )}
 
-            {isLoading && (
+            {isValidating && (
               <div className="flex flex-col items-center justify-center h-full text-gray-400 p-8">
                 <Loader2 className="w-12 h-12 mb-3 animate-spin" />
                 <p className="text-sm font-medium">Running validation...</p>
@@ -516,9 +400,9 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
               </div>
             )}
 
-            {results && results.errors && results.errors.length > 0 && (
+            {validationResult && validationResult.errors && validationResult.errors.length > 0 && (
               <ValidationResultList
-                errors={results.errors}
+                errors={validationResult.errors}
                 onErrorClick={handleErrorClick}
                 onNavigateToPath={onNavigateToPath}
                 sourceFilters={sourceFilters}
