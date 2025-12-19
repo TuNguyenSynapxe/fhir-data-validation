@@ -208,10 +208,7 @@ Evidence: 15 resources analyzed | Examples: http://loinc.org
 
 ### Files Modified
 - `frontend/src/api/projects.ts` - Added `SystemRuleSuggestion` type and `suggestions` field
-- `frontend/src/components/playground/Validation/ValidationPanel.tsx` - Integrated `SuggestionsPanel`
-
-### Files Created
-- `frontend/src/components/SuggestionsPanel.tsx` - New component for displaying suggestions
+- `frontend/src/components/playground/Validation/ValidationPanel.tsx` - Integrated suggestions display
 
 ### Backend Files (Already Complete)
 - `backend/src/Pss.FhirProcessor.Engine/Models/SystemRuleSuggestion.cs`

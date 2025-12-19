@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ExternalLink, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
-import RuleExplainabilityPanel from '../../RuleExplainabilityPanel';
+import RuleExplainabilityPanel from '../../rules/RuleExplainabilityPanel';
 
 interface Rule {
   id: string;

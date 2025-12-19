@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import BundleTreeView from './BundleTreeView';
-import FhirSampleTreeView from './FhirSampleTreeView';
+import BundleTreeView from '../BundleTreeView';
+import FhirSampleTreeView from '../FhirSampleTreeView';
 import ManualFhirPathInput from './ManualFhirPathInput';
 import FhirPathRefinementPanel from './FhirPathRefinementPanel';
-import type { FhirSampleMetadata } from '../types/fhirSample';
+import type { FhirSampleMetadata } from '../../types/fhirSample';
 
 /**
  * FhirPathSelectorDrawer - Context-locked FHIRPath selection drawer

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import ConfidenceBadge from './ConfidenceBadge';
-import type { RuleExplainability } from '../types/ruleExplainability';
-import { getOriginLabel, getOriginColors, getSeverityIcon } from '../types/ruleExplainability';
+import ConfidenceBadge from '../ConfidenceBadge';
+import type { RuleExplainability } from '../../types/ruleExplainability';
+import { getOriginLabel, getOriginColors, getSeverityIcon } from '../../types/ruleExplainability';
 
 /**
  * RuleExplainabilityPanel - Expandable explainability section

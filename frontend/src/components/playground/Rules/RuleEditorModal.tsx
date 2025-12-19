@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, AlertCircle } from 'lucide-react';
-import FhirPathSelectorDrawer from '../../FhirPathSelectorDrawer';
+import FhirPathSelectorDrawer from '../../rules/FhirPathSelectorDrawer';
 
 interface Rule {
   id: string;

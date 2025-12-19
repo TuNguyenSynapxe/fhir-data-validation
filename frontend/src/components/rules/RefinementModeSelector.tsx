@@ -1,5 +1,5 @@
 import React from 'react';
-import type { RefinementMode } from '../types/fhirPathRefinement';
+import type { RefinementMode } from '../../types/fhirPathRefinement';
 
 /**
  * RefinementModeSelector - Radio button selector for refinement modes

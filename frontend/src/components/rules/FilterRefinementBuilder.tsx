@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
-import type { FilterCondition, FilterOperator } from '../types/fhirPathRefinement';
-import SuggestedValueDropdown from './SuggestedValueDropdown';
-import { buildSuggestedValueGroups } from '../utils/fhirPathValueExtractor';
+import type { FilterCondition, FilterOperator } from '../../types/fhirPathRefinement';
+import SuggestedValueDropdown from '../SuggestedValueDropdown';
+import { buildSuggestedValueGroups } from '../../utils/fhirPathValueExtractor';
 
 /**
  * FilterRefinementBuilder - Single condition filter builder

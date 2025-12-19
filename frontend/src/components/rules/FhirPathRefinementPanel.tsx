@@ -8,7 +8,7 @@ import {
   type RefinementMode,
   type RefinementConfig,
   type FilterCondition,
-} from '../types/fhirPathRefinement';
+} from '../../types/fhirPathRefinement';
 
 /**
  * FhirPathRefinementPanel - Main orchestrator for path refinement UX
