@@ -22,6 +22,9 @@ interface RuleGroupProps {
   onToggleRule?: (ruleId: string) => void;
   onNavigateToPath?: (path: string) => void;
   defaultExpanded?: boolean;
+  disabled?: boolean;
+  getObservationStatus?: (rule: Rule) => boolean;
+  showObservationIndicators?: boolean;
 }
 
 export const RuleGroup: React.FC<RuleGroupProps> = ({
@@ -32,6 +35,9 @@ export const RuleGroup: React.FC<RuleGroupProps> = ({
   onToggleRule,
   onNavigateToPath,
   defaultExpanded = false,
+  disabled = false,
+  getObservationStatus,
+  showObservationIndicators = false,
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
@@ -67,6 +73,8 @@ export const RuleGroup: React.FC<RuleGroupProps> = ({
                 onDelete={onDeleteRule}
                 onToggle={onToggleRule}
                 onNavigateToPath={onNavigateToPath}
+                disabled={disabled}
+                isObserved={showObservationIndicators && getObservationStatus ? getObservationStatus(rule) : undefined}
               />
             </div>
           ))}

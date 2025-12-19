@@ -68,3 +68,14 @@ export async function validateProject(id: string): Promise<ValidationResult> {
   );
   return response.data;
 }
+
+export async function updateProjectFeatures(
+  id: string,
+  features: { treeRuleAuthoring?: boolean }
+): Promise<ProjectDetail> {
+  const response = await httpClient.patch<ProjectDetail>(
+    `/api/projects/${id}/features`,
+    features
+  );
+  return response.data;
+}

@@ -7,6 +7,7 @@ export interface RuleFilterState {
   ruleType: string;
   severity: string;
   origin: string;
+  observationStatus: string; // 'all', 'observed', 'not-observed'
 }
 
 interface RuleFiltersProps {
@@ -14,6 +15,7 @@ interface RuleFiltersProps {
   onFiltersChange: (filters: RuleFilterState) => void;
   availableResourceTypes: string[];
   availableRuleTypes: string[];
+  showObservationFilter?: boolean;
 }
 
 export const RuleFilters: React.FC<RuleFiltersProps> = ({
@@ -21,6 +23,7 @@ export const RuleFilters: React.FC<RuleFiltersProps> = ({
   onFiltersChange,
   availableResourceTypes,
   availableRuleTypes,
+  showObservationFilter = false,
 }) => {
   const handleFilterChange = (key: keyof RuleFilterState, value: string) => {
     onFiltersChange({ ...filters, [key]: value });
@@ -41,7 +44,19 @@ export const RuleFilters: React.FC<RuleFiltersProps> = ({
       </div>
 
       {/* Filter Dropdowns */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className={`grid ${showObservationFilter ? 'grid-cols-5' : 'grid-cols-4'} gap-2`}>
+        {showObservationFilter && (
+          <select
+            value={filters.observationStatus}
+            onChange={(e) => handleFilterChange('observationStatus', e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          >
+            <option value="">All Rules</option>
+            <option value="observed">● Observed in bundle</option>
+            <option value="not-observed">○ Not in bundle</option>
+          </select>
+        )}
+        
         <select
           value={filters.resourceType}
           onChange={(e) => handleFilterChange('resourceType', e.target.value)}

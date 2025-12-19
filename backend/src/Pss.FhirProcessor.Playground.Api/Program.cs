@@ -30,6 +30,7 @@ builder.Services.AddFhirProcessorEngine();
 // Register Playground API services
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<IRuleService, RuleService>();
 
 // Add CORS for frontend
 builder.Services.AddCors(options =>

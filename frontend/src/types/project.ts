@@ -13,4 +13,7 @@ export interface ProjectDetail {
   sampleBundleJson?: string;
   rulesJson?: string;
   codeMasterJson?: string;
+  features?: {
+    treeRuleAuthoring?: boolean;
+  };
 }

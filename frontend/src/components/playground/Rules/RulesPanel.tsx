@@ -1,11 +1,15 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Save, Download } from 'lucide-react';
+import { Plus, Save, Download, FileJson, AlertCircle, Info, XCircle, Lock, CheckCircle, Target, AlertTriangle } from 'lucide-react';
 import { RuleFilters, type RuleFilterState } from './RuleFilters';
 import { RuleNavigator } from './RuleNavigator';
 import { RuleList } from './RuleList';
 import { RuleEditorModal } from './RuleEditorModal';
 import { SuggestedRulesPanel } from './SuggestedRulesPanel';
+import { RuleModeSelectorModal } from './RuleModeSelectorModal';
+import { AdvancedRulesDrawer } from './AdvancedRulesDrawer';
 import type { SystemRuleSuggestion } from '../../../api/projects';
+import type { DraftRule } from '../../../types/ruleIntent';
+import { ValidationState } from '../../../types/validationState';
 
 interface Rule {
   id: string;
@@ -29,6 +33,11 @@ interface RulesPanelProps {
   hl7Samples?: any[];
   onNavigateToPath?: (path: string) => void;
   suggestions?: SystemRuleSuggestion[];
+  projectId?: string;
+  features?: {
+    treeRuleAuthoring?: boolean;
+  };
+  validationState?: string; // ValidationState from useValidationState hook
 }
 
 export const RulesPanel: React.FC<RulesPanelProps> = ({
@@ -40,6 +49,9 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
   hl7Samples,
   onNavigateToPath,
   suggestions = [],
+  projectId,
+  features,
+  validationState,
 }) => {
   const [filters, setFilters] = useState<RuleFilterState>({
     searchQuery: '',
@@ -47,11 +59,73 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
     ruleType: '',
     severity: '',
     origin: '',
+    observationStatus: '',
   });
   const [selectedResourceType, setSelectedResourceType] = useState<string | null>(null);
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
+  const [isModeSelectorOpen, setIsModeSelectorOpen] = useState(false);
+  const [isAdvancedDrawerOpen, setIsAdvancedDrawerOpen] = useState(false);
+
+  // Analyze bundle for observed resources and paths
+  const bundleAnalysis = useMemo(() => {
+    if (!projectBundle || typeof projectBundle !== 'object') {
+      return { observedResourceTypes: new Set<string>(), observedPaths: new Set<string>() };
+    }
+
+    const bundle = projectBundle as any;
+    const observedResourceTypes = new Set<string>();
+    const observedPaths = new Set<string>();
+
+    if (bundle.entry && Array.isArray(bundle.entry)) {
+      bundle.entry.forEach((entry: any) => {
+        if (entry.resource && entry.resource.resourceType) {
+          const resourceType = entry.resource.resourceType;
+          observedResourceTypes.add(resourceType);
+
+          // Recursively collect paths from the resource
+          const collectPaths = (obj: any, prefix: string) => {
+            if (!obj || typeof obj !== 'object') return;
+            
+            Object.keys(obj).forEach(key => {
+              const path = prefix ? `${prefix}.${key}` : key;
+              const fullPath = `${resourceType}.${path}`;
+              observedPaths.add(fullPath);
+              
+              if (Array.isArray(obj[key])) {
+                obj[key].forEach((item: any) => {
+                  if (item && typeof item === 'object') {
+                    collectPaths(item, path);
+                  }
+                });
+              } else if (obj[key] && typeof obj[key] === 'object') {
+                collectPaths(obj[key], path);
+              }
+            });
+          };
+
+          collectPaths(entry.resource, '');
+        }
+      });
+    }
+
+    return { observedResourceTypes, observedPaths };
+  }, [projectBundle]);
+
+  // Check if a rule's path is observed in the bundle
+  const isRulePathObserved = (rule: Rule): boolean => {
+    const fullPath = `${rule.resourceType}.${rule.path}`;
+    return bundleAnalysis.observedPaths.has(fullPath) || 
+           bundleAnalysis.observedPaths.has(rule.path);
+  };
+
+  // Count rules with observed vs not observed paths
+  const ruleAlignmentStats = useMemo(() => {
+    const observed = rules.filter(r => isRulePathObserved(r)).length;
+    const notObserved = rules.length - observed;
+    return { observed, notObserved, total: rules.length };
+  }, [rules, bundleAnalysis]);
 
   // Extract available filter options
   const availableResourceTypes = useMemo(() => {
@@ -116,11 +190,37 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
         }
       }
 
+      // Observation status filter (only applies when validated)
+      if (filters.observationStatus && validationState === ValidationState.Validated) {
+        const isObserved = isRulePathObserved(rule);
+        if (filters.observationStatus === 'observed' && !isObserved) {
+          return false;
+        }
+        if (filters.observationStatus === 'not-observed' && isObserved) {
+          return false;
+        }
+      }
+
       return true;
     });
-  }, [rules, filters, selectedResourceType]);
+  }, [rules, filters, selectedResourceType, validationState, isRulePathObserved]);
 
   const handleAddRule = () => {
+    if (showFailedBlocking) {
+      // Don't allow adding rules when validation has failed
+      return;
+    }
+    // Check if feature flag is enabled
+    if (features?.treeRuleAuthoring) {
+      // Show mode selector
+      setIsModeSelectorOpen(true);
+    } else {
+      // Directly open basic rule modal (existing behavior)
+      openBasicRuleModal();
+    }
+  };
+
+  const openBasicRuleModal = () => {
     const newRule: Rule = {
       id: `rule-${Date.now()}`,
       type: 'Required',
@@ -135,7 +235,29 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
     setIsModalOpen(true);
   };
 
+  const handleSelectBasicRule = () => {
+    if (showFailedBlocking) {
+      // Don't open modal when validation has failed
+      return;
+    }
+    setIsModeSelectorOpen(false);
+    openBasicRuleModal();
+  };
+
+  const handleSelectAdvancedRule = () => {
+    if (showFailedBlocking) {
+      // Don't open drawer when validation has failed
+      return;
+    }
+    setIsModeSelectorOpen(false);
+    setIsAdvancedDrawerOpen(true);
+  };
+
   const handleEditRule = (rule: Rule) => {
+    if (showFailedBlocking) {
+      // Don't allow editing rules when validation has failed
+      return;
+    }
     setEditingRule(rule);
     setIsModalOpen(true);
   };
@@ -156,10 +278,18 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
   };
 
   const handleDeleteRule = (ruleId: string) => {
+    if (showFailedBlocking) {
+      // Don't allow deleting rules when validation has failed
+      return;
+    }
     onRulesChange(rules.filter((r) => r.id !== ruleId));
   };
 
   const handleToggleRule = (ruleId: string) => {
+    if (showFailedBlocking) {
+      // Don't allow toggling rules when validation has failed
+      return;
+    }
     const updatedRules = rules.map((r) =>
       r.id === ruleId ? { ...r, enabled: r.enabled !== false ? false : true } : r
     );
@@ -225,6 +355,75 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
     setDismissedSuggestions(prev => new Set(prev).add(suggestionId));
   };
 
+  // Handle rules created from tree-based authoring
+  const handleTreeRulesCreated = (draftRules: DraftRule[]) => {
+    // Convert DraftRule[] to Rule[] format
+    const newRules: Rule[] = draftRules.map((draft) => ({
+      id: draft.id,
+      type: draft.type,
+      resourceType: draft.resourceType || 'Unknown',
+      path: draft.path,
+      severity: draft.severity,
+      message: draft.message,
+      params: draft.params,
+      origin: 'manual',
+      enabled: true,
+    }));
+
+    // Append to existing rules
+    onRulesChange([...rules, ...newRules]);
+
+    // Show success feedback (could add a toast notification here)
+    console.log(`Created ${newRules.length} rule(s) from tree authoring`);
+  };
+
+  // Check if we should show empty state
+  const showNoBundleState = validationState === ValidationState.NoBundle;
+  const showNotValidatedGuidance = validationState === ValidationState.NotValidated;
+  const showFailedBlocking = validationState === ValidationState.Failed;
+  const showValidatedSuccess = validationState === ValidationState.Validated;
+  const disableRuleCreation = showNoBundleState || showFailedBlocking;
+  const disableRuleEditing = showFailedBlocking;
+
+  // Render NoBundle empty state
+  if (showNoBundleState) {
+    return (
+      <div className="flex flex-col h-full bg-white">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
+          <h3 className="text-lg font-semibold text-gray-900">Rules</h3>
+        </div>
+
+        {/* Empty State */}
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="text-center max-w-md">
+            <FileJson className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              No Bundle Loaded
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Load a FHIR bundle in the left panel to start creating validation rules.
+              Rules define constraints and checks that will be applied to your FHIR resources.
+            </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-left">
+              <div className="flex gap-2">
+                <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-blue-800">
+                  <p className="font-medium mb-1">Getting Started</p>
+                  <ul className="list-disc list-inside space-y-1 text-xs">
+                    <li>Load a sample bundle from the Bundle tab</li>
+                    <li>Or paste your own FHIR bundle JSON</li>
+                    <li>Then return here to define rules</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Header */}
@@ -240,7 +439,15 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
           </button>
           <button
             onClick={handleAddRule}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors"
+            disabled={disableRuleCreation}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title={
+              showFailedBlocking 
+                ? 'Fix validation errors first' 
+                : showNoBundleState 
+                  ? 'Load a bundle first' 
+                  : 'Add new rule'
+            }
           >
             <Plus size={14} />
             Add Rule
@@ -256,12 +463,137 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
         </div>
       </div>
 
+      {/* Failed State Blocking Banner */}
+      {showFailedBlocking && (
+        <div className="mx-4 mt-3 mb-2 bg-red-50 border-2 border-red-300 rounded-lg p-3 shadow-sm">
+          <div className="flex gap-2">
+            <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-red-900 mb-1 flex items-center gap-2">
+                <Lock className="w-4 h-4" />
+                Rule Editing Disabled
+              </p>
+              <p className="text-xs text-red-800 mb-2">
+                Your bundle contains validation errors. Rules cannot be edited or applied until all errors are fixed.
+                This prevents invalid data from influencing your validation rules.
+              </p>
+              <p className="text-xs text-red-700 font-medium">
+                → Switch to the Validation tab to view and fix errors
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NotValidated Guidance Banner */}
+      {showNotValidatedGuidance && (
+        <div className="mx-4 mt-3 mb-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <div className="flex gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-amber-900 mb-1">
+                Schema-Only Mode
+              </p>
+              <p className="text-xs text-amber-800 mb-2">
+                You can create rules now, but they won't run until you validate your bundle.
+                Rules created here will check against the FHIR schema structure.
+              </p>
+              <p className="text-xs text-amber-700">
+                💡 <span className="font-medium">Tip:</span> Run validation to see how your rules perform against actual data.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Validated State Success Banner */}
+      {showValidatedSuccess && (
+        <div className="mx-4 mt-3 mb-2 bg-green-50 border border-green-200 rounded-lg p-3">
+          <div className="flex gap-2">
+            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-green-900 mb-1 flex items-center gap-2">
+                <Target className="w-4 h-4" />
+                Rules Based on Validated Bundle
+              </p>
+              <p className="text-xs text-green-800 mb-2">
+                Your bundle passed validation. Rules are now project-specific and aligned with your actual data.
+                Observation indicators show which paths exist in your bundle.
+              </p>
+              {ruleAlignmentStats.notObserved > 0 && (() => {
+                const unobservedRules = rules.filter(r => !isRulePathObserved(r));
+                const [showDetails, setShowDetails] = useState(false);
+                
+                return (
+                  <div className="bg-amber-50 border border-amber-200 rounded px-3 py-2 mt-2">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-xs text-amber-800 mb-1">
+                          <span className="font-semibold">Non-Blocking Warning:</span> {ruleAlignmentStats.notObserved} of {ruleAlignmentStats.total} rule(s) target paths not in bundle.
+                        </p>
+                        <p className="text-xs text-amber-700 mb-2">
+                          These rules won't trigger on current data but remain valid for future submissions.
+                          <span className="font-medium"> You can continue editing without restrictions.</span>
+                        </p>
+                        <button
+                          onClick={() => setShowDetails(!showDetails)}
+                          className="text-xs text-amber-700 hover:text-amber-900 font-medium underline"
+                        >
+                          {showDetails ? 'Hide' : 'Show'} affected rules ({unobservedRules.length})
+                        </button>
+                        
+                        {showDetails && (
+                          <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                            {unobservedRules.map(rule => (
+                              <div key={rule.id} className="flex items-start gap-2 text-xs bg-amber-100 rounded px-2 py-1">
+                                <span className="font-mono text-amber-900 flex-shrink-0">{rule.resourceType}.{rule.path}</span>
+                                <span className="text-amber-700 truncate">{rule.message || rule.type}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+              {ruleAlignmentStats.observed === ruleAlignmentStats.total && ruleAlignmentStats.total > 0 && (
+                <p className="text-xs text-green-700 font-medium mt-1">
+                  ✓ All {ruleAlignmentStats.total} rule(s) aligned with bundle data
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Observation Indicator Legend */}
+      {showValidatedSuccess && (
+        <div className="mx-4 mb-2 flex items-center gap-4 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded px-3 py-2">
+          <span className="font-medium text-gray-700">Legend:</span>
+          <div className="flex items-center gap-1.5">
+            <svg className="w-3 h-3 fill-green-500 text-green-500" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" />
+            </svg>
+            <span>Path observed</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <svg className="w-3 h-3 fill-none text-gray-300 stroke-2 stroke-current" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" strokeWidth="2" />
+            </svg>
+            <span>Path not in bundle</span>
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
       <RuleFilters
         filters={filters}
         onFiltersChange={setFilters}
         availableResourceTypes={availableResourceTypes}
         availableRuleTypes={availableRuleTypes}
+        showObservationFilter={showValidatedSuccess}
       />
 
       {/* Main Content Area */}
@@ -291,6 +623,9 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
             onToggleRule={handleToggleRule}
             onNavigateToPath={onNavigateToPath}
             groupBy="resourceType"
+            disabled={disableRuleEditing}
+            getObservationStatus={isRulePathObserved}
+            showObservationIndicators={showValidatedSuccess}
           />
         </div>
       </div>
@@ -304,6 +639,33 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
         projectBundle={projectBundle}
         hl7Samples={hl7Samples}
       />
+
+      {/* Rule Mode Selector Modal */}
+      <RuleModeSelectorModal
+        isOpen={isModeSelectorOpen}
+        onClose={() => setIsModeSelectorOpen(false)}
+        onSelectBasic={handleSelectBasicRule}
+        onSelectAdvanced={handleSelectAdvancedRule}
+      />
+
+      {/* Advanced Rules Drawer */}
+      {features?.treeRuleAuthoring && projectId && (
+        <AdvancedRulesDrawer
+          isOpen={isAdvancedDrawerOpen}
+          onClose={() => setIsAdvancedDrawerOpen(false)}
+          projectId={projectId}
+          resourceType="Patient"
+          projectBundle={projectBundle}
+          existingRules={rules.map(r => ({
+            id: r.id,
+            type: r.type,
+            path: r.path,
+            message: r.message,
+            severity: r.severity,
+          }))}
+          onRulesCreated={handleTreeRulesCreated}
+        />
+      )}
     </div>
   );
 };

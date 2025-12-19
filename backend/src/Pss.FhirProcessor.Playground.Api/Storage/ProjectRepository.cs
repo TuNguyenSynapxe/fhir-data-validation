@@ -35,6 +35,9 @@ public class ProjectRepository : IProjectRepository
         project.CreatedAt = DateTime.UtcNow;
         project.UpdatedAt = DateTime.UtcNow;
         
+        // Serialize features before saving
+        SerializeFeatures(project);
+        
         var filePath = GetProjectFilePath(project.Id);
         var json = JsonSerializer.Serialize(project, JsonOptions);
         await File.WriteAllTextAsync(filePath, json);
@@ -56,6 +59,12 @@ public class ProjectRepository : IProjectRepository
         var json = await File.ReadAllTextAsync(filePath);
         var project = JsonSerializer.Deserialize<Project>(json);
         
+        // Deserialize features after loading
+        if (project != null)
+        {
+            DeserializeFeatures(project);
+        }
+        
         return project;
     }
 
@@ -73,6 +82,7 @@ public class ProjectRepository : IProjectRepository
                 
                 if (project != null)
                 {
+                    DeserializeFeatures(project);
                     metadataList.Add(new ProjectMetadata
                     {
                         Id = project.Id,
@@ -94,6 +104,13 @@ public class ProjectRepository : IProjectRepository
         }
         
         return metadataList.OrderByDescending(p => p.UpdatedAt);
+    }
+
+    public async Task<Project> UpdateAsync(Project project)
+    {
+        project.UpdatedAt = DateTime.UtcNow;
+        await SaveProjectAsync(project);
+        return project;
     }
 
     public async Task<Project> SaveRulesAsync(Guid id, string rulesJson)
@@ -171,6 +188,9 @@ public class ProjectRepository : IProjectRepository
 
     private async Task SaveProjectAsync(Project project)
     {
+        // Serialize features before saving
+        SerializeFeatures(project);
+        
         var filePath = GetProjectFilePath(project.Id);
         var json = JsonSerializer.Serialize(project, JsonOptions);
         await File.WriteAllTextAsync(filePath, json);
@@ -181,5 +201,47 @@ public class ProjectRepository : IProjectRepository
     private string GetProjectFilePath(Guid id)
     {
         return Path.Combine(_storageDirectory, $"{id}.json");
+    }
+
+    /// <summary>
+    /// Serialize Features object to FeaturesJson before saving
+    /// </summary>
+    private void SerializeFeatures(Project project)
+    {
+        if (project.Features != null)
+        {
+            project.FeaturesJson = JsonSerializer.Serialize(project.Features);
+        }
+        else
+        {
+            // Ensure empty object instead of null
+            project.FeaturesJson = "{}";
+        }
+    }
+
+    /// <summary>
+    /// Deserialize FeaturesJson to Features object after loading
+    /// Ensures Features is never null in API responses
+    /// </summary>
+    private void DeserializeFeatures(Project project)
+    {
+        if (!string.IsNullOrWhiteSpace(project.FeaturesJson))
+        {
+            try
+            {
+                project.Features = JsonSerializer.Deserialize<ProjectFeatures>(project.FeaturesJson) 
+                    ?? new ProjectFeatures();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to deserialize features for project {ProjectId}, using defaults", project.Id);
+                project.Features = new ProjectFeatures();
+            }
+        }
+        else
+        {
+            // No features stored - use defaults (all false)
+            project.Features = new ProjectFeatures();
+        }
     }
 }

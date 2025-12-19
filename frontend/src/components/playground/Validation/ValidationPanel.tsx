@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Play, 
   RotateCcw, 
@@ -9,12 +9,15 @@ import {
   Info, 
   CheckCircle2,
   Loader2,
-  Clock
+  Clock,
+  FileJson
 } from 'lucide-react';
 import { ValidationResultList } from './ValidationResultList';
 import { ValidationLayerInfo } from './ValidationLayerInfo';
 import { ValidationSourceFilter, type SourceFilterState } from './ValidationSourceFilter';
 import type { SystemRuleSuggestion } from '../../../api/projects';
+import { useValidationState } from '../../../hooks/useValidationState';
+import { ValidationState } from '../../../types/validationState';
 
 interface ValidationError {
   source: string; // FHIR, Business, CodeMaster, Reference
@@ -59,6 +62,13 @@ interface ValidationPanelProps {
   onNavigateToPath?: (jsonPointer: string) => void;
   onSuggestionsReceived?: (suggestions: SystemRuleSuggestion[]) => void;
   onValidationStart?: () => void; // Called when validation starts
+  onValidationComplete?: (result: ValidationResult | null) => void; // Called when validation completes
+  triggerValidation?: number; // External trigger to run validation (timestamp)
+  
+  // Inputs for ValidationState derivation
+  bundleJson?: string; // Current bundle content
+  bundleChanged?: boolean; // Whether bundle has changed since last validation
+  rulesChanged?: boolean; // Whether rules have changed since last validation
 }
 
 /**
@@ -81,13 +91,30 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
   onSelectError,
   onNavigateToPath,
   onSuggestionsReceived,
-  onValidationStart
+  onValidationStart,
+  onValidationComplete,
+  triggerValidation,
+  bundleJson = '',
+  bundleChanged = false,
+  rulesChanged = false,
 }) => {
   const [results, setResults] = useState<ValidationResult | null>(null);
   const [isOpen, setIsOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationMode, setValidationMode] = useState<'fast' | 'debug'>('fast');
+  const [lastTrigger, setLastTrigger] = useState(0);
+  
+  // Derive validation state from current conditions
+  const { state: validationState } = useValidationState(
+    bundleJson,
+    results,
+    bundleChanged,
+    rulesChanged
+  );
+  
+  // Check if we should show empty state
+  const showNoBundleState = validationState === ValidationState.NoBundle;
   
   // Source filtering state
   const [sourceFilters, setSourceFilters] = useState<SourceFilterState>(() => {
@@ -120,6 +147,14 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
     setShowExplanations(newValue);
     localStorage.setItem(`validation-explanations-${projectId}`, String(newValue));
   };
+  
+  // Respond to external validation trigger
+  useEffect(() => {
+    if (triggerValidation && triggerValidation > 0 && triggerValidation !== lastTrigger) {
+      setLastTrigger(triggerValidation);
+      handleRunValidation();
+    }
+  }, [triggerValidation]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Run validation
@@ -185,6 +220,9 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
       setResults(validationResult);
       setIsOpen(true); // Auto-expand after validation
       
+      // Notify parent of validation completion
+      onValidationComplete?.(validationResult);
+      
       // Notify parent component if suggestions are available
       if (data.suggestions && data.suggestions.length > 0 && onSuggestionsReceived) {
         onSuggestionsReceived(data.suggestions);
@@ -214,6 +252,51 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
 
   const summary = results?.summary;
   const hasErrors = (summary?.total || 0) > 0;
+
+  // Render NoBundle empty state
+  if (showNoBundleState) {
+    return (
+      <div className="flex flex-col h-full bg-white border-t">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+              Problems
+            </span>
+            <ValidationLayerInfo />
+          </div>
+        </div>
+
+        {/* Empty State */}
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="text-center max-w-md">
+            <FileJson className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              No Bundle to Validate
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Load a FHIR bundle in the left panel to run validation.
+              Validation will check your bundle against FHIR structural rules,
+              business logic, and code system constraints.
+            </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-left">
+              <div className="flex gap-2">
+                <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-blue-800">
+                  <p className="font-medium mb-1">Getting Started</p>
+                  <ul className="list-disc list-inside space-y-1 text-xs">
+                    <li>Load a sample bundle from the Bundle tab</li>
+                    <li>Or paste your own FHIR bundle JSON</li>
+                    <li>Then click "Run Validation" here</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-white border-t">
@@ -409,6 +492,19 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
                 <Play className="w-12 h-12 mb-3" />
                 <p className="text-sm font-medium">No validation results</p>
                 <p className="text-xs mt-1">Click "Run Validation" to check your FHIR bundle</p>
+                
+                {/* Show additional guidance for NotValidated state */}
+                {validationState === ValidationState.NotValidated && (bundleChanged || rulesChanged) && (
+                  <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3 max-w-sm">
+                    <div className="flex gap-2">
+                      <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-xs text-amber-800 text-left">
+                        <p className="font-medium mb-1">Bundle or rules have changed</p>
+                        <p>Run validation to see updated results.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

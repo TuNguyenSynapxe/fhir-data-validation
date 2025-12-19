@@ -1,5 +1,5 @@
 import React, { useState, memo } from 'react';
-import { Edit, Trash2, Eye, EyeOff, ChevronDown, ChevronRight } from 'lucide-react';
+import { Edit, Trash2, Eye, EyeOff, ChevronDown, ChevronRight, Circle, AlertTriangle } from 'lucide-react';
 import { RuleCardExpanded } from './RuleCardExpanded';
 
 interface Rule {
@@ -21,6 +21,8 @@ interface RuleRowProps {
   onDelete: (ruleId: string) => void;
   onToggle?: (ruleId: string) => void;
   onNavigateToPath?: (path: string) => void;
+  disabled?: boolean;
+  isObserved?: boolean;
 }
 
 const RuleRowComponent: React.FC<RuleRowProps> = ({
@@ -29,6 +31,8 @@ const RuleRowComponent: React.FC<RuleRowProps> = ({
   onDelete,
   onToggle,
   onNavigateToPath,
+  disabled = false,
+  isObserved,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const enabled = rule.enabled !== false;
@@ -62,9 +66,34 @@ const RuleRowComponent: React.FC<RuleRowProps> = ({
           )}
           
           <div className="flex items-center gap-3 flex-1 min-w-0">
+            {isObserved !== undefined && (
+              <div 
+                className="flex-shrink-0" 
+                title={isObserved ? 'Path observed in bundle' : 'Path not found in bundle'}
+              >
+                <Circle 
+                  className={`w-3 h-3 ${
+                    isObserved 
+                      ? 'fill-green-500 text-green-500' 
+                      : 'fill-none text-gray-300 stroke-2'
+                  }`}
+                />
+              </div>
+            )}
             <span className="font-mono text-sm font-medium text-gray-900 truncate max-w-md">
               {rule.path || 'No path'}
             </span>
+            
+            {/* Warning badge for unobserved paths */}
+            {isObserved === false && (
+              <div 
+                className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 rounded text-amber-700 flex-shrink-0"
+                title="Path not found in bundle - rule won't trigger on current data"
+              >
+                <AlertTriangle className="w-3 h-3" />
+                <span className="text-xs font-medium">Not in bundle</span>
+              </div>
+            )}
             
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <span className="px-1.5 py-0.5 text-xs text-gray-500 bg-gray-50 rounded">
@@ -86,10 +115,11 @@ const RuleRowComponent: React.FC<RuleRowProps> = ({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onToggle(rule.id);
+                if (!disabled) onToggle(rule.id);
               }}
-              className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors"
-              title={enabled ? 'Disable rule' : 'Enable rule'}
+              disabled={disabled}
+              className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title={disabled ? 'Fix validation errors first' : (enabled ? 'Disable rule' : 'Enable rule')}
             >
               {enabled ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
             </button>
@@ -97,22 +127,24 @@ const RuleRowComponent: React.FC<RuleRowProps> = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onEdit(rule);
+              if (!disabled) onEdit(rule);
             }}
-            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-            title="Edit rule"
+            disabled={disabled}
+            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title={disabled ? 'Fix validation errors first' : 'Edit rule'}
           >
             <Edit className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (confirm('Are you sure you want to delete this rule?')) {
+              if (!disabled && confirm('Are you sure you want to delete this rule?')) {
                 onDelete(rule.id);
               }
             }}
-            className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
-            title="Delete rule"
+            disabled={disabled}
+            className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title={disabled ? 'Fix validation errors first' : 'Delete rule'}
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -126,6 +158,7 @@ const RuleRowComponent: React.FC<RuleRowProps> = ({
           onEdit={onEdit}
           onDelete={onDelete}
           onNavigateToPath={onNavigateToPath}
+          isObserved={isObserved}
         />
       )}
     </div>
@@ -140,6 +173,7 @@ export const RuleRow = memo(RuleRowComponent, (prevProps, nextProps) => {
     prevProps.rule.path === nextProps.rule.path &&
     prevProps.rule.type === nextProps.rule.type &&
     prevProps.rule.severity === nextProps.rule.severity &&
-    prevProps.rule.origin === nextProps.rule.origin
+    prevProps.rule.origin === nextProps.rule.origin &&
+    prevProps.isObserved === nextProps.isObserved
   );
 });

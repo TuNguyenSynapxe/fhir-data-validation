@@ -94,6 +94,29 @@ public class ProjectService : IProjectService
         return project;
     }
 
+    public async Task<Project> UpdateFeaturesAsync(Guid id, UpdateFeaturesRequest request)
+    {
+        var project = await _repository.GetAsync(id);
+        
+        if (project == null)
+            throw new InvalidOperationException($"Project {id} not found");
+        
+        // Update only the provided feature flags (merge with existing)
+        if (request.TreeRuleAuthoring.HasValue)
+        {
+            project.Features.TreeRuleAuthoring = request.TreeRuleAuthoring.Value;
+        }
+        
+        // Save the updated project
+        project.UpdatedAt = DateTime.UtcNow;
+        await _repository.UpdateAsync(project);
+        
+        _logger.LogInformation("Updated features for project {ProjectId}: TreeRuleAuthoring={TreeRuleAuthoring}", 
+            id, project.Features.TreeRuleAuthoring);
+        
+        return project;
+    }
+
     public async Task<object> ExportRulePackageAsync(Guid id)
     {
         var project = await _repository.GetAsync(id);

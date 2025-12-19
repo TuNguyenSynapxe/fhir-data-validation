@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
+import { ExternalLink, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import RuleExplainabilityPanel from '../../RuleExplainabilityPanel';
 
 interface Rule {
@@ -19,11 +19,13 @@ interface RuleCardExpandedProps {
   onEdit?: (rule: Rule) => void;
   onDelete?: (ruleId: string) => void;
   onNavigateToPath?: (path: string) => void;
+  isObserved?: boolean;
 }
 
 export const RuleCardExpanded: React.FC<RuleCardExpandedProps> = ({
   rule,
   onNavigateToPath,
+  isObserved,
 }) => {
   const [showExplainability, setShowExplainability] = useState(false);
 
@@ -67,6 +69,32 @@ export const RuleCardExpanded: React.FC<RuleCardExpandedProps> = ({
             )}
           </div>
         </div>
+
+        {/* Path Not Found Warning */}
+        {isObserved === false && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <div className="flex gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-amber-900 mb-1">
+                  Path Not Found in Bundle
+                </p>
+                <p className="text-xs text-amber-800 mb-2">
+                  The path <code className="font-mono bg-amber-100 px-1 rounded">{rule.resourceType}.{rule.path}</code> does not exist in your current bundle.
+                  This rule will not trigger on your sample data.
+                </p>
+                <p className="text-xs text-amber-700">
+                  <span className="font-medium">Note:</span> This is not an error. The rule may apply to:
+                </p>
+                <ul className="text-xs text-amber-700 list-disc list-inside mt-1 space-y-0.5">
+                  <li>Optional fields not present in this submission</li>
+                  <li>Future data scenarios you want to validate</li>
+                  <li>Fields from templates or reference implementations</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Severity */}
         <div>

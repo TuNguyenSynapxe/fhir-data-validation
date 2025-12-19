@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { AlertCircle, AlertTriangle, Info, ChevronDown, ChevronRight, XCircle, CheckCircle } from 'lucide-react';
 import { getLayerMetadata } from '../../../utils/validationLayers';
 import { getExplanationTemplate } from '../../../utils/validationExplanations';
-import { formatSmartPath, getScopedSegments, extractFullJsonPath, convertToJsonPath } from '../../../utils/smartPathFormatting';
+import { formatSmartPath, getScopedSegments, convertToJsonPath } from '../../../utils/smartPathFormatting';
 import { SmartPathBreadcrumb } from './SmartPathBreadcrumb';
 import { PathInfoTooltip } from './PathInfoTooltip';
 import { getBlockingStatusDisplay } from '../../../utils/validationOverrides';

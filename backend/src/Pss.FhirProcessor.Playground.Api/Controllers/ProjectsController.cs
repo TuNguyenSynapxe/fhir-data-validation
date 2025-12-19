@@ -9,13 +9,16 @@ namespace Pss.FhirProcessor.Playground.Api.Controllers;
 public class ProjectsController : ControllerBase
 {
     private readonly IProjectService _projectService;
+    private readonly IRuleService _ruleService;
     private readonly ILogger<ProjectsController> _logger;
 
     public ProjectsController(
         IProjectService projectService,
+        IRuleService ruleService,
         ILogger<ProjectsController> logger)
     {
         _projectService = projectService;
+        _ruleService = ruleService;
         _logger = logger;
     }
 
@@ -232,6 +235,72 @@ public class ProjectsController : ControllerBase
         {
             _logger.LogError(ex, "Error validating project {ProjectId}", id);
             return StatusCode(500, new { error = "Validation failed", message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get observed terminology values from project's sample bundle
+    /// </summary>
+    [HttpGet("{id}/terminology/observed")]
+    public async Task<ActionResult<ObservedTerminologyResponse>> GetObservedTerminology(Guid id)
+    {
+        try
+        {
+            var result = await _ruleService.GetObservedTerminologyAsync(id);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting observed terminology for project {ProjectId}", id);
+            return StatusCode(500, new { error = "Failed to get observed terminology", message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Create rules in bulk from intents
+    /// </summary>
+    [HttpPost("{id}/rules/bulk")]
+    public async Task<ActionResult<BulkCreateRulesResponse>> BulkCreateRules(Guid id, [FromBody] BulkCreateRulesRequest request)
+    {
+        try
+        {
+            var result = await _ruleService.BulkCreateRulesAsync(id, request);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error bulk creating rules for project {ProjectId}", id);
+            return StatusCode(500, new { error = "Failed to bulk create rules", message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Update feature flags for a project (admin only)
+    /// </summary>
+    [HttpPatch("{id}/features")]
+    public async Task<ActionResult<Project>> UpdateFeatures(Guid id, [FromBody] UpdateFeaturesRequest request)
+    {
+        try
+        {
+            var project = await _projectService.UpdateFeaturesAsync(id, request);
+            return Ok(project);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating features for project {ProjectId}", id);
+            return StatusCode(500, new { error = "Failed to update features", message = ex.Message });
         }
     }
 }

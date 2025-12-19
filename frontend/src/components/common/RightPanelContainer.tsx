@@ -1,6 +1,7 @@
 import React from 'react';
 import { RightPanelMode } from '../../types/rightPanel';
 import { RightPanel } from './RightPanel';
+import { ValidationContextBar } from './ValidationContextBar';
 
 interface Rule {
   id: string;
@@ -19,8 +20,8 @@ interface RightPanelContainerProps {
   showModeTabs?: boolean; // Control whether to show mode tabs
   
   // Rules mode props
-  activeTab?: 'rules' | 'codemaster' | 'metadata' | 'settings';
-  onTabChange?: (tab: 'rules' | 'codemaster' | 'metadata' | 'settings') => void;
+  activeTab?: 'overview' | 'rules' | 'codemaster' | 'metadata' | 'settings';
+  onTabChange?: (tab: 'overview' | 'rules' | 'codemaster' | 'metadata' | 'settings') => void;
   rules?: Rule[];
   onRulesChange?: (rules: Rule[]) => void;
   onSaveRules?: () => void;
@@ -28,6 +29,11 @@ interface RightPanelContainerProps {
   projectBundle?: object;
   hl7Samples?: any[];
   ruleSuggestions?: any[];
+  projectFeatures?: {
+    treeRuleAuthoring?: boolean;
+  };
+  onFeaturesUpdated?: (features: { treeRuleAuthoring?: boolean }) => void;
+  isAdmin?: boolean;
   
   // Validation Settings props
   validationSettings?: any;
@@ -51,6 +57,23 @@ interface RightPanelContainerProps {
   onSelectError?: (error: any) => void;
   onSuggestionsReceived?: (suggestions: any[]) => void;
   onValidationStart?: () => void;
+  onValidationComplete?: (result: any) => void;
+  triggerValidation?: number; // Timestamp to trigger validation externally
+  onTriggerValidation?: () => void; // Callback to request validation trigger
+  bundleJson?: string; // For ValidationState derivation
+  bundleChanged?: boolean; // For ValidationState derivation
+  rulesChanged?: boolean; // For ValidationState derivation
+  validationState?: string; // Current ValidationState
+  validationMetadata?: {
+    errorCount?: number;
+    warningCount?: number;
+  };
+  validationResult?: any; // Full validation result
+  ruleAlignmentStats?: {
+    observed: number;
+    notObserved: number;
+    total: number;
+  };
   
   // Navigation
   onNavigateToPath?: (path: string) => void;
@@ -70,7 +93,7 @@ export const RightPanelContainer: React.FC<RightPanelContainerProps> = ({
   currentMode,
   onModeChange,
   showModeTabs = false,
-  activeTab = 'rules',
+  activeTab = 'overview',
   onTabChange,
   ...rightPanelProps
 }) => {
@@ -115,6 +138,16 @@ export const RightPanelContainer: React.FC<RightPanelContainerProps> = ({
       {showSubTabs && (
         <div className="flex border-b bg-gray-50 flex-shrink-0">
           <button
+            onClick={() => onTabChange?.('overview')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'overview'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Overview
+          </button>
+          <button
             onClick={() => onTabChange?.('rules')}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'rules'
@@ -157,11 +190,38 @@ export const RightPanelContainer: React.FC<RightPanelContainerProps> = ({
         </div>
       )}
 
+      {/* Validation Context Bar - Sticky status strip */}
+      {rightPanelProps.validationState && (
+        <ValidationContextBar
+          fhirVersion="R4"
+          bundleSource="Current"
+          validationState={rightPanelProps.validationState}
+          errorCount={rightPanelProps.validationMetadata?.errorCount}
+          warningCount={rightPanelProps.validationMetadata?.warningCount}
+          onRunValidation={() => {
+            // Switch to Validation mode and trigger validation
+            if (currentMode !== RightPanelMode.Validation) {
+              onModeChange?.(RightPanelMode.Validation);
+            }
+            // Trigger validation through callback
+            rightPanelProps.onTriggerValidation?.();
+          }}
+          onViewErrors={() => {
+            // Switch to Validation mode to view errors
+            if (currentMode !== RightPanelMode.Validation) {
+              onModeChange?.(RightPanelMode.Validation);
+            }
+          }}
+        />
+      )}
+
       {/* Panel Content */}
       <div className="flex-1 overflow-hidden">
         <RightPanel
           currentMode={currentMode}
           activeTab={activeTab}
+          onTabChange={onTabChange}
+          onModeChange={onModeChange}
           {...rightPanelProps}
         />
       </div>

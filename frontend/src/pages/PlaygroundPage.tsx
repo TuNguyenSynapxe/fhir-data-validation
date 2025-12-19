@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Loader2, AlertCircle, Download } from 'lucide-react';
 import dayjs from 'dayjs';
 import {
@@ -15,6 +16,8 @@ import PlaygroundLayout from '../layouts/PlaygroundLayout';
 import { BundleTabs } from '../components/playground/Bundle/BundleTabs';
 import { RightPanelContainer } from '../components/common/RightPanelContainer';
 import { RightPanelMode } from '../types/rightPanel';
+import { useValidationState } from '../hooks/useValidationState';
+import { ValidationState } from '../types/validationState';
 
 import type { FhirSampleMetadata } from '../types/fhirSample';
 
@@ -31,25 +34,23 @@ interface Rule {
 export default function PlaygroundPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  if (!projectId) {
-    navigate('/');
-    return null;
-  }
-
-  const { data: project, isLoading, error } = useProject(projectId);
-  const saveBundleMutation = useSaveBundle(projectId);
-  const saveRulesMutation = useSaveRules(projectId);
-  const saveCodeMasterMutation = useSaveCodeMaster(projectId);
-  const saveValidationSettingsMutation = useSaveValidationSettings(projectId);
+  const { data: project, isLoading, error } = useProject(projectId!);
+  const saveBundleMutation = useSaveBundle(projectId!);
+  const saveRulesMutation = useSaveRules(projectId!);
+  const saveCodeMasterMutation = useSaveCodeMaster(projectId!);
+  const saveValidationSettingsMutation = useSaveValidationSettings(projectId!);
 
   const [bundleJson, setBundleJson] = useState('');
   const [codeMasterJson, setCodeMasterJson] = useState('');
   const [validationSettings, setValidationSettings] = useState<ValidationSettings>(DEFAULT_VALIDATION_SETTINGS);
   const [rules, setRules] = useState<Rule[]>([]);
-  const [activeTab, setActiveTab] = useState<'rules' | 'codemaster' | 'metadata' | 'settings'>('rules');
+  const [activeTab, setActiveTab] = useState<'overview' | 'rules' | 'codemaster' | 'metadata' | 'settings'>('overview');
   const [hl7Samples, setHl7Samples] = useState<FhirSampleMetadata[]>([]);
   const [ruleSuggestions, setRuleSuggestions] = useState<any[]>([]);
+  const [validationResult, setValidationResult] = useState<any>(null); // Store last validation result
+  const [validationTrigger, setValidationTrigger] = useState<number>(0); // Timestamp to trigger validation
   
   // Right Panel Mode (default: Rules)
   const [rightPanelMode, setRightPanelMode] = useState<RightPanelMode>(RightPanelMode.Rules);
@@ -58,14 +59,64 @@ export default function PlaygroundPage() {
   const [originalBundleJson, setOriginalBundleJson] = useState('');
   const [originalCodeMasterJson, setOriginalCodeMasterJson] = useState('');
   const [originalValidationSettings, setOriginalValidationSettings] = useState<ValidationSettings>(DEFAULT_VALIDATION_SETTINGS);
+  const [originalRulesJson, setOriginalRulesJson] = useState('');
   
   // Navigation state for Smart Path
-  const [navigationFeedback, setNavigationFeedback] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_navigationFeedback, setNavigationFeedback] = useState<string | null>(null);
   const bundleTabsRef = useRef<{ switchToTreeView: () => void; navigateToPath: (path: string) => void }>(null);
   
   // TreeView focus state for context dimming
   const [treeViewFocused, setTreeViewFocused] = useState(false);
   const focusTimeoutRef = useRef<number | undefined>(undefined);
+  
+  // Track if we've already auto-focused on validation failure
+  const hasAutoFocusedRef = useRef(false);
+
+  // Calculate rule alignment stats for Overview (simplified version without bundle analysis)
+  // Full analysis happens in RulesPanel, this is just for Overview summary
+  const ruleAlignmentStats = useMemo(() => {
+    // This is a placeholder - actual calculation would require bundle analysis
+    // For now, just return counts
+    return {
+      observed: 0,
+      notObserved: 0,
+      total: rules.length
+    };
+  }, [rules]);
+
+  // Compute current rules JSON for change detection
+  const currentRulesJson = useMemo(() => JSON.stringify({
+    version: '1.0',
+    fhirVersion: 'R4',
+    rules: rules,
+  }, null, 2), [rules]);
+  
+  // Change detection for ValidationState
+  const bundleChanged = bundleJson !== originalBundleJson;
+  const rulesChanged = currentRulesJson !== originalRulesJson;
+  
+  // Compute validation state (must be called unconditionally)
+  const { state: validationState, metadata: validationMetadata } = useValidationState(
+    bundleJson,
+    validationResult,
+    bundleChanged,
+    rulesChanged
+  );
+
+  // Auto-focus Validation mode when validation fails (only once per failure)
+  useEffect(() => {
+    if (validationState === ValidationState.Failed) {
+      // Only auto-focus if we haven't already done so for this failure
+      if (!hasAutoFocusedRef.current && rightPanelMode !== RightPanelMode.Validation) {
+        setRightPanelMode(RightPanelMode.Validation);
+        hasAutoFocusedRef.current = true;
+      }
+    } else {
+      // Reset the flag when validation state changes away from Failed
+      hasAutoFocusedRef.current = false;
+    }
+  }, [validationState, rightPanelMode]);
 
   // Load HL7 samples once on mount (read-only for drawer)
   useEffect(() => {
@@ -106,8 +157,10 @@ export default function PlaygroundPage() {
       try {
         const parsed = JSON.parse(project.rulesJson || '{}');
         setRules(parsed.rules || []);
+        setOriginalRulesJson(project.rulesJson || '{}');
       } catch {
         setRules([]);
+        setOriginalRulesJson('{}');
       }
       
       // Parse validation settings JSON
@@ -147,6 +200,7 @@ export default function PlaygroundPage() {
       };
       const rulesJsonString = JSON.stringify(rulesObject, null, 2);
       await saveRulesMutation.mutateAsync(rulesJsonString);
+      setOriginalRulesJson(rulesJsonString);
     } catch (error) {
       console.error('Failed to save rules:', error);
     }
@@ -179,6 +233,20 @@ export default function PlaygroundPage() {
    */
   const handleValidationStart = () => {
     setRightPanelMode(RightPanelMode.Validation);
+  };
+  
+  /**
+   * Handle validation completion - store results for state derivation
+   */
+  const handleValidationComplete = (result: any) => {
+    setValidationResult(result);
+  };
+  
+  /**
+   * Trigger validation from external sources (like ValidationContextBar)
+   */
+  const handleTriggerValidation = () => {
+    setValidationTrigger(Date.now());
   };
   
   /**
@@ -248,41 +316,16 @@ export default function PlaygroundPage() {
     URL.revokeObjectURL(url);
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="flex items-center gap-3 text-gray-600">
-          <Loader2 size={24} className="animate-spin" />
-          <span>Loading project...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !project) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
-          <div className="flex items-start gap-3">
-            <AlertCircle size={20} className="text-red-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="text-red-800 font-medium mb-1">Error Loading Project</h3>
-              <p className="text-red-700 text-sm">
-                {error instanceof Error ? error.message : 'Failed to load project. Please try again.'}
-              </p>
-              <button
-                onClick={() => navigate('/')}
-                className="mt-4 inline-flex items-center gap-2 text-sm text-red-700 hover:text-red-900"
-              >
-                <ArrowLeft size={14} />
-                Back to Projects
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handleFeaturesUpdated = (features: { treeRuleAuthoring?: boolean }) => {
+    // Update the React Query cache with the new features
+    queryClient.setQueryData(['project', projectId], (oldProject: any) => {
+      if (!oldProject) return oldProject;
+      return {
+        ...oldProject,
+        features: features,
+      };
+    });
+  };
 
   // Parse project bundle for drawer (read-only)
   let projectBundle: object | undefined;
@@ -290,6 +333,47 @@ export default function PlaygroundPage() {
     projectBundle = bundleJson ? JSON.parse(bundleJson) : undefined;
   } catch {
     projectBundle = undefined;
+  }
+
+  // Early return checks after all hooks
+  if (!projectId) {
+    navigate('/');
+    return null;
+  }
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+          <p className="text-sm text-gray-600">Loading project...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !project) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <AlertCircle className="w-12 h-12 text-red-500" />
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Failed to load project</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              {error ? String(error) : 'Project not found'}
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/')}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+          >
+            Back to Projects
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -365,6 +449,9 @@ export default function PlaygroundPage() {
               isSavingValidationSettings={saveValidationSettingsMutation.isPending}
               projectName={project.name}
               projectId={projectId}
+              projectFeatures={project.features}
+              onFeaturesUpdated={handleFeaturesUpdated}
+              isAdmin={true}
               onSelectError={(error) => {
                 const jsonPointer = error.jsonPointer || error.navigation?.jsonPointer;
                 if (jsonPointer) {
@@ -373,7 +460,17 @@ export default function PlaygroundPage() {
               }}
               onSuggestionsReceived={setRuleSuggestions}
               onValidationStart={handleValidationStart}
+              onValidationComplete={handleValidationComplete}
+              triggerValidation={validationTrigger}
+              onTriggerValidation={handleTriggerValidation}
               onNavigateToPath={handleNavigateToPath}
+              bundleJson={bundleJson}
+              bundleChanged={bundleChanged}
+              rulesChanged={rulesChanged}
+              validationState={validationState}
+              validationMetadata={validationMetadata}
+              validationResult={validationResult}
+              ruleAlignmentStats={ruleAlignmentStats}
               isDimmed={treeViewFocused}
               onClearFocus={handleClearFocus}
             />

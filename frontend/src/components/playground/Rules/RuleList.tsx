@@ -21,6 +21,9 @@ interface RuleListProps {
   onToggleRule?: (ruleId: string) => void;
   onNavigateToPath?: (path: string) => void;
   groupBy?: 'resourceType' | 'ruleType' | 'none';
+  disabled?: boolean;
+  getObservationStatus?: (rule: Rule) => boolean;
+  showObservationIndicators?: boolean;
 }
 
 export const RuleList: React.FC<RuleListProps> = ({
@@ -30,6 +33,9 @@ export const RuleList: React.FC<RuleListProps> = ({
   onToggleRule,
   onNavigateToPath,
   groupBy = 'resourceType',
+  disabled = false,
+  getObservationStatus,
+  showObservationIndicators = false,
 }) => {
   // Group rules based on groupBy prop
   const groupedRules = React.useMemo(() => {
@@ -94,6 +100,9 @@ export const RuleList: React.FC<RuleListProps> = ({
               onToggleRule={onToggleRule}
               onNavigateToPath={onNavigateToPath}
               defaultExpanded={false}
+              disabled={disabled}
+              getObservationStatus={getObservationStatus}
+              showObservationIndicators={showObservationIndicators}
             />
           ));
       })}

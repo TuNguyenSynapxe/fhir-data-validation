@@ -1,0 +1,16 @@
+{
+  "Id": "4c9a778b-943c-43fe-b09f-16b2e2fa53e2",
+  "Name": "test 2",
+  "Description": null,
+  "FhirVersion": "R4",
+  "CreatedAt": "2025-12-18T15:18:35.012466Z",
+  "UpdatedAt": "2025-12-18T15:18:35.012466Z",
+  "RulesJson": null,
+  "CodeMasterJson": null,
+  "SampleBundleJson": null,
+  "ValidationSettingsJson": null,
+  "FeaturesJson": "{\u0022TreeRuleAuthoring\u0022:false}",
+  "Features": {
+    "TreeRuleAuthoring": false
+  }
+}

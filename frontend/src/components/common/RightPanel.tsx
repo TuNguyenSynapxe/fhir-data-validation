@@ -5,6 +5,8 @@ import { ValidationPanel } from '../playground/Validation/ValidationPanel';
 import { CodeMasterEditor } from '../playground/CodeMaster/CodeMasterEditor';
 import { RuleSetMetadata } from '../playground/Metadata/RuleSetMetadata';
 import { ValidationSettingsEditor } from '../playground/Settings/ValidationSettingsEditor';
+import { ExperimentalFeaturesSettings } from '../playground/Settings/ExperimentalFeaturesSettings';
+import { OverviewPanel } from '../playground/Overview/OverviewPanel';
 import { DEFAULT_VALIDATION_SETTINGS } from '../../types/validationSettings';
 
 interface Rule {
@@ -22,7 +24,19 @@ interface RightPanelProps {
   currentMode: RightPanelMode;
   
   // Rules mode props
-  activeTab?: 'rules' | 'codemaster' | 'metadata' | 'settings';
+  activeTab?: 'overview' | 'rules' | 'codemaster' | 'metadata' | 'settings';
+  onTabChange?: (tab: 'overview' | 'rules' | 'codemaster' | 'metadata' | 'settings') => void;
+  validationResult?: any;
+  onModeChange?: (mode: RightPanelMode) => void;
+  ruleAlignmentStats?: {
+    observed: number;
+    notObserved: number;
+    total: number;
+  };
+  validationMetadata?: {
+    errorCount?: number;
+    warningCount?: number;
+  };
   rules?: Rule[];
   onRulesChange?: (rules: Rule[]) => void;
   onSaveRules?: () => void;
@@ -30,6 +44,11 @@ interface RightPanelProps {
   projectBundle?: object;
   hl7Samples?: any[];
   ruleSuggestions?: any[];
+  projectFeatures?: {
+    treeRuleAuthoring?: boolean;
+  };
+  onFeaturesUpdated?: (features: { treeRuleAuthoring?: boolean }) => void;
+  isAdmin?: boolean;
   
   // Validation Settings props
   validationSettings?: any;
@@ -53,6 +72,12 @@ interface RightPanelProps {
   onSelectError?: (error: any) => void;
   onSuggestionsReceived?: (suggestions: any[]) => void;
   onValidationStart?: () => void;
+  onValidationComplete?: (result: any) => void;
+  triggerValidation?: number; // Timestamp to trigger validation externally
+  bundleJson?: string; // For ValidationState derivation
+  bundleChanged?: boolean; // For ValidationState derivation
+  rulesChanged?: boolean; // For ValidationState derivation
+  validationState?: string; // Current ValidationState
   
   // Navigation
   onNavigateToPath?: (path: string) => void;
@@ -75,7 +100,12 @@ interface RightPanelProps {
  */
 export const RightPanel: React.FC<RightPanelProps> = ({
   currentMode,
-  activeTab = 'rules',
+  activeTab = 'overview',
+  onTabChange,
+  onModeChange,
+  validationResult,
+  validationMetadata,
+  ruleAlignmentStats,
   rules = [],
   onRulesChange,
   onSaveRules,
@@ -98,13 +128,36 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   onSelectError,
   onSuggestionsReceived,
   onValidationStart,
+  onValidationComplete,
+  triggerValidation,
   onNavigateToPath,
+  bundleJson,
+  bundleChanged,
+  rulesChanged,
+  validationState,
   isDimmed = false,
   onClearFocus,
+  projectFeatures,
+  onFeaturesUpdated,
+  isAdmin = true, // Default to true for now (no auth system)
 }) => {
   // Render Rules mode (with tabs)
   const renderRulesMode = () => {
     switch (activeTab) {
+      case 'overview':
+        return (
+          <OverviewPanel
+            validationState={validationState}
+            validationMetadata={validationMetadata}
+            validationResult={validationResult}
+            rules={rules}
+            bundleJson={bundleJson}
+            ruleAlignmentStats={ruleAlignmentStats}
+            onNavigateToValidation={() => onModeChange?.(RightPanelMode.Validation)}
+            onNavigateToRules={() => onTabChange?.('rules')}
+            onTabChange={onTabChange}
+          />
+        );
       case 'rules':
         return (
           <RulesPanel
@@ -116,6 +169,9 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             hl7Samples={hl7Samples}
             onNavigateToPath={onNavigateToPath}
             suggestions={ruleSuggestions}
+            projectId={projectId}
+            features={projectFeatures}
+            validationState={validationState}
           />
         );
       case 'codemaster':
@@ -143,13 +199,25 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         );
       case 'settings':
         return (
-          <ValidationSettingsEditor
-            settings={validationSettings || DEFAULT_VALIDATION_SETTINGS}
-            onSettingsChange={onValidationSettingsChange || (() => {})}
-            onSave={onSaveValidationSettings || (() => {})}
-            hasChanges={hasValidationSettingsChanges}
-            isSaving={isSavingValidationSettings}
-          />
+          <div className="flex flex-col h-full overflow-y-auto">
+            <ValidationSettingsEditor
+              settings={validationSettings || DEFAULT_VALIDATION_SETTINGS}
+              onSettingsChange={onValidationSettingsChange || (() => {})}
+              onSave={onSaveValidationSettings || (() => {})}
+              hasChanges={hasValidationSettingsChanges}
+              isSaving={isSavingValidationSettings}
+            />
+            {/* Experimental Features Section - Admin Only */}
+            {isAdmin && projectId && onFeaturesUpdated && (
+              <div className="border-t border-gray-200">
+                <ExperimentalFeaturesSettings
+                  projectId={projectId}
+                  features={projectFeatures || {}}
+                  onFeaturesUpdated={onFeaturesUpdated}
+                />
+              </div>
+            )}
+          </div>
         );
       default:
         return null;
@@ -167,6 +235,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         onNavigateToPath={onNavigateToPath}
         onSuggestionsReceived={onSuggestionsReceived}
         onValidationStart={onValidationStart}
+        onValidationComplete={onValidationComplete}
+        triggerValidation={triggerValidation}
+        bundleJson={bundleJson}
+        bundleChanged={bundleChanged}
+        rulesChanged={rulesChanged}
       />
     );
   };

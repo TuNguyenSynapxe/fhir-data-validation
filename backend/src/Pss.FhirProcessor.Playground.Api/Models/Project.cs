@@ -19,4 +19,18 @@ public class Project
     /// Runtime validation settings (separate from rule definitions)
     /// </summary>
     public string? ValidationSettingsJson { get; set; }
+    
+    /// <summary>
+    /// Feature flags JSON storage (serialized ProjectFeatures)
+    /// Stores per-project feature toggles as JSON
+    /// Persisted to file, also exposed in API for debugging
+    /// </summary>
+    public string? FeaturesJson { get; set; }
+    
+    /// <summary>
+    /// Feature flags for controlling access to experimental features
+    /// Mapped from FeaturesJson on load, serialized back on save
+    /// Always returned in API responses (never null)
+    /// </summary>
+    public ProjectFeatures Features { get; set; } = new();
 }
