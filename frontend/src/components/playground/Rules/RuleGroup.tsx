@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronRight, ChevronDown } from 'lucide-react';
 import { RuleRow } from './RuleRow';
+import type { RuleReviewIssue } from '../../../playground/rule-review';
 
 interface Rule {
   id: string;
@@ -12,6 +13,7 @@ interface Rule {
   params?: Record<string, any>;
   origin?: 'manual' | 'system-suggested' | 'ai-suggested';
   explainability?: any;
+  isMessageCustomized?: boolean;
 }
 
 interface RuleGroupProps {
@@ -22,9 +24,10 @@ interface RuleGroupProps {
   onToggleRule?: (ruleId: string) => void;
   onNavigateToPath?: (path: string) => void;
   defaultExpanded?: boolean;
-  disabled?: boolean;
   getObservationStatus?: (rule: Rule) => boolean;
   showObservationIndicators?: boolean;
+  getAdvisoryIssues?: (ruleId: string) => RuleReviewIssue[];
+  projectBundle?: object;
 }
 
 export const RuleGroup: React.FC<RuleGroupProps> = ({
@@ -35,9 +38,10 @@ export const RuleGroup: React.FC<RuleGroupProps> = ({
   onToggleRule,
   onNavigateToPath,
   defaultExpanded = false,
-  disabled = false,
   getObservationStatus,
   showObservationIndicators = false,
+  getAdvisoryIssues,
+  projectBundle,
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
@@ -73,8 +77,9 @@ export const RuleGroup: React.FC<RuleGroupProps> = ({
                 onDelete={onDeleteRule}
                 onToggle={onToggleRule}
                 onNavigateToPath={onNavigateToPath}
-                disabled={disabled}
                 isObserved={showObservationIndicators && getObservationStatus ? getObservationStatus(rule) : undefined}
+                advisoryIssues={getAdvisoryIssues ? getAdvisoryIssues(rule.id) : []}
+                projectBundle={projectBundle}
               />
             </div>
           ))}

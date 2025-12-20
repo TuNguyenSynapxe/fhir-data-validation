@@ -82,7 +82,9 @@ export const ValidationSettingsEditor: React.FC<ValidationSettingsEditorProps> =
 
           {/* Radio Options */}
           <div className="space-y-3">
-            {(Object.keys(REFERENCE_POLICY_DESCRIPTIONS) as ReferenceResolutionPolicy[]).map((policy) => {
+            {(Object.keys(REFERENCE_POLICY_DESCRIPTIONS) as ReferenceResolutionPolicy[])
+              .filter(policy => policy !== 'RequireResolution') // Hide RequireResolution - not supported yet
+              .map((policy) => {
               const info = REFERENCE_POLICY_DESCRIPTIONS[policy];
               const isSelected = settings.referenceResolutionPolicy === policy;
 
@@ -152,20 +154,6 @@ export const ValidationSettingsEditor: React.FC<ValidationSettingsEditorProps> =
                 <p className="text-amber-600">⚠ Requires server connectivity or comprehensive test data</p>
               </>
             )}
-          </div>
-        </div>
-
-        {/* Additional Info */}
-        <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-          <div className="flex gap-3">
-            <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-amber-900">
-              <p className="font-medium mb-1">Export & Reuse</p>
-              <p className="text-amber-800">
-                These settings are project-specific and stored separately from rule definitions.
-                When exporting rules for reuse, validation settings are not included.
-              </p>
-            </div>
           </div>
         </div>
       </div>

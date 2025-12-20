@@ -72,17 +72,23 @@ const groupByResourceType = (errors: ValidationError[]): Map<string, ValidationE
  * - Shared explanation
  */
 /**
- * Deduplicate errors by normalized path
+ * Deduplicate errors by normalized path + message
+ * Use both path and message to create unique key to distinguish different validation errors
  */
 const deduplicateByPath = (errors: ValidationError[]): Map<string, ValidationError[]> => {
   const pathGroups = new Map<string, ValidationError[]>();
   
   errors.forEach(error => {
-    const normalizedPath = error.navigation?.jsonPointer || error.jsonPointer || error.path || 'unknown';
-    if (!pathGroups.has(normalizedPath)) {
-      pathGroups.set(normalizedPath, []);
+    // Use path from error.path (e.g., "gender", "language") as primary identifier
+    // Fall back to jsonPointer/navigation if path not available
+    const path = error.path || error.navigation?.jsonPointer || error.jsonPointer || 'unknown';
+    // Include message in key to distinguish different errors on same/similar paths
+    const uniqueKey = `${path}|${error.message}`;
+    
+    if (!pathGroups.has(uniqueKey)) {
+      pathGroups.set(uniqueKey, []);
     }
-    pathGroups.get(normalizedPath)!.push(error);
+    pathGroups.get(uniqueKey)!.push(error);
   });
   
   return pathGroups;

@@ -22,6 +22,30 @@ export interface RefinementConfig {
 }
 
 /**
+ * Array Layer Refinement Config
+ * Used for nested array refinement - one config per array layer
+ */
+export interface ArrayLayerRefinement {
+  /** Array segment name (e.g., "address", "line") */
+  segment: string;
+  /** Refinement mode for this layer */
+  mode: RefinementMode;
+  /** Index value (if mode is 'index') */
+  indexValue?: number;
+  /** Filter condition (if mode is 'filter') */
+  filterCondition?: FilterCondition;
+}
+
+/**
+ * Nested Array Refinement Config
+ * Contains refinement for each array layer
+ */
+export interface NestedArrayRefinementConfig {
+  /** Array of layer refinements (parent to child order) */
+  layers: ArrayLayerRefinement[];
+}
+
+/**
  * Build refined FHIRPath from base path and refinement config
  * 
  * PURE FUNCTION:
@@ -154,4 +178,182 @@ function applyFilter(basePath: string, condition: FilterCondition): string {
   }
 
   return `${firstSegment}.${whereClause}.${restSegments.join('.')}`;
+}
+
+/**
+ * Build FHIRPath for nested arrays with per-layer refinement
+ * 
+ * Example input:
+ * basePath = "address.line"
+ * layers = [
+ *   { segment: "address", mode: "filter", filterCondition: { property: "use", operator: "equals", value: "home" } },
+ *   { segment: "line", mode: "all" }
+ * ]
+ * 
+ * Output: "address.where(use='home').line[*]"
+ * 
+ * @param basePath - Original path
+ * @param config - Nested array refinement config
+ * @returns Refined FHIRPath
+ */
+export function buildNestedArrayRefinedPath(
+  basePath: string,
+  config: NestedArrayRefinementConfig
+): string {
+  if (!basePath.trim() || config.layers.length === 0) {
+    return basePath;
+  }
+
+  // Remove any existing refinements from base path
+  let cleanPath = basePath
+    .replace(/\[\d+\]/g, '') // Remove [0], [1], etc.
+    .replace(/\[\*\]/g, '') // Remove [*]
+    .replace(/\.where\([^)]+\)/g, ''); // Remove .where(...) clauses
+
+  const segments = cleanPath.split('.');
+  let result = '';
+
+  // Track which segments we've processed
+  let segmentIndex = 0;
+
+  for (const layer of config.layers) {
+    // Find the segment in the path
+    const layerSegmentIndex = segments.indexOf(layer.segment, segmentIndex);
+    
+    if (layerSegmentIndex === -1) {
+      // Segment not found, skip this layer
+      continue;
+    }
+
+    // Add all segments up to and including this array segment
+    const segmentsToAdd = segments.slice(segmentIndex, layerSegmentIndex + 1);
+    
+    if (result) {
+      result += '.';
+    }
+    result += segmentsToAdd.join('.');
+
+    // Apply refinement based on mode
+    switch (layer.mode) {
+      case 'all':
+        result += '[*]';
+        break;
+      
+      case 'index':
+        const idx = layer.indexValue ?? 0;
+        result += `[${idx}]`;
+        break;
+      
+      case 'filter':
+        if (layer.filterCondition) {
+          const { property, operator, value } = layer.filterCondition;
+          if (operator === 'equals') {
+            result += `.where(${property} = '${value}')`;
+          } else if (operator === 'contains') {
+            result += `.where(${property}.contains('${value}'))`;
+          }
+        }
+        break;
+      
+      case 'first':
+      default:
+        // No modification for 'first' mode
+        break;
+    }
+
+    segmentIndex = layerSegmentIndex + 1;
+  }
+
+  // Add any remaining segments
+  if (segmentIndex < segments.length) {
+    if (result) {
+      result += '.';
+    }
+    result += segments.slice(segmentIndex).join('.');
+  }
+
+  return result;
+}
+
+/**
+ * Generate human-readable intent description for nested array refinement
+ * 
+ * Example outputs:
+ * - "Applies to all address lines for home addresses"
+ * - "Applies to first line of all addresses"
+ * - "Applies to second address only"
+ * 
+ * @param config - Nested array refinement config
+ * @returns Human-readable description
+ */
+export function generateNestedArrayIntent(config: NestedArrayRefinementConfig): string {
+  if (config.layers.length === 0) {
+    return 'No refinement applied';
+  }
+
+  const descriptions: string[] = [];
+
+  for (let i = config.layers.length - 1; i >= 0; i--) {
+    const layer = config.layers[i];
+    const isChildLayer = i === config.layers.length - 1;
+
+    let desc = '';
+
+    switch (layer.mode) {
+      case 'all':
+        desc = isChildLayer ? `all ${layer.segment}` : `all ${layer.segment}`;
+        break;
+      
+      case 'index':
+        const idx = layer.indexValue ?? 0;
+        const ordinal = getOrdinal(idx);
+        desc = isChildLayer ? `${ordinal} ${layer.segment}` : `${ordinal} ${layer.segment}`;
+        break;
+      
+      case 'filter':
+        if (layer.filterCondition) {
+          const { property, operator, value } = layer.filterCondition;
+          if (operator === 'equals') {
+            desc = `${layer.segment} where ${property}='${value}'`;
+          } else if (operator === 'contains') {
+            desc = `${layer.segment} where ${property} contains '${value}'`;
+          }
+        } else {
+          desc = `first ${layer.segment}`;
+        }
+        break;
+      
+      case 'first':
+      default:
+        desc = `first ${layer.segment}`;
+        break;
+    }
+
+    descriptions.push(desc);
+  }
+
+  // Build final sentence
+  if (descriptions.length === 1) {
+    return `Applies to ${descriptions[0]}`;
+  }
+
+  // Reverse to get child-to-parent order for natural reading
+  // Example: "all lines" + "for home addresses" = "Applies to all lines for home addresses"
+  const childDesc = descriptions[0];
+  const parentDescs = descriptions.slice(1);
+
+  if (parentDescs.length === 0) {
+    return `Applies to ${childDesc}`;
+  }
+
+  return `Applies to ${childDesc} for ${parentDescs.join(' of ')}`;
+}
+
+/**
+ * Helper: Get ordinal string (1st, 2nd, 3rd, etc.)
+ */
+function getOrdinal(n: number): string {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }

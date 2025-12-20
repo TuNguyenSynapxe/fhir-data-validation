@@ -78,7 +78,6 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     rules: rulesData = [],
     onRulesChange,
     onSaveRules,
-    hasRulesChanges = false,
     ruleAlignmentStats,
     ruleSuggestions = [],
   } = rules;
@@ -142,8 +141,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
           <RulesPanel
             rules={rulesData}
             onRulesChange={onRulesChange || (() => {})}
-            onSave={onSaveRules || (() => {})}
-            hasChanges={hasRulesChanges}
+            onSave={onSaveRules}
             projectBundle={projectBundle}
             hl7Samples={hl7Samples}
             onNavigateToPath={onNavigateToPath}
@@ -172,7 +170,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             onVersionChange={() => {}}
             onProjectChange={() => {}}
             onFhirVersionChange={() => {}}
-            onSave={onSaveRules || (() => {})}
+            onSave={() => {}}
             hasChanges={false}
           />
         );

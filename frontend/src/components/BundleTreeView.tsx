@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { ChevronRight, ChevronDown, Braces, Hash, Type, CheckSquare, FileJson } from 'lucide-react';
 
 interface BundleTreeViewProps {
   bundleJson: string;
@@ -10,7 +11,8 @@ interface TreeNode {
   key: string;
   label: string;
   path: string;
-  value?: any;
+  value: any;
+  type: 'object' | 'array' | 'string' | 'number' | 'boolean' | 'null';
   children?: TreeNode[];
   isArray?: boolean;
   isPrimitive?: boolean;
@@ -19,6 +21,42 @@ interface TreeNode {
 const BundleTreeView: React.FC<BundleTreeViewProps> = ({ bundleJson, onSelectPath, resourceTypeFilter }) => {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [selectedPath, setSelectedPath] = useState<string>('');
+
+  // Get type icon for value
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'object':
+        return <Braces className="w-3.5 h-3.5 text-purple-500" />;
+      case 'array':
+        return <Braces className="w-3.5 h-3.5 text-blue-500" />;
+      case 'string':
+        return <Type className="w-3.5 h-3.5 text-green-600" />;
+      case 'number':
+        return <Hash className="w-3.5 h-3.5 text-orange-600" />;
+      case 'boolean':
+        return <CheckSquare className="w-3.5 h-3.5 text-indigo-600" />;
+      default:
+        return <FileJson className="w-3.5 h-3.5 text-gray-400" />;
+    }
+  };
+
+  // Get value type
+  const getValueType = (value: any): TreeNode['type'] => {
+    if (value === null) return 'null';
+    if (Array.isArray(value)) return 'array';
+    return typeof value as TreeNode['type'];
+  };
+
+  // Format value preview for display
+  const formatValuePreview = (value: any, type: TreeNode['type']): string => {
+    if (type === 'null') return 'null';
+    if (type === 'string') return `"${value.length > 50 ? value.substring(0, 50) + '...' : value}"`;
+    if (type === 'boolean') return value ? 'true' : 'false';
+    if (type === 'number') return String(value);
+    if (type === 'array') return `Array[${value.length}]`;
+    if (type === 'object') return `{${Object.keys(value).length} properties}`;
+    return '';
+  };
 
   // Parse bundle and build tree structure
   const treeData = useMemo(() => {
@@ -71,34 +109,49 @@ const BundleTreeView: React.FC<BundleTreeViewProps> = ({ bundleJson, onSelectPat
     for (const key of keys) {
       const value = obj[key];
       const nodeKey = `${parentPath}.${key}`;
+      const valueType = getValueType(value);
 
-      // Handle arrays
+      // Handle arrays - Create parent array node with children
       if (Array.isArray(value)) {
-        value.forEach((item, index) => {
+        const arrayChildren: TreeNode[] = value.map((item, index) => {
           const arrayPath = `${key}[${index}]`;
           const arrayNodeKey = `${nodeKey}[${index}]`;
+          const itemType = getValueType(item);
 
           if (item && typeof item === 'object') {
             // Complex object in array
-            nodes.push({
+            return {
               key: arrayNodeKey,
-              label: `${key}[${index}]`,
+              label: `[${index}]`,
               path: `${parentPath}.${arrayPath}`,
               value: item,
+              type: itemType,
               isArray: true,
               children: buildTreeFromObject(item, `${parentPath}.${arrayPath}`, depth + 1),
-            });
+            };
           } else {
             // Primitive value in array
-            nodes.push({
+            return {
               key: arrayNodeKey,
-              label: `${key}[${index}]`,
+              label: `[${index}]`,
               path: `${parentPath}.${arrayPath}`,
               value: item,
+              type: itemType,
               isArray: true,
               isPrimitive: true,
-            });
+            };
           }
+        });
+
+        // Push parent array node with index children
+        nodes.push({
+          key: nodeKey,
+          label: key,
+          path: `${parentPath}.${key}`,
+          value: value,
+          type: valueType,
+          isArray: true,
+          children: arrayChildren,
         });
       }
       // Handle objects
@@ -108,6 +161,7 @@ const BundleTreeView: React.FC<BundleTreeViewProps> = ({ bundleJson, onSelectPat
           label: key,
           path: `${parentPath}.${key}`,
           value: value,
+          type: valueType,
           children: buildTreeFromObject(value, `${parentPath}.${key}`, depth + 1),
         });
       }
@@ -118,6 +172,7 @@ const BundleTreeView: React.FC<BundleTreeViewProps> = ({ bundleJson, onSelectPat
           label: key,
           path: `${parentPath}.${key}`,
           value: value,
+          type: valueType,
           isPrimitive: true,
         });
       }
@@ -155,8 +210,8 @@ const BundleTreeView: React.FC<BundleTreeViewProps> = ({ bundleJson, onSelectPat
     return (
       <div key={node.key} className="select-none">
         <div
-          className={`flex items-center py-1 px-2 hover:bg-blue-50 rounded cursor-pointer transition-colors ${
-            isSelected ? 'bg-blue-100 border-l-2 border-blue-600' : ''
+          className={`flex items-center py-1 px-2 cursor-pointer transition-colors ${
+            isSelected ? 'bg-blue-100 border-l-2 border-blue-600' : 'hover:bg-gray-50'
           }`}
           style={{ paddingLeft: `${level * 20 + 8}px` }}
           onClick={(e) => {
@@ -169,45 +224,36 @@ const BundleTreeView: React.FC<BundleTreeViewProps> = ({ bundleJson, onSelectPat
         >
           {/* Expand/Collapse Icon */}
           {hasChildren ? (
-            <span className="mr-2 text-gray-500 w-4 h-4 flex items-center justify-center">
+            <button className="mr-1 p-0.5 hover:bg-gray-200 rounded">
               {isExpanded ? (
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    fillRule="evenodd"
-                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                <ChevronDown className="w-3.5 h-3.5 text-gray-600" />
               ) : (
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    fillRule="evenodd"
-                    d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
               )}
-            </span>
+            </button>
           ) : (
-            <span className="mr-2 w-4" />
+            <span className="w-4 mr-1" />
           )}
 
+          {/* Type Icon */}
+          <span className="mr-1.5">{getTypeIcon(node.type)}</span>
+
           {/* Node Label */}
-          <span className="flex-1 text-sm">
-            <span className={`font-medium ${node.isPrimitive ? 'text-gray-700' : 'text-gray-900'}`}>
-              {node.label}
-            </span>
-            {node.isPrimitive && node.value !== undefined && node.value !== null && (
-              <span className="ml-2 text-xs text-gray-500">
-                = <span className="italic">"{String(node.value)}"</span>
-              </span>
-            )}
+          <span className="text-sm font-mono font-medium text-gray-800">
+            {node.label}
           </span>
 
-          {/* Type Badge */}
-          {!node.isPrimitive && (
-            <span className="text-xs text-gray-400 ml-2">
-              {node.isArray ? 'array' : 'object'}
+          {/* Value Preview for Primitives */}
+          {!hasChildren && (
+            <span className="ml-2 text-xs text-gray-500 truncate">
+              : {formatValuePreview(node.value, node.type)}
+            </span>
+          )}
+
+          {/* Count for Objects/Arrays */}
+          {hasChildren && (
+            <span className="ml-2 text-xs text-gray-400">
+              {formatValuePreview(node.value, node.type)}
             </span>
           )}
         </div>

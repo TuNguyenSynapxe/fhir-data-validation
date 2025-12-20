@@ -1,12 +1,15 @@
 import React from 'react';
-import { ChevronRight, Target } from 'lucide-react';
+import { ChevronRight, Target, AlertCircle } from 'lucide-react';
 import type { PathSegment } from '../../../utils/smartPathFormatting';
+import { validateJsonPointer, findNearestValidPath } from '../../../utils/pathNavigation';
 
 interface SmartPathBreadcrumbProps {
   resourceType?: string;
   segments: PathSegment[];
   onNavigate?: () => void;
   className?: string;
+  bundleJson?: string; // For path validation
+  jsonPointer?: string; // For path validation
 }
 
 /**
@@ -19,18 +22,44 @@ interface SmartPathBreadcrumbProps {
  * - Highlighted final segment
  * - Optional array indices
  * - Navigation icon on hover
+ * - Color indicators: blue (path exists), red (path not found, will navigate to nearest parent)
  */
 export const SmartPathBreadcrumb: React.FC<SmartPathBreadcrumbProps> = ({
   resourceType,
   segments,
   onNavigate,
-  className = ''
+  className = '',
+  bundleJson,
+  jsonPointer
 }) => {
   if (segments.length === 0 && !resourceType) {
     return <span className="text-gray-400 text-sm">Unknown path</span>;
   }
 
-  const hasNavigation = !!onNavigate;
+  // Validate path if bundleJson is provided
+  const pathValidation = React.useMemo(() => {
+    if (!bundleJson || !jsonPointer) {
+      return { isValid: true, canNavigate: !!onNavigate, nearestPath: null };
+    }
+    
+    const isExactPath = validateJsonPointer(bundleJson, jsonPointer);
+    const nearest = findNearestValidPath(bundleJson, jsonPointer);
+    
+    return {
+      isValid: isExactPath,
+      canNavigate: nearest !== null,
+      nearestPath: nearest?.isExact ? null : nearest?.path || null
+    };
+  }, [bundleJson, jsonPointer, onNavigate]);
+
+  const hasNavigation = onNavigate && pathValidation.canNavigate;
+  
+  // Color based on path validation:
+  // - Blue: path exists exactly
+  // - Red: path doesn't exist, but nearest parent available
+  const segmentColor = pathValidation.isValid ? 'text-blue-700' : 'text-red-600';
+  const iconColor = pathValidation.isValid ? 'text-blue-700' : 'text-red-600';
+  const Icon = pathValidation.isValid ? Target : AlertCircle;
 
   return (
     <div
@@ -43,6 +72,13 @@ export const SmartPathBreadcrumb: React.FC<SmartPathBreadcrumbProps> = ({
       className={`group flex items-center gap-1 ${
         hasNavigation ? 'cursor-pointer' : ''
       } ${className}`}
+      title={
+        !pathValidation.isValid && pathValidation.nearestPath !== null
+          ? `Path not found. Will navigate to nearest parent: ${pathValidation.nearestPath || '(root)'}`
+          : pathValidation.isValid && hasNavigation
+          ? 'Click to navigate to this path'
+          : undefined
+      }
     >
       {/* Resource name (13px, 600 weight, gray-800) */}
       {resourceType && (
@@ -62,14 +98,14 @@ export const SmartPathBreadcrumb: React.FC<SmartPathBreadcrumbProps> = ({
           <span
             className={`font-mono ${
               segment.isLast
-                ? 'font-medium text-blue-700'
+                ? `font-medium ${segmentColor}`
                 : 'font-normal text-gray-500'
             }`}
             style={{ fontSize: '12.5px' }}
           >
             {segment.name}
             {segment.index !== undefined && (
-              <span className="text-blue-700 font-medium">
+              <span className={`font-medium ${segmentColor}`}>
                 [{segment.index}]
               </span>
             )}
@@ -82,9 +118,9 @@ export const SmartPathBreadcrumb: React.FC<SmartPathBreadcrumbProps> = ({
         </React.Fragment>
       ))}
 
-      {/* Navigation icon (always visible, blue-700) */}
+      {/* Navigation icon (changes based on path validity) */}
       {hasNavigation && (
-        <Target className="w-3.5 h-3.5 text-blue-700 ml-1 flex-shrink-0" />
+        <Icon className={`w-3.5 h-3.5 ${iconColor} ml-1 flex-shrink-0`} />
       )}
     </div>
   );

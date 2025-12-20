@@ -407,6 +407,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
                 onNavigateToPath={onNavigateToPath}
                 sourceFilters={sourceFilters}
                 showExplanations={showExplanations}
+                bundleJson={bundleJson}
               />
             )}
           </div>

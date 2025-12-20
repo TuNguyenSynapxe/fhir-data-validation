@@ -1,4 +1,10 @@
 import React from 'react';
+import { 
+  ChartBarIcon,
+  DocumentTextIcon,
+  CheckCircleIcon,
+  EyeIcon
+} from '@heroicons/react/24/outline';
 import { RightPanelMode } from '../../types/rightPanel';
 import { RightPanel } from './RightPanel';
 import { ValidationContextBar } from './ValidationContextBar';
@@ -82,46 +88,50 @@ export const RightPanelContainer: React.FC<RightPanelContainerProps> = ({
               onModeChange?.(RightPanelMode.Rules);
               onTabChange?.('overview');
             }}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
               currentMode === RightPanelMode.Rules && activeTab === 'overview'
                 ? 'border-blue-600 text-blue-600 bg-white'
                 : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             }`}
           >
-            📊 Overview
+            <ChartBarIcon className="w-4 h-4" />
+            Overview
           </button>
           <button
             onClick={() => {
               onModeChange?.(RightPanelMode.Rules);
               onTabChange?.('rules');
             }}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
               currentMode === RightPanelMode.Rules && activeTab !== 'overview'
                 ? 'border-blue-600 text-blue-600 bg-white'
                 : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             }`}
           >
-            📋 Rules
+            <DocumentTextIcon className="w-4 h-4" />
+            Rules
           </button>
           <button
             onClick={() => {
               onModeChange?.(RightPanelMode.Validation);
               onTabChange?.('run');
             }}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
               currentMode === RightPanelMode.Validation
                 ? 'border-blue-600 text-blue-600 bg-white'
                 : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             }`}
           >
-            ✓ Validation
+            <CheckCircleIcon className="w-4 h-4" />
+            Validation
           </button>
           <button
             disabled
-            className="px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-gray-400 cursor-not-allowed"
+            className="px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-gray-400 cursor-not-allowed flex items-center gap-2"
             title="Coming Soon"
           >
-            👁 Observations <span className="text-xs">(Soon)</span>
+            <EyeIcon className="w-4 h-4" />
+            Observations <span className="text-xs">(Soon)</span>
           </button>
         </div>
       )}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { RuleGroup } from './RuleGroup';
+import type { RuleReviewIssue } from '../../../playground/rule-review';
 
 interface Rule {
   id: string;
@@ -12,6 +13,7 @@ interface Rule {
   origin?: 'manual' | 'system-suggested' | 'ai-suggested';
   explainability?: any;
   enabled?: boolean;
+  isMessageCustomized?: boolean;
 }
 
 interface RuleListProps {
@@ -21,9 +23,10 @@ interface RuleListProps {
   onToggleRule?: (ruleId: string) => void;
   onNavigateToPath?: (path: string) => void;
   groupBy?: 'resourceType' | 'ruleType' | 'none';
-  disabled?: boolean;
   getObservationStatus?: (rule: Rule) => boolean;
   showObservationIndicators?: boolean;
+  getAdvisoryIssues?: (ruleId: string) => RuleReviewIssue[];
+  projectBundle?: object;
 }
 
 export const RuleList: React.FC<RuleListProps> = ({
@@ -33,9 +36,10 @@ export const RuleList: React.FC<RuleListProps> = ({
   onToggleRule,
   onNavigateToPath,
   groupBy = 'resourceType',
-  disabled = false,
   getObservationStatus,
   showObservationIndicators = false,
+  getAdvisoryIssues,
+  projectBundle,
 }) => {
   // Group rules based on groupBy prop
   const groupedRules = React.useMemo(() => {
@@ -100,9 +104,10 @@ export const RuleList: React.FC<RuleListProps> = ({
               onToggleRule={onToggleRule}
               onNavigateToPath={onNavigateToPath}
               defaultExpanded={false}
-              disabled={disabled}
               getObservationStatus={getObservationStatus}
               showObservationIndicators={showObservationIndicators}
+              getAdvisoryIssues={getAdvisoryIssues}
+              projectBundle={projectBundle}
             />
           ));
       })}

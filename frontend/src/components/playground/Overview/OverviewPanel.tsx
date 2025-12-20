@@ -6,10 +6,14 @@ import {
   Clock,
   FileJson,
   Target,
-  ArrowRight
+  ArrowRight,
+  Info,
+  AlertTriangle
 } from 'lucide-react';
 import { ValidationState } from '../../../types/validationState';
 import { useProjectValidationContext } from '../../../contexts/project-validation/ProjectValidationContext';
+import { useRuleReview } from '../../../playground/rule-review/hooks/useRuleReview';
+import { getIssueCounts, formatRuleReviewMessage } from '../../../playground/rule-review';
 
 interface Rule {
   id: string;
@@ -20,6 +24,7 @@ interface Rule {
   message: string;
   origin?: 'manual' | 'system-suggested' | 'ai-suggested';
   enabled?: boolean;
+  isMessageCustomized?: boolean;
 }
 
 interface OverviewPanelProps {
@@ -44,13 +49,32 @@ export const OverviewPanel: React.FC<OverviewPanelProps> = ({
   validationState,
   validationMetadata,
   rules = [],
-  bundleJson: _bundleJson,
+  bundleJson,
   ruleAlignmentStats,
   onNavigateToRules,
   onTabChange,
 }) => {
   // Get validation result from Context
   const { validationResult } = useProjectValidationContext();
+  
+  // Parse bundle for Rule Review (only if bundle exists)
+  const parsedBundle = React.useMemo(() => {
+    if (!bundleJson) return undefined;
+    try {
+      return typeof bundleJson === 'string' ? JSON.parse(bundleJson) : bundleJson;
+    } catch {
+      return undefined;
+    }
+  }, [bundleJson]);
+  
+  // Run Rule Review (advisory only, non-blocking)
+  const ruleReviewResult = useRuleReview({
+    rules: rules.length > 0 && bundleJson ? rules : [], // Only run if both rules and bundle exist
+    bundle: parsedBundle,
+  });
+  
+  const ruleReviewCounts = getIssueCounts(ruleReviewResult);
+  
   // Compute statistics
   const ruleCount = rules.length;
   const enabledRuleCount = rules.filter(r => r.enabled !== false).length;
@@ -263,6 +287,85 @@ export const OverviewPanel: React.FC<OverviewPanelProps> = ({
             Manage Rules
             <ArrowRight className="w-4 h-4" />
           </button>
+        </div>
+
+        {/* Rule Review Card (Advisory) */}
+        <div className="bg-white rounded-lg border shadow-sm p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-blue-50 rounded-lg">
+              <Info className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">Rule Review (Advisory)</h3>
+              <p className="text-xs text-gray-500">Non-blocking quality checks</p>
+            </div>
+          </div>
+
+          {ruleReviewCounts.total === 0 ? (
+            // No issues detected
+            <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-green-800">No advisory issues detected</p>
+                <p className="text-xs text-green-700 mt-0.5">All rules look good for the current bundle</p>
+              </div>
+            </div>
+          ) : (
+            // Issues detected
+            <div className="space-y-3">
+              {/* Issue counts */}
+              <div className="flex gap-3">
+                {ruleReviewCounts.warning > 0 && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded">
+                    <AlertTriangle className="w-4 h-4 text-amber-600" />
+                    <div>
+                      <p className="text-sm font-semibold text-amber-900">{ruleReviewCounts.warning}</p>
+                      <p className="text-xs text-amber-700">Warning{ruleReviewCounts.warning !== 1 ? 's' : ''}</p>
+                    </div>
+                  </div>
+                )}
+                {ruleReviewCounts.info > 0 && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded">
+                    <Info className="w-4 h-4 text-blue-600" />
+                    <div>
+                      <p className="text-sm font-semibold text-blue-900">{ruleReviewCounts.info}</p>
+                      <p className="text-xs text-blue-700">Info</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Top 3 issues preview */}
+              <div className="space-y-2">
+                {ruleReviewResult.issues.slice(0, 3).map((issue, idx) => (
+                  <div 
+                    key={`${issue.ruleId}-${idx}`}
+                    className={`p-2 rounded text-xs ${
+                      issue.severity === 'warning' 
+                        ? 'bg-amber-50 text-amber-800 border border-amber-100' 
+                        : 'bg-blue-50 text-blue-800 border border-blue-100'
+                    }`}
+                  >
+                    <p className="font-medium">{formatRuleReviewMessage(issue)}</p>
+                  </div>
+                ))}
+                {ruleReviewResult.issues.length > 3 && (
+                  <p className="text-xs text-gray-500 italic">
+                    +{ruleReviewResult.issues.length - 3} more issue{ruleReviewResult.issues.length - 3 !== 1 ? 's' : ''}
+                  </p>
+                )}
+              </div>
+
+              {/* Link to Rules tab */}
+              <button
+                onClick={onNavigateToRules}
+                className="w-full px-3 py-2 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition-colors text-sm font-medium flex items-center justify-center gap-2 border border-blue-200"
+              >
+                Review all issues
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Project Configuration */}

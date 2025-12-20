@@ -30,7 +30,7 @@ export const BundleTabs = forwardRef<BundleTabsRef, BundleTabsProps>(({
   const [selectedPath, setSelectedPath] = useState<string>();
   const [localValue, setLocalValue] = useState(bundleJson);
   const [parseError, setParseError] = useState<string | null>(null);
-  const debounceTimerRef = useRef<number | undefined>(undefined);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   
   // Expose imperative methods via ref
   useImperativeHandle(ref, () => ({

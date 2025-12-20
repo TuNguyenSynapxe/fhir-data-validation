@@ -1,5 +1,6 @@
 import React from 'react';
 import { HelpCircle, XCircle, CheckCircle } from 'lucide-react';
+import { ValidationIcon } from '../../../ui/icons/ValidationIcons';
 
 /**
  * ValidationLayerInfo Component
@@ -27,9 +28,12 @@ export const ValidationLayerInfo: React.FC = () => {
           
           <div className="space-y-3 text-xs">
             {/* LINT */}
-            <div className="border-l-2 border-yellow-400 pl-3">
+            <div className="border-l-2 border-blue-400 pl-3">
               <div className="flex items-center justify-between mb-1">
-                <span className="font-semibold text-gray-900">Lint (Best-effort)</span>
+                <div className="flex items-center gap-2">
+                  <ValidationIcon source="Lint" severity="info" className="w-4 h-4" />
+                  <span className="font-semibold text-gray-900">Lint (Best-effort)</span>
+                </div>
                 <div className="flex items-center gap-1 text-green-700">
                   <CheckCircle className="w-3 h-3" />
                   <span className="text-xs">Non-blocking</span>
@@ -40,10 +44,13 @@ export const ValidationLayerInfo: React.FC = () => {
               </p>
             </div>
             
-            {/* SPEC_HINT */}
-            <div className="border-l-2 border-blue-400 pl-3">
+            {/* SPEC_HINT / HL7 Advisory */}
+            <div className="border-l-2 border-amber-400 pl-3">
               <div className="flex items-center justify-between mb-1">
-                <span className="font-semibold text-gray-900">HL7 Advisory</span>
+                <div className="flex items-center gap-2">
+                  <ValidationIcon source="HL7Advisory" severity="info" className="w-4 h-4" />
+                  <span className="font-semibold text-gray-900">HL7 Advisory</span>
+                </div>
                 <div className="flex items-center gap-1 text-green-700">
                   <CheckCircle className="w-3 h-3" />
                   <span className="text-xs">Non-blocking</span>
@@ -57,7 +64,10 @@ export const ValidationLayerInfo: React.FC = () => {
             {/* FHIR Validation */}
             <div className="border-l-2 border-red-500 pl-3">
               <div className="flex items-center justify-between mb-1">
-                <span className="font-semibold text-gray-900">FHIR Structural Validation</span>
+                <div className="flex items-center gap-2">
+                  <ValidationIcon source="Firely" severity="error" className="w-4 h-4" />
+                  <span className="font-semibold text-gray-900">FHIR Structural Validation</span>
+                </div>
                 <div className="flex items-center gap-1 text-red-700">
                   <XCircle className="w-3 h-3" />
                   <span className="text-xs font-semibold">Blocking</span>
@@ -83,10 +93,13 @@ export const ValidationLayerInfo: React.FC = () => {
             </div>
             
             {/* Project Rules */}
-            <div className="border-l-2 border-purple-500 pl-3">
+            <div className="border-l-2 border-red-400 pl-3">
               <div className="flex items-center justify-between mb-1">
-                <span className="font-semibold text-gray-900">Project Rule</span>
-                <div className="flex items-center gap-1 text-purple-700">
+                <div className="flex items-center gap-2">
+                  <ValidationIcon source="ProjectRule" severity="error" className="w-4 h-4" />
+                  <span className="font-semibold text-gray-900">Project Rule</span>
+                </div>
+                <div className="flex items-center gap-1 text-red-700">
                   <XCircle className="w-3 h-3" />
                   <span className="text-xs font-semibold">Blocking</span>
                 </div>

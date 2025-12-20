@@ -20,6 +20,7 @@ import { useValidationState } from '../hooks/useValidationState';
 import { ValidationState } from '../types/validationState';
 import { useProjectValidation } from '../contexts/project-validation/useProjectValidation';
 import { ProjectValidationProvider } from '../contexts/project-validation/ProjectValidationContext';
+import { findNearestValidPath } from '../utils/pathNavigation';
 
 import type { FhirSampleMetadata } from '../types/fhirSample';
 
@@ -31,6 +32,10 @@ interface Rule {
   severity: string;
   message: string;
   params?: Record<string, any>;
+  origin?: 'manual' | 'system-suggested' | 'ai-suggested';
+  enabled?: boolean;
+  saveState?: 'idle' | 'saving' | 'saved' | 'error';
+  isMessageCustomized?: boolean; // Tracks if user manually edited the message
 }
 
 export default function PlaygroundPage() {
@@ -71,7 +76,7 @@ export default function PlaygroundPage() {
   
   // TreeView focus state for context dimming
   const [treeViewFocused, setTreeViewFocused] = useState(false);
-  const focusTimeoutRef = useRef<number | undefined>(undefined);
+  const focusTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   
   // Track if we've already auto-focused on validation failure
   const hasAutoFocusedRef = useRef(false);
@@ -160,9 +165,13 @@ export default function PlaygroundPage() {
       // Parse rules JSON to get rules array
       try {
         const parsed = JSON.parse(project.rulesJson || '{}');
-        setRules(parsed.rules || []);
+        const loadedRules = parsed.rules || [];
+        console.log('[PlaygroundPage:Init] Loaded rules from project:', loadedRules.length, 'rules');
+        console.log('[PlaygroundPage:Init] Rules:', loadedRules.map((r: any) => ({ id: r.id, path: r.path, type: r.type })));
+        setRules(loadedRules);
         setOriginalRulesJson(project.rulesJson || '{}');
-      } catch {
+      } catch (error) {
+        console.error('[PlaygroundPage:Init] Failed to parse rules JSON:', error);
         setRules([]);
         setOriginalRulesJson('{}');
       }
@@ -229,6 +238,13 @@ export default function PlaygroundPage() {
   };
 
   const handleRulesChange = (updatedRules: Rule[]) => {
+    console.log('[PlaygroundPage:handleRulesChange] Rules updated, count:', updatedRules.length);
+    console.log('[PlaygroundPage:handleRulesChange] Rules:', updatedRules.map(r => ({ 
+      id: r.id, 
+      path: r.path, 
+      type: r.type,
+      saveState: r.saveState 
+    })));
     setRules(updatedRules);
   };
   
@@ -256,9 +272,26 @@ export default function PlaygroundPage() {
         return;
       }
 
-      // Switch to tree view and navigate directly using the jsonPointer
+      // Find the nearest valid path if exact path doesn't exist
+      const pathResult = findNearestValidPath(bundleJson, jsonPointer);
+      
+      if (!pathResult) {
+        setNavigationFeedback('Path not found in bundle');
+        setTimeout(() => setNavigationFeedback(null), 5000);
+        return;
+      }
+
+      const targetPath = pathResult.path;
+      
+      // Switch to tree view and navigate to target path (exact or nearest parent)
       bundleTabsRef.current?.switchToTreeView();
-      bundleTabsRef.current?.navigateToPath(jsonPointer);
+      bundleTabsRef.current?.navigateToPath(targetPath);
+      
+      // Show feedback if navigating to parent
+      if (!pathResult.isExact) {
+        setNavigationFeedback(`Path not found. Navigated to nearest parent: ${targetPath || '(root)'}`);
+        setTimeout(() => setNavigationFeedback(null), 3000);
+      }
       
       // Activate TreeView focus mode
       setTreeViewFocused(true);
@@ -273,8 +306,6 @@ export default function PlaygroundPage() {
         setTreeViewFocused(false);
       }, 500);
       
-      // Clear any previous feedback
-      setNavigationFeedback(null);
     } catch (error) {
       console.error('Navigation error:', error);
       setNavigationFeedback('Failed to navigate to field');

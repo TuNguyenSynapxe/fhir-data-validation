@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Loader2, ChevronDown } from 'lucide-react';
+import { AlertCircle, Loader2, ChevronDown, ChevronRight, Braces, Hash, Type, CheckSquare, FileJson } from 'lucide-react';
 import type { FhirSampleMetadata } from '../types/fhirSample';
 import { getSampleSource } from '../types/fhirSample';
 
@@ -50,6 +50,40 @@ const FhirSampleTreeView: React.FC<FhirSampleTreeViewProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [selectedPath, setSelectedPath] = useState<string>(''); // FHIRPath string only
+
+  // Get type icon for value
+  const getTypeIcon = (type: string, value: any) => {
+    if (type === 'array') {
+      return <Braces className="w-3.5 h-3.5 text-blue-500" />;
+    }
+    if (type === 'object') {
+      return <Braces className="w-3.5 h-3.5 text-purple-500" />;
+    }
+    if (value === null) {
+      return <FileJson className="w-3.5 h-3.5 text-gray-400" />;
+    }
+    if (typeof value === 'string') {
+      return <Type className="w-3.5 h-3.5 text-green-600" />;
+    }
+    if (typeof value === 'number') {
+      return <Hash className="w-3.5 h-3.5 text-orange-600" />;
+    }
+    if (typeof value === 'boolean') {
+      return <CheckSquare className="w-3.5 h-3.5 text-indigo-600" />;
+    }
+    return <FileJson className="w-3.5 h-3.5 text-gray-400" />;
+  };
+
+  // Format value preview for display
+  const formatValuePreview = (value: any, type: string): string => {
+    if (value === null) return 'null';
+    if (type === 'array') return `Array[${Array.isArray(value) ? value.length : 0}]`;
+    if (type === 'object') return `{${Object.keys(value || {}).length} properties}`;
+    if (typeof value === 'string') return `"${value.length > 50 ? value.substring(0, 50) + '...' : value}"`;
+    if (typeof value === 'boolean') return value ? 'true' : 'false';
+    if (typeof value === 'number') return String(value);
+    return '';
+  };
 
   // Filter to show only HL7 samples (preferred) or all samples for this resource type
   const availableSamples = hl7Samples.filter(s => s.resourceType === resourceType);
@@ -190,8 +224,8 @@ const FhirSampleTreeView: React.FC<FhirSampleTreeViewProps> = ({
     return (
       <div key={node.path}>
         <div
-          className={`flex items-center py-1 px-2 hover:bg-blue-50 rounded cursor-pointer transition-colors ${
-            isSelected ? 'bg-blue-100 border-l-2 border-blue-600' : ''
+          className={`flex items-center py-1 px-2 cursor-pointer transition-colors ${
+            isSelected ? 'bg-blue-100 border-l-2 border-blue-600' : 'hover:bg-gray-50'
           }`}
           style={{ paddingLeft: `${level * 20 + 8}px` }}
           onClick={(e) => {
@@ -204,45 +238,36 @@ const FhirSampleTreeView: React.FC<FhirSampleTreeViewProps> = ({
         >
           {/* Expand/Collapse Icon */}
           {hasChildren ? (
-            <span className="mr-2 text-gray-500 w-4 h-4 flex items-center justify-center">
+            <button className="mr-1 p-0.5 hover:bg-gray-200 rounded">
               {isExpanded ? (
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    fillRule="evenodd"
-                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                <ChevronDown className="w-3.5 h-3.5 text-gray-600" />
               ) : (
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    fillRule="evenodd"
-                    d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
               )}
-            </span>
+            </button>
           ) : (
-            <span className="mr-2 w-4" />
+            <span className="w-4 mr-1" />
           )}
 
+          {/* Type Icon */}
+          <span className="mr-1.5">{getTypeIcon(node.type, node.value)}</span>
+
           {/* Node Label */}
-          <span className="flex-1 text-sm">
-            <span className={`font-medium ${node.type === 'primitive' ? 'text-gray-700' : 'text-gray-900'}`}>
-              {node.name}
-            </span>
-            {node.type === 'primitive' && node.value !== undefined && node.value !== null && (
-              <span className="ml-2 text-xs text-gray-500">
-                = <span className="italic">"{String(node.value)}"</span>
-              </span>
-            )}
+          <span className="text-sm font-mono font-medium text-gray-800">
+            {node.name}
           </span>
 
-          {/* Type Badge */}
-          {node.type !== 'primitive' && (
-            <span className="text-xs text-gray-400 ml-2">
-              {node.type}
+          {/* Value Preview for Primitives */}
+          {!hasChildren && (
+            <span className="ml-2 text-xs text-gray-500 truncate">
+              : {formatValuePreview(node.value, node.type)}
+            </span>
+          )}
+
+          {/* Count for Objects/Arrays */}
+          {hasChildren && (
+            <span className="ml-2 text-xs text-gray-400">
+              {formatValuePreview(node.value, node.type)}
             </span>
           )}
         </div>

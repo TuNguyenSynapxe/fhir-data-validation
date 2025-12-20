@@ -1,9 +1,11 @@
 import React from 'react';
-import { ErrorCard } from './ErrorCard';
-import { GroupedErrorCard } from './GroupedErrorCard';
+import { IssueGroupCard } from './IssueGroupCard';
+import { IssueCard } from './IssueCard';
 import { CheckCircle2 } from 'lucide-react';
 import { normalizeSource, getLayerSortPriority } from '../../../utils/validationLayers';
+import { groupValidationIssues } from '../../../utils/validationGrouping';
 import type { SourceFilterState } from './ValidationSourceFilter';
+import type { ValidationIssue } from '../../../types/validationIssues';
 
 interface ValidationError {
   source: string; // LINT, SPEC_HINT, FHIR, Business, CodeMaster, Reference
@@ -27,58 +29,16 @@ interface ValidationResultListProps {
   onNavigateToPath?: (jsonPointer: string) => void;
   sourceFilters?: SourceFilterState;
   showExplanations?: boolean;
+  bundleJson?: string; // For path validation
 }
-
-/**
- * Group errors by source + errorCode (PRIMARY GROUPING)
- * 
- * This follows the requirement:
- * - Group by source AND errorCode
- * - NOT by resourceType at top level
- * - Threshold: 2 errors minimum
- */
-const groupErrors = (errors: ValidationError[]): {
-  grouped: Map<string, ValidationError[]>;
-  ungrouped: ValidationError[];
-} => {
-  const groups = new Map<string, ValidationError[]>();
-  
-  // First pass: group by source + errorCode
-  errors.forEach(error => {
-    const source = normalizeSource(error.source);
-    const errorCode = error.errorCode || 'UNKNOWN';
-    const key = `${source}|${errorCode}`;
-    
-    if (!groups.has(key)) {
-      groups.set(key, []);
-    }
-    groups.get(key)!.push(error);
-  });
-  
-  // Second pass: separate grouped (>=2) from ungrouped (<2)
-  const groupedMap = new Map<string, ValidationError[]>();
-  const ungroupedList: ValidationError[] = [];
-  
-  groups.forEach((groupErrors, key) => {
-    if (groupErrors.length >= 2) {
-      groupedMap.set(key, groupErrors);
-    } else {
-      ungroupedList.push(...groupErrors);
-    }
-  });
-  
-  return {
-    grouped: groupedMap,
-    ungrouped: ungroupedList,
-  };
-};
 
 export const ValidationResultList: React.FC<ValidationResultListProps> = ({ 
   errors, 
   onErrorClick,
   onNavigateToPath,
   sourceFilters,
-  showExplanations = false
+  showExplanations = false,
+  bundleJson
 }) => {
   // Apply source filtering
   const filteredErrors = sourceFilters ? errors.filter(error => {
@@ -111,48 +71,61 @@ export const ValidationResultList: React.FC<ValidationResultListProps> = ({
     );
   }
 
-  // Group errors by source + errorCode
-  const { grouped, ungrouped } = groupErrors(filteredErrors);
+  // Use new grouping logic
+  const { grouped, ungrouped } = groupValidationIssues(filteredErrors);
   
-  // Sort grouped entries by layer priority
-  const sortedGroupedKeys = Array.from(grouped.keys()).sort((a, b) => {
-    const [sourceA] = a.split('|');
-    const [sourceB] = b.split('|');
-    return getLayerSortPriority(sourceA) - getLayerSortPriority(sourceB);
-  });
+  // Sort grouped by layer priority
+  const sortedGrouped = grouped.sort((a, b) => 
+    getLayerSortPriority(a.source) - getLayerSortPriority(b.source)
+  );
   
   // Sort ungrouped by layer priority
   const sortedUngrouped = ungrouped.sort((a, b) => 
     getLayerSortPriority(a.source) - getLayerSortPriority(b.source)
   );
 
+  // Handler to convert ValidationIssue click to ValidationError click
+  const handleIssueClick = (issue: ValidationIssue) => {
+    if (onErrorClick) {
+      // Convert back to ValidationError format for backward compatibility
+      const error: ValidationError = {
+        source: issue.source,
+        severity: issue.severity,
+        resourceType: issue.resourceType,
+        path: issue.location,
+        jsonPointer: issue.jsonPointer,
+        errorCode: issue.code,
+        message: issue.message,
+        details: issue.details,
+        navigation: issue.navigation,
+      };
+      onErrorClick(error);
+    }
+  };
+
   return (
-    <div className="divide-y divide-gray-100">
-      {/* Grouped errors (source + errorCode, 2+ occurrences) */}
-      {sortedGroupedKeys.map((key) => {
-        const groupErrors = grouped.get(key)!;
-        const [source, errorCode] = key.split('|');
-        return (
-          <GroupedErrorCard
-            key={`grouped-${key}`}
-            errors={groupErrors}
-            errorCode={errorCode}
-            source={source}
-            allErrors={errors} // Pass all errors for override detection
-            onClick={onErrorClick}
-            onNavigateToPath={onNavigateToPath}
-            showExplanations={showExplanations}
-          />
-        );
-      })}
+    <div className="space-y-3">
+      {/* Grouped issues (2+ occurrences) - EACH ITEM HAS ITS OWN MESSAGE */}
+      {sortedGrouped.map((group) => (
+        <IssueGroupCard
+          key={group.groupId}
+          group={group}
+          onIssueClick={handleIssueClick}
+          onNavigateToPath={onNavigateToPath}
+          showExplanations={showExplanations}
+          bundleJson={bundleJson}
+        />
+      ))}
       
-      {/* Ungrouped errors (single occurrences) */}
-      {sortedUngrouped.map((error, index) => (
-        <ErrorCard
-          key={`ungrouped-${index}-${error.source}-${error.errorCode || 'unknown'}`}
-          error={error}
-          allErrors={errors} // Pass all errors for override detection
-          onClick={() => onErrorClick?.(error)}
+      {/* Ungrouped issues (single occurrences) */}
+      {sortedUngrouped.map((issue) => (
+        <IssueCard
+          key={issue.id}
+          issue={issue}
+          onClick={handleIssueClick}
+          onNavigateToPath={onNavigateToPath}
+          showExplanations={showExplanations}
+          bundleJson={bundleJson}
         />
       ))}
     </div>
