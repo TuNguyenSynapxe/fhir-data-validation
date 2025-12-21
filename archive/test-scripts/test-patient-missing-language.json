@@ -1,0 +1,5 @@
+{
+  "bundle": "{\"resourceType\":\"Bundle\",\"type\":\"collection\",\"entry\":[{\"fullUrl\":\"urn:uuid:a3f9c2d1-2b40-4ab9-8133-5b1f2d4e9f91\",\"resource\":{\"resourceType\":\"Patient\",\"id\":\"a3f9c2d1-2b40-4ab9-8133-5b1f2d4e9f91\",\"identifier\":[{\"system\":\"https://fhir.synapxe.sg/NamingSystem/nric\",\"value\":\"S1234567A\"}],\"name\":[{\"family\":\"Tan\",\"given\":[\"Ah Kow\"],\"text\":\"Mr Tan Ah Kow\"}],\"gender\":\"male\",\"birthDate\":\"1960-05-15\",\"communication\":[{\"preferred\":true}]}}]}",
+  "rules": "{\"resourceRules\":{\"Patient\":[]}}",
+  "validationMode": "debug"
+}
