@@ -4,6 +4,7 @@ using Hl7.Fhir.Model;
 using Hl7.FhirPath;
 using Hl7.Fhir.Serialization;
 using Hl7.Fhir.ElementModel;
+using Microsoft.Extensions.Logging;
 using Pss.FhirProcessor.Engine.Models;
 using Pss.FhirProcessor.Engine.Interfaces;
 
@@ -16,10 +17,12 @@ namespace Pss.FhirProcessor.Engine.Services;
 public class FhirPathRuleEngine : IFhirPathRuleEngine
 {
     private readonly FhirPathCompiler _compiler;
+    private readonly ILogger<FhirPathRuleEngine> _logger;
     
-    public FhirPathRuleEngine(IFhirModelResolverService modelResolver)
+    public FhirPathRuleEngine(IFhirModelResolverService modelResolver, ILogger<FhirPathRuleEngine> logger)
     {
         _compiler = new FhirPathCompiler();
+        _logger = logger;
     }
     
     public async Task<List<RuleValidationError>> ValidateAsync(Bundle bundle, RuleSet ruleSet, CancellationToken cancellationToken = default)
@@ -69,65 +72,106 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         var errors = new List<RuleValidationError>();
         
         if (ruleSet?.Rules == null || ruleSet.Rules.Count == 0)
+        {
+            _logger.LogDebug("ValidateJsonAsync: No rules to validate");
             return errors;
+        }
+        
+        _logger.LogDebug("ValidateJsonAsync starting with {RuleCount} rules", ruleSet.Rules.Count);
         
         try
         {
-            // Parse JSON to ISourceNode (doesn't require valid FHIR structure)
-            var sourceNode = FhirJsonNode.Parse(bundleJson);
+            // Parse bundle JSON using System.Text.Json for simpler navigation
+            using var bundleDoc = System.Text.Json.JsonDocument.Parse(bundleJson);
+            var root = bundleDoc.RootElement;
             
-            // Use simpler approach: just navigate the structure without type validation
-            // This avoids needing StructureDefinitionSummaryProvider
+            if (!root.TryGetProperty("entry", out var entriesArray))
+            {
+                _logger.LogWarning("ValidateJsonAsync: No 'entry' array in bundle");
+                return errors;
+            }
             
-            // Extract entry resources from bundle
-            var entryNodes = sourceNode.Children("entry").ToList();
+            var entryCount = entriesArray.GetArrayLength();
+            _logger.LogDebug("ValidateJsonAsync found {EntryCount} bundle entries", entryCount);
             
             // Group rules by resource type
-            var rulesByType = ruleSet.Rules.GroupBy(r => r.ResourceType);
+            var rulesByType = ruleSet.Rules.GroupBy(r => r.ResourceType).ToDictionary(g => g.Key, g => g.ToList());
             
-            for (int entryIndex = 0; entryIndex < entryNodes.Count; entryIndex++)
+            // Also parse with ISourceNode for actual rule evaluation
+            var sourceNode = FhirJsonNode.Parse(bundleJson);
+            var sourceEntries = sourceNode.Children("entry").ToList();
+            
+            int entryIndex = 0;
+            foreach (var entry in entriesArray.EnumerateArray())
             {
-                var entry = entryNodes[entryIndex];
-                var resourceNode = entry.Children("resource").FirstOrDefault();
-                
-                if (resourceNode == null)
+                if (!entry.TryGetProperty("resource", out var resourceElement))
+                {
+                    _logger.LogWarning("ValidateJsonAsync Entry {EntryIndex}: No resource property", entryIndex);
+                    entryIndex++;
                     continue;
+                }
                 
-                // Get resource type from JSON
-                var resourceTypeNode = resourceNode.Children("resourceType").FirstOrDefault();
-                if (resourceTypeNode == null)
+                if (!resourceElement.TryGetProperty("resourceType", out var resourceTypeElement))
+                {
+                    _logger.LogWarning("ValidateJsonAsync Entry {EntryIndex}: No resourceType in resource", entryIndex);
+                    entryIndex++;
                     continue;
-                    
-                var resourceType = resourceTypeNode.Text;
+                }
+                
+                var resourceType = resourceTypeElement.GetString();
                 if (string.IsNullOrEmpty(resourceType))
+                {
+                    _logger.LogWarning("ValidateJsonAsync Entry {EntryIndex}: Empty resourceType", entryIndex);
+                    entryIndex++;
                     continue;
+                }
+                
+                _logger.LogTrace("ValidateJsonAsync Entry {EntryIndex}: Found resource type {ResourceType}", entryIndex, resourceType);
                 
                 // Find matching rules for this resource type
-                var matchingRules = rulesByType.FirstOrDefault(g => g.Key == resourceType);
-                if (matchingRules == null)
+                if (!rulesByType.TryGetValue(resourceType, out var matchingRules))
+                {
+                    _logger.LogTrace("ValidateJsonAsync: No rules for resource type {ResourceType}", resourceType);
+                    entryIndex++;
                     continue;
+                }
+                
+                _logger.LogDebug("ValidateJsonAsync: Evaluating {RuleCount} rules for {ResourceType} at entry {EntryIndex}", matchingRules.Count, resourceType, entryIndex);
+                
+                // Get the corresponding ISourceNode for rule evaluation
+                var sourceResourceNode = sourceEntries[entryIndex].Children("resource").FirstOrDefault();
+                if (sourceResourceNode == null)
+                {
+                    _logger.LogWarning("ValidateJsonAsync Entry {EntryIndex}: Could not get ISourceNode for resource", entryIndex);
+                    entryIndex++;
+                    continue;
+                }
                 
                 foreach (var rule in matchingRules)
                 {
                     try
                     {
-                        var ruleErrors = ValidateRuleOnSourceNode(resourceNode, rule, entryIndex, resourceType);
+                        var ruleErrors = ValidateRuleOnSourceNode(sourceResourceNode, rule, entryIndex, resourceType);
+                        _logger.LogTrace("ValidateJsonAsync: Rule {RuleId} ({RuleType}) produced {ErrorCount} errors", rule.Id, rule.Type, ruleErrors.Count);
                         errors.AddRange(ruleErrors);
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error validating rule {rule.Id} on JSON: {ex.Message}");
+                        _logger.LogError("ValidateJsonAsync: Error validating rule {RuleId}: {ErrorMessage}", rule.Id, ex.Message);
                         // Continue with other rules
                     }
                 }
+                
+                entryIndex++;
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error parsing JSON for rule validation: {ex.Message}");
+            _logger.LogError("ValidateJsonAsync: Error parsing JSON: {ErrorMessage}", ex.Message);
             // Return empty list - we've already captured Firely errors
         }
         
+        _logger.LogDebug("ValidateJsonAsync returning {TotalErrors} total errors", errors.Count);
         return await System.Threading.Tasks.Task.FromResult(errors);
     }
     
@@ -152,37 +196,137 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                     var valueNode = NavigateToPathInSourceNode(resource, rule.Path);
                     if (valueNode == null || string.IsNullOrWhiteSpace(valueNode.Text))
                     {
+                        // Resolve message tokens like {fullPath}
+                        var fullPath = $"{resourceType}.{rule.Path}";
+                        var resolvedMessage = MessageTokenResolver.ResolveTokens(
+                            rule.Message,
+                            rule,
+                            new Dictionary<string, object> { ["fullPath"] = fullPath }
+                        );
+                        
+                        // Construct jsonPointer for SmartPath navigation (since we don't have a valid Bundle object)
+                        var jsonPointer = $"/entry/{entryIndex}/resource/{rule.Path.Replace(".", "/")}";
+                        
                         errors.Add(new RuleValidationError
                         {
                             RuleId = rule.Id,
                             RuleType = rule.Type,
-                            Severity = "error",
+                            Severity = rule.Severity,
                             ResourceType = resourceType ?? rule.ResourceType,
                             Path = rule.Path,
                             ErrorCode = "MANDATORY_MISSING",
-                            Message = $"Required field '{rule.Path}' is missing or empty",
+                            Message = resolvedMessage,
                             Details = new Dictionary<string, object>
                             {
                                 ["source"] = "ProjectRule",
                                 ["resourceType"] = resourceType ?? rule.ResourceType,
                                 ["path"] = rule.Path,
-                                ["ruleId"] = rule.Id
+                                ["ruleId"] = rule.Id,
+                                ["entryIndex"] = entryIndex,
+                                ["_precomputedJsonPointer"] = jsonPointer  // Special key for UnifiedErrorModelBuilder
                             },
                             EntryIndex = entryIndex,
                             ResourceId = resourceId ?? "unknown"
                         });
                     }
                     break;
+                
+                case "ARRAYLENGTH":
+                    // Navigate to the path and check array length
+                    // For paths like "address.line", we check all addresses
+                    // For paths like "address[0].line", we check ONLY the specified index
+                    
+                    // Extract array indices if present
+                    var indexMatches = System.Text.RegularExpressions.Regex.Matches(rule.Path, @"\[(\d+)\]");
+                    var cleanPath = System.Text.RegularExpressions.Regex.Replace(rule.Path, @"\[\d+\]", "");
+                    var pathParts = cleanPath.Split('.');
+                    var targetArrayName = pathParts.Last();
+                    
+                    _logger.LogTrace("ArrayLength validation: Rule {RuleId}, Path: {OriginalPath} -> {CleanPath}, Parts: {PathParts}", rule.Id, rule.Path, cleanPath, string.Join(", ", pathParts));
+                    
+                    if (pathParts.Length == 1)
+                    {
+                        // Simple path like "address" - check directly
+                        var arrayNode = resource.Children(targetArrayName).ToList();
+                        _logger.LogTrace("ArrayLength: Simple path {ArrayName} has {ElementCount} elements", targetArrayName, arrayNode.Count);
+                        ValidateArrayLengthForNode(arrayNode.Count, rule, resourceType, resourceId, entryIndex, errors, targetArrayName);
+                    }
+                    else
+                    {
+                        // Nested path like "address.line" or "address[0].line"
+                        var parentPath = string.Join(".", pathParts.Take(pathParts.Length - 1));
+                        var parentNodes = resource.Children(pathParts[0]).ToList();
+                        _logger.LogTrace("ArrayLength: Parent {ParentName} has {ElementCount} elements", pathParts[0], parentNodes.Count);
+                        
+                        // Check if first part has an array index (e.g., address[0])
+                        int? specificIndex = null;
+                        if (indexMatches.Count > 0 && int.TryParse(indexMatches[0].Groups[1].Value, out int idx))
+                        {
+                            specificIndex = idx;
+                            _logger.LogTrace("ArrayLength: Checking specific index [{SpecificIndex}]", specificIndex);
+                        }
+                        
+                        // Check each parent node (or just the specific index)
+                        for (int parentIndex = 0; parentIndex < parentNodes.Count; parentIndex++)
+                        {
+                            // If a specific index was requested, skip other indices
+                            if (specificIndex.HasValue && parentIndex != specificIndex.Value)
+                            {
+                                _logger.LogTrace("ArrayLength: Skipping parent[{ParentIndex}] (only checking [{SpecificIndex}])", parentIndex, specificIndex);
+                                continue;
+                            }
+                            
+                            var parentNode = parentNodes[parentIndex];
+                            
+                            if (pathParts.Length == 2)
+                            {
+                                // Direct child like "address.line"
+                                var arrayElements = parentNode.Children(targetArrayName).ToList();
+                                _logger.LogTrace("ArrayLength: Parent[{ParentIndex}].{ArrayName} has {ElementCount} elements", parentIndex, targetArrayName, arrayElements.Count);
+                                
+                                // Construct the specific path for this array instance
+                                var specificArrayPath = $"{pathParts[0]}[{parentIndex}].{targetArrayName}";
+                                ValidateArrayLengthForNode(arrayElements.Count, rule, resourceType, resourceId, entryIndex, errors, specificArrayPath);
+                            }
+                            else
+                            {
+                                // More complex nesting - navigate deeper
+                                var currentNode = parentNode;
+                                for (int i = 1; i < pathParts.Length - 1; i++)
+                                {
+                                    var nextNodes = currentNode.Children(pathParts[i]).ToList();
+                                    if (nextNodes.Any())
+                                    {
+                                        currentNode = nextNodes.First();
+                                    }
+                                    else
+                                    {
+                                        currentNode = null;
+                                        break;
+                                    }
+                                }
+                                
+                                if (currentNode != null)
+                                {
+                                    var arrayElements = currentNode.Children(targetArrayName).ToList();
+                                    // For complex paths, use the original rule path
+                                    ValidateArrayLengthForNode(arrayElements.Count, rule, resourceType, resourceId, entryIndex, errors, rule.Path);
+                                }
+                            }
+                        }
+                    }
+                    break;
                     
                 // For other rule types, we'd need more complex logic
                 // For now, skip them when using JSON fallback
                 default:
+                    _logger.LogWarning("ValidateRuleOnSourceNode: Rule type {RuleType} not yet implemented for JSON fallback", rule.Type);
                     break;
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error in ValidateRuleOnSourceNode: {ex.Message}");
+            _logger.LogError("Error in ValidateRuleOnSourceNode: {ErrorMessage}", ex.Message);
         }
         
         return errors;
@@ -209,6 +353,85 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         }
         
         return current;
+    }
+    
+    /// <summary>
+    /// Helper method to validate array length and add errors if constraints are violated
+    /// </summary>
+    private void ValidateArrayLengthForNode(int count, RuleDefinition rule, string? resourceType, string? resourceId, int entryIndex, List<RuleValidationError> errors, string? arrayPath = null)
+    {
+        bool hasError = false;
+        string errorMessage = rule.Message;
+        var details = new Dictionary<string, object>
+        {
+            ["source"] = "ProjectRule",
+            ["resourceType"] = resourceType ?? rule.ResourceType,
+            ["path"] = rule.Path,
+            ["ruleId"] = rule.Id,
+            ["count"] = count,
+            ["actual"] = count
+        };
+        
+        _logger.LogTrace("ArrayLength validation: Count={Count}, Params={Params}", count, rule.Params != null ? string.Join(", ", rule.Params.Select(kv => $"{kv.Key}={kv.Value}")) : "null");
+        
+        if (rule.Params != null)
+        {
+            if (rule.Params.ContainsKey("min"))
+            {
+                var minValue = rule.Params["min"];
+                int min = minValue is JsonElement jsonMin ? jsonMin.GetInt32() : Convert.ToInt32(minValue);
+                details["min"] = min;
+                _logger.LogTrace("ArrayLength: Min constraint {Min}, Count {Count}, Violation: {Violation}", min, count, count < min);
+                
+                if (count < min)
+                {
+                    hasError = true;
+                    errorMessage = MessageTokenResolver.ResolveTokens(rule.Message, rule, new Dictionary<string, object> { ["actual"] = count.ToString() });
+                }
+            }
+            
+            if (rule.Params.ContainsKey("max"))
+            {
+                var maxValue = rule.Params["max"];
+                int max = maxValue is JsonElement jsonMax ? jsonMax.GetInt32() : Convert.ToInt32(maxValue);
+                details["max"] = max;
+                _logger.LogTrace("ArrayLength: Max constraint {Max}, Count {Count}, Violation: {Violation}", max, count, count > max);
+                
+                if (count > max)
+                {
+                    hasError = true;
+                    errorMessage = MessageTokenResolver.ResolveTokens(rule.Message, rule, new Dictionary<string, object> { ["actual"] = count.ToString() });
+                }
+            }
+        }
+        
+        _logger.LogTrace("ArrayLength validation result: HasError={HasError}", hasError);
+        
+        if (hasError)
+        {
+            // Add array path info to details for navigation
+            var pathForNavigation = arrayPath ?? rule.Path;
+            details["arrayPath"] = pathForNavigation;
+            details["entryIndex"] = entryIndex;
+            
+            // Construct jsonPointer for SmartPath navigation (since we don't have a valid Bundle object)
+            var jsonPointer = $"/entry/{entryIndex}/resource/{pathForNavigation.Replace(".", "/").Replace("[0]", "/0").Replace("[1]", "/1").Replace("[2]", "/2")}";
+            details["_precomputedJsonPointer"] = jsonPointer;
+            
+            errors.Add(new RuleValidationError
+            {
+                RuleId = rule.Id,
+                RuleType = rule.Type,
+                Severity = rule.Severity,
+                ResourceType = resourceType ?? rule.ResourceType,
+                Path = rule.Path,
+                ErrorCode = rule.ErrorCode ?? "ARRAY_LENGTH_VIOLATION",
+                Message = errorMessage,
+                Details = details,
+                EntryIndex = entryIndex,
+                ResourceId = resourceId ?? "unknown"
+            });
+        }
     }
     
     private async Task<List<RuleValidationError>> ValidateRuleAsync(Resource resource, RuleDefinition rule, int entryIndex, CancellationToken cancellationToken)
@@ -293,8 +516,8 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         
         var result = EvaluateFhirPath(resource, rule.Path, rule, entryIndex, errors);
         
-        Console.WriteLine($"[ValidateRequired] Rule: {rule.Id}, Path: {rule.Path}, ResourceType: {rule.ResourceType}");
-        Console.WriteLine($"[ValidateRequired] Result count: {result?.Count() ?? 0}");
+        _logger.LogTrace("ValidateRequired: Rule {RuleId}, Path {Path}, ResourceType {ResourceType}", rule.Id, rule.Path, rule.ResourceType);
+        _logger.LogTrace("ValidateRequired: Result count {ResultCount}", result?.Count() ?? 0);
         
         // Check if result is missing OR if all values are empty/whitespace
         var isMissing = result == null || !result.Any();
@@ -305,7 +528,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             foreach (var r in result)
             {
                 var strValue = GetValueAsString(r);
-                Console.WriteLine($"[ValidateRequired] Value: '{strValue}', IsNullOrWhiteSpace: {string.IsNullOrWhiteSpace(strValue)}");
+                _logger.LogTrace("ValidateRequired: Value={Value}, IsEmpty={IsEmpty}", strValue, string.IsNullOrWhiteSpace(strValue));
             }
             
             isAllEmpty = result.All(r => 
@@ -315,7 +538,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             });
         }
         
-        Console.WriteLine($"[ValidateRequired] isMissing: {isMissing}, isAllEmpty: {isAllEmpty}");
+        _logger.LogTrace("ValidateRequired: IsMissing={IsMissing}, IsAllEmpty={IsAllEmpty}", isMissing, isAllEmpty);
         
         if (!errors.Any(e => e.ErrorCode == "RULE_DEFINITION_ERROR") && (isMissing || isAllEmpty))
         {

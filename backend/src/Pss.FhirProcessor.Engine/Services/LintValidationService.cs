@@ -42,10 +42,10 @@ public class LintValidationService : ILintValidationService
     }
 
     /// <summary>
-    /// Creates a LintIssue from a catalog rule with contextual message
+    /// Creates a QualityFinding from a catalog rule with contextual message
     /// Fails fast if rule is not found (development-time safety)
     /// </summary>
-    private static LintIssue CreateIssue(
+    private static QualityFinding CreateIssue(
         string ruleId, 
         string contextualMessage,
         string? jsonPointer = null,
@@ -60,7 +60,7 @@ public class LintValidationService : ILintValidationService
                 $"Lint rule '{ruleId}' not found in catalog. This indicates a programming error.");
         }
 
-        return new LintIssue
+        return new QualityFinding
         {
             RuleId = rule.Id,
             Category = rule.Category.ToString(),
@@ -77,12 +77,12 @@ public class LintValidationService : ILintValidationService
         };
     }
 
-    public async Task<IReadOnlyList<LintIssue>> ValidateAsync(
+    public async Task<IReadOnlyList<QualityFinding>> ValidateAsync(
         string bundleJson,
         string fhirVersion,
         CancellationToken cancellationToken = default)
     {
-        var issues = new List<LintIssue>();
+        var issues = new List<QualityFinding>();
 
         try
         {
@@ -142,6 +142,25 @@ public class LintValidationService : ILintValidationService
                 }
             }
 
+            // Log summary by error code
+            var missingRequiredCount = issues.Count(i => i.RuleId == "MISSING_REQUIRED_FIELD");
+            var issuesByCode = issues.GroupBy(i => i.RuleId).OrderByDescending(g => g.Count());
+            
+            _logger.LogInformation("Lint validation summary: {TotalIssues} total issues", issues.Count);
+            foreach (var group in issuesByCode)
+            {
+                _logger.LogDebug("Lint issue type: {RuleId} = {Count}", group.Key, group.Count());
+            }
+            
+            if (missingRequiredCount > 0)
+            {
+                _logger.LogWarning("Found {MissingRequiredCount} MISSING_REQUIRED_FIELD issues", missingRequiredCount);
+                foreach (var issue in issues.Where(i => i.RuleId == "MISSING_REQUIRED_FIELD"))
+                {
+                    _logger.LogDebug("Missing required field: {Message} at {JsonPointer}", issue.Message, issue.JsonPointer);
+                }
+            }
+            
             _logger.LogInformation("Lint validation completed: {IssueCount} issues found", issues.Count);
         }
         catch (Exception ex)
@@ -165,7 +184,7 @@ public class LintValidationService : ILintValidationService
     /// <summary>
     /// Validates bundle-level structure
     /// </summary>
-    private void ValidateBundleStructure(JsonElement root, List<LintIssue> issues, string fhirVersion)
+    private void ValidateBundleStructure(JsonElement root, List<QualityFinding> issues, string fhirVersion)
     {
         // Check: Must be an object
         if (root.ValueKind != JsonValueKind.Object)
@@ -223,7 +242,7 @@ public class LintValidationService : ILintValidationService
     /// <summary>
     /// Validates a single bundle entry
     /// </summary>
-    private async Task ValidateEntryAsync(JsonElement entry, int entryIndex, List<LintIssue> issues, string fhirVersion, CancellationToken cancellationToken)
+    private async Task ValidateEntryAsync(JsonElement entry, int entryIndex, List<QualityFinding> issues, string fhirVersion, CancellationToken cancellationToken)
     {
         var entryPath = $"/entry/{entryIndex}";
 
@@ -295,7 +314,7 @@ public class LintValidationService : ILintValidationService
         string resourceType, 
         string jsonPath,
         string fhirPath,
-        List<LintIssue> issues,
+        List<QualityFinding> issues,
         string fhirVersion,
         CancellationToken cancellationToken)
     {
@@ -341,7 +360,7 @@ public class LintValidationService : ILintValidationService
         string jsonPath,
         string parentFhirPath,
         FhirSchemaNode? currentSchemaContext,
-        List<LintIssue> issues,
+        List<QualityFinding> issues,
         string fhirVersion,
         CancellationToken cancellationToken)
     {
@@ -484,7 +503,7 @@ public class LintValidationService : ILintValidationService
         string jsonPath,
         string fhirPath,
         FhirSchemaNode? schema,
-        List<LintIssue> issues)
+        List<QualityFinding> issues)
     {
         await Task.CompletedTask; // Currently synchronous
 
@@ -700,7 +719,7 @@ public class LintValidationService : ILintValidationService
         string jsonPath,
         FhirSchemaNode? currentSchemaContext,
         string resourceTypeForError,
-        List<LintIssue> issues)
+        List<QualityFinding> issues)
     {
         // Skip if no schema available (best-effort principle)
         if (currentSchemaContext == null)
@@ -789,13 +808,15 @@ public class LintValidationService : ILintValidationService
         string jsonPath,
         FhirSchemaNode? currentSchemaContext,
         string resourceTypeForError,
-        List<LintIssue> issues)
+        List<QualityFinding> issues)
     {
         // Skip if no schema available (best-effort principle)
         if (currentSchemaContext == null || jsonObject.ValueKind != JsonValueKind.Object)
         {
             return;
         }
+
+        _logger.LogTrace("Checking for missing required fields in {Path} with schema {SchemaPath}", parentFhirPath, currentSchemaContext.Path);
 
         // Get all property names present in the JSON object
         var presentProperties = new HashSet<string>(
@@ -827,6 +848,7 @@ public class LintValidationService : ILintValidationService
             }
 
             var elementName = child.ElementName;
+            _logger.LogTrace("Found required field: {ElementName} (min={Min}) at {Path}", elementName, child.Min, child.Path);
 
             // Skip standard elements
             if (standardElements.Contains(elementName))
@@ -856,6 +878,7 @@ public class LintValidationService : ILintValidationService
             // Check if the required field is present in the JSON object
             if (!presentProperties.Contains(elementName))
             {
+                _logger.LogWarning("Missing required field: {ElementName} at {Path}", elementName, parentFhirPath);
                 var fhirPath = $"{parentFhirPath}.{elementName}";
                 var propertyJsonPath = $"{jsonPath}/{elementName}";
                 var cardinality = $"{child.Min}..{child.Max}";
@@ -891,7 +914,7 @@ public class LintValidationService : ILintValidationService
         string fhirVersion,
         string jsonPath,
         string fhirPath,
-        List<LintIssue> issues)
+        List<QualityFinding> issues)
     {
         if (fhirVersion == "R4")
         {

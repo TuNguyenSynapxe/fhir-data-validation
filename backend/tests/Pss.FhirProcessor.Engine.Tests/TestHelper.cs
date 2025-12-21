@@ -189,7 +189,8 @@ public static class TestHelper
     public static IFhirPathRuleEngine CreateRuleEngine()
     {
         var modelResolver = CreateModelResolver();
-        return new FhirPathRuleEngine(modelResolver);
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
+        return new FhirPathRuleEngine(modelResolver, logger);
     }
 
     public static ICodeMasterEngine CreateCodeMasterEngine()
@@ -258,6 +259,7 @@ public static class TestHelper
         var errorModelBuilder = CreateErrorModelBuilder();
         var suggestionService = CreateSystemRuleSuggestionService();
 
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<ValidationPipeline>.Instance;
         return new ValidationPipeline(
             lintService,
             specHintService,
@@ -266,7 +268,8 @@ public static class TestHelper
             codeMasterEngine,
             referenceResolver,
             errorModelBuilder,
-            suggestionService);
+            suggestionService,
+            logger);
     }
     
     public static ISystemRuleSuggestionService CreateSystemRuleSuggestionService()

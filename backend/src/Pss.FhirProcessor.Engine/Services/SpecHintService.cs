@@ -39,56 +39,70 @@ public class SpecHintService : ISpecHintService
         _logger = logger;
     }
 
-    public async Task<List<SpecHintIssue>> CheckAsync(Bundle bundle, string fhirVersion, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// JSON-based SpecHint validation - PRIMARY METHOD.
+    /// ALWAYS runs, even when Firely parsing fails.
+    /// POCO bundle is optional and used only for advanced conditional hints.
+    /// </summary>
+    public async Task<List<SpecHintIssue>> CheckAsync(string bundleJson, string fhirVersion, Bundle? bundlePoco = null, CancellationToken cancellationToken = default)
     {
         var issues = new List<SpecHintIssue>();
+
+        _logger?.LogInformation("SpecHint: Starting JSON-based validation (POCO available: {HasPoco})", bundlePoco != null);
 
         // Load the appropriate spec hints catalog for the FHIR version
         var catalog = await LoadCatalogAsync(fhirVersion, cancellationToken);
         if (catalog == null || catalog.Hints.Count == 0)
         {
-            // No hints available for this version
             _logger?.LogWarning("No spec hints catalog loaded for FHIR version {Version}", fhirVersion);
             return issues;
         }
 
-        _logger?.LogInformation("Checking {ResourceCount} resources against {HintCount} resource type hints",
-            bundle.Entry?.Count ?? 0, catalog.Hints.Count);
-
-        // Check each resource in the bundle
-        if (bundle.Entry != null)
+        // Parse JSON to extract bundle entries
+        JsonDocument? jsonDoc = null;
+        try
         {
-            for (int i = 0; i < bundle.Entry.Count; i++)
+            jsonDoc = JsonDocument.Parse(bundleJson);
+            var root = jsonDoc.RootElement;
+
+            if (!root.TryGetProperty("entry", out var entriesElement) || entriesElement.ValueKind != JsonValueKind.Array)
             {
-                var entry = bundle.Entry[i];
-                if (entry.Resource == null)
+                _logger?.LogWarning("SpecHint: Bundle JSON has no 'entry' array");
+                return issues;
+            }
+
+            var entryCount = entriesElement.GetArrayLength();
+            _logger?.LogInformation("SpecHint: Checking {EntryCount} entries with JSON-based analysis", entryCount);
+
+            // Process each entry
+            for (int i = 0; i < entryCount; i++)
+            {
+                var entryElement = entriesElement[i];
+                if (!entryElement.TryGetProperty("resource", out var resourceElement))
                     continue;
 
-                var resourceType = entry.Resource.TypeName;
-                var resourceId = entry.Resource.Id;
+                if (!resourceElement.TryGetProperty("resourceType", out var resourceTypeProperty))
+                    continue;
+
+                var resourceType = resourceTypeProperty.GetString();
+                if (string.IsNullOrEmpty(resourceType))
+                    continue;
+
+                var resourceId = resourceElement.TryGetProperty("id", out var idProp) ? idProp.GetString() : null;
                 var jsonPointer = $"/entry/{i}/resource";
 
                 // Check if we have hints for this resource type
                 if (catalog.Hints.TryGetValue(resourceType, out var hints))
                 {
-                    _logger?.LogDebug("Checking {ResourceType} resource against {HintCount} hints",
-                        resourceType, hints.Count);
-                    
+                    _logger?.LogDebug("SpecHint: Checking {ResourceType} at entry {Index} against {HintCount} hints (JSON-based)",
+                        resourceType, i, hints.Count);
+
                     foreach (var hint in hints)
                     {
-                        // METADATA-DRIVEN: Check IsConditional flag explicitly
-                        if (hint.IsConditional)
+                        // JSON-BASED CHECK: Required field detection
+                        if (!hint.IsConditional)
                         {
-                            // Conditional hint - requires condition evaluation
-                            _logger?.LogDebug("Evaluating conditional hint: {Path} (condition: {Condition})",
-                                hint.Path, hint.Condition);
-                            var conditionalIssues = EvaluateConditionalHint(entry.Resource, hint, resourceType, resourceId, jsonPointer);
-                            issues.AddRange(conditionalIssues);
-                        }
-                        else
-                        {
-                            // Simple required field - always evaluate
-                            if (IsFieldMissing(entry.Resource, hint.Path))
+                            if (IsFieldMissingInJson(resourceElement, hint.Path))
                             {
                                 issues.Add(new SpecHintIssue
                                 {
@@ -104,13 +118,119 @@ public class SpecHintService : ISpecHintService
                                 });
                             }
                         }
+                        else if (bundlePoco != null && i < bundlePoco.Entry.Count)
+                        {
+                            // POCO-BASED CHECK: Only run conditional checks if POCO is available
+                            var entry = bundlePoco.Entry[i];
+                            if (entry.Resource != null)
+                            {
+                                _logger?.LogDebug("SpecHint: Evaluating conditional hint using POCO: {Path} (condition: {Condition})",
+                                    hint.Path, hint.Condition);
+                                var conditionalIssues = EvaluateConditionalHint(entry.Resource, hint, resourceType, resourceId, jsonPointer);
+                                issues.AddRange(conditionalIssues);
+                            }
+                        }
+                        else if (hint.IsConditional)
+                        {
+                            _logger?.LogDebug("SpecHint: Skipping conditional hint (POCO not available): {Path}", hint.Path);
+                        }
                     }
                 }
             }
         }
+        catch (JsonException ex)
+        {
+            _logger?.LogWarning(ex, "SpecHint: Failed to parse bundle JSON, cannot perform JSON-based checks");
+            return issues;
+        }
+        finally
+        {
+            jsonDoc?.Dispose();
+        }
 
-        _logger?.LogInformation("Found {IssueCount} spec hint issues", issues.Count);
+        _logger?.LogInformation("SpecHint: Found {IssueCount} spec hint issues", issues.Count);
         return issues;
+    }
+
+    /// <summary>
+    /// JSON-based field presence check.
+    /// Checks if a field is missing, null, or empty object in JSON.
+    /// </summary>
+    private bool IsFieldMissingInJson(JsonElement resourceElement, string path)
+    {
+        try
+        {
+            // Split path by dots to traverse nested properties
+            var pathParts = path.Split('.');
+            var current = resourceElement;
+
+            foreach (var part in pathParts)
+            {
+                // Handle array indices (e.g., "name[0]")
+                if (part.Contains('['))
+                {
+                    var arrayName = part.Substring(0, part.IndexOf('['));
+                    if (!current.TryGetProperty(arrayName, out var arrayElement))
+                        return true; // Array property doesn't exist
+
+                    if (arrayElement.ValueKind != JsonValueKind.Array)
+                        return true; // Expected array but got something else
+
+                    if (arrayElement.GetArrayLength() == 0)
+                        return true; // Array exists but is empty
+
+                    // For now, check first element (can be extended to check specific index)
+                    current = arrayElement[0];
+                }
+                else
+                {
+                    if (!current.TryGetProperty(part, out var nextElement))
+                        return true; // Property doesn't exist
+
+                    current = nextElement;
+                }
+            }
+
+            // Check if the final value is null or empty object
+            if (current.ValueKind == JsonValueKind.Null)
+                return true;
+
+            if (current.ValueKind == JsonValueKind.Object)
+            {
+                // Empty object {} is considered missing
+                var propertyCount = 0;
+                foreach (var _ in current.EnumerateObject())
+                {
+                    propertyCount++;
+                    break;
+                }
+                if (propertyCount == 0)
+                    return true;
+            }
+
+            if (current.ValueKind == JsonValueKind.String && string.IsNullOrWhiteSpace(current.GetString()))
+                return true;
+
+            return false; // Field exists and has content
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogTrace(ex, "SpecHint: Error checking field {Path} in JSON, treating as missing", path);
+            return true; // Treat errors as missing (best-effort)
+        }
+    }
+
+    /// <summary>
+    /// Legacy POCO-only method for backward compatibility.
+    /// Converts POCO to JSON and calls the JSON-based method.
+    /// </summary>
+    [Obsolete("Use CheckAsync(string bundleJson, string fhirVersion, Bundle? bundlePoco) instead")]
+    public async Task<List<SpecHintIssue>> CheckAsync(Bundle bundle, string fhirVersion, CancellationToken cancellationToken = default)
+    {
+        // Serialize bundle to JSON for the new JSON-based method
+        var jsonSerializer = new Hl7.Fhir.Serialization.FhirJsonSerializer();
+        var bundleJson = jsonSerializer.SerializeToString(bundle);
+        return await CheckAsync(bundleJson, fhirVersion, bundle, cancellationToken);
     }
 
     /// <summary>

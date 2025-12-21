@@ -34,15 +34,23 @@ public interface IUnifiedErrorModelBuilder
     Task<List<ValidationError>> FromReferenceErrorsAsync(List<ReferenceValidationError> errors, Bundle bundle, CancellationToken cancellationToken = default);
     
     /// <summary>
-    /// Converts lint issues to unified error format.
-    /// Lint errors are best-effort structural checks marked with source="LINT".
+    /// Converts quality findings to unified error format.
+    /// Quality findings are advisory checks marked with source="LINT".
+    /// These are NON-BLOCKING and informational only - they guide, not fail.
     /// </summary>
+    Task<List<ValidationError>> FromQualityFindingsAsync(IReadOnlyList<QualityFinding> findings, Bundle? bundle, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Legacy method for backward compatibility.
+    /// Use FromQualityFindingsAsync instead.
+    /// </summary>
+    [Obsolete("Use FromQualityFindingsAsync - clarifies non-blocking, advisory nature")]
     Task<List<ValidationError>> FromLintIssuesAsync(IReadOnlyList<LintIssue> lintIssues, Bundle? bundle, CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Converts spec hint issues to unified error format.
     /// Spec hints are advisory HL7 required field guidance marked with source="SPEC_HINT".
-    /// These are non-blocking and informational only.
+    /// These are NON-BLOCKING and informational only.
     /// </summary>
     Task<List<ValidationError>> FromSpecHintIssuesAsync(List<SpecHintIssue> issues, Bundle bundle, CancellationToken cancellationToken = default);
 }

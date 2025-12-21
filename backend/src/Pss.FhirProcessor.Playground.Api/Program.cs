@@ -2,57 +2,106 @@ using Pss.FhirProcessor.Engine.DependencyInjection;
 using Pss.FhirProcessor.Playground.Api.Commands;
 using Pss.FhirProcessor.Playground.Api.Services;
 using Pss.FhirProcessor.Playground.Api.Storage;
+using Serilog;
+using Serilog.Events;
 
-// Check for command-line commands
-if (args.Length > 0 && args[0] == "import-fhir-examples")
+// Configure Serilog early for startup logging
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Debug()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+    .MinimumLevel.Override("System", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.File(
+        path: "logs/fhir-processor-.log",
+        rollingInterval: RollingInterval.Day,
+        rollOnFileSizeLimit: true,
+        fileSizeLimitBytes: 10 * 1024 * 1024, // 10MB
+        retainedFileCountLimit: 7,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}")
+    .CreateLogger();
+
+try
 {
-    var host = Host.CreateDefaultBuilder(args)
-        .ConfigureLogging(logging =>
-        {
-            logging.ClearProviders();
-            logging.AddConsole();
-        })
-        .Build();
+    Log.Information("Starting FHIR Processor V2 API");
 
-    var exitCode = await ImportExamplesCommand.ExecuteAsync(args, host);
-    return exitCode;
-}
-
-var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-
-// Register FhirProcessor.Engine services
-builder.Services.AddFhirProcessorEngine();
-
-// Register Playground API services
-builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
-builder.Services.AddScoped<IProjectService, ProjectService>();
-builder.Services.AddScoped<IRuleService, RuleService>();
-
-// Add CORS for frontend
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(policy =>
+    // Check for command-line commands
+    if (args.Length > 0 && args[0] == "import-fhir-examples")
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        var host = Host.CreateDefaultBuilder(args)
+            .UseSerilog()
+            .Build();
+
+        var exitCode = await ImportExamplesCommand.ExecuteAsync(args, host);
+        Log.Information("Import command completed with exit code {ExitCode}", exitCode);
+        return exitCode;
+    }
+
+    var builder = WebApplication.CreateBuilder(args);
+
+    // Replace default logging with Serilog
+    builder.Host.UseSerilog((context, services, configuration) => configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext()
+        .Enrich.WithMachineName()
+        .Enrich.WithThreadId());
+
+    // Add services to the container
+    builder.Services.AddControllers();
+    builder.Services.AddEndpointsApiExplorer();
+
+    // Register FhirProcessor.Engine services
+    builder.Services.AddFhirProcessorEngine();
+
+    // Register Playground API services
+    builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+    builder.Services.AddScoped<IProjectService, ProjectService>();
+    builder.Services.AddScoped<IRuleService, RuleService>();
+
+    // Add CORS for frontend
+    builder.Services.AddCors(options =>
+    {
+        options.AddDefaultPolicy(policy =>
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        });
     });
-});
 
-var app = builder.Build();
+    var app = builder.Build();
 
-// Configure the HTTP request pipeline
-app.UseCors();
-app.UseHttpsRedirection();
-app.MapControllers();
+    // Configure the HTTP request pipeline
+    app.UseSerilogRequestLogging(options =>
+    {
+        options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
+        options.GetLevel = (httpContext, elapsed, ex) => ex != null
+            ? LogEventLevel.Error
+            : elapsed > 10000
+                ? LogEventLevel.Warning
+                : LogEventLevel.Debug;
+    });
 
-app.Run();
+    app.UseCors();
+    app.UseHttpsRedirection();
+    app.MapControllers();
 
-return 0;
+    Log.Information("FHIR Processor V2 API started successfully");
+    app.Run();
+
+    return 0;
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+    return 1;
+}
+finally
+{
+    Log.CloseAndFlush();
+}
 
 // Make Program accessible for integration tests
 public partial class Program { }

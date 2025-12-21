@@ -1,46 +1,49 @@
 namespace Pss.FhirProcessor.Engine.Models;
 
 /// <summary>
-/// Represents a best-effort structural lint issue detected during pre-FHIR validation.
-/// These are NOT authoritative FHIR validation errors - Firely remains the source of truth.
-/// Lint issues are intended to improve developer UX by surfacing multiple structural problems at once.
+/// Represents a quality/advisory finding detected during best-effort structural validation.
+/// These are NOT blocking validation errors - they inform and guide developers.
+/// Renamed from LintIssue to clarify non-blocking, advisory nature.
+/// 
+/// Mental model: "Quality findings inform validation, not fail validation."
 /// </summary>
-public class LintIssue
+public class QualityFinding
 {
     /// <summary>
-    /// Lint-specific error code (e.g., LINT_INVALID_DATE, LINT_MISSING_RESOURCE_TYPE)
-    /// References a rule in LintRuleCatalog
+    /// Quality check code (e.g., MISSING_REQUIRED_FIELD, UNKNOWN_ELEMENT)
+    /// References a rule in the quality check catalog
     /// </summary>
     public string RuleId { get; set; } = string.Empty;
 
     /// <summary>
-    /// Rule category from LintRuleCatalog (Json, Structure, SchemaShape, Primitive, Compatibility)
+    /// Rule category (Json, Structure, SchemaShape, Primitive, Compatibility)
     /// </summary>
     public string Category { get; set; } = string.Empty;
 
     /// <summary>
     /// Severity level from catalog: "error" or "warning"
-    /// Note: Even "error" severity does not block Firely validation
+    /// Note: This is backend severity - UI will override based on source
+    /// Advisory findings are never blocking, regardless of this value
     /// </summary>
     public string Severity { get; set; } = "error";
 
     /// <summary>
-    /// Confidence level from catalog: "high", "medium", or "low"
+    /// Confidence level: "high", "medium", or "low"
     /// </summary>
     public string Confidence { get; set; } = "high";
 
     /// <summary>
-    /// Short title from catalog (e.g., "Invalid JSON Syntax")
+    /// Short title (e.g., "Invalid JSON Syntax", "Missing Required Field")
     /// </summary>
     public string Title { get; set; } = string.Empty;
 
     /// <summary>
-    /// Full description from catalog explaining what the rule checks
+    /// Full description explaining what the rule checks
     /// </summary>
     public string Description { get; set; } = string.Empty;
 
     /// <summary>
-    /// Minimal contextual message specific to this occurrence (e.g., path + reason)
+    /// Minimal contextual message specific to this occurrence
     /// Does NOT duplicate catalog metadata
     /// </summary>
     public string Message { get; set; } = string.Empty;
@@ -80,4 +83,13 @@ public class LintIssue
         get => RuleId;
         set => RuleId = value;
     }
+}
+
+/// <summary>
+/// Type alias for backward compatibility.
+/// LintIssue is now QualityFinding to clarify non-blocking, advisory nature.
+/// </summary>
+[Obsolete("Use QualityFinding instead - clarifies that these findings are advisory, not blocking errors")]
+public class LintIssue : QualityFinding
+{
 }

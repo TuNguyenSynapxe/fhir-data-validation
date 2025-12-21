@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
+using Microsoft.Extensions.Logging;
 using Pss.FhirProcessor.Engine.Models;
 using Pss.FhirProcessor.Engine.Interfaces;
 using Hl7.Fhir.Utility;
@@ -22,6 +23,7 @@ public class ValidationPipeline : IValidationPipeline
     private readonly IReferenceResolver _referenceResolver;
     private readonly IUnifiedErrorModelBuilder _errorBuilder;
     private readonly ISystemRuleSuggestionService _suggestionService;
+    private readonly ILogger<ValidationPipeline> _logger;
     
     public ValidationPipeline(
         ILintValidationService lintService,
@@ -31,7 +33,8 @@ public class ValidationPipeline : IValidationPipeline
         ICodeMasterEngine codeMasterEngine,
         IReferenceResolver referenceResolver,
         IUnifiedErrorModelBuilder errorBuilder,
-        ISystemRuleSuggestionService suggestionService)
+        ISystemRuleSuggestionService suggestionService,
+        ILogger<ValidationPipeline> logger)
     {
         _lintService = lintService;
         _specHintService = specHintService;
@@ -41,6 +44,7 @@ public class ValidationPipeline : IValidationPipeline
         _referenceResolver = referenceResolver;
         _errorBuilder = errorBuilder;
         _suggestionService = suggestionService;
+        _logger = logger;
     }
     
     public async Task<ValidationResponse> ValidateAsync(ValidationRequest request, CancellationToken cancellationToken = default)
@@ -67,14 +71,21 @@ public class ValidationPipeline : IValidationPipeline
             }
             
             // Step 1: Lint Validation (best-effort, non-authoritative)
-            // Only runs in "debug" mode for development/troubleshooting
-            // In "fast" mode (default), lint is skipped for performance
+            // CRITICAL: Always runs to provide advisory feedback, even when Firely fails
+            // In "debug" mode: runs all lint checks
+            // In "fast" mode: still runs when Firely fails to provide helpful diagnostics
             // Does NOT block Firely validation - all lint errors are advisory
             var validationMode = request.ValidationMode ?? "fast";
-            if (validationMode.Equals("debug", StringComparison.OrdinalIgnoreCase))
+            var shouldRunLint = validationMode.Equals("debug", StringComparison.OrdinalIgnoreCase);
+            
+            _logger.LogDebug("Validation mode: {ValidationMode}, Lint enabled: {LintEnabled}", validationMode, shouldRunLint);
+            
+            if (shouldRunLint)
             {
+                _logger.LogDebug("Running Lint validation in debug mode");
                 var lintIssues = await _lintService.ValidateAsync(request.BundleJson, request.FhirVersion, cancellationToken);
-                var lintErrors = await _errorBuilder.FromLintIssuesAsync(lintIssues, null, cancellationToken);
+                var lintErrors = await _errorBuilder.FromQualityFindingsAsync(lintIssues, null, cancellationToken);
+                _logger.LogInformation("Lint validation completed: {IssueCount} issues found", lintErrors.Count);
                 response.Errors.AddRange(lintErrors);
             }
             
@@ -82,20 +93,38 @@ public class ValidationPipeline : IValidationPipeline
             // Surfaces HL7 FHIR required field guidance without enforcing validation
             // Does NOT block validation, does NOT overlap with Firely
             // Only checks for missing HL7-mandated fields to help developers
+            // JSON-BASED: ALWAYS runs, even when Firely parsing fails
+            _logger.LogInformation("=== SPECHINT CHECKPOINT 1: ValidationMode={Mode}, IsDebug={IsDebug}", 
+                validationMode, validationMode.Equals("debug", StringComparison.OrdinalIgnoreCase));
+            
             if (validationMode.Equals("debug", StringComparison.OrdinalIgnoreCase))
             {
-                // Parse bundle for spec hint checking (needed before Firely)
-                // Uses lenient parser to allow SPEC_HINT to run even with structural errors
+                _logger.LogInformation("=== SPECHINT CHECKPOINT 2: Starting JSON-based SpecHint validation");
+                
+                // Parse bundle for optional POCO-based advanced hints
+                // This is OPTIONAL - SpecHint will run with JSON-only if this fails
                 var earlyParseResult = ParseBundleWithContext(request.BundleJson);
-                if (earlyParseResult.Success && earlyParseResult.Bundle != null)
+                _logger.LogInformation("=== SPECHINT CHECKPOINT 3: Early parse result - Success={Success}, HasBundle={HasBundle}", 
+                    earlyParseResult.Success, earlyParseResult.Bundle != null);
+                
+                // ALWAYS call SpecHint with JSON, pass POCO only if available
+                Bundle? bundlePoco = earlyParseResult.Success ? earlyParseResult.Bundle : null;
+                _logger.LogInformation("=== SPECHINT CHECKPOINT 4: Calling SpecHintService.CheckAsync (POCO available: {HasPoco})", 
+                    bundlePoco != null);
+                
+                var specHintIssues = await _specHintService.CheckAsync(request.BundleJson, request.FhirVersion, bundlePoco, cancellationToken);
+                _logger.LogInformation("=== SPECHINT CHECKPOINT 5: SpecHint check completed: {IssueCount} issues found", specHintIssues.Count);
+                
+                if (specHintIssues.Any())
                 {
-                    var specHintIssues = await _specHintService.CheckAsync(earlyParseResult.Bundle, request.FhirVersion, cancellationToken);
-                    if (specHintIssues.Any())
-                    {
-                        var specHintErrors = await _errorBuilder.FromSpecHintIssuesAsync(specHintIssues, earlyParseResult.Bundle, cancellationToken);
-                        response.Errors.AddRange(specHintErrors);
-                    }
+                    _logger.LogInformation("=== SPECHINT CHECKPOINT 6: Building error models for {IssueCount} spec hint issues", specHintIssues.Count);
+                    var specHintErrors = await _errorBuilder.FromSpecHintIssuesAsync(specHintIssues, bundlePoco, cancellationToken);
+                    response.Errors.AddRange(specHintErrors);
                 }
+            }
+            else
+            {
+                _logger.LogInformation("=== SPECHINT CHECKPOINT X: Not in debug mode (mode={Mode}), skipping SpecHint", validationMode);
             }
             
             // Step 2: Firely Structural Validation (authoritative)
@@ -104,6 +133,32 @@ public class ValidationPipeline : IValidationPipeline
             var firelyOutcome = await _firelyService.ValidateAsync(request.BundleJson, request.FhirVersion, cancellationToken);
             var firelyErrors = await _errorBuilder.FromFirelyIssuesAsync(firelyOutcome, null, cancellationToken);
             response.Errors.AddRange(firelyErrors);
+            
+            var firelyErrorCount = firelyErrors.Count(e => e.Source == "FHIR" && e.Severity == "error");
+            _logger.LogInformation("Firely validation completed: {ErrorCount} structural errors found", firelyErrorCount);
+            
+            // Step 2.5: Fallback Lint Check - If Firely reported structural errors AND we're in fast mode
+            // Run lint to provide MISSING_REQUIRED_FIELD and other advisory checks
+            // This ensures users get helpful feedback even when data is structurally invalid
+            if (!shouldRunLint && firelyErrors.Any(e => e.Source == "FHIR" && e.Severity == "error"))
+            {
+                _logger.LogInformation("Firely structural errors detected in fast mode - running advisory lint checks for diagnostics");
+                var fallbackLintIssues = await _lintService.ValidateAsync(request.BundleJson, request.FhirVersion, cancellationToken);
+                _logger.LogDebug("Fallback Lint validation found {RawIssueCount} raw issues", fallbackLintIssues.Count);
+                var fallbackLintErrors = await _errorBuilder.FromQualityFindingsAsync(fallbackLintIssues, null, cancellationToken);
+                _logger.LogInformation("Fallback Lint validation converted to {ErrorCount} errors", fallbackLintErrors.Count);
+                // Mark these as fallback diagnostics
+                foreach (var error in fallbackLintErrors)
+                {
+                    if (error.Details == null) error.Details = new Dictionary<string, object>();
+                    error.Details["triggeredBy"] = "firely_error_fallback";
+                }
+                response.Errors.AddRange(fallbackLintErrors);
+            }
+            else
+            {
+                _logger.LogDebug("Skipping fallback lint: LintAlreadyRan={LintRan}, FirelyErrorCount={ErrorCount}", shouldRunLint, firelyErrorCount);
+            }
             
             // Step 3: Parse to POCO Bundle for business rule processing
             // Even if Firely found structural errors, we still attempt parsing to get as many errors as possible

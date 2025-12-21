@@ -14,7 +14,8 @@ public class FhirPathRuleEngineTests
         // Arrange
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
         var modelResolver = new FhirR4ModelResolverService(logger);
-        var engine = new FhirPathRuleEngine(modelResolver);
+        var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger);
         
         var bundle = new Bundle
         {
@@ -73,7 +74,7 @@ public class FhirPathRuleEngineTests
         Assert.Equal("patient-001", error.ResourceId);
         Assert.Equal(0, error.EntryIndex);
         Assert.Equal("Patient.name.wrongMethod()", error.Path);
-        Assert.Contains("FHIRPath compilation failed", error.Message);
+        Assert.Contains("FHIRPath evaluation failed", error.Message);
         Assert.Contains("Patient.name.wrongMethod()", error.Message);
         
         // Verify details are present
@@ -90,7 +91,8 @@ public class FhirPathRuleEngineTests
         // Arrange
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
         var modelResolver = new FhirR4ModelResolverService(logger);
-        var engine = new FhirPathRuleEngine(modelResolver);
+        var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger);
         
         var bundle = new Bundle
         {
@@ -154,7 +156,7 @@ public class FhirPathRuleEngineTests
         // First error should be RULE_DEFINITION_ERROR for invalid FHIRPath
         var definitionError = errors.First(e => e.RuleId == "R1");
         Assert.Equal("RULE_DEFINITION_ERROR", definitionError.ErrorCode);
-        Assert.Contains("FHIRPath compilation failed", definitionError.Message);
+        Assert.Contains("FHIRPath evaluation failed", definitionError.Message);
         
         // Second error should be the actual validation error (missing gender)
         var validationError = errors.First(e => e.RuleId == "R2");
@@ -168,7 +170,8 @@ public class FhirPathRuleEngineTests
         // Arrange
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
         var modelResolver = new FhirR4ModelResolverService(logger);
-        var engine = new FhirPathRuleEngine(modelResolver);
+        var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger);
         
         var bundle = new Bundle
         {
@@ -226,7 +229,8 @@ public class FhirPathRuleEngineTests
         // Arrange
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
         var modelResolver = new FhirR4ModelResolverService(logger);
-        var engine = new FhirPathRuleEngine(modelResolver);
+        var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger);
 
         var bundle = new Bundle
         {
@@ -285,7 +289,8 @@ public class FhirPathRuleEngineTests
         // Arrange
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
         var modelResolver = new FhirR4ModelResolverService(logger);
-        var engine = new FhirPathRuleEngine(modelResolver);
+        var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger);
 
         var bundle = new Bundle
         {
@@ -344,7 +349,8 @@ public class FhirPathRuleEngineTests
         // Arrange
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
         var modelResolver = new FhirR4ModelResolverService(logger);
-        var engine = new FhirPathRuleEngine(modelResolver);
+        var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger);
 
         var bundle = new Bundle
         {
@@ -406,7 +412,8 @@ public class FhirPathRuleEngineTests
         // Arrange
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
         var modelResolver = new FhirR4ModelResolverService(logger);
-        var engine = new FhirPathRuleEngine(modelResolver);
+        var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger);
 
         var bundle = new Bundle
         {
@@ -468,7 +475,8 @@ public class FhirPathRuleEngineTests
         // Arrange
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
         var modelResolver = new FhirR4ModelResolverService(logger);
-        var engine = new FhirPathRuleEngine(modelResolver);
+        var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger);
 
         var bundle = new Bundle
         {

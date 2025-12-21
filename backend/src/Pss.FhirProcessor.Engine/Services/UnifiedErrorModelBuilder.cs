@@ -123,7 +123,42 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
         
         foreach (var error in errors)
         {
-            var navigation = await _navigationService.ResolvePathAsync(bundle, error.Path, error.ResourceType, null, cancellationToken);
+            // Check if JSON fallback precomputed the jsonPointer (when Bundle is null)
+            string jsonPointer = null;
+            NavigationInfo navigation = null;
+            
+            if (error.Details?.ContainsKey("_precomputedJsonPointer") == true)
+            {
+                // Use precomputed jsonPointer from JSON fallback
+                jsonPointer = error.Details["_precomputedJsonPointer"]?.ToString();
+                // Remove it from details so it doesn't appear in API response
+                error.Details.Remove("_precomputedJsonPointer");
+            }
+            else if (bundle != null)
+            {
+                // Normal path: resolve using SmartPathNavigation
+                navigation = await _navigationService.ResolvePathAsync(bundle, error.Path, error.ResourceType, null, cancellationToken);
+                jsonPointer = navigation?.JsonPointer;
+            }
+            
+            // Include engine metadata in details for Firely-preferred with safe fallback strategy
+            var details = error.Details ?? new Dictionary<string, object>();
+            
+            // Add engine metadata if present
+            if (!string.IsNullOrEmpty(error.EngineUsed))
+            {
+                details["engineUsed"] = error.EngineUsed;
+            }
+            
+            if (!string.IsNullOrEmpty(error.Confidence))
+            {
+                details["confidence"] = error.Confidence;
+            }
+            
+            if (error.EvaluationNotes != null && error.EvaluationNotes.Any())
+            {
+                details["evaluationNotes"] = error.EvaluationNotes;
+            }
             
             validationErrors.Add(new ValidationError
             {
@@ -131,10 +166,10 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 Severity = error.Severity,
                 ResourceType = error.ResourceType,
                 Path = error.Path,
-                JsonPointer = navigation?.JsonPointer,
+                JsonPointer = jsonPointer,
                 ErrorCode = error.ErrorCode,
                 Message = error.Message,
-                Details = error.Details,
+                Details = details,
                 Navigation = navigation
             });
         }
@@ -208,14 +243,14 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
     /// Converts lint issues to unified validation errors.
     /// Lint errors are marked with source="LINT" and are advisory/best-effort.
     /// </summary>
-    public async Task<List<ValidationError>> FromLintIssuesAsync(
-        IReadOnlyList<LintIssue> lintIssues,
+    public async Task<List<ValidationError>> FromQualityFindingsAsync(
+        IReadOnlyList<QualityFinding> findings,
         Bundle? bundle,
         CancellationToken cancellationToken = default)
     {
         var errors = new List<ValidationError>();
         
-        foreach (var issue in lintIssues)
+        foreach (var issue in findings)
         {
             var error = new ValidationError
             {
@@ -254,6 +289,20 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
         }
         
         return errors;
+    }
+
+    /// <summary>
+    /// OBSOLETE: Use FromQualityFindingsAsync instead.
+    /// Wrapper for backward compatibility during migration.
+    /// </summary>
+    [Obsolete("Use FromQualityFindingsAsync - clarifies that these findings are advisory, not blocking")]
+    public async Task<List<ValidationError>> FromLintIssuesAsync(
+        IReadOnlyList<LintIssue> lintIssues,
+        Bundle? bundle,
+        CancellationToken cancellationToken = default)
+    {
+        // LintIssue inherits from QualityFinding, safe to cast
+        return await FromQualityFindingsAsync(lintIssues.Cast<QualityFinding>().ToList(), bundle, cancellationToken);
     }
     
     /// <summary>

@@ -202,7 +202,7 @@ public class FhirPathRuleEngineTests
                 new RuleDefinition
                 {
                     Id = "R_INVALID",
-                    Type = "CustomFHIRPath",
+                    Type = "Required",  // Changed from CustomFHIRPath to test actual FHIRPath syntax errors
                     ResourceType = "Patient",
                     Path = "invalid((syntax",
                     Message = "Invalid FHIRPath"
