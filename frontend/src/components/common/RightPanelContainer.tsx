@@ -238,7 +238,6 @@ export const RightPanelContainer: React.FC<RightPanelContainerProps> = ({
           ui={ui}
           features={features}
           validationState={validationState}
-          validationMetadata={validationMetadata}
         />
       </div>
     </div>

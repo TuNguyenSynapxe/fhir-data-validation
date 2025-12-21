@@ -14,6 +14,7 @@ import { ValidationState } from '../../../types/validationState';
 import { useProjectValidationContext } from '../../../contexts/project-validation/ProjectValidationContext';
 import { useRuleReview } from '../../../playground/rule-review/hooks/useRuleReview';
 import { getIssueCounts, formatRuleReviewMessage } from '../../../playground/rule-review';
+import { buildValidationUICounters, getValidationStatusText } from '../../../utils/validationUICounters';
 
 interface Rule {
   id: string;
@@ -29,10 +30,6 @@ interface Rule {
 
 interface OverviewPanelProps {
   validationState?: string;
-  validationMetadata?: {
-    errorCount?: number;
-    warningCount?: number;
-  };
   rules?: Rule[];
   bundleJson?: string;
   ruleAlignmentStats?: {
@@ -47,7 +44,6 @@ interface OverviewPanelProps {
 
 export const OverviewPanel: React.FC<OverviewPanelProps> = ({
   validationState,
-  validationMetadata,
   rules = [],
   bundleJson,
   ruleAlignmentStats,
@@ -74,6 +70,24 @@ export const OverviewPanel: React.FC<OverviewPanelProps> = ({
   });
   
   const ruleReviewCounts = getIssueCounts(ruleReviewResult);
+  
+  // Build UI counters from validation result (matching visible items)
+  const uiCounters = React.useMemo(() => {
+    if (!validationResult?.errors) {
+      return { blocking: 0, quality: 0, guidance: 0, total: 0 };
+    }
+    // Use all sources visible (no filters on Overview page)
+    return buildValidationUICounters(validationResult.errors, {
+      lint: true,
+      reference: true,
+      firely: true,
+      business: true,
+      codeMaster: true,
+      specHint: true,
+    });
+  }, [validationResult?.errors]);
+  
+  const statusText = getValidationStatusText(uiCounters);
   
   // Compute statistics
   const ruleCount = rules.length;
@@ -195,12 +209,48 @@ export const OverviewPanel: React.FC<OverviewPanelProps> = ({
             
             {validationState === ValidationState.Failed && (
               <>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  Bundle validation completed with <span className="font-semibold text-red-600">{validationMetadata?.errorCount || 0} error(s)</span>.
-                  Review and fix errors in the Validation tab before proceeding with rule authoring.
-                </p>
+                <div className={`p-4 rounded-lg border ${statusText.variant === 'failed' ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
+                  <div className="flex items-start gap-3">
+                    {statusText.variant === 'failed' ? (
+                      <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    )}
+                    <div>
+                      <p className={`text-sm font-semibold ${statusText.variant === 'failed' ? 'text-red-900' : 'text-amber-900'} mb-1`}>
+                        {statusText.label}
+                      </p>
+                      <p className={`text-sm ${statusText.variant === 'failed' ? 'text-red-700' : 'text-amber-700'} leading-relaxed`}>
+                        {statusText.message}
+                      </p>
+                      {/* Breakdown */}
+                      {(uiCounters.blocking > 0 || uiCounters.quality > 0 || uiCounters.guidance > 0) && (
+                        <div className="mt-3 flex gap-3 text-xs">
+                          {uiCounters.blocking > 0 && (
+                            <div className="flex items-center gap-1">
+                              <span className="font-semibold text-red-800">{uiCounters.blocking}</span>
+                              <span className="text-red-700">blocking</span>
+                            </div>
+                          )}
+                          {uiCounters.quality > 0 && (
+                            <div className="flex items-center gap-1">
+                              <span className="font-semibold text-amber-800">{uiCounters.quality}</span>
+                              <span className="text-amber-700">quality</span>
+                            </div>
+                          )}
+                          {uiCounters.guidance > 0 && (
+                            <div className="flex items-center gap-1">
+                              <span className="font-semibold text-blue-800">{uiCounters.guidance}</span>
+                              <span className="text-blue-700">guidance</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
                 {lastValidation && (
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 mt-2">
                     Last validated: {lastValidation}
                   </p>
                 )}

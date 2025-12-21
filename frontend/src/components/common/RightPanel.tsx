@@ -40,10 +40,6 @@ interface RightPanelProps {
   
   // Derived validation state for OverviewPanel (computed in PlaygroundPage)
   validationState?: string;
-  validationMetadata?: {
-    errorCount?: number;
-    warningCount?: number;
-  };
 }
 
 /**
@@ -68,7 +64,6 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   ui,
   features,
   validationState,
-  validationMetadata,
 }) => {
   // Destructure mode props
   const { currentMode, activeTab = 'overview', onTabChange, onModeChange } = mode;
@@ -127,7 +122,6 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         return (
           <OverviewPanel
             validationState={validationState}
-            validationMetadata={validationMetadata}
             rules={rulesData}
             bundleJson={bundleJson}
             ruleAlignmentStats={ruleAlignmentStats}

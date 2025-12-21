@@ -96,6 +96,13 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 }
             }
             
+            var errorCode = issue.Code?.ToString()?.ToUpperInvariant()?.Replace("-", "_");
+            var details = new Dictionary<string, object>
+            {
+                ["issueType"] = issue.Code?.ToString() ?? "Unknown",
+                ["severity"] = issue.Severity?.ToString() ?? "Unknown"
+            };
+            
             errors.Add(new ValidationError
             {
                 Source = "FHIR",
@@ -103,14 +110,11 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 ResourceType = ExtractResourceType(path),
                 Path = path,
                 JsonPointer = navigation?.JsonPointer,
-                ErrorCode = issue.Code?.ToString()?.ToUpperInvariant()?.Replace("-", "_"),
+                ErrorCode = errorCode,
                 Message = issue.Diagnostics ?? issue.Details?.Text ?? "FHIR validation error",
-                Details = new Dictionary<string, object>
-                {
-                    ["issueType"] = issue.Code?.ToString() ?? "Unknown",
-                    ["severity"] = issue.Severity?.ToString() ?? "Unknown"
-                },
-                Navigation = navigation
+                Details = details,
+                Navigation = navigation,
+                Explanation = ValidationExplanationService.ForFhirStructural(errorCode, path, details)
             });
         }
         
@@ -170,7 +174,13 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 ErrorCode = error.ErrorCode,
                 Message = error.Message,
                 Details = details,
-                Navigation = navigation
+                Navigation = navigation,
+                Explanation = ValidationExplanationService.ForProjectRule(
+                    error.ErrorCode ?? "UNKNOWN",
+                    error.Path,
+                    null, // RuleExplanation - will be added when rules support it
+                    details
+                )
             });
         }
         
@@ -195,7 +205,12 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 ErrorCode = error.ErrorCode,
                 Message = error.Message,
                 Details = error.Details,
-                Navigation = navigation
+                Navigation = navigation,
+                Explanation = ValidationExplanationService.ForReference(
+                    error.ErrorCode,
+                    error.Path,
+                    error.Details
+                )
             });
         }
         
@@ -220,7 +235,12 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 ErrorCode = error.ErrorCode,
                 Message = error.Message,
                 Details = error.Details,
-                Navigation = navigation
+                Navigation = navigation,
+                Explanation = ValidationExplanationService.ForReference(
+                    error.ErrorCode,
+                    error.Path,
+                    error.Details
+                )
             });
         }
         
@@ -261,7 +281,8 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 ResourceType = issue.ResourceType,
                 Path = issue.FhirPath,
                 JsonPointer = issue.JsonPointer,
-                Details = issue.Details ?? new Dictionary<string, object>()
+                Details = issue.Details ?? new Dictionary<string, object>(),
+                Explanation = ValidationExplanationService.ForLint(issue.RuleId, issue.Message)
             };
             
             // Try to resolve navigation if we have a bundle and a path
@@ -335,7 +356,8 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                     ["source"] = "HL7",
                     ["isConditional"] = isConditional,
                     ["appliesToEach"] = issue.AppliesToEach
-                }
+                },
+                Explanation = ValidationExplanationService.ForSpecHint(issue.Reason, issue.Path)
             };
             
             // Add condition to details if present

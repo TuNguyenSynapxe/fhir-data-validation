@@ -72,11 +72,14 @@ public class ValidationPipeline : IValidationPipeline
             
             // Step 1: Lint Validation (best-effort, non-authoritative)
             // CRITICAL: Always runs to provide advisory feedback, even when Firely fails
-            // In "debug" mode: runs all lint checks
-            // In "fast" mode: still runs when Firely fails to provide helpful diagnostics
+            // In "full" mode: runs all lint checks
+            // In "standard" mode: still runs when Firely fails to provide helpful diagnostics
             // Does NOT block Firely validation - all lint errors are advisory
-            var validationMode = request.ValidationMode ?? "fast";
-            var shouldRunLint = validationMode.Equals("debug", StringComparison.OrdinalIgnoreCase);
+            var validationMode = request.ValidationMode ?? "standard";
+            // Support both new (standard/full) and legacy (fast/debug) mode names
+            var isFullAnalysis = validationMode.Equals("full", StringComparison.OrdinalIgnoreCase) || 
+                               validationMode.Equals("debug", StringComparison.OrdinalIgnoreCase);
+            var shouldRunLint = isFullAnalysis;
             
             _logger.LogDebug("Validation mode: {ValidationMode}, Lint enabled: {LintEnabled}", validationMode, shouldRunLint);
             
@@ -89,15 +92,15 @@ public class ValidationPipeline : IValidationPipeline
                 response.Errors.AddRange(lintErrors);
             }
             
-            // Step 1.5: SPEC_HINT - Advisory HL7 Required Field Hints (debug mode only)
+            // Step 1.5: SPEC_HINT - Advisory HL7 Required Field Hints (full analysis mode only)
             // Surfaces HL7 FHIR required field guidance without enforcing validation
             // Does NOT block validation, does NOT overlap with Firely
             // Only checks for missing HL7-mandated fields to help developers
             // JSON-BASED: ALWAYS runs, even when Firely parsing fails
-            _logger.LogInformation("=== SPECHINT CHECKPOINT 1: ValidationMode={Mode}, IsDebug={IsDebug}", 
-                validationMode, validationMode.Equals("debug", StringComparison.OrdinalIgnoreCase));
+            _logger.LogInformation("=== SPECHINT CHECKPOINT 1: ValidationMode={Mode}, IsFullAnalysis={IsFullAnalysis}", 
+                validationMode, isFullAnalysis);
             
-            if (validationMode.Equals("debug", StringComparison.OrdinalIgnoreCase))
+            if (isFullAnalysis)
             {
                 _logger.LogInformation("=== SPECHINT CHECKPOINT 2: Starting JSON-based SpecHint validation");
                 

@@ -145,7 +145,7 @@ export const ValidationContextBar: React.FC<ValidationContextBarProps> = ({
           {/* NotValidated: Run Validation */}
           {canRunValidation && (
             <button
-              onClick={() => runValidation('fast')}
+              onClick={() => runValidation('standard')}
               className="
                 inline-flex items-center gap-1.5 
                 px-3 py-1 
@@ -181,7 +181,7 @@ export const ValidationContextBar: React.FC<ValidationContextBarProps> = ({
           {/* Validated: Re-validate (optional) */}
           {canReValidate && (
             <button
-              onClick={() => runValidation('fast')}
+              onClick={() => runValidation('standard')}
               className="
                 inline-flex items-center gap-1.5 
                 px-3 py-1 

@@ -82,7 +82,7 @@ public static class LintRuleCatalogUsageExamples
     /// <summary>
     /// Example: Use rule metadata in validation service
     /// </summary>
-    public static LintIssue Example_CreateIssueFromCatalog(string ruleId)
+    public static QualityFinding Example_CreateIssueFromCatalog(string ruleId)
     {
         var rule = LintRuleCatalog.GetRuleById(ruleId);
         
@@ -91,7 +91,7 @@ public static class LintRuleCatalogUsageExamples
             throw new InvalidOperationException($"Rule not found: {ruleId}");
         }
 
-        return new LintIssue
+        return new QualityFinding
         {
             RuleId = rule.Id,
             Severity = rule.Severity,

@@ -4,6 +4,12 @@ import { formatSmartPath, getScopedSegments, convertToJsonPath } from '../../../
 import { SmartPathBreadcrumb } from './SmartPathBreadcrumb';
 import { PathInfoTooltip } from './PathInfoTooltip';
 
+interface ValidationIssueExplanation {
+  what: string;
+  how?: string;
+  confidence: 'high' | 'medium' | 'low';
+}
+
 interface ValidationError {
   source: string; // FHIR, Business, CodeMaster, Reference
   severity: string; // error, warning, info
@@ -18,6 +24,7 @@ interface ValidationError {
     breadcrumb?: string;
     resourceIndex?: number;
   };
+  explanation?: ValidationIssueExplanation;
 }
 
 interface ValidationErrorItemProps {
@@ -171,6 +178,50 @@ export const ValidationErrorItem: React.FC<ValidationErrorItemProps> = ({
               <pre className="whitespace-pre-wrap">{JSON.stringify(error.details, null, 2)}</pre>
             </div>
           )}
+
+          {/* Explanation Section - HIDDEN */}
+          {/* {error.explanation && (
+            <div className="mt-3 border-t border-gray-200 pt-3">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsExplanationExpanded(!isExplanationExpanded);
+                }}
+                className="flex items-center justify-between gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors w-full"
+              >
+                <div className="flex items-center gap-2">
+                  {isExplanationExpanded ? (
+                    <ChevronDown className="w-4 h-4 text-gray-500" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-gray-500" />
+                  )}
+                  <InformationCircleIcon className="w-4 h-4 text-blue-600" />
+                  <span>What is this?</span>
+                </div>
+                {getConfidenceBadge(error.explanation.confidence)}
+              </button>
+
+              {isExplanationExpanded && (
+                <div className="mt-2 space-y-3 pl-6">
+                  <div className="text-sm text-gray-700 leading-relaxed bg-blue-50/50 p-3 rounded-md border border-blue-100">
+                    {error.explanation.what}
+                  </div>
+
+                  {error.explanation.how && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                        <WrenchScrewdriverIcon className="w-4 h-4 text-green-600" />
+                        <span>How to fix</span>
+                      </div>
+                      <div className="text-sm text-gray-700 leading-relaxed bg-green-50/50 p-3 rounded-md border border-green-100 whitespace-pre-line">
+                        {error.explanation.how}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )} */}
         </div>
       </div>
     </div>

@@ -99,8 +99,52 @@ export const IssueCard: React.FC<IssueCardProps> = ({
             </p>
           )}
 
-          {/* Optional: Explanations (if enabled) */}
-          {showExplanations && issue.details?.explanation && (
+          {/* Structured explanation - HIDDEN */}
+          {/* {issue.explanation && (
+            <div className="mt-3 border-t border-gray-200 pt-3">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsExplanationExpanded(!isExplanationExpanded);
+                }}
+                className="flex items-center justify-between gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors w-full"
+              >
+                <div className="flex items-center gap-2">
+                  {isExplanationExpanded ? (
+                    <ChevronDown className="w-4 h-4 text-gray-500" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-gray-500" />
+                  )}
+                  <InformationCircleIcon className="w-4 h-4 text-blue-600" />
+                  <span>What is this?</span>
+                </div>
+                {getConfidenceBadge(issue.explanation.confidence)}
+              </button>
+
+              {isExplanationExpanded && (
+                <div className="mt-2 space-y-3 pl-6">
+                  <div className="text-sm text-gray-700 leading-relaxed bg-blue-50/50 p-3 rounded-md border border-blue-100">
+                    {issue.explanation.what}
+                  </div>
+
+                  {issue.explanation.how && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                        <WrenchScrewdriverIcon className="w-4 h-4 text-green-600" />
+                        <span>How to fix</span>
+                      </div>
+                      <div className="text-sm text-gray-700 leading-relaxed bg-green-50/50 p-3 rounded-md border border-green-100 whitespace-pre-line">
+                        {issue.explanation.how}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )} */}
+
+          {/* Optional: Explanations (legacy - if enabled) */}
+          {showExplanations && !issue.explanation && issue.details?.explanation && (
             <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-gray-700">
               {issue.details.explanation}
             </div>

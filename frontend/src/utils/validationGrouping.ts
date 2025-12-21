@@ -37,6 +37,7 @@ export const convertToIssue = (
     jsonPointer: error.jsonPointer || error.navigation?.jsonPointer,
     details: error.details,
     navigation: error.navigation,
+    explanation: error.explanation, // Pass through explanation if available
   };
 };
 

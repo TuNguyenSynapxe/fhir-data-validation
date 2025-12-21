@@ -11,6 +11,12 @@ export interface Project {
   codeMasterJson?: string;
 }
 
+export interface ValidationIssueExplanation {
+  what: string;
+  how?: string;
+  confidence: 'high' | 'medium' | 'low';
+}
+
 export interface ValidationError {
   source: string;
   severity: string;
@@ -25,6 +31,7 @@ export interface ValidationError {
     breadcrumbs: string[];
     missingParents: string[];
   };
+  explanation?: ValidationIssueExplanation;
 }
 
 export interface LintIssue {

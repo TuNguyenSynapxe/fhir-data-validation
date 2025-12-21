@@ -14,6 +14,7 @@ interface BundleTreeProps {
   bundleJson: string;
   onNodeSelect?: (path: string) => void;
   selectedPath?: string;
+  highlightEntryIndex?: number; // Entry index to highlight for validation error navigation
 }
 
 /**
@@ -42,6 +43,36 @@ const computeFhirPath = (pathArray: (string | number)[]): string => {
       return `${prefix}${segment}`;
     }
   }).join('').replace(/\.\[/g, '['); // Clean up ".[" to just "["
+};
+
+/**
+ * Extract resource type from Bundle.entry[i].resource
+ */
+const extractResourceType = (bundle: any, entryIndex: number): string => {
+  try {
+    return bundle?.entry?.[entryIndex]?.resource?.resourceType || 'Unknown';
+  } catch {
+    return 'Unknown';
+  }
+};
+
+/**
+ * Get standardized badge styling for resource types
+ */
+const getResourceBadgeStyle = (resourceType: string): { bg: string; text: string; border: string } => {
+  const type = resourceType.toLowerCase();
+  
+  if (type === 'patient') {
+    return { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' };
+  } else if (type === 'observation') {
+    return { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' };
+  } else if (type === 'encounter') {
+    return { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200' };
+  } else if (type === 'unknown') {
+    return { bg: 'bg-gray-50', text: 'text-gray-500', border: 'border-gray-200' };
+  } else {
+    return { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' };
+  }
 };
 
 /**
@@ -115,6 +146,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   const jsonPointer = computeJsonPointer(path);
   const fhirPath = computeFhirPath(path);
   const nodeRef = React.useRef<HTMLDivElement>(null);
+  const isHighlighted = jsonPointer === (onSelect as any).highlightedPath;
 
   // Scroll into view when selected
   React.useEffect(() => {
@@ -122,6 +154,13 @@ const TreeNode: React.FC<TreeNodeProps> = ({
       nodeRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }, [isSelected]);
+  
+  // Scroll into view when highlighted
+  React.useEffect(() => {
+    if (isHighlighted && nodeRef.current) {
+      nodeRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [isHighlighted]);
 
   const handleClick = () => {
     if (hasChildren) {
@@ -177,43 +216,70 @@ const TreeNode: React.FC<TreeNodeProps> = ({
     return null;
   };
 
+  // Check if this is a Bundle.entry[i] node
+  const isEntryNode = path.length === 2 && path[0] === 'entry' && typeof path[1] === 'number';
+  // Extract resourceType from entry.resource.resourceType
+  const resourceType = isEntryNode && type === 'object' ? (value as any)?.resource?.resourceType : null;
+
   return (
     <div>
       <div
         ref={nodeRef}
-        className={`flex items-center py-1 px-2 cursor-pointer transition-colors ${
-          isSelected ? 'bg-blue-100 border-l-2 border-blue-600' : 'hover:bg-gray-50'
+        className={`flex items-center justify-between py-1 px-2 cursor-pointer transition-colors ${
+          isHighlighted
+            ? 'bg-yellow-100 border-l-4 border-yellow-500'
+            : isSelected
+            ? 'bg-blue-100 border-l-2 border-blue-600'
+            : 'hover:bg-gray-50'
         }`}
         style={{ paddingLeft: `${level * 20 + 8}px` }}
         onClick={handleClick}
       >
-        {hasChildren ? (
-          <button className="mr-1 p-0.5 hover:bg-gray-200 rounded">
-            {isExpanded ? (
-              <ChevronDown className="w-3.5 h-3.5 text-gray-600" />
-            ) : (
-              <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
-            )}
-          </button>
-        ) : (
-          <span className="w-4 mr-1" />
-        )}
+        {/* Left side: expand icon, type icon, label, and value preview */}
+        <div className="flex items-center min-w-0 flex-1">
+          {hasChildren ? (
+            <button className="mr-1 p-0.5 hover:bg-gray-200 rounded flex-shrink-0">
+              {isExpanded ? (
+                <ChevronDown className="w-3.5 h-3.5 text-gray-600" />
+              ) : (
+                <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
+              )}
+            </button>
+          ) : (
+            <span className="w-4 mr-1 flex-shrink-0" />
+          )}
 
-        <span className="mr-1.5">{getTypeIcon(type)}</span>
+          <span className="mr-1.5 flex-shrink-0">{getTypeIcon(type)}</span>
 
-        <span className="text-sm font-mono font-medium text-gray-800">
-          {typeof nodeKey === 'number' ? `[${nodeKey}]` : nodeKey}
-        </span>
-
-        {!hasChildren && (
-          <span className="ml-2 text-xs text-gray-500 truncate">
-            : {formatValuePreview(value, type)}
+          <span className="text-sm font-mono font-medium text-gray-800 flex-shrink-0">
+            {typeof nodeKey === 'number' ? `[${nodeKey}]` : nodeKey}
           </span>
-        )}
 
-        {hasChildren && (
-          <span className="ml-2 text-xs text-gray-400">
-            {formatValuePreview(value, type)}
+          {!hasChildren && !isEntryNode && (
+            <span className="ml-2 text-xs text-gray-500 truncate">
+              : {formatValuePreview(value, type)}
+            </span>
+          )}
+
+          {hasChildren && !isEntryNode && (
+            <span className="ml-2 text-xs text-gray-400 flex-shrink-0">
+              {formatValuePreview(value, type)}
+            </span>
+          )}
+        </div>
+
+        {/* Right side: Resource context badge (only for Bundle.entry nodes) */}
+        {isEntryNode && resourceType && (
+          <span
+            className={`ml-4 px-2 py-0.5 text-xs font-medium rounded border opacity-75 flex-shrink-0 pointer-events-none ${
+              getResourceBadgeStyle(resourceType).bg
+            } ${
+              getResourceBadgeStyle(resourceType).text
+            } ${
+              getResourceBadgeStyle(resourceType).border
+            }`}
+          >
+            Resource: {resourceType}
           </span>
         )}
       </div>
@@ -364,9 +430,12 @@ export const BundleTree: React.FC<BundleTreeProps> = ({
   bundleJson,
   onNodeSelect: _onNodeSelect,
   selectedPath,
+  // highlightEntryIndex,
 }) => {
   const [internalSelectedPath, setInternalSelectedPath] = useState<string>('');
   const [collapseKey, setCollapseKey] = useState<number>(0);
+  const [resourceContext, setResourceContext] = useState<string | null>(null);
+  const [highlightedPath, setHighlightedPath] = useState<string | null>(null);
   
   // Use external selectedPath if provided, otherwise use internal state
   const activeSelectedPath = selectedPath || internalSelectedPath;
@@ -376,16 +445,55 @@ export const BundleTree: React.FC<BundleTreeProps> = ({
   // Track previous selectedPath to detect external changes only
   const prevSelectedPathRef = React.useRef<string | undefined>(selectedPath);
   
-  // Increment collapse key when external selected path changes to reset all expansions
-  // Only trigger on external navigation, not on internal selection changes
+  // Extract resource context from selected path
+  React.useEffect(() => {
+    if (activeSelectedPath) {
+      try {
+        const parsedBundle = JSON.parse(bundleJson);
+        // Extract entry index from path like "/entry/0/resource/..."
+        const match = activeSelectedPath.match(/^\/entry\/(\d+)/);
+        if (match) {
+          const entryIndex = parseInt(match[1], 10);
+          const resourceType = extractResourceType(parsedBundle, entryIndex);
+          setResourceContext(resourceType);
+        } else {
+          setResourceContext(null);
+        }
+      } catch {
+        setResourceContext(null);
+      }
+    } else {
+      setResourceContext(null);
+    }
+  }, [activeSelectedPath, bundleJson]);
+  
+  // Auto-clear highlight after 2 seconds
+  React.useEffect(() => {
+    if (highlightedPath) {
+      const timer = setTimeout(() => {
+        setHighlightedPath(null);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightedPath]);
+  
+  // Detect external navigation, increment collapseKey, and highlight entry
   React.useEffect(() => {
     console.log('[BundleTree] selectedPath EFFECT - selectedPath:', selectedPath, 'prev:', prevSelectedPathRef.current);
-    // Only increment collapseKey if:
-    // 1. selectedPath is truthy (external navigation happened)
-    // 2. selectedPath actually changed from previous value
-    // 3. selectedPath is different from current internalSelectedPath (not coming from our own handleNodeSelect)
+    
+    // Only process if selectedPath changed from previous value
     if (selectedPath && selectedPath !== prevSelectedPathRef.current) {
-      console.log('[BundleTree] External navigation detected - incrementing collapseKey');
+      console.log('[BundleTree] External navigation detected');
+      
+      // Extract entry index for highlighting
+      const match = selectedPath.match(/^\/entry\/(\d+)/);
+      if (match) {
+        const entryPath = `/entry/${match[1]}`;
+        setHighlightedPath(entryPath);
+      }
+      
+      // Increment collapseKey to trigger auto-expansion
+      console.log('[BundleTree] Incrementing collapseKey');
       setCollapseKey(prev => {
         console.log('[BundleTree] collapseKey:', prev, '->', prev + 1);
         return prev + 1;
@@ -414,10 +522,11 @@ export const BundleTree: React.FC<BundleTreeProps> = ({
   // Augment the callback with external selected path for children to access
   const handleNodeSelectWithPath = Object.assign(handleNodeSelect, {
     externalSelectedPath: activeSelectedPath,
-    collapseKey: collapseKey
+    collapseKey: collapseKey,
+    highlightedPath: highlightedPath,
   });
   
-  console.log('[BundleTree] Augmented callback - externalSelectedPath:', activeSelectedPath, 'collapseKey:', collapseKey);
+  console.log('[BundleTree] Augmented callback - externalSelectedPath:', activeSelectedPath, 'collapseKey:', collapseKey, 'highlightedPath:', highlightedPath);
 
   if (!parsedBundle) {
     return (
@@ -475,11 +584,31 @@ export const BundleTree: React.FC<BundleTreeProps> = ({
 
       {activeSelectedPath && (
         <div className="border-t bg-gray-50 px-3 py-2 flex-shrink-0">
-          <div className="text-xs">
-            <span className="font-semibold text-gray-600">Path:</span>
-            <code className="ml-2 text-gray-800 bg-gray-100 px-1.5 py-0.5 rounded font-mono">
-              {activeSelectedPath}
-            </code>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="text-xs">
+                <span className="font-semibold text-gray-600">Path:</span>
+                <code className="ml-2 text-gray-800 bg-gray-100 px-1.5 py-0.5 rounded font-mono truncate">
+                  {activeSelectedPath}
+                </code>
+              </div>
+            </div>
+            {resourceContext && (
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-xs text-gray-600 font-medium">Context:</span>
+                <span
+                  className={`px-2 py-0.5 text-xs font-medium rounded border ${
+                    getResourceBadgeStyle(resourceContext).bg
+                  } ${
+                    getResourceBadgeStyle(resourceContext).text
+                  } ${
+                    getResourceBadgeStyle(resourceContext).border
+                  }`}
+                >
+                  {resourceContext}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       )}

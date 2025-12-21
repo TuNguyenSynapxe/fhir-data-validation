@@ -122,7 +122,7 @@ describe('ProjectValidationContext', () => {
       const TestConsumer: React.FC = () => {
         const { runValidation } = useProjectValidationContext();
         return (
-          <button onClick={() => runValidation('fast')}>
+          <button onClick={() => runValidation('standard')}>
             Run Validation
           </button>
         );
@@ -142,7 +142,7 @@ describe('ProjectValidationContext', () => {
 
       screen.getByText('Run Validation').click();
 
-      expect(mockRunValidation).toHaveBeenCalledWith('fast');
+      expect(mockRunValidation).toHaveBeenCalledWith('standard');
     });
 
     it('should expose clearValidationError action to consumers', () => {

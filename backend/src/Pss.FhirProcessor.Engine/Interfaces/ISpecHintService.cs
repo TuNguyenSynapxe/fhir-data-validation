@@ -6,7 +6,7 @@ namespace Pss.FhirProcessor.Engine.Interfaces;
 /// <summary>
 /// Service that provides advisory hints about HL7 FHIR required fields.
 /// This does NOT enforce validation - it only surfaces guidance.
-/// Only runs in debug mode.
+/// Only runs in full analysis mode.
 /// </summary>
 public interface ISpecHintService
 {

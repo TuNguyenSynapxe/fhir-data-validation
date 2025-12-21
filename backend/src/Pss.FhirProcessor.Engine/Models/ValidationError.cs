@@ -56,6 +56,13 @@ public class ValidationError
     public Dictionary<string, object>? Details { get; set; }
     
     /// <summary>
+    /// Structured explanation for this issue (optional).
+    /// Provides "what" and "how" guidance without blocking validation.
+    /// </summary>
+    [JsonPropertyName("explanation")]
+    public ValidationIssueExplanation? Explanation { get; set; }
+    
+    /// <summary>
     /// Navigation metadata for frontend
     /// </summary>
     [JsonPropertyName("navigation")]

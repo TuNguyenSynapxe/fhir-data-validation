@@ -20,6 +20,7 @@ import { useValidationState } from '../../../hooks/useValidationState';
 import { ValidationState } from '../../../types/validationState';
 import { useProjectValidationContext } from '../../../contexts/project-validation/ProjectValidationContext';
 import type { ValidationError } from '../../../contexts/project-validation/useProjectValidation';
+import { buildValidationUICounters } from '../../../utils/validationUICounters';
 
 interface ValidationPanelProps {
   projectId: string;
@@ -67,7 +68,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
   
   // UI-only state (presentation, not validation lifecycle)
   const [isOpen, setIsOpen] = useState(true);
-  const [validationMode, setValidationMode] = useState<'fast' | 'debug'>('fast');
+  const [validationMode, setValidationMode] = useState<'standard' | 'full'>('full'); // Default to Full Analysis for UI
   
   // Derive validation state from current conditions
   const { state: validationState } = useValidationState(
@@ -93,31 +94,25 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
     };
   });
 
-  // Explanations toggle state
-  const [showExplanations, setShowExplanations] = useState<boolean>(() => {
-    const stored = localStorage.getItem(`validation-explanations-${projectId}`);
-    return stored === 'true';
-  });
+  // Explanations toggle state (unused - explanations hidden)
+  // const [showExplanations, setShowExplanations] = useState<boolean>(() => {
+  //   const stored = localStorage.getItem(`validation-explanations-${projectId}`);
+  //   return stored === 'true';
+  // });
 
   // Persist filter state
   const handleFilterChange = (filters: SourceFilterState) => {
     setSourceFilters(filters);
     localStorage.setItem(`validation-filters-${projectId}`, JSON.stringify(filters));
   };
-
-  // Persist explanations toggle
-  const handleExplanationsToggle = () => {
-    const newValue = !showExplanations;
-    setShowExplanations(newValue);
-    localStorage.setItem(`validation-explanations-${projectId}`, String(newValue));
-  };
   
   /**
    * Run validation (via Context)
+   * Always triggers full analysis mode
    */
   const handleRunValidation = async () => {
     setIsOpen(true); // Auto-expand after validation
-    await runValidation(validationMode);
+    await runValidation('full');
   };
 
   /**
@@ -136,6 +131,14 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
 
   const summary = validationResult?.summary;
   const hasErrors = (summary?.total || 0) > 0;
+  
+  // Build UI counters from visible errors only
+  const uiCounters = React.useMemo(() => {
+    if (!validationResult?.errors) {
+      return { blocking: 0, quality: 0, guidance: 0, total: 0 };
+    }
+    return buildValidationUICounters(validationResult.errors, sourceFilters);
+  }, [validationResult?.errors, sourceFilters]);
 
   // Render NoBundle empty state
   if (showNoBundleState) {
@@ -202,28 +205,37 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
           {/* Validation Layer Info Tooltip */}
           <ValidationLayerInfo />
           
-          {/* Summary badges */}
-          {summary && (
+          {/* UI Counters - match visible items only */}
+          {validationResult && (
             <div className="flex items-center gap-2 ml-2">
-              {summary.errors > 0 && (
-                <span className="flex items-center gap-1 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+              {uiCounters.blocking > 0 && (
+                <span 
+                  className="flex items-center gap-1 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full"
+                  title="Blocking issues that prevent validation success"
+                >
                   <AlertCircle className="w-3 h-3" />
-                  {summary.errors}
+                  {uiCounters.blocking} blocking
                 </span>
               )}
-              {summary.warnings > 0 && (
-                <span className="flex items-center gap-1 text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">
+              {uiCounters.quality > 0 && (
+                <span 
+                  className="flex items-center gap-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full"
+                  title="Non-blocking quality checks (LINT)"
+                >
                   <AlertTriangle className="w-3 h-3" />
-                  {summary.warnings}
+                  {uiCounters.quality} quality
                 </span>
               )}
-              {summary.information > 0 && (
-                <span className="flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+              {uiCounters.guidance > 0 && (
+                <span 
+                  className="flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full"
+                  title="Informational HL7 advisory hints (SPECHINT)"
+                >
                   <Info className="w-3 h-3" />
-                  {summary.information}
+                  {uiCounters.guidance} guidance
                 </span>
               )}
-              {!hasErrors && validationResult && (
+              {uiCounters.total === 0 && (
                 <span className="flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                   <CheckCircle2 className="w-3 h-3" />
                   No issues
@@ -283,32 +295,32 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    setValidationMode('fast');
+                    setValidationMode('standard');
                   }}
                   disabled={isValidating}
                   className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                    validationMode === 'fast'
-                      ? 'bg-green-600 text-white'
+                    validationMode === 'standard'
+                      ? 'bg-blue-600 text-white'
                       : 'bg-white text-gray-600 hover:bg-gray-50'
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
-                  title="Fast mode - Production validation without lint checks"
+                  title="Standard - Blocking checks only (recommended for submission)"
                 >
-                  Fast
+                  Standard
                 </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    setValidationMode('debug');
+                    setValidationMode('full');
                   }}
                   disabled={isValidating}
                   className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                    validationMode === 'debug'
-                      ? 'bg-orange-600 text-white'
+                    validationMode === 'full'
+                      ? 'bg-purple-600 text-white'
                       : 'bg-white text-gray-600 hover:bg-gray-50'
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
-                  title="Debug mode - Includes lint pre-validation checks"
+                  title="Full Analysis - Includes advisory lint and FHIR checks (recommended during authoring)"
                 >
-                  Debug
+                  Full Analysis
                 </button>
               </div>
 
@@ -340,8 +352,8 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
                 />
               )}
 
-              {/* Show explanations toggle */}
-              {validationResult && hasErrors && (
+              {/* Show explanations toggle - HIDDEN */}
+              {/* {validationResult && hasErrors && (
                 <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
                   <input
                     type="checkbox"
@@ -351,7 +363,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
                   />
                   <span>Show explanations</span>
                 </label>
-              )}
+              )} */}
             </div>
 
             {/* Legacy source badges removed - now using ValidationSourceFilter */}
@@ -406,7 +418,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
                 onErrorClick={handleErrorClick}
                 onNavigateToPath={onNavigateToPath}
                 sourceFilters={sourceFilters}
-                showExplanations={showExplanations}
+                showExplanations={false}
                 bundleJson={bundleJson}
               />
             )}

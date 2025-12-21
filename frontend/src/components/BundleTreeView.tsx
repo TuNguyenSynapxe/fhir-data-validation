@@ -5,7 +5,35 @@ interface BundleTreeViewProps {
   bundleJson: string;
   onSelectPath: (path: string) => void;
   resourceTypeFilter?: string; // Filter to show only specific resource type
+  highlightEntryIndex?: number; // Entry index to highlight (for validation error navigation)
 }
+
+/**
+ * Extract resource type from Bundle entry
+ */
+const getResourceTypeFromEntry = (entry: any): string => {
+  return entry?.resource?.resourceType || 'Unknown';
+};
+
+/**
+ * Get standardized badge styling for resource types
+ */
+const getResourceBadgeStyle = (resourceType: string): { bg: string; text: string; border: string } => {
+  const type = resourceType.toLowerCase();
+  
+  if (type === 'patient') {
+    return { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' };
+  } else if (type === 'observation') {
+    return { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' };
+  } else if (type === 'encounter') {
+    return { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200' };
+  } else if (type === 'unknown') {
+    return { bg: 'bg-gray-50', text: 'text-gray-500', border: 'border-gray-200' };
+  } else {
+    // Default for other resource types
+    return { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' };
+  }
+};
 
 interface TreeNode {
   key: string;
@@ -16,11 +44,15 @@ interface TreeNode {
   children?: TreeNode[];
   isArray?: boolean;
   isPrimitive?: boolean;
+  resourceType?: string; // For Bundle.entry nodes
+  entryIndex?: number; // For Bundle.entry nodes
 }
 
-const BundleTreeView: React.FC<BundleTreeViewProps> = ({ bundleJson, onSelectPath, resourceTypeFilter }) => {
+const BundleTreeView: React.FC<BundleTreeViewProps> = ({ bundleJson, onSelectPath, resourceTypeFilter /*, highlightEntryIndex */ }) => {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [selectedPath, setSelectedPath] = useState<string>('');
+  // const [highlightedEntryKey, setHighlightedEntryKey] = useState<string | null>(null);
+  // const [resourceContext, setResourceContext] = useState<string | null>(null);
 
   // Get type icon for value
   const getTypeIcon = (type: string) => {
@@ -75,13 +107,16 @@ const BundleTreeView: React.FC<BundleTreeViewProps> = ({ bundleJson, onSelectPat
         })
         .map((entry: any, entryIndex: number) => {
           const resource = entry.resource;
-          const resourceType = resource.resourceType;
+          const resourceType = getResourceTypeFromEntry(entry);
 
           return {
             key: `entry-${entryIndex}`,
-            label: `${resourceType} (entry[${entryIndex}])`,
+            label: `[${entryIndex}]`,
             path: resourceType,
             value: resource,
+            resourceType: resourceType,
+            entryIndex: entryIndex,
+            type: 'object' as const,
             children: buildTreeFromObject(resource, `${resourceType}`),
           };
         });
@@ -206,12 +241,16 @@ const BundleTreeView: React.FC<BundleTreeViewProps> = ({ bundleJson, onSelectPat
     const hasChildren = node.children && node.children.length > 0;
     const isExpanded = expandedNodes.has(node.key);
     const isSelected = selectedPath === node.path;
+    // const isHighlighted = node.key === highlightedEntryKey;
+    const isEntryNode = node.resourceType !== undefined;
 
     return (
       <div key={node.key} className="select-none">
         <div
-          className={`flex items-center py-1 px-2 cursor-pointer transition-colors ${
-            isSelected ? 'bg-blue-100 border-l-2 border-blue-600' : 'hover:bg-gray-50'
+          className={`flex items-center py-1 px-2 cursor-pointer transition-all duration-200 ${
+            isSelected
+              ? 'bg-blue-100 border-l-2 border-blue-600'
+              : 'hover:bg-gray-50'
           }`}
           style={{ paddingLeft: `${level * 20 + 8}px` }}
           onClick={(e) => {
@@ -243,15 +282,30 @@ const BundleTreeView: React.FC<BundleTreeViewProps> = ({ bundleJson, onSelectPat
             {node.label}
           </span>
 
+          {/* Resource Context Badge (for Bundle.entry nodes only) */}
+          {isEntryNode && node.resourceType && (
+            <span
+              className={`ml-2 px-2 py-0.5 text-xs font-medium rounded border ${
+                getResourceBadgeStyle(node.resourceType).bg
+              } ${
+                getResourceBadgeStyle(node.resourceType).text
+              } ${
+                getResourceBadgeStyle(node.resourceType).border
+              }`}
+            >
+              Resource: {node.resourceType}
+            </span>
+          )}
+
           {/* Value Preview for Primitives */}
-          {!hasChildren && (
+          {!hasChildren && !isEntryNode && (
             <span className="ml-2 text-xs text-gray-500 truncate">
               : {formatValuePreview(node.value, node.type)}
             </span>
           )}
 
           {/* Count for Objects/Arrays */}
-          {hasChildren && (
+          {hasChildren && !isEntryNode && (
             <span className="ml-2 text-xs text-gray-400">
               {formatValuePreview(node.value, node.type)}
             </span>
@@ -302,10 +356,10 @@ const BundleTreeView: React.FC<BundleTreeViewProps> = ({ bundleJson, onSelectPat
       </div>
       {selectedPath && (
         <div className="p-3 bg-blue-50 border-t border-blue-200">
-          <p className="text-xs text-blue-800">
+          <div className="text-xs text-blue-800">
             <span className="font-medium">Selected:</span>{' '}
             <code className="bg-white px-2 py-1 rounded text-blue-900">{selectedPath}</code>
-          </p>
+          </div>
         </div>
       )}
     </div>

@@ -45,12 +45,13 @@ public class ValidationRequest
     public string FhirVersion { get; set; } = "R4";
     
     /// <summary>
-    /// Validation mode: "fast" (skip lint and SPEC_HINT, production) or "debug" (include lint and SPEC_HINT, development)
-    /// Default: "fast" - lint validation and SPEC_HINT are skipped for performance
-    /// "debug" - includes best-effort lint pre-validation checks and advisory HL7 required field hints
+    /// Validation mode: "standard" (blocking checks only) or "full" (includes advisory checks)
+    /// Default: "standard" - blocking validation only (FHIR structural + business rules)
+    /// "full" - includes additional advisory checks (lint quality + SpecHint guidance)
+    /// Both modes produce identical blocking decisions - only advisory feedback differs
     /// </summary>
     [JsonPropertyName("validationMode")]
-    public string? ValidationMode { get; set; } = "fast";
+    public string? ValidationMode { get; set; } = "standard";
     
     /// <summary>
     /// Runtime validation settings (optional)

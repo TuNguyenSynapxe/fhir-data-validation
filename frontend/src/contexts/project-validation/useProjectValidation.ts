@@ -19,6 +19,12 @@
 
 import { useState, useCallback } from 'react';
 
+export interface ValidationIssueExplanation {
+  what: string;
+  how?: string;
+  confidence: 'high' | 'medium' | 'low';
+}
+
 export interface ValidationError {
   source: string; // FHIR, Business, CodeMaster, Reference, Lint, SpecHint
   severity: string; // error, warning, info
@@ -33,6 +39,7 @@ export interface ValidationError {
     breadcrumb?: string;
     resourceIndex?: number;
   };
+  explanation?: ValidationIssueExplanation;
 }
 
 export interface ValidationResult {
@@ -64,7 +71,7 @@ export interface ProjectValidationState {
   trigger: number; // Timestamp for triggering validation
   
   // Actions
-  runValidation: (mode?: 'fast' | 'debug') => Promise<void>;
+  runValidation: (mode?: 'standard' | 'full') => Promise<void>;
   setResult: (result: ValidationResult | null) => void;
   clearError: () => void;
   triggerValidation: () => void; // Programmatic trigger (sets timestamp)
@@ -85,8 +92,9 @@ export function useProjectValidation(projectId: string): ProjectValidationState 
   /**
    * Run validation via backend API.
    * This is the ONLY place validation API calls should happen for project validation.
+   * Defaults to 'standard' mode for API calls (UI overrides to 'full')
    */
-  const runValidation = useCallback(async (mode: 'fast' | 'debug' = 'fast') => {
+  const runValidation = useCallback(async (mode: 'standard' | 'full' = 'standard') => {
     setIsValidating(true);
     setError(null);
 

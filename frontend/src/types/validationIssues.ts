@@ -7,6 +7,12 @@
  * - IssueGroup: A collection of related issues grouped by source+code
  */
 
+export type ValidationIssueExplanation = {
+  what: string;
+  how?: string;
+  confidence: 'high' | 'medium' | 'low';
+};
+
 export type ValidationIssue = {
   id: string;
   source: string; // 'PROJECT' | 'FHIR' | 'LINT' | 'CodeMaster' | 'Reference' | 'SPEC_HINT'
@@ -26,6 +32,7 @@ export type ValidationIssue = {
     breadcrumb?: string;
     resourceIndex?: number;
   };
+  explanation?: ValidationIssueExplanation; // structured explanation
 };
 
 export type IssueGroup = {

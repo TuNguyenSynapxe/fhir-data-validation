@@ -26,7 +26,7 @@ public class ValidationResponse
     public ValidationMetadata Metadata { get; set; } = new();
     
     /// <summary>
-    /// System-generated rule suggestions (debug mode only)
+    /// System-generated rule suggestions (full analysis mode only)
     /// </summary>
     [JsonPropertyName("suggestions")]
     public List<SystemRuleSuggestion>? Suggestions { get; set; }

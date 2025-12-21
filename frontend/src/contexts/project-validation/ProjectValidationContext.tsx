@@ -46,7 +46,7 @@ export interface ProjectValidationContextValue {
   validationError: string | null;
   
   // Actions
-  runValidation: (mode?: 'fast' | 'debug') => Promise<void>;
+  runValidation: (mode?: 'standard' | 'full') => Promise<void>;
   clearValidationError: () => void;
 }
 
@@ -67,7 +67,7 @@ interface ProjectValidationProviderProps {
   validationResult: ValidationResult | null;
   isValidating: boolean;
   validationError: string | null;
-  runValidation: (mode?: 'fast' | 'debug') => Promise<void>;
+  runValidation: (mode?: 'standard' | 'full') => Promise<void>;
   clearValidationError: () => void;
   children: ReactNode;
 }
@@ -138,7 +138,7 @@ export const ProjectValidationProvider: React.FC<ProjectValidationProviderProps>
  * const { validationResult, isValidating, validationError } = validation;
  * 
  * // Call actions
- * await validation.runValidation('fast');
+ * await validation.runValidation('standard');
  * validation.clearValidationError();
  * ```
  */
