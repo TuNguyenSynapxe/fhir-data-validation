@@ -6,12 +6,15 @@
  * - FHIRPath composition
  * - Human-readable defaults
  * 
- * Phase 3: Instance scope now uses FHIRPath node selection
+ * Phase 4: Instance scope uses structured drawer-based selection
  */
+
+import type { InstanceScope } from '../../common/InstanceScope.types';
+import { composeInstanceScopedPath } from '../../common/InstanceScope.utils';
 
 interface RequiredRuleData {
   resourceType: string;
-  scopePath: string; // FHIRPath node selection (e.g., "Patient[*]", "Observation[0]")
+  instanceScope: InstanceScope; // Structured instance scope (first/all/filter)
   fieldPath: string;
   severity: 'error' | 'warning' | 'information';
   message?: string;
@@ -32,13 +35,13 @@ interface Rule {
 
 /**
  * Build a complete Required rule from form data
- * Phase 3: Uses scopePath for instance scope (FHIRPath node selection)
+ * Phase 4: Uses InstanceScope model for structured scoping
  */
 export function buildRequiredRule(data: RequiredRuleData): Rule {
-  const { resourceType, scopePath, fieldPath, severity, message } = data;
+  const { resourceType, instanceScope, fieldPath, severity, message } = data;
   
-  // Compose FHIRPath: scopePath + fieldPath
-  const fullPath = composeFhirPath(scopePath, fieldPath);
+  // Compose FHIRPath: instanceScope + fieldPath
+  const fullPath = composeFhirPath(resourceType, instanceScope, fieldPath);
   
   return {
     id: `rule-${Date.now()}`,
@@ -54,25 +57,21 @@ export function buildRequiredRule(data: RequiredRuleData): Rule {
 }
 
 /**
- * Compose FHIRPath from scope and field path
- * Phase 3: scopePath is already a full node path (e.g., "Patient[*]", "Observation.component[*]")
+ * Compose FHIRPath from instance scope and field path
+ * Phase 4: Uses composeInstanceScopedPath utility
  */
 function composeFhirPath(
-  scopePath: string,
+  resourceType: string,
+  instanceScope: InstanceScope,
   fieldPath: string
 ): string {
-  // scopePath is already a complete node path
-  // Append fieldPath to it
+  // Get base scope path (e.g., "Patient[*]", "Observation[0]", "Patient.where(...)")
+  const scopePath = composeInstanceScopedPath(resourceType, instanceScope);
   
   // If fieldPath already contains the resource type, extract relative part
-  const resourceTypeMatch = scopePath.match(/^([A-Z][a-zA-Z]+)/);
-  if (resourceTypeMatch) {
-    const resourceType = resourceTypeMatch[1];
-    if (fieldPath.startsWith(resourceType + '.')) {
-      // Extract relative part
-      const relativePart = fieldPath.substring(resourceType.length + 1);
-      return `${scopePath}.${relativePart}`;
-    }
+  if (fieldPath.startsWith(resourceType + '.')) {
+    const relativePart = fieldPath.substring(resourceType.length + 1);
+    return `${scopePath}.${relativePart}`;
   }
   
   // fieldPath is relative, append directly
