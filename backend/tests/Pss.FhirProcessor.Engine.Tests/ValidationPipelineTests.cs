@@ -372,8 +372,7 @@ public class ValidationPipelineTests
         if (businessError != null)
         {
             businessError.JsonPointer.Should().NotBeNullOrEmpty();
-            businessError.Navigation.Should().NotBeNull();
-            businessError.Navigation!.JsonPointer.Should().NotBeNullOrEmpty();
+            // Navigation property removed in Phase 1 - jsonPointer is now top-level only
         }
     }
 

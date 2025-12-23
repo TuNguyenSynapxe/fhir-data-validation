@@ -2,6 +2,7 @@ import React from 'react';
 import { AlertCircle, AlertTriangle, Info } from 'lucide-react';
 import { formatSmartPath, getScopedSegments, convertToJsonPath } from '../../../utils/smartPathFormatting';
 import { SmartPathBreadcrumb } from './SmartPathBreadcrumb';
+import { ScopeSelectorChip } from './ScopeSelectorChip';
 import { PathInfoTooltip } from './PathInfoTooltip';
 
 interface ValidationIssueExplanation {
@@ -148,11 +149,12 @@ export const ValidationErrorItem: React.FC<ValidationErrorItemProps> = ({
             )}
           </div>
 
-          {/* FHIRPath - Smart Breadcrumb */}
+          {/* FHIRPath - Smart Breadcrumb + Scope Selectors */}
           {(error.path || error.jsonPointer) && (
             <div className="group/row mt-2 p-2.5 bg-gray-50/50 rounded-md border border-gray-200/60 hover:bg-gray-50/80 transition-all">
               <div className="flex items-center justify-between gap-3">
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 space-y-1">
+                  {/* Structure-only breadcrumb */}
                   <SmartPathBreadcrumb
                     resourceType={error.resourceType}
                     segments={getScopedSegments(
@@ -162,12 +164,14 @@ export const ValidationErrorItem: React.FC<ValidationErrorItemProps> = ({
                     fullPath={error.path}
                     onNavigate={onClick}
                   />
+                  {/* Scope selectors (where clauses) - Phase 6 */}
+                  <ScopeSelectorChip fhirPath={error.path} />
                 </div>
                 
                 {/* Path Info Tooltip */}
                 <PathInfoTooltip
                   fhirPath={error.path || error.jsonPointer || ''}
-                  jsonPath={convertToJsonPath(error.jsonPointer || error.navigation?.jsonPointer)}
+                  jsonPath={convertToJsonPath(error.jsonPointer)}
                 />
               </div>
             </div>

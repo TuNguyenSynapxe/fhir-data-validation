@@ -3,6 +3,7 @@ import { AlertCircle, AlertTriangle, Info, XCircle, CheckCircle } from 'lucide-r
 import { getLayerMetadata } from '../../../utils/validationLayers';
 import { formatSmartPath, getScopedSegments, convertToJsonPath } from '../../../utils/smartPathFormatting';
 import { SmartPathBreadcrumb } from './SmartPathBreadcrumb';
+import { ScopeSelectorChip } from './ScopeSelectorChip';
 import { PathInfoTooltip } from './PathInfoTooltip';
 import { getBlockingStatusDisplay } from '../../../utils/validationOverrides';
 
@@ -65,7 +66,7 @@ export const ErrorCard: React.FC<ErrorCardProps> = ({ error, allErrors = [], onC
   const severityColor = getSeverityColor(error.severity);
   
   const fhirPath = error.details?.fhirPath || error.path;
-  const hasNavigation = error.jsonPointer || error.navigation?.jsonPointer;
+  const hasNavigation = !!error.jsonPointer;
   
   // Get blocking status with override detection
   const blockingStatus = getBlockingStatusDisplay(error, allErrors);
@@ -139,11 +140,12 @@ export const ErrorCard: React.FC<ErrorCardProps> = ({ error, allErrors = [], onC
             {metadata.explanation}
           </p>
 
-          {/* FHIR Path - Smart Breadcrumb */}
+          {/* FHIR Path - Smart Breadcrumb + Scope Selectors */}
           {fhirPath && (
             <div className="group/row mb-2 p-2.5 bg-gray-50/50 rounded-md border border-gray-200/60 hover:bg-gray-50/80 transition-all">
               <div className="flex items-center justify-between gap-3">
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 space-y-1">
+                  {/* Structure-only breadcrumb */}
                   <SmartPathBreadcrumb
                     resourceType={error.resourceType}
                     segments={getScopedSegments(
@@ -153,12 +155,14 @@ export const ErrorCard: React.FC<ErrorCardProps> = ({ error, allErrors = [], onC
                     fullPath={fhirPath}
                     onNavigate={hasNavigation ? onClick : undefined}
                   />
+                  {/* Scope selectors (where clauses) - Phase 6 */}
+                  <ScopeSelectorChip fhirPath={fhirPath} />
                 </div>
                 
                 {/* Path Info Tooltip */}
                 <PathInfoTooltip
                   fhirPath={fhirPath}
-                  jsonPath={convertToJsonPath(error.jsonPointer || error.navigation?.jsonPointer)}
+                  jsonPath={convertToJsonPath(error.jsonPointer)}
                 />
               </div>
             </div>

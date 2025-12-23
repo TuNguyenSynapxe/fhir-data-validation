@@ -489,7 +489,7 @@ export default function PlaygroundPage() {
                   projectId: projectId!,
                   onNavigateToPath: handleNavigateToPath,
                   onSelectError: (error) => {
-                    const jsonPointer = error.jsonPointer || error.navigation?.jsonPointer;
+                    const jsonPointer = error.jsonPointer;
                     if (jsonPointer) {
                       handleNavigateToPath(jsonPointer);
                     }

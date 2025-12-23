@@ -5,6 +5,10 @@ using Xunit;
 
 namespace Pss.FhirProcessor.Engine.Tests;
 
+/// <summary>
+/// Tests for SmartPathNavigationService after Phase 1 refactor.
+/// Service now returns string? (JSON pointer only), no breadcrumbs/exists/missingParents.
+/// </summary>
 public class SmartPathNavigationServiceTests
 {
     private readonly ISmartPathNavigationService _service;
@@ -15,23 +19,19 @@ public class SmartPathNavigationServiceTests
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task ResolvePathAsync_SimpleDirectProperty_ReturnsCorrectNavigation()
+    public async System.Threading.Tasks.Task ResolvePathAsync_SimpleDirectProperty_ReturnsCorrectPointer()
     {
         // Arrange
         var bundle = TestHelper.CreateSimplePatientBundle(familyName: "Smith");
         var path = "name.family";
 
         // Act
-        var result = await _service.ResolvePathAsync(bundle, path);
+        var jsonPointer = await _service.ResolvePathAsync(bundle, path);
 
-        // Assert
-        Assert.True(result.Exists);
-        Assert.Empty(result.MissingParents);
-        Assert.NotNull(result.JsonPointer);
+        // Assert - Service returns JSON pointer string
+        Assert.NotNull(jsonPointer);
         // Path "name.family" expands to "name[0].family" since name is an array
-        Assert.Equal("/entry/0/resource/name/0/family", result.JsonPointer);
-        Assert.Contains("name[0]", result.Breadcrumbs);
-        Assert.Contains("family", result.Breadcrumbs);
+        Assert.Equal("/entry/0/resource/name/0/family", jsonPointer);
     }
 
     [Fact]
@@ -42,14 +42,11 @@ public class SmartPathNavigationServiceTests
         var path = "name[0].family";
 
         // Act
-        var result = await _service.ResolvePathAsync(bundle, path);
+        var jsonPointer = await _service.ResolvePathAsync(bundle, path);
 
         // Assert
-        Assert.True(result.Exists);
-        Assert.Empty(result.MissingParents);
-        Assert.NotNull(result.JsonPointer);
-        Assert.Contains("name[0]", result.Breadcrumbs);
-        Assert.Contains("family", result.Breadcrumbs);
+        Assert.NotNull(jsonPointer);
+        Assert.Contains("/name/0/family", jsonPointer);
     }
 
     [Fact]
@@ -87,72 +84,57 @@ public class SmartPathNavigationServiceTests
         var path = "identifier.where(system='http://example.org/nric').value";
 
         // Act
-        var result = await _service.ResolvePathAsync(bundle, path);
+        var jsonPointer = await _service.ResolvePathAsync(bundle, path);
 
-        // Assert
-        Assert.True(result.Exists);
-        Assert.Empty(result.MissingParents);
-        Assert.NotNull(result.JsonPointer);
-        // where() clause resolves to specific array index
-        Assert.Equal("/entry/0/resource/identifier/1/value", result.JsonPointer);
-        Assert.Contains("identifier[1]", result.Breadcrumbs);
-        Assert.Contains("value", result.Breadcrumbs);
+        // Assert - where() clause resolves to specific array index
+        Assert.NotNull(jsonPointer);
+        Assert.Equal("/entry/0/resource/identifier/1/value", jsonPointer);
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task ResolvePathAsync_MissingLeafElement_ReturnsExistsFalse()
+    public async System.Threading.Tasks.Task ResolvePathAsync_MissingLeafElement_ReturnsNull()
     {
         // Arrange
         var bundle = TestHelper.CreateSimplePatientBundle(familyName: "Smith");
         var path = "birthDate";
 
         // Act
-        var result = await _service.ResolvePathAsync(bundle, path);
+        var jsonPointer = await _service.ResolvePathAsync(bundle, path);
 
-        // Assert
-        Assert.False(result.Exists);
-        Assert.Single(result.MissingParents);
-        Assert.Contains("birthDate", result.MissingParents);
-        Assert.NotNull(result.JsonPointer);
-        // Pointer should be at nearest existing parent
+        // Assert - Missing element returns null
+        Assert.Null(jsonPointer);
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task ResolvePathAsync_MissingMultiLevelParent_ReturnsMultipleMissingParents()
+    public async System.Threading.Tasks.Task ResolvePathAsync_MissingMultiLevelParent_ReturnsNull()
     {
         // Arrange
         var bundle = TestHelper.CreateSimplePatientBundle(familyName: "Smith");
         var path = "extension[0].valueCodeableConcept.coding[0].code";
 
         // Act
-        var result = await _service.ResolvePathAsync(bundle, path);
+        var jsonPointer = await _service.ResolvePathAsync(bundle, path);
 
-        // Assert
-        Assert.False(result.Exists);
-        Assert.NotEmpty(result.MissingParents);
-        // Should have multiple missing parents since extension doesn't exist
-        Assert.True(result.MissingParents.Count >= 1);
-        Assert.Contains("extension[0]", result.MissingParents);
+        // Assert - Missing parent returns null
+        Assert.Null(jsonPointer);
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task ResolvePathAsync_ArrayOutOfBounds_ReturnsExistsFalse()
+    public async System.Threading.Tasks.Task ResolvePathAsync_ArrayOutOfBounds_ReturnsNull()
     {
         // Arrange
         var bundle = TestHelper.CreateSimplePatientBundle(familyName: "Doe");
         var path = "name[5].family";
 
         // Act
-        var result = await _service.ResolvePathAsync(bundle, path);
+        var jsonPointer = await _service.ResolvePathAsync(bundle, path);
 
         // Assert
-        Assert.False(result.Exists);
-        Assert.NotEmpty(result.MissingParents);
-        Assert.Contains("name[5]", result.MissingParents);
+        Assert.Null(jsonPointer);
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task ResolvePathAsync_WhereClauseNoMatch_ReturnsExistsFalse()
+    public async System.Threading.Tasks.Task ResolvePathAsync_WhereClauseNoMatch_ReturnsNull()
     {
         // Arrange
         var bundle = new Bundle
@@ -181,12 +163,10 @@ public class SmartPathNavigationServiceTests
         var path = "identifier.where(system='http://does-not-exist.org').value";
 
         // Act
-        var result = await _service.ResolvePathAsync(bundle, path);
+        var jsonPointer = await _service.ResolvePathAsync(bundle, path);
 
         // Assert
-        Assert.False(result.Exists);
-        Assert.NotEmpty(result.MissingParents);
-        Assert.Contains(result.MissingParents, mp => mp.Contains("where("));
+        Assert.Null(jsonPointer);
     }
 
     [Fact]
@@ -197,15 +177,11 @@ public class SmartPathNavigationServiceTests
         var path = "entry[0].resource.id";
 
         // Act
-        var result = await _service.ResolvePathAsync(bundle, path);
+        var jsonPointer = await _service.ResolvePathAsync(bundle, path);
 
         // Assert
-        Assert.True(result.Exists);
-        Assert.Empty(result.MissingParents);
-        Assert.NotNull(result.JsonPointer);
-        Assert.Contains("entry[0]", result.Breadcrumbs);
-        Assert.Contains("resource", result.Breadcrumbs);
-        Assert.Contains("id", result.Breadcrumbs);
+        Assert.NotNull(jsonPointer);
+        Assert.Contains("/entry/0/resource/id", jsonPointer);
     }
 
     [Fact]
@@ -255,32 +231,25 @@ public class SmartPathNavigationServiceTests
         var path = "component[1].code.coding[0].code";
 
         // Act
-        var result = await _service.ResolvePathAsync(bundle, path);
+        var jsonPointer = await _service.ResolvePathAsync(bundle, path);
 
         // Assert
-        Assert.True(result.Exists);
-        Assert.Empty(result.MissingParents);
-        Assert.NotNull(result.JsonPointer);
-        Assert.Contains("component[1]", result.Breadcrumbs);
-        Assert.Contains("code", result.Breadcrumbs);
-        Assert.Contains("coding[0]", result.Breadcrumbs);
+        Assert.NotNull(jsonPointer);
+        Assert.Contains("/component/1/code/coding/0/code", jsonPointer);
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task ResolvePathAsync_InvalidFHIRPathExpression_HandlesGracefully()
+    public async System.Threading.Tasks.Task ResolvePathAsync_InvalidFHIRPathExpression_ReturnsNull()
     {
         // Arrange
         var bundle = TestHelper.CreateSimplePatientBundle(familyName: "Smith");
         var path = "identifier.where(system=)";
 
         // Act
-        var result = await _service.ResolvePathAsync(bundle, path);
+        var jsonPointer = await _service.ResolvePathAsync(bundle, path);
 
-        // Assert
-        Assert.False(result.Exists);
-        Assert.NotEmpty(result.MissingParents);
-        // Should not throw exception
-        Assert.NotNull(result.JsonPointer);
+        // Assert - Should not throw exception, returns null
+        Assert.Null(jsonPointer);
     }
 
     [Fact]
@@ -397,7 +366,7 @@ public class SmartPathNavigationServiceTests
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task ResolvePathAsync_ComplexNestedPath_ReturnsCorrectNavigation()
+    public async System.Threading.Tasks.Task ResolvePathAsync_ComplexNestedPath_ReturnsCorrectPointer()
     {
         // Arrange
         var bundle = new Bundle
@@ -426,17 +395,15 @@ public class SmartPathNavigationServiceTests
         var path = "name[0].given[1]";
 
         // Act
-        var result = await _service.ResolvePathAsync(bundle, path);
+        var jsonPointer = await _service.ResolvePathAsync(bundle, path);
 
         // Assert
-        Assert.True(result.Exists);
-        Assert.Empty(result.MissingParents);
-        Assert.Contains("name[0]", result.Breadcrumbs);
-        Assert.Contains("given[1]", result.Breadcrumbs);
+        Assert.NotNull(jsonPointer);
+        Assert.Contains("/name/0/given/1", jsonPointer);
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task ResolvePathAsync_EmptyBundle_HandlesGracefully()
+    public async System.Threading.Tasks.Task ResolvePathAsync_EmptyBundle_ReturnsNull()
     {
         // Arrange
         var bundle = new Bundle
@@ -447,11 +414,10 @@ public class SmartPathNavigationServiceTests
         var path = "entry[0].resource.id";
 
         // Act
-        var result = await _service.ResolvePathAsync(bundle, path);
+        var jsonPointer = await _service.ResolvePathAsync(bundle, path);
 
         // Assert
-        Assert.False(result.Exists);
-        Assert.NotEmpty(result.MissingParents);
+        Assert.Null(jsonPointer);
     }
 
     [Fact]
@@ -462,10 +428,10 @@ public class SmartPathNavigationServiceTests
         var path = "Bundle.entry[0].resource.name.family";
 
         // Act
-        var result = await _service.ResolvePathAsync(bundle, path);
+        var jsonPointer = await _service.ResolvePathAsync(bundle, path);
 
         // Assert
-        Assert.True(result.Exists);
-        Assert.Contains("Bundle", result.Breadcrumbs);
+        Assert.NotNull(jsonPointer);
+        Assert.Contains("/entry/0/resource/name", jsonPointer);
     }
 }

@@ -22,8 +22,8 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
     /// </summary>
     public async Task<ValidationError> EnhanceFirelyParsingErrorAsync(ValidationError error, string? rawBundleJson, CancellationToken cancellationToken = default)
     {
-        // If error already has navigation, return as-is
-        if (error.Navigation != null)
+        // If error already has jsonPointer, return as-is
+        if (!string.IsNullOrEmpty(error.JsonPointer))
             return error;
         
         // Try to add navigation context if we have a path and the bundle is parseable
@@ -38,19 +38,17 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 
                 if (bundle != null)
                 {
-                    var navigation = await _navigationService.ResolvePathAsync(
+                    var jsonPointer = await _navigationService.ResolvePathAsync(
                         bundle, 
                         error.Path, 
                         error.ResourceType, 
                         null,
                         cancellationToken);
                     
-                    error.Navigation = navigation;
-                    
-                    // Update JsonPointer if navigation provided one
-                    if (!string.IsNullOrEmpty(navigation?.JsonPointer))
+                    // Update JsonPointer if resolved
+                    if (!string.IsNullOrEmpty(jsonPointer))
                     {
-                        error.JsonPointer = navigation.JsonPointer;
+                        error.JsonPointer = jsonPointer;
                     }
                 }
             }
@@ -82,13 +80,13 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
             var path = issue.Expression?.FirstOrDefault() ?? issue.Location?.FirstOrDefault();
             
             // Try to resolve navigation if bundle is available
-            // If bundle is null (structural validation before POCO parsing), navigation will be null
-            NavigationInfo? navigation = null;
+            // If bundle is null (structural validation before POCO parsing), jsonPointer will be null
+            string? jsonPointer = null;
             if (bundle != null && path != null)
             {
                 try
                 {
-                    navigation = await _navigationService.ResolvePathAsync(bundle, path, null, null, cancellationToken);
+                    jsonPointer = await _navigationService.ResolvePathAsync(bundle, path, null, null, cancellationToken);
                 }
                 catch
                 {
@@ -109,11 +107,10 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 Severity = MapSeverity(issue.Severity),
                 ResourceType = ExtractResourceType(path),
                 Path = path,
-                JsonPointer = navigation?.JsonPointer,
+                JsonPointer = jsonPointer,
                 ErrorCode = errorCode,
                 Message = issue.Diagnostics ?? issue.Details?.Text ?? "FHIR validation error",
                 Details = details,
-                Navigation = navigation,
                 Explanation = ValidationExplanationService.ForFhirStructural(errorCode, path, details)
             });
         }
@@ -128,8 +125,7 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
         foreach (var error in errors)
         {
             // Check if JSON fallback precomputed the jsonPointer (when Bundle is null)
-            string jsonPointer = null;
-            NavigationInfo navigation = null;
+            string? jsonPointer = null;
             
             if (error.Details?.ContainsKey("_precomputedJsonPointer") == true)
             {
@@ -141,8 +137,7 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
             else if (bundle != null)
             {
                 // Normal path: resolve using SmartPathNavigation
-                navigation = await _navigationService.ResolvePathAsync(bundle, error.Path, error.ResourceType, null, cancellationToken);
-                jsonPointer = navigation?.JsonPointer;
+                jsonPointer = await _navigationService.ResolvePathAsync(bundle, error.Path, error.ResourceType, null, cancellationToken);
             }
             
             // Include engine metadata in details for Firely-preferred with safe fallback strategy
@@ -174,7 +169,6 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 ErrorCode = error.ErrorCode,
                 Message = error.Message,
                 Details = details,
-                Navigation = navigation,
                 Explanation = ValidationExplanationService.ForProjectRule(
                     error.ErrorCode ?? "UNKNOWN",
                     error.Path,
@@ -193,7 +187,7 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
         
         foreach (var error in errors)
         {
-            var navigation = await _navigationService.ResolvePathAsync(bundle, error.Path, error.ResourceType, null, cancellationToken);
+            var jsonPointer = await _navigationService.ResolvePathAsync(bundle, error.Path, error.ResourceType, null, cancellationToken);
             
             validationErrors.Add(new ValidationError
             {
@@ -201,11 +195,10 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 Severity = error.Severity,
                 ResourceType = error.ResourceType,
                 Path = error.Path,
-                JsonPointer = navigation?.JsonPointer,
+                JsonPointer = jsonPointer,
                 ErrorCode = error.ErrorCode,
                 Message = error.Message,
                 Details = error.Details,
-                Navigation = navigation,
                 Explanation = ValidationExplanationService.ForReference(
                     error.ErrorCode,
                     error.Path,
@@ -223,7 +216,7 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
         
         foreach (var error in errors)
         {
-            var navigation = await _navigationService.ResolvePathAsync(bundle, error.Path, error.ResourceType, error.EntryIndex, cancellationToken);
+            var jsonPointer = await _navigationService.ResolvePathAsync(bundle, error.Path, error.ResourceType, error.EntryIndex, cancellationToken);
             
             validationErrors.Add(new ValidationError
             {
@@ -231,11 +224,10 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 Severity = error.Severity,
                 ResourceType = error.ResourceType,
                 Path = error.Path,
-                JsonPointer = navigation?.JsonPointer,
+                JsonPointer = jsonPointer,
                 ErrorCode = error.ErrorCode,
                 Message = error.Message,
                 Details = error.Details,
-                Navigation = navigation,
                 Explanation = ValidationExplanationService.ForReference(
                     error.ErrorCode,
                     error.Path,
@@ -290,14 +282,18 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
             {
                 try
                 {
-                    var navigation = await _navigationService.ResolvePathAsync(
+                    var jsonPointer = await _navigationService.ResolvePathAsync(
                         bundle,
                         issue.FhirPath,
                         issue.ResourceType,
                         null,
                         cancellationToken);
                     
-                    error.Navigation = navigation;
+                    // Update jsonPointer if resolved (QualityFinding may have precomputed one)
+                    if (!string.IsNullOrEmpty(jsonPointer))
+                    {
+                        error.JsonPointer = jsonPointer;
+                    }
                 }
                 catch
                 {
@@ -371,14 +367,18 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
             {
                 try
                 {
-                    var navigation = await _navigationService.ResolvePathAsync(
+                    var jsonPointer = await _navigationService.ResolvePathAsync(
                         bundle, 
                         issue.Path, 
                         issue.ResourceType, 
                         null,
                         cancellationToken);
                     
-                    error.Navigation = navigation;
+                    // Update jsonPointer if resolved (SpecHintIssue may have precomputed one)
+                    if (!string.IsNullOrEmpty(jsonPointer))
+                    {
+                        error.JsonPointer = jsonPointer;
+                    }
                 }
                 catch
                 {

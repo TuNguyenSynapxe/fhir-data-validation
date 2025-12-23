@@ -1,9 +1,31 @@
 import { AlertCircle, AlertTriangle, Info } from 'lucide-react';
 import type { UnifiedError } from '../../types/validation';
+import { parseFhirPathComponents } from '../../utils/smartPathFormatting';
 
 interface ErrorTableProps {
   errors: UnifiedError[];
   onSelectError?: (error: UnifiedError) => void;
+}
+
+/**
+ * Derives breadcrumbs from FHIRPath
+ * Phase 1 Audit (Dec 2025): Replaced navigation.breadcrumbs with path-derived breadcrumbs
+ */
+function pathToBreadcrumbs(path: string | undefined): string[] {
+  if (!path) return [];
+  
+  const parsed = parseFhirPathComponents(path);
+  const breadcrumbs: string[] = [parsed.resourceType];
+  
+  if (parsed.scopeSelector) {
+    breadcrumbs.push(`where(${parsed.scopeSelector})`);
+  }
+  
+  if (parsed.structuralPath) {
+    breadcrumbs.push(...parsed.structuralPath.split('.').filter(Boolean));
+  }
+  
+  return breadcrumbs;
 }
 
 export default function ErrorTable({ errors, onSelectError }: ErrorTableProps) {
@@ -85,18 +107,22 @@ export default function ErrorTable({ errors, onSelectError }: ErrorTableProps) {
               </td>
               <td className="px-3 py-2">
                 <div className="text-sm text-gray-900">{error.message}</div>
-                {error.breadcrumbs && error.breadcrumbs.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {error.breadcrumbs.map((crumb, i) => (
-                      <span
-                        key={i}
-                        className="inline-block text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded"
-                      >
-                        {crumb}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                {(() => {
+                  // Phase 1 Audit (Dec 2025): Derive breadcrumbs from path, not navigation.breadcrumbs
+                  const breadcrumbs = pathToBreadcrumbs(error.path);
+                  return breadcrumbs.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {breadcrumbs.map((crumb, i) => (
+                        <span
+                          key={i}
+                          className="inline-block text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded"
+                        >
+                          {crumb}
+                        </span>
+                      ))}
+                    </div>
+                  );
+                })()}
               </td>
               <td className="px-3 py-2">
                 <code className="text-xs text-gray-600 font-mono block truncate max-w-xs">

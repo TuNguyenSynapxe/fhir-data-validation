@@ -4,6 +4,7 @@ import { getLayerMetadata } from '../../../utils/validationLayers';
 import { getExplanationTemplate } from '../../../utils/validationExplanations';
 import { formatSmartPath, getScopedSegments, convertToJsonPath } from '../../../utils/smartPathFormatting';
 import { SmartPathBreadcrumb } from './SmartPathBreadcrumb';
+import { ScopeSelectorChip } from './ScopeSelectorChip';
 import { PathInfoTooltip } from './PathInfoTooltip';
 import { getBlockingStatusDisplay } from '../../../utils/validationOverrides';
 
@@ -80,8 +81,7 @@ const deduplicateByPath = (errors: ValidationError[]): Map<string, ValidationErr
   
   errors.forEach(error => {
     // Use path from error.path (e.g., "gender", "language") as primary identifier
-    // Fall back to jsonPointer/navigation if path not available
-    const path = error.path || error.navigation?.jsonPointer || error.jsonPointer || 'unknown';
+    const path = error.path || error.jsonPointer || 'unknown';
     // Include message in key to distinguish different errors on same/similar paths
     const uniqueKey = `${path}|${error.message}`;
     
@@ -327,8 +327,8 @@ export const GroupedErrorCard: React.FC<GroupedErrorCardProps> = ({
                     <div className="space-y-2 pl-2">
                       {Array.from(resourceDeduplicatedPaths.entries()).map(([path, pathErrors]) => {
                         const error = pathErrors[0]; // Use first error as representative
-                        const displayPath = error.path || error.navigation?.breadcrumb || 'Unknown';
-                        const jsonPointer = error.jsonPointer || error.navigation?.jsonPointer;
+                        const displayPath = error.path || 'Unknown';
+                        const jsonPointer = error.jsonPointer;
                         const count = pathErrors.length;
                         
                         // Format smart path with breadcrumbs
@@ -356,14 +356,17 @@ export const GroupedErrorCard: React.FC<GroupedErrorCardProps> = ({
                             }}
                           >
                             <div className="flex items-center justify-between gap-3">
-                              {/* Smart Path Breadcrumb */}
-                              <div className="flex-1 min-w-0">
+                              {/* Smart Path Breadcrumb + Scope Selectors */}
+                              <div className="flex-1 min-w-0 space-y-1">
+                                {/* Structure-only breadcrumb */}
                                 <SmartPathBreadcrumb
                                   resourceType={resourceType}
                                   segments={scopedSegments}
                                   fullPath={path}
                                   onNavigate={jsonPointer ? () => onNavigateToPath?.(jsonPointer) : undefined}
                                 />
+                                {/* Scope selectors (where clauses) - Phase 6 */}
+                                <ScopeSelectorChip fhirPath={path} />
                               </div>
                               
                               {/* Right side: count + info icon */}

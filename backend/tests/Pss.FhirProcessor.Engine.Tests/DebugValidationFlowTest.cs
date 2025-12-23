@@ -1,6 +1,7 @@
 using Xunit;
 using Xunit.Abstractions;
 using System.Text.Json;
+using Pss.FhirProcessor.Engine.Services;
 
 namespace Pss.FhirProcessor.Engine.Tests;
 
@@ -21,8 +22,8 @@ public class DebugValidationFlowTest
     {
         // Arrange
         var schemaService = TestHelper.CreateFhirSchemaService();
-        var lintService = new Services.LintValidationService(
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<Services.LintValidationService>.Instance,
+        var lintService = new LintValidationService(
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<LintValidationService>.Instance,
             schemaService);
 
         var json = @"{

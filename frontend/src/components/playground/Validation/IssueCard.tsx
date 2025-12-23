@@ -3,6 +3,7 @@ import { XCircle, CheckCircle } from 'lucide-react';
 import { ValidationIcon } from '../../../ui/icons/ValidationIcons';
 import { getLayerMetadata } from '../../../utils/validationLayers';
 import { SmartPathBreadcrumb } from './SmartPathBreadcrumb';
+import { ScopeSelectorChip } from './ScopeSelectorChip';
 import { PathInfoTooltip } from './PathInfoTooltip';
 import { formatSmartPath, getScopedSegments, convertToJsonPath } from '../../../utils/smartPathFormatting';
 import { isIssueBlocking } from '../../../types/validationIssues';
@@ -34,7 +35,7 @@ export const IssueCard: React.FC<IssueCardProps> = ({
   const displayPath = issue.location || 'Unknown';
   const formattedPath = formatSmartPath(displayPath, issue.resourceType || '');
   const scopedSegments = getScopedSegments(formattedPath.segments, issue.resourceType || '');
-  const jsonPath = convertToJsonPath(issue.jsonPointer);
+  const jsonPath = convertToJsonPath(issue.jsonPointer ?? undefined);
 
   // Determine if this is a non-blocking advisory source
   const isAdvisorySource = issue.source === 'LINT' || issue.source === 'HL7Advisory' || issue.source === 'Lint' || issue.source === 'HL7_SPEC_HINT';
@@ -74,18 +75,23 @@ export const IssueCard: React.FC<IssueCardProps> = ({
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          {/* Location breadcrumb */}
+          {/* Location breadcrumb + scope selectors */}
           {issue.resourceType && issue.location && issue.location !== 'unknown' ? (
-            <SmartPathBreadcrumb
-              resourceType={issue.resourceType}
-              segments={scopedSegments}
-              fullPath={issue.location}
-              onNavigate={
-                issue.jsonPointer ? () => onNavigateToPath?.(issue.jsonPointer!) : undefined
-              }
-              bundleJson={bundleJson}
-              jsonPointer={issue.jsonPointer}
-            />
+            <div className="space-y-1">
+              {/* Structure-only breadcrumb */}
+              <SmartPathBreadcrumb
+                resourceType={issue.resourceType}
+                segments={scopedSegments}
+                fullPath={issue.location}
+                onNavigate={
+                  issue.jsonPointer ? () => onNavigateToPath?.(issue.jsonPointer!) : undefined
+                }
+                bundleJson={bundleJson}
+                jsonPointer={issue.jsonPointer ?? undefined}
+              />
+              {/* Scope selectors (where clauses) - Phase 6 */}
+              <ScopeSelectorChip fhirPath={issue.location} />
+            </div>
           ) : (
             <span className="text-xs text-gray-500 italic">Location not available</span>
           )}

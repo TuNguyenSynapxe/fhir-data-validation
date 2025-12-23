@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, XCircle, CheckCircle } from 'lucide-react';
 import { ValidationIcon } from '../../../ui/icons/ValidationIcons';
 import { getLayerMetadata } from '../../../utils/validationLayers';
 import { SmartPathBreadcrumb } from './SmartPathBreadcrumb';
+import { ScopeSelectorChip } from './ScopeSelectorChip';
 import { PathInfoTooltip } from './PathInfoTooltip';
 import { formatSmartPath, getScopedSegments, convertToJsonPath } from '../../../utils/smartPathFormatting';
 import { hasIdenticalMessages } from '../../../utils/validationGrouping';
@@ -177,7 +178,7 @@ export const IssueGroupCard: React.FC<IssueGroupCardProps> = ({
             const displayPath = item.location || 'Unknown';
             const formattedPath = formatSmartPath(displayPath, item.resourceType || '');
             const scopedSegments = getScopedSegments(formattedPath.segments, item.resourceType || '');
-            const jsonPath = convertToJsonPath(item.jsonPointer);
+            const jsonPath = convertToJsonPath(item.jsonPointer ?? undefined);
             
             const rowBgColor = isAdvisorySource
               ? 'bg-blue-50/30 hover:bg-blue-50/50'
@@ -197,21 +198,26 @@ export const IssueGroupCard: React.FC<IssueGroupCardProps> = ({
                 }}
               >
                 <div className="flex items-start gap-3">
-                  {/* Left: Location breadcrumb */}
+                  {/* Left: Location breadcrumb + scope selectors */}
                   <div className="flex-1 min-w-0">
                     {item.resourceType && item.location && item.location !== 'unknown' ? (
-                      <SmartPathBreadcrumb
-                        resourceType={item.resourceType}
-                        segments={scopedSegments}
-                        fullPath={item.location}
-                        onNavigate={
-                          item.jsonPointer
-                            ? () => onNavigateToPath?.(item.jsonPointer!)
-                            : undefined
-                        }
-                        bundleJson={bundleJson}
-                        jsonPointer={item.jsonPointer}
-                      />
+                      <div className="space-y-1">
+                        {/* Structure-only breadcrumb */}
+                        <SmartPathBreadcrumb
+                          resourceType={item.resourceType}
+                          segments={scopedSegments}
+                          fullPath={item.location}
+                          onNavigate={
+                            item.jsonPointer
+                              ? () => onNavigateToPath?.(item.jsonPointer!)
+                              : undefined
+                          }
+                          bundleJson={bundleJson}
+                          jsonPointer={item.jsonPointer ?? undefined}
+                        />
+                        {/* Scope selectors (where clauses) - Phase 6 */}
+                        <ScopeSelectorChip fhirPath={item.location} />
+                      </div>
                     ) : (
                       <span className="text-xs text-gray-500 italic">Location not available</span>
                     )}

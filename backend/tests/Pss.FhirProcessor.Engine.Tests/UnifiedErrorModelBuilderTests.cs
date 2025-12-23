@@ -32,13 +32,7 @@ public class UnifiedErrorModelBuilderTests
                 It.IsAny<string?>(),
                 It.IsAny<int?>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new NavigationInfo
-            {
-                Exists = true,
-                JsonPointer = "/entry/0/resource/value",
-                Breadcrumbs = new List<string> { "Bundle", "entry[0]", "resource", "value" },
-                MissingParents = new List<string>()
-            });
+            .ReturnsAsync("/entry/0/resource/value");
     }
 
     private Bundle CreateTestBundle()
@@ -97,13 +91,7 @@ public class UnifiedErrorModelBuilderTests
 
         _navigationServiceMock
             .Setup(s => s.ResolvePathAsync(_testBundle, "Patient.name", null, It.IsAny<int?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new NavigationInfo
-            {
-                Exists = false,
-                JsonPointer = "/entry/0/resource/name",
-                Breadcrumbs = new List<string> { "Bundle", "entry[0]", "resource", "name" },
-                MissingParents = new List<string> { "name" }
-            });
+            .ReturnsAsync("/entry/0/resource/name");
 
         // Act
         var result = await _builder.FromFirelyIssuesAsync(outcome, _testBundle);
@@ -117,9 +105,7 @@ public class UnifiedErrorModelBuilderTests
         error.Severity.Should().Be("error");
         error.Path.Should().Be("Patient.name");
         error.Message.Should().Be("Required field is missing");
-        error.Navigation.Should().NotBeNull();
-        error.Navigation!.Breadcrumbs.Should().ContainInOrder("Bundle", "entry[0]", "resource", "name");
-        error.Navigation.MissingParents.Should().Contain("name");
+        // Navigation property removed in Phase 1 - jsonPointer is now top-level only
     }
 
     // Test 2: Convert RuleValidationError → UnifiedError (Required rule)
@@ -148,13 +134,7 @@ public class UnifiedErrorModelBuilderTests
 
         _navigationServiceMock
             .Setup(s => s.ResolvePathAsync(_testBundle, "Observation.value", "Observation", It.IsAny<int?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new NavigationInfo
-            {
-                Exists = false,
-                JsonPointer = "/entry/1/resource/value",
-                Breadcrumbs = new List<string> { "Bundle", "entry[1]", "resource", "value" },
-                MissingParents = new List<string> { "value" }
-            });
+            .ReturnsAsync("/entry/1/resource/value");
 
         // Act
         var result = await _builder.FromRuleErrorsAsync(ruleErrors, _testBundle);
@@ -463,13 +443,7 @@ public class UnifiedErrorModelBuilderTests
 
         _navigationServiceMock
             .Setup(s => s.ResolvePathAsync(_testBundle, "Patient.birthDate", "Patient", It.IsAny<int?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new NavigationInfo
-            {
-                Exists = false,
-                JsonPointer = "/entry/0/resource/birthDate",
-                Breadcrumbs = new List<string> { "Bundle", "entry[0]", "resource", "birthDate" },
-                MissingParents = new List<string> { "birthDate" }
-            });
+            .ReturnsAsync("/entry/0/resource/birthDate");
 
         // Act
         var result = await _builder.FromRuleErrorsAsync(ruleErrors, _testBundle);
@@ -479,13 +453,11 @@ public class UnifiedErrorModelBuilderTests
         var error = result[0];
         
         error.JsonPointer.Should().Be("/entry/0/resource/birthDate");
-        error.Navigation.Should().NotBeNull();
-        error.Navigation!.JsonPointer.Should().Be("/entry/0/resource/birthDate");
-        error.Navigation.Breadcrumbs.Should().ContainInOrder("Bundle", "entry[0]", "resource", "birthDate");
-        error.Navigation.MissingParents.Should().Contain("birthDate");
+        // Navigation property removed in Phase 1 - assert on top-level jsonPointer instead
+        error.JsonPointer.Should().Be("/entry/0/resource/birthDate");
     }
 
-    // Test 11: Missing NavigationInfo → fallback behavior
+    // Test 11: Missing jsonPointer → null jsonPointer
     [Fact]
     public async Task FromFirelyIssuesAsync_WithNoLocation_UsesNullNavigation()
     {
@@ -513,7 +485,8 @@ public class UnifiedErrorModelBuilderTests
         
         error.Path.Should().BeNull();
         error.JsonPointer.Should().BeNull();
-        error.Navigation.Should().BeNull();
+        // Navigation property removed - jsonPointer should be null when not resolved
+        error.JsonPointer.Should().BeNull();
         error.Message.Should().Be("General validation error");
     }
 
@@ -558,13 +531,8 @@ public class UnifiedErrorModelBuilderTests
 
         _navigationServiceMock
             .Setup(s => s.ResolvePathAsync(_testBundle, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Bundle b, string path, string? rt, CancellationToken ct) => new NavigationInfo
-            {
-                Exists = false,
-                JsonPointer = $"/entry/0/resource/{path.Split('.').Last()}",
-                Breadcrumbs = new List<string> { "Bundle", "entry[0]", "resource", path.Split('.').Last() },
-                MissingParents = new List<string>()
-            });
+            .ReturnsAsync((Bundle b, string path, string? rt, int? idx, CancellationToken ct) => 
+                $"/entry/0/resource/{path.Split('.').Last()}");
 
         // Act
         var result = await _builder.FromRuleErrorsAsync(ruleErrors, _testBundle);
@@ -867,13 +835,7 @@ public class UnifiedErrorModelBuilderTests
                 "Observation",
                 It.IsAny<int?>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new NavigationInfo
-            {
-                Exists = false,
-                JsonPointer = "/entry/1/resource/performer/0/reference",
-                Breadcrumbs = new List<string> { "Bundle", "entry[1]", "resource", "performer[0]", "reference" },
-                MissingParents = new List<string> { "performer", "reference" }
-            });
+            .ReturnsAsync("/entry/1/resource/performer/0/reference");
 
         // Act
         var result = await _builder.FromReferenceErrorsAsync(referenceErrors, _testBundle);
@@ -882,10 +844,8 @@ public class UnifiedErrorModelBuilderTests
         result.Should().HaveCount(1);
         var error = result[0];
         
-        error.Navigation.Should().NotBeNull();
-        error.Navigation!.MissingParents.Should().HaveCount(2);
-        error.Navigation.MissingParents.Should().Contain("performer");
-        error.Navigation.MissingParents.Should().Contain("reference");
+        // Navigation property removed - jsonPointer is now top-level only
+        error.JsonPointer.Should().Be("/entry/1/resource/performer/0/reference");
     }
 
     // Test 21: Firely skips informational "passed" messages

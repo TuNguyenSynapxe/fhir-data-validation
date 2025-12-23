@@ -13,16 +13,17 @@ namespace Pss.FhirProcessor.Engine.Services;
 /// </summary>
 public class SmartPathNavigationService : ISmartPathNavigationService
 {
-    public async Task<NavigationInfo> ResolvePathAsync(Bundle bundle, string path, string? resourceType = null, int? entryIndex = null, CancellationToken cancellationToken = default)
+    public async Task<string?> ResolvePathAsync(Bundle bundle, string path, string? resourceType = null, int? entryIndex = null, CancellationToken cancellationToken = default)
     {
-        var navInfo = new NavigationInfo();
+        // Internal helper class for navigation metadata
+        var navInfo = new NavigationInfoInternal();
         
         try
         {
             // Normalize the path
             var normalizedPath = NormalizePath(path);
             
-            // Build breadcrumbs and JSON pointer
+            // Build breadcrumbs and JSON pointer (breadcrumbs used internally, not exposed)
             var segments = ParsePathSegments(normalizedPath);
             var pointer = new StringBuilder();
             var breadcrumbs = new List<string>();
@@ -260,14 +261,16 @@ public class SmartPathNavigationService : ISmartPathNavigationService
             navInfo.Breadcrumbs = breadcrumbs;
             navInfo.Exists = exists;
             navInfo.MissingParents = missingParents;
+            
+            // Return JsonPointer only if path fully exists, otherwise null
+            // This matches Phase 1 contract: string? means null for missing/partial paths
+            return await System.Threading.Tasks.Task.FromResult(exists ? navInfo.JsonPointer : null);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            navInfo.Exists = false;
-            navInfo.MissingParents.Add($"Error: {ex.Message}");
+            // Return null if path cannot be resolved
+            return await System.Threading.Tasks.Task.FromResult<string?>(null);
         }
-        
-        return await System.Threading.Tasks.Task.FromResult(navInfo);
     }
     
     public int? FindEntryIndexByReference(Bundle bundle, string reference)

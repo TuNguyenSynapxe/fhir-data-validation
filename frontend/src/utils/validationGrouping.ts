@@ -20,7 +20,7 @@ export const convertToIssue = (
 ): ValidationIssue => {
   const source = normalizeSource(error.source);
   const code = error.errorCode || 'UNKNOWN';
-  const path = error.path || error.navigation?.jsonPointer || error.jsonPointer || 'unknown';
+  const path = error.path || error.jsonPointer || 'unknown';
 
   return {
     id: generateIssueId(source, code, path, error.message, index),
@@ -30,13 +30,12 @@ export const convertToIssue = (
     severity: (error.severity.toLowerCase() as 'error' | 'warning' | 'info'),
     blocking: isBlockingError(error), // Use isBlockingError which checks severity + metadata
     location: path,
-    breadcrumb: error.navigation?.breadcrumb?.split('.'),
+    breadcrumb: error.path?.split('.'),
     resourceType: error.resourceType,
     ruleId: error.details?.ruleId,
     rulePath: error.details?.path || error.path,
-    jsonPointer: error.jsonPointer || error.navigation?.jsonPointer,
+    jsonPointer: error.jsonPointer,
     details: error.details,
-    navigation: error.navigation,
     explanation: error.explanation, // Pass through explanation if available
   };
 };

@@ -25,13 +25,9 @@ export type ValidationIssue = {
   resourceType?: string; // Patient, Observation...
   ruleId?: string; // if ProjectRule
   rulePath?: string; // rule FHIRPath if ProjectRule
-  jsonPointer?: string; // for navigation
+  jsonPointer?: string | null; // Phase 1: ONLY navigation anchor (null if path doesn't exist)
   details?: Record<string, any>; // optional additional context
-  navigation?: {
-    jsonPointer?: string;
-    breadcrumb?: string;
-    resourceIndex?: number;
-  };
+  // Phase 1: navigation object removed - use jsonPointer directly
   explanation?: ValidationIssueExplanation; // structured explanation
 };
 

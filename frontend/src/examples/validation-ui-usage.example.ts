@@ -61,11 +61,8 @@ const error = {
   details: {
     fhirPath: 'Patient.communication[0].language',
     propertyName: 'language'
-  },
-  navigation: {
-    jsonPointer: '/entry/0/resource/communication/0/language',
-    breadcrumb: 'Bundle > entry[0] > Patient > communication[0] > language'
   }
+  // Phase 1: navigation object removed - jsonPointer is now top-level only
 };
 
 // Render the error

@@ -1,5 +1,4 @@
 using Hl7.Fhir.Model;
-using Pss.FhirProcessor.Engine.Models;
 
 namespace Pss.FhirProcessor.Engine.Interfaces;
 
@@ -9,13 +8,10 @@ namespace Pss.FhirProcessor.Engine.Interfaces;
 public interface ISmartPathNavigationService
 {
     /// <summary>
-    /// Resolves a FHIRPath expression to navigation metadata:
-    /// - JSON pointer
-    /// - Breadcrumbs
-    /// - Existence flag
-    /// - Missing parent nodes
+    /// Resolves a FHIRPath expression to a JSON pointer for navigation.
+    /// Returns null if path cannot be resolved.
     /// </summary>
-    Task<NavigationInfo> ResolvePathAsync(Bundle bundle, string path, string? resourceType = null, int? entryIndex = null, CancellationToken cancellationToken = default);
+    Task<string?> ResolvePathAsync(Bundle bundle, string path, string? resourceType = null, int? entryIndex = null, CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Finds the entry index for a resource by reference (urn:uuid or resourceType/id)

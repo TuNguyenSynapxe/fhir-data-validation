@@ -93,11 +93,10 @@ export const ValidationResultList: React.FC<ValidationResultListProps> = ({
         severity: issue.severity,
         resourceType: issue.resourceType,
         path: issue.location,
-        jsonPointer: issue.jsonPointer,
+        jsonPointer: issue.jsonPointer ?? undefined,
         errorCode: issue.code,
         message: issue.message,
         details: issue.details,
-        navigation: issue.navigation,
       };
       onErrorClick(error);
     }

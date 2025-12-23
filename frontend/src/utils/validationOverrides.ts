@@ -32,7 +32,7 @@ const extractNormalizedPath = (error: ValidationError): string | null => {
   if (!error.resourceType) return null;
   
   // Try to get path from various sources
-  let path = error.path || error.details?.fhirPath || error.navigation?.breadcrumb;
+  let path = error.path || error.details?.fhirPath;
   
   if (!path) return null;
   

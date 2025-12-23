@@ -1,7 +1,6 @@
 import React from 'react';
-import { ChevronRight, Target, AlertCircle, Filter } from 'lucide-react';
+import { ChevronRight, Target, AlertCircle } from 'lucide-react';
 import type { PathSegment } from '../../../utils/smartPathFormatting';
-import { parseFhirPathComponents, formatScopeSelector } from '../../../utils/smartPathFormatting';
 import { validateJsonPointer, findNearestValidPath } from '../../../utils/pathNavigation';
 
 interface SmartPathBreadcrumbProps {
@@ -11,35 +10,38 @@ interface SmartPathBreadcrumbProps {
   className?: string;
   bundleJson?: string; // For path validation
   jsonPointer?: string; // For path validation
-  fullPath?: string; // Full FHIRPath for filter detection
+  fullPath?: string; // Full FHIRPath (unused - kept for backward compatibility)
 }
 
 /**
  * SmartPathBreadcrumb Component
  * 
- * Renders a FHIR path correctly according to FHIRPath semantics:
+ * Phase 6: Structure-Only Breadcrumb Rendering
  * 
- * Layer 1 - Scope Context (Resource + Filter)
- * -------------------------------------------
- * Shows the resource type with optional filter predicate:
- * - "Observation (code = HS)" if filter exists
- * - "Observation" if no filter
+ * Renders ONLY structural JSON path segments as breadcrumbs.
  * 
- * Layer 2 - Structural Breadcrumb
- * --------------------------------
- * Shows only actual JSON structure segments:
- * - "performer > display"
- * - Does NOT include where() clauses
+ * ⚠️ IMPORTANT: This component does NOT render scope selectors (where clauses).
+ * Scope selectors must be rendered separately using ScopeSelectorChip component.
+ * 
+ * Why where() is excluded:
+ * - where() clauses are FILTERS (scope selectors), not structure
+ * - They don't map to JSON object properties
+ * - Mixing filters with structure creates semantic confusion
+ * - Separation enables proper multi-filter support
+ * 
+ * Example:
+ * Input:  Observation.where(code='HS').performer.where(use='official').display
+ * This component shows: Observation → performer → display
+ * ScopeSelectorChip shows: [Filter: code='HS'] [Filter: use='official']
  * 
  * Features:
  * - Bold resource name
- * - Filter badge with purple styling
  * - Monospace path segments
- * - Visual separation between segments
+ * - Visual separation between segments (chevron)
  * - Highlighted final segment
  * - Optional array indices
  * - Navigation icon on hover
- * - Color indicators: blue (path exists), red (path not found, will navigate to nearest parent)
+ * - Color indicators: blue (path exists), red (path not found)
  */
 export const SmartPathBreadcrumb: React.FC<SmartPathBreadcrumbProps> = ({
   resourceType,
@@ -48,17 +50,11 @@ export const SmartPathBreadcrumb: React.FC<SmartPathBreadcrumbProps> = ({
   className = '',
   bundleJson,
   jsonPointer,
-  fullPath
+  // fullPath is unused - scope selectors are handled by ScopeSelectorChip
 }) => {
   if (segments.length === 0 && !resourceType) {
     return <span className="text-gray-400 text-sm">Unknown path</span>;
   }
-
-  // Parse FHIRPath to extract filter context
-  const pathComponents = React.useMemo(() => {
-    if (!fullPath) return null;
-    return parseFhirPathComponents(fullPath);
-  }, [fullPath]);
 
   // Validate path if bundleJson is provided
   const pathValidation = React.useMemo(() => {
@@ -85,37 +81,16 @@ export const SmartPathBreadcrumb: React.FC<SmartPathBreadcrumbProps> = ({
   const iconColor = pathValidation.isValid ? 'text-blue-700' : 'text-red-600';
   const Icon = pathValidation.isValid ? Target : AlertCircle;
 
-  // Get formatted filter text
-  const filterText = pathComponents?.scopeSelector 
-    ? formatScopeSelector(pathComponents.scopeSelector)
-    : null;
-
   return (
     <div className={`flex flex-col gap-1 ${className}`}>
-      {/* Layer 1: Scope Context (Resource + Filter) */}
-      <div className="flex items-center gap-1.5">
-        {/* Resource name */}
-        {(resourceType || pathComponents?.resourceType) && (
-          <span className="font-semibold text-gray-800" style={{ fontSize: '13px' }}>
-            {resourceType || pathComponents?.resourceType}
-          </span>
-        )}
+      {/* Resource Type (structure root) */}
+      {resourceType && (
+        <span className="font-semibold text-gray-800" style={{ fontSize: '13px' }}>
+          {resourceType}
+        </span>
+      )}
 
-        {/* Filter badge (if present) */}
-        {filterText && (
-          <span 
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 border border-purple-200"
-            title={`Filtered by: ${pathComponents?.scopeSelector}`}
-          >
-            <Filter className="w-3 h-3 text-purple-600" />
-            <span className="text-xs font-medium text-purple-700">
-              {filterText}
-            </span>
-          </span>
-        )}
-      </div>
-
-      {/* Layer 2: Structural Breadcrumb (JSON structure only) */}
+      {/* Structural Breadcrumb (JSON structure only - NO filters) */}
       {segments.length > 0 && (
         <div
           onClick={(e) => {

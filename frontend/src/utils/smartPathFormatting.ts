@@ -112,10 +112,18 @@ export function formatScopeSelector(selector: string): string {
 /**
  * Format a FHIR path as structured breadcrumbs
  * 
+ * Phase 6: Structure-only breadcrumb formatting
+ * - Strips ALL where() clauses (handles multiple, nested)
+ * - Returns only structural JSON path segments
+ * - Scope selectors should be rendered separately via ScopeSelectorChip
+ * 
  * Handles special cases:
- * - Instance scope filters: "Observation.where(code.coding.code='HS')" shown as single unit
  * - Array indices: "address[0]" shown with index
- * - Nested paths after filters: "Observation.where(...).performer.display"
+ * - Nested paths: all where() clauses removed from any position
+ * 
+ * Example:
+ * Input:  "Observation.where(code='HS').component.where(system='loinc').valueString"
+ * Output: segments for "Observation.component.valueString"
  * 
  * @param path - FHIR path (e.g., "Patient.extension.valueCodeableConcept")
  * @param resourceType - Resource type to scope the path (e.g., "Patient")
@@ -130,15 +138,12 @@ export function formatSmartPath(path: string, resourceType?: string): FormattedP
     };
   }
 
-  // Parse FHIRPath components
-  const parsed = parseFhirPathComponents(path);
-  
-  // If there's a scope selector, we should only show the structural path in breadcrumb
-  // The selector should be shown separately in the UI
-  const pathToFormat = parsed.structuralPath || parsed.resourceType;
+  // Phase 6: Strip ALL where() clauses to get structural path only
+  // This handles multiple where() at any position in the path
+  const structuralPath = path.replace(/\.where\([^)]+\)/g, '');
   
   // Split by dots and handle array indices
-  const parts = pathToFormat.split('.').filter(p => p);
+  const parts = structuralPath.split('.').filter(p => p);
   const segments: PathSegment[] = [];
 
   parts.forEach((part, index) => {

@@ -61,10 +61,4 @@ public class ValidationError
     /// </summary>
     [JsonPropertyName("explanation")]
     public ValidationIssueExplanation? Explanation { get; set; }
-    
-    /// <summary>
-    /// Navigation metadata for frontend
-    /// </summary>
-    [JsonPropertyName("navigation")]
-    public NavigationInfo? Navigation { get; set; }
 }
