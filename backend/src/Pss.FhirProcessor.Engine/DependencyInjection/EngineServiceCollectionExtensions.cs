@@ -4,6 +4,7 @@ using Pss.FhirProcessor.Engine.Interfaces;
 using Pss.FhirProcessor.Engine.Services;
 using Pss.FhirProcessor.Engine.Services.Terminology;
 using Pss.FhirProcessor.Engine.Services.Questions;
+using Pss.FhirProcessor.Engine.Validation.QuestionAnswer;
 
 namespace Pss.FhirProcessor.Engine.DependencyInjection;
 
@@ -89,6 +90,10 @@ public static class EngineServiceCollectionExtensions
         {
             return new QuestionService(baseDataPath);
         });
+
+        // Register QuestionAnswer validation services (Phase 3D)
+        services.AddScoped<QuestionAnswerValueExtractor>();
+        services.AddScoped<QuestionAnswerValidator>();
 
         return services;
     }

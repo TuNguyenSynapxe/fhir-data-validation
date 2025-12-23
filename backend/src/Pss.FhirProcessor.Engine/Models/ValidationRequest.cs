@@ -45,6 +45,12 @@ public class ValidationRequest
     public string FhirVersion { get; set; } = "R4";
     
     /// <summary>
+    /// Project ID for loading project-specific master data (Questions, QuestionSets, etc.)
+    /// </summary>
+    [JsonPropertyName("projectId")]
+    public string? ProjectId { get; set; }
+    
+    /// <summary>
     /// Validation mode: "standard" (blocking checks only) or "full" (includes advisory checks)
     /// Default: "standard" - blocking validation only (FHIR structural + business rules)
     /// "full" - includes additional advisory checks (lint quality + SpecHint guidance)

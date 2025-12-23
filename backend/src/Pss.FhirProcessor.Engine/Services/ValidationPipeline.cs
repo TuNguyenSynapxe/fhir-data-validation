@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Pss.FhirProcessor.Engine.Models;
 using Pss.FhirProcessor.Engine.Interfaces;
 using Hl7.Fhir.Utility;
+using Pss.FhirProcessor.Engine.Validation.QuestionAnswer;
 
 namespace Pss.FhirProcessor.Engine.Services;
 
@@ -23,6 +24,7 @@ public class ValidationPipeline : IValidationPipeline
     private readonly IReferenceResolver _referenceResolver;
     private readonly IUnifiedErrorModelBuilder _errorBuilder;
     private readonly ISystemRuleSuggestionService _suggestionService;
+    private readonly QuestionAnswerValidator? _questionAnswerValidator;
     private readonly ILogger<ValidationPipeline> _logger;
     
     public ValidationPipeline(
@@ -34,7 +36,8 @@ public class ValidationPipeline : IValidationPipeline
         IReferenceResolver referenceResolver,
         IUnifiedErrorModelBuilder errorBuilder,
         ISystemRuleSuggestionService suggestionService,
-        ILogger<ValidationPipeline> logger)
+        ILogger<ValidationPipeline> logger,
+        QuestionAnswerValidator? questionAnswerValidator = null)
     {
         _lintService = lintService;
         _specHintService = specHintService;
@@ -44,6 +47,7 @@ public class ValidationPipeline : IValidationPipeline
         _referenceResolver = referenceResolver;
         _errorBuilder = errorBuilder;
         _suggestionService = suggestionService;
+        _questionAnswerValidator = questionAnswerValidator;
         _logger = logger;
     }
     
@@ -208,6 +212,32 @@ public class ValidationPipeline : IValidationPipeline
                 catch (Exception ex)
                 {
                     Console.WriteLine($"Business rule validation failed: {ex.Message}");
+                    // Continue to collect other errors
+                }
+            }
+            
+            // Step 4.5: QuestionAnswer Validation (Phase 3D)
+            // Validates Question/Answer constraints based on QuestionAnswer rules
+            if (_questionAnswerValidator != null && bundle != null && ruleSet?.Rules != null && ruleSet.Rules.Any())
+            {
+                try
+                {
+                    // Extract projectId from request if available
+                    var projectId = request.ProjectId ?? "default";
+                    
+                    var questionAnswerResult = await _questionAnswerValidator.ValidateAsync(bundle, ruleSet, projectId, cancellationToken);
+                    var qaErrors = await _errorBuilder.FromRuleErrorsAsync(questionAnswerResult.Errors, bundle, cancellationToken);
+                    response.Errors.AddRange(qaErrors);
+                    
+                    // Log advisory notes
+                    foreach (var note in questionAnswerResult.AdvisoryNotes)
+                    {
+                        _logger.LogInformation("QuestionAnswer advisory: {Note}", note);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "QuestionAnswer validation failed");
                     // Continue to collect other errors
                 }
             }
