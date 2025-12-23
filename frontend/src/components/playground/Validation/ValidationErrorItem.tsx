@@ -159,6 +159,7 @@ export const ValidationErrorItem: React.FC<ValidationErrorItemProps> = ({
                       formatSmartPath(error.path || error.jsonPointer || '', error.resourceType).segments,
                       error.resourceType
                     )}
+                    fullPath={error.path}
                     onNavigate={onClick}
                   />
                 </div>

@@ -203,6 +203,7 @@ export const IssueGroupCard: React.FC<IssueGroupCardProps> = ({
                       <SmartPathBreadcrumb
                         resourceType={item.resourceType}
                         segments={scopedSegments}
+                        fullPath={item.location}
                         onNavigate={
                           item.jsonPointer
                             ? () => onNavigateToPath?.(item.jsonPointer!)

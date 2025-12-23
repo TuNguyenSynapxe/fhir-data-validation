@@ -361,6 +361,7 @@ export const GroupedErrorCard: React.FC<GroupedErrorCardProps> = ({
                                 <SmartPathBreadcrumb
                                   resourceType={resourceType}
                                   segments={scopedSegments}
+                                  fullPath={path}
                                   onNavigate={jsonPointer ? () => onNavigateToPath?.(jsonPointer) : undefined}
                                 />
                               </div>

@@ -2,6 +2,7 @@
  * Smart Path Formatting Utilities
  * 
  * Formats FHIR validation paths as structured breadcrumbs for better readability.
+ * Correctly handles FHIRPath semantics: where() clauses are FILTERS, not structure.
  */
 
 export interface PathSegment {
@@ -16,8 +17,105 @@ export interface FormattedPath {
   scopedPath: string; // Path with resource name removed
 }
 
+export interface ParsedFhirPath {
+  resourceType: string;          // e.g., "Observation"
+  scopeSelector?: string;        // e.g., "code.coding.code='HS'" (inside where())
+  structuralPath: string;        // e.g., "performer.display" (actual JSON structure)
+  fullPath: string;              // Original input path
+}
+
+/**
+ * Extract scope selector (where clause) and structural path from FHIRPath
+ * 
+ * Examples:
+ * - "Observation.where(code.coding.code='HS').performer.display"
+ *   → { resourceType: "Observation", scopeSelector: "code.coding.code='HS'", structuralPath: "performer.display" }
+ * 
+ * - "Patient.name.given"
+ *   → { resourceType: "Patient", scopeSelector: undefined, structuralPath: "name.given" }
+ * 
+ * @param fhirPath - Full FHIRPath expression
+ * @returns Parsed components
+ */
+export function parseFhirPathComponents(fhirPath: string): ParsedFhirPath {
+  if (!fhirPath || fhirPath === 'Unknown') {
+    return {
+      resourceType: 'Unknown',
+      scopeSelector: undefined,
+      structuralPath: '',
+      fullPath: fhirPath
+    };
+  }
+
+  // Pattern: ResourceType.where(...).structuralPath
+  const whereMatch = fhirPath.match(/^([^.]+)\.where\(([^)]+)\)(?:\.(.+))?$/);
+  
+  if (whereMatch) {
+    const [, resourceType, selector, structural] = whereMatch;
+    return {
+      resourceType,
+      scopeSelector: selector,
+      structuralPath: structural || '',
+      fullPath: fhirPath
+    };
+  }
+
+  // Pattern: ResourceType.structuralPath (no filter)
+  const simpleMatch = fhirPath.match(/^([^.]+)(?:\.(.+))?$/);
+  
+  if (simpleMatch) {
+    const [, resourceType, structural] = simpleMatch;
+    return {
+      resourceType,
+      scopeSelector: undefined,
+      structuralPath: structural || '',
+      fullPath: fhirPath
+    };
+  }
+
+  // Fallback: treat entire path as structural
+  return {
+    resourceType: fhirPath.split('.')[0],
+    scopeSelector: undefined,
+    structuralPath: fhirPath.includes('.') ? fhirPath.substring(fhirPath.indexOf('.') + 1) : '',
+    fullPath: fhirPath
+  };
+}
+
+/**
+ * Format scope selector for display
+ * Simplifies complex predicates for readability
+ * 
+ * @param selector - FHIRPath predicate (e.g., "code.coding.code='HS'")
+ * @returns Human-readable filter description
+ */
+export function formatScopeSelector(selector: string): string {
+  if (!selector) return '';
+
+  // Try to extract simple equality checks for common patterns
+  // Pattern: code.coding.code='value' → code = value
+  const codeMatch = selector.match(/^code\.coding\.code\s*=\s*['"]([^'"]+)['"]$/);
+  if (codeMatch) {
+    return `code = ${codeMatch[1]}`;
+  }
+
+  // Pattern: status='value' → status = value
+  const simpleMatch = selector.match(/^(\w+)\s*=\s*['"]([^'"]+)['"]$/);
+  if (simpleMatch) {
+    return `${simpleMatch[1]} = ${simpleMatch[2]}`;
+  }
+
+  // For complex expressions, show as-is
+  return selector;
+}
+
 /**
  * Format a FHIR path as structured breadcrumbs
+ * 
+ * Handles special cases:
+ * - Instance scope filters: "Observation.where(code.coding.code='HS')" shown as single unit
+ * - Array indices: "address[0]" shown with index
+ * - Nested paths after filters: "Observation.where(...).performer.display"
  * 
  * @param path - FHIR path (e.g., "Patient.extension.valueCodeableConcept")
  * @param resourceType - Resource type to scope the path (e.g., "Patient")
@@ -32,8 +130,15 @@ export function formatSmartPath(path: string, resourceType?: string): FormattedP
     };
   }
 
+  // Parse FHIRPath components
+  const parsed = parseFhirPathComponents(path);
+  
+  // If there's a scope selector, we should only show the structural path in breadcrumb
+  // The selector should be shown separately in the UI
+  const pathToFormat = parsed.structuralPath || parsed.resourceType;
+  
   // Split by dots and handle array indices
-  const parts = path.split('.');
+  const parts = pathToFormat.split('.').filter(p => p);
   const segments: PathSegment[] = [];
 
   parts.forEach((part, index) => {

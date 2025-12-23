@@ -150,6 +150,7 @@ export const ErrorCard: React.FC<ErrorCardProps> = ({ error, allErrors = [], onC
                       formatSmartPath(fhirPath, error.resourceType).segments,
                       error.resourceType
                     )}
+                    fullPath={fhirPath}
                     onNavigate={hasNavigation ? onClick : undefined}
                   />
                 </div>

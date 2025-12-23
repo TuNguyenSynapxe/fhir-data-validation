@@ -79,6 +79,7 @@ export const IssueCard: React.FC<IssueCardProps> = ({
             <SmartPathBreadcrumb
               resourceType={issue.resourceType}
               segments={scopedSegments}
+              fullPath={issue.location}
               onNavigate={
                 issue.jsonPointer ? () => onNavigateToPath?.(issue.jsonPointer!) : undefined
               }

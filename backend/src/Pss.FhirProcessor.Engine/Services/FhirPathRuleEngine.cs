@@ -53,6 +53,13 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 
                 foreach (var rule in rules)
                 {
+                    // Check if this resource matches the rule's instance scope filter
+                    if (!ShouldValidateResourcePoco(resource, rule, resourceType))
+                    {
+                        _logger.LogTrace("ValidateAsync: Resource at entry {EntryIndex} doesn't match filter for rule {RuleId}, skipping", entryIndex, rule.Id);
+                        continue;
+                    }
+                    
                     var ruleErrors = await ValidateRuleAsync(resource, rule, entryIndex, cancellationToken);
                     errors.AddRange(ruleErrors);
                 }
@@ -151,6 +158,13 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 {
                     try
                     {
+                        // Check if this resource matches the rule's instance scope filter
+                        if (!ShouldValidateResource(sourceResourceNode, rule, resourceType))
+                        {
+                            _logger.LogTrace("ValidateJsonAsync: Resource at entry {EntryIndex} doesn't match filter for rule {RuleId}, skipping", entryIndex, rule.Id);
+                            continue;
+                        }
+                        
                         var ruleErrors = ValidateRuleOnSourceNode(sourceResourceNode, rule, entryIndex, resourceType);
                         _logger.LogTrace("ValidateJsonAsync: Rule {RuleId} ({RuleType}) produced {ErrorCount} errors", rule.Id, rule.Type, ruleErrors.Count);
                         errors.AddRange(ruleErrors);
@@ -178,6 +192,8 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
     /// <summary>
     /// Validates a single rule against an ISourceNode resource
     /// Simplified validation that works with partially-valid structures
+    /// Note: Instance scope filtering (e.g., .where() clauses) is handled by ShouldValidateResource()
+    /// before this method is called, so we only need to validate the field path portion.
     /// </summary>
     private List<RuleValidationError> ValidateRuleOnSourceNode(ISourceNode resource, RuleDefinition rule, int entryIndex, string resourceType)
     {
@@ -189,15 +205,19 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             var idNode = resource.Children("id").FirstOrDefault();
             var resourceId = idNode?.Text;
             
+            // Extract the field path portion, removing instance scope prefix if present
+            // Example: "Observation.where(code.coding.code='HS').performer.display" -> "performer.display"
+            var fieldPath = ExtractFieldPathFromRulePath(rule.Path, resourceType);
+            
             switch (rule.Type.ToUpperInvariant())
             {
                 case "REQUIRED":
-                    // Navigate to the path and check if it exists
-                    var valueNode = NavigateToPathInSourceNode(resource, rule.Path);
+                    // Navigate to the field path and check if it exists
+                    var valueNode = NavigateToPathInSourceNode(resource, fieldPath);
                     if (valueNode == null || string.IsNullOrWhiteSpace(valueNode.Text))
                     {
                         // Resolve message tokens like {fullPath}
-                        var fullPath = $"{resourceType}.{rule.Path}";
+                        var fullPath = $"{resourceType}.{fieldPath}";
                         var resolvedMessage = MessageTokenResolver.ResolveTokens(
                             rule.Message,
                             rule,
@@ -205,7 +225,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         );
                         
                         // Construct jsonPointer for SmartPath navigation (since we don't have a valid Bundle object)
-                        var jsonPointer = $"/entry/{entryIndex}/resource/{rule.Path.Replace(".", "/")}";
+                        var jsonPointer = $"/entry/{entryIndex}/resource/{fieldPath.Replace(".", "/")}";
                         
                         errors.Add(new RuleValidationError
                         {
@@ -514,9 +534,12 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
     {
         var errors = new List<RuleValidationError>();
         
-        var result = EvaluateFhirPath(resource, rule.Path, rule, entryIndex, errors);
+        // Extract field path, removing instance scope prefix
+        var fieldPath = ExtractFieldPathFromRulePath(rule.Path, rule.ResourceType);
         
-        _logger.LogTrace("ValidateRequired: Rule {RuleId}, Path {Path}, ResourceType {ResourceType}", rule.Id, rule.Path, rule.ResourceType);
+        var result = EvaluateFhirPath(resource, fieldPath, rule, entryIndex, errors);
+        
+        _logger.LogTrace("ValidateRequired: Rule {RuleId}, Path {Path}, FieldPath {FieldPath}, ResourceType {ResourceType}", rule.Id, rule.Path, fieldPath, rule.ResourceType);
         _logger.LogTrace("ValidateRequired: Result count {ResultCount}", result?.Count() ?? 0);
         
         // Check if result is missing OR if all values are empty/whitespace
@@ -680,7 +703,9 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             return errors;
         }
         
-        var result = EvaluateFhirPath(resource, rule.Path, rule, entryIndex, errors);
+        // Extract field path, removing instance scope prefix
+        var fieldPath = ExtractFieldPathFromRulePath(rule.Path, rule.ResourceType);
+        var result = EvaluateFhirPath(resource, fieldPath, rule, entryIndex, errors);
         
         if (!errors.Any(e => e.ErrorCode == "RULE_DEFINITION_ERROR"))
         {
@@ -759,7 +784,9 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             return errors;
         }
         
-        var result = EvaluateFhirPath(resource, rule.Path, rule, entryIndex, errors);
+        // Extract field path, removing instance scope prefix
+        var fieldPath = ExtractFieldPathFromRulePath(rule.Path, rule.ResourceType);
+        var result = EvaluateFhirPath(resource, fieldPath, rule, entryIndex, errors);
         
         if (!errors.Any(e => e.ErrorCode == "RULE_DEFINITION_ERROR"))
         {
@@ -842,7 +869,9 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             return errors;
         }
         
-        var result = EvaluateFhirPath(resource, rule.Path, rule, entryIndex, errors);
+        // Extract field path, removing instance scope prefix
+        var fieldPath = ExtractFieldPathFromRulePath(rule.Path, rule.ResourceType);
+        var result = EvaluateFhirPath(resource, fieldPath, rule, entryIndex, errors);
         
         if (!errors.Any(e => e.ErrorCode == "RULE_DEFINITION_ERROR"))
         {
@@ -984,7 +1013,9 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             return errors;
         }
         
-        var result = EvaluateFhirPath(resource, rule.Path, rule, entryIndex, errors);
+        // Extract field path, removing instance scope prefix
+        var fieldPath = ExtractFieldPathFromRulePath(rule.Path, rule.ResourceType);
+        var result = EvaluateFhirPath(resource, fieldPath, rule, entryIndex, errors);
         
         if (!errors.Any(e => e.ErrorCode == "RULE_DEFINITION_ERROR"))
         {
@@ -1088,7 +1119,9 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
     {
         var errors = new List<RuleValidationError>();
         
-        var result = EvaluateFhirPath(resource, rule.Path, rule, entryIndex, errors);
+        // Extract field path, removing instance scope prefix
+        var fieldPath = ExtractFieldPathFromRulePath(rule.Path, rule.ResourceType);
+        var result = EvaluateFhirPath(resource, fieldPath, rule, entryIndex, errors);
         
         if (!errors.Any(e => e.ErrorCode == "RULE_DEFINITION_ERROR"))
         {
@@ -1319,5 +1352,184 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 "This field does not meet the business rule requirements defined for your project. " +
                 "Review the rule configuration to understand the specific validation logic and expected values."
         };
+    }
+    
+    /// <summary>
+    /// Determines if a resource should be validated against a rule based on instance scope filtering.
+    /// Evaluates FHIRPath .where() filters to check if the resource matches the rule's target scope.
+    /// This version works with POCO Resource objects.
+    /// </summary>
+    /// <param name="resource">The Resource POCO to check</param>
+    /// <param name="rule">The rule definition containing potential .where() filters in the path</param>
+    /// <param name="resourceType">The resource type (e.g., "Observation")</param>
+    /// <returns>True if the resource matches the filter and should be validated, false otherwise</returns>
+    private bool ShouldValidateResourcePoco(Resource resource, RuleDefinition rule, string resourceType)
+    {
+        try
+        {
+            var path = rule.Path;
+            
+            // Check if path contains a .where() filter (instance scope)
+            // Example: "Observation.where(code.coding.code='HS').performer.display"
+            var whereMatch = Regex.Match(path, $@"^{Regex.Escape(resourceType)}\.where\(([^)]+)\)");
+            
+            if (!whereMatch.Success)
+            {
+                // No filter present, validate all resources of this type
+                _logger.LogTrace("ShouldValidateResourcePoco: No .where() filter in path, validating resource");
+                return true;
+            }
+            
+            var filterExpression = whereMatch.Groups[1].Value;
+            _logger.LogTrace("ShouldValidateResourcePoco: Found filter expression: {FilterExpression}", filterExpression);
+            
+            // Evaluate the filter expression against the resource
+            // The filter is relative to the resource, so we evaluate it directly
+            var compiled = _compiler.Compile(filterExpression);
+            var typedElement = resource.ToTypedElement();
+            var scopedNode = new ScopedNode(typedElement);
+            
+            var result = compiled(scopedNode, new EvaluationContext());
+            var resultList = result.ToList();
+            
+            // If the filter returns any true values, the resource matches
+            if (resultList.Any())
+            {
+                // Check if result is a boolean value
+                var firstResult = resultList.First();
+                
+                // ITypedElement wraps the actual value
+                if (firstResult is ITypedElement resultElement)
+                {
+                    if (resultElement.Value is bool boolValue)
+                    {
+                        _logger.LogTrace("ShouldValidateResourcePoco: Filter evaluated to boolean {Result}", boolValue);
+                        return boolValue;
+                    }
+                }
+                
+                // If filter returns non-empty results, consider it a match
+                _logger.LogTrace("ShouldValidateResourcePoco: Filter returned {Count} results, considering as match", resultList.Count);
+                return true;
+            }
+            
+            // Empty result means filter didn't match
+            _logger.LogTrace("ShouldValidateResourcePoco: Filter returned no results, resource doesn't match");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            // If filter evaluation fails, log and assume resource should be validated
+            // This ensures we don't silently skip validation due to filter errors
+            _logger.LogWarning("ShouldValidateResourcePoco: Error evaluating filter for rule {RuleId}: {ErrorMessage}. Proceeding with validation.", rule.Id, ex.Message);
+            return true;
+        }
+    }
+    
+    /// <summary>
+    /// Determines if a resource should be validated against a rule based on instance scope filtering.
+    /// Evaluates FHIRPath .where() filters to check if the resource matches the rule's target scope.
+    /// </summary>
+    /// <param name="resource">The ISourceNode resource to check</param>
+    /// <param name="rule">The rule definition containing potential .where() filters in the path</param>
+    /// <param name="resourceType">The resource type (e.g., "Observation")</param>
+    /// <returns>True if the resource matches the filter and should be validated, false otherwise</returns>
+    private bool ShouldValidateResource(ISourceNode resource, RuleDefinition rule, string resourceType)
+    {
+        try
+        {
+            var path = rule.Path;
+            
+            // Check if path contains a .where() filter (instance scope)
+            // Example: "Observation.where(code.coding.code='HS').performer.display"
+            var whereMatch = Regex.Match(path, $@"^{Regex.Escape(resourceType)}\.where\(([^)]+)\)");
+            
+            if (!whereMatch.Success)
+            {
+                // No filter present, validate all resources of this type
+                _logger.LogTrace("ShouldValidateResource: No .where() filter in path, validating resource");
+                return true;
+            }
+            
+            var filterExpression = whereMatch.Groups[1].Value;
+            _logger.LogTrace("ShouldValidateResource: Found filter expression: {FilterExpression}", filterExpression);
+            
+            // Evaluate the filter expression against the resource
+            // The filter is relative to the resource, so we evaluate it directly
+            var compiled = _compiler.Compile(filterExpression);
+            var typedElement = resource.ToTypedElement(ModelInfo.ModelInspector);
+            var scopedNode = new ScopedNode(typedElement);
+            
+            var result = compiled(scopedNode, new EvaluationContext());
+            var resultList = result.ToList();
+            
+            // If the filter returns any true values, the resource matches
+            if (resultList.Any())
+            {
+                // Check if result is a boolean value
+                var firstResult = resultList.First();
+                
+                // ITypedElement wraps the actual value
+                if (firstResult is ITypedElement resultElement)
+                {
+                    if (resultElement.Value is bool boolValue)
+                    {
+                        _logger.LogTrace("ShouldValidateResource: Filter evaluated to boolean {Result}", boolValue);
+                        return boolValue;
+                    }
+                }
+                
+                // If filter returns non-empty results, consider it a match
+                _logger.LogTrace("ShouldValidateResource: Filter returned {Count} results, considering as match", resultList.Count);
+                return true;
+            }
+            
+            // Empty result means filter didn't match
+            _logger.LogTrace("ShouldValidateResource: Filter returned no results, resource doesn't match");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            // If filter evaluation fails, log and assume resource should be validated
+            // This ensures we don't silently skip validation due to filter errors
+            _logger.LogWarning("ShouldValidateResource: Error evaluating filter for rule {RuleId}: {ErrorMessage}. Proceeding with validation.", rule.Id, ex.Message);
+            return true;
+        }
+    }
+    
+    /// <summary>
+    /// Extracts the field path portion from a full rule path by removing the instance scope prefix.
+    /// Examples:
+    /// - "Observation.where(code.coding.code='HS').performer.display" -> "performer.display"
+    /// - "Patient.name.given" -> "name.given"
+    /// - "Observation[0].status" -> "status" (for array-indexed paths)
+    /// </summary>
+    /// <param name="rulePath">The full rule path from the rule definition</param>
+    /// <param name="resourceType">The resource type to match and remove</param>
+    /// <returns>The field path without the instance scope prefix</returns>
+    private string ExtractFieldPathFromRulePath(string rulePath, string resourceType)
+    {
+        // Pattern 1: "ResourceType.where(...).fieldPath"
+        var whereMatch = Regex.Match(rulePath, $@"^{Regex.Escape(resourceType)}\.where\([^)]+\)\.(.+)$");
+        if (whereMatch.Success)
+        {
+            return whereMatch.Groups[1].Value;
+        }
+        
+        // Pattern 2: "ResourceType[n].fieldPath" (array-indexed)
+        var arrayMatch = Regex.Match(rulePath, $@"^{Regex.Escape(resourceType)}\[\d+\]\.(.+)$");
+        if (arrayMatch.Success)
+        {
+            return arrayMatch.Groups[1].Value;
+        }
+        
+        // Pattern 3: "ResourceType.fieldPath" (simple path)
+        if (rulePath.StartsWith($"{resourceType}."))
+        {
+            return rulePath.Substring(resourceType.Length + 1);
+        }
+        
+        // If no match, return the original path (shouldn't happen, but safe fallback)
+        return rulePath;
     }
 }
