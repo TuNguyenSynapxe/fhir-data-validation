@@ -180,6 +180,8 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({
       </div>
 
       {/* Drawer context is read-only by design */}
+      {/* Rule Editor Modal - Legacy: ONLY for editing existing rules */}
+      {/* Legacy rule editor removed for Required rule creation – Phase 2 architecture */}
       <RuleEditorModal
         rule={editingRule}
         isOpen={isModalOpen}

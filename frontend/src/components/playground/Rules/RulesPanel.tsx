@@ -612,7 +612,8 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
         </div>
       </div>
 
-      {/* Rule Editor Modal */}
+      {/* Rule Editor Modal - Legacy: ONLY for editing existing rules */}
+      {/* Legacy rule editor removed for Required rule creation – Phase 2 architecture */}
       <RuleEditorModal
         rule={editingRule}
         isOpen={isModalOpen}
