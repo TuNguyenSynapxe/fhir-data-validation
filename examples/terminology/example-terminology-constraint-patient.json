@@ -1,0 +1,38 @@
+{
+  "id": "TERM-PAT-001",
+  "name": "Patient Marital Status Constraint",
+  "description": "Validates that Patient.maritalStatus uses allowed codes from HL7 v3 MaritalStatus",
+  "resourceType": "Patient",
+  "path": "Patient.maritalStatus.coding",
+  "constraintType": "allowedValues",
+  "valueSetUrl": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+  "allowedAnswers": [
+    {
+      "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+      "code": "M",
+      "display": "Married",
+      "note": "Currently married and living together"
+    },
+    {
+      "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+      "code": "S",
+      "display": "Never Married",
+      "note": "Single, never been married"
+    },
+    {
+      "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+      "code": "D",
+      "display": "Divorced",
+      "note": "Legally divorced"
+    },
+    {
+      "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+      "code": "W",
+      "display": "Widowed",
+      "note": "Spouse is deceased"
+    }
+  ],
+  "severity": "error",
+  "message": "Patient marital status must be one of: Married, Single, Divorced, or Widowed",
+  "active": true
+}

@@ -1,0 +1,11 @@
+code,display,definition,parentCode
+status,Patient Status,Top-level status category,
+active,Active,Patient is active,status
+active-inpatient,Active Inpatient,Patient is currently admitted,active
+active-outpatient,Active Outpatient,Patient receiving outpatient care,active
+inactive,Inactive,Patient is inactive,status
+inactive-discharged,Discharged,Patient has been discharged,inactive
+inactive-transferred,Transferred,Patient transferred to another facility,inactive
+pending,Pending,Registration is pending,status
+pending-approval,Pending Approval,Waiting for approval,pending
+pending-review,Pending Review,Under administrative review,pending

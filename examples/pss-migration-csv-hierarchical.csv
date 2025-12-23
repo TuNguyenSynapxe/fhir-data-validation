@@ -1,0 +1,11 @@
+code,display,definition,parentCode
+ACT,Active,Patient is currently active and receiving care in the facility,
+INA,Inactive,Patient is not currently receiving active care but remains in system,
+PEN,Pending,Patient registration or admission is pending completion,
+PEN-ADM,Pending Admission,Patient is scheduled for admission but not yet admitted,PEN
+PEN-REG,Pending Registration,Patient registration documentation incomplete,PEN
+DIS,Discharged,Patient has been formally discharged from care,
+DEC,Deceased,Patient is deceased,
+TRF,Transferred,Patient has been transferred to another facility or department,
+ABS,Absconded,Patient left facility without proper discharge,
+OBS,Under Observation,Patient is under observation for assessment purposes,

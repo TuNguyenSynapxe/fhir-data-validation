@@ -1,0 +1,160 @@
+{
+  "resourceType": "CodeSystem",
+  "url": "http://hospital.gov.sg/pss/fhir/CodeSystem/patient-status",
+  "version": "20241222",
+  "name": "PatientStatus",
+  "title": "Patient Status Codes (PSS Migration)",
+  "status": "draft",
+  "description": "Patient status codes migrated from PSS CodeMaster. Used throughout clinical workflows to track patient state.",
+  "publisher": "Example Healthcare Organization",
+  "content": "complete",
+  "count": 8,
+  "concept": [
+    {
+      "code": "ACT",
+      "display": "Active",
+      "definition": "Patient is currently active and receiving care in the facility",
+      "property": [
+        {
+          "code": "pss-original-code",
+          "valueString": "ACT"
+        },
+        {
+          "code": "pss-domain",
+          "valueString": "Clinical"
+        }
+      ]
+    },
+    {
+      "code": "INA",
+      "display": "Inactive",
+      "definition": "Patient is not currently receiving active care but remains in system",
+      "property": [
+        {
+          "code": "pss-original-code",
+          "valueString": "INA"
+        },
+        {
+          "code": "pss-domain",
+          "valueString": "Clinical"
+        }
+      ]
+    },
+    {
+      "code": "PEN",
+      "display": "Pending",
+      "definition": "Patient registration or admission is pending completion",
+      "property": [
+        {
+          "code": "pss-original-code",
+          "valueString": "PEN"
+        },
+        {
+          "code": "pss-domain",
+          "valueString": "Administrative"
+        }
+      ],
+      "concept": [
+        {
+          "code": "PEN-ADM",
+          "display": "Pending Admission",
+          "definition": "Patient is scheduled for admission but not yet admitted"
+        },
+        {
+          "code": "PEN-REG",
+          "display": "Pending Registration",
+          "definition": "Patient registration documentation incomplete"
+        }
+      ]
+    },
+    {
+      "code": "DIS",
+      "display": "Discharged",
+      "definition": "Patient has been formally discharged from care",
+      "property": [
+        {
+          "code": "pss-original-code",
+          "valueString": "DIS"
+        },
+        {
+          "code": "pss-domain",
+          "valueString": "Clinical"
+        }
+      ]
+    },
+    {
+      "code": "DEC",
+      "display": "Deceased",
+      "definition": "Patient is deceased",
+      "property": [
+        {
+          "code": "pss-original-code",
+          "valueString": "DEC"
+        },
+        {
+          "code": "pss-domain",
+          "valueString": "Clinical"
+        }
+      ]
+    },
+    {
+      "code": "TRF",
+      "display": "Transferred",
+      "definition": "Patient has been transferred to another facility or department",
+      "property": [
+        {
+          "code": "pss-original-code",
+          "valueString": "TRF"
+        },
+        {
+          "code": "pss-domain",
+          "valueString": "Clinical"
+        }
+      ]
+    },
+    {
+      "code": "ABS",
+      "display": "Absconded",
+      "definition": "Patient left facility without proper discharge",
+      "property": [
+        {
+          "code": "pss-original-code",
+          "valueString": "ABS"
+        },
+        {
+          "code": "pss-domain",
+          "valueString": "Administrative"
+        }
+      ]
+    },
+    {
+      "code": "OBS",
+      "display": "Under Observation",
+      "definition": "Patient is under observation for assessment purposes",
+      "property": [
+        {
+          "code": "pss-original-code",
+          "valueString": "OBS"
+        },
+        {
+          "code": "pss-domain",
+          "valueString": "Clinical"
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "migrationInfo": {
+      "sourceSystem": "PSS CodeMaster",
+      "migrationDate": "2024-12-22",
+      "originalCodeGroup": "PATIENT_STATUS",
+      "excludedCodes": [
+        {
+          "code": "CANC",
+          "description": "Cancelled",
+          "reason": "Status='Inactive' in PSS, excluded from initial migration"
+        }
+      ]
+    }
+  }
+}

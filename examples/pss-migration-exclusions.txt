@@ -1,0 +1,17 @@
+# PSS CodeMaster Migration - Exclusion Report
+# Generated: 2024-12-22
+# Source: PATIENT_STATUS CodeGroup
+
+# Excluded codes (Status='Inactive' in PSS)
+code,description,pss_status,last_modified,exclusion_reason
+CANC,Cancelled,Inactive,2022-12-01,Status marked as Inactive in PSS - excluded from initial migration to ensure clean starting point. Review with clinical team if historical data requires this code.
+
+# Migration Statistics
+# Total PSS Codes: 9
+# Migrated: 8 (88.9%)
+# Excluded: 1 (11.1%)
+
+# Post-Migration Actions Required:
+# 1. Review excluded codes with clinical stakeholders
+# 2. Determine if excluded codes needed for historical data queries
+# 3. If needed, add as 'retired' status concepts in separate migration wave

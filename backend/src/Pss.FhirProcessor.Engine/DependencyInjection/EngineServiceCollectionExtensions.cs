@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Pss.FhirProcessor.Engine.Interfaces;
 using Pss.FhirProcessor.Engine.Services;
+using Pss.FhirProcessor.Engine.Services.Terminology;
 
 namespace Pss.FhirProcessor.Engine.DependencyInjection;
 
@@ -56,6 +57,31 @@ public static class EngineServiceCollectionExtensions
         
         // Register System Rule Suggestion Service (deterministic pattern analysis)
         services.AddScoped<ISystemRuleSuggestionService, SystemRuleSuggestionService>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers terminology authoring services (Phase 2)
+    /// Requires baseDataPath configuration for file-based storage
+    /// </summary>
+    public static IServiceCollection AddTerminologyServices(this IServiceCollection services, string baseDataPath)
+    {
+        // Register terminology CRUD services with file-based storage
+        services.AddScoped<ITerminologyService>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<TerminologyService>>();
+            return new TerminologyService(logger, baseDataPath);
+        });
+
+        services.AddScoped<IConstraintService>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<ConstraintService>>();
+            return new ConstraintService(logger, baseDataPath);
+        });
+
+        // Register Rule Advisory service
+        services.AddScoped<IRuleAdvisoryService, RuleAdvisoryService>();
 
         return services;
     }

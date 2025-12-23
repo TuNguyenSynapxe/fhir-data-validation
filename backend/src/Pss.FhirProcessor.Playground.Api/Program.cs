@@ -55,6 +55,13 @@ try
     // Register FhirProcessor.Engine services
     builder.Services.AddFhirProcessorEngine();
 
+    // Register Terminology Services (Phase 2)
+    // Configure base data path for file-based storage
+    var baseDataPath = builder.Configuration.GetValue<string>("TerminologyDataPath") 
+        ?? Path.Combine(Directory.GetCurrentDirectory(), "data", "terminology");
+    builder.Services.AddTerminologyServices(baseDataPath);
+    Log.Information("Terminology services configured with data path: {DataPath}", baseDataPath);
+
     // Register Playground API services
     builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
     builder.Services.AddScoped<IProjectService, ProjectService>();

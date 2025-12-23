@@ -1,0 +1,51 @@
+{
+  "url": "http://example.org/fhir/CodeSystem/screening-observation-category",
+  "version": "1.0.0",
+  "name": "ScreeningObservationCategory",
+  "title": "Screening Observation Categories",
+  "status": "active",
+  "description": "Categories for screening observations in the PSS system",
+  "publisher": "PSS Team",
+  "content": "complete",
+  "count": 4,
+  "concept": [
+    {
+      "code": "screening-mental-health",
+      "display": "Mental Health Screening",
+      "definition": "Observations related to mental health screening assessments"
+    },
+    {
+      "code": "screening-social",
+      "display": "Social Screening",
+      "definition": "Observations related to social determinants of health screening"
+    },
+    {
+      "code": "screening-substance",
+      "display": "Substance Use Screening",
+      "definition": "Observations related to substance use screening"
+    },
+    {
+      "code": "screening-developmental",
+      "display": "Developmental Screening",
+      "definition": "Observations related to developmental milestone screening",
+      "concept": [
+        {
+          "code": "screening-developmental-infant",
+          "display": "Infant Developmental Screening",
+          "definition": "Developmental screening for infants 0-12 months"
+        },
+        {
+          "code": "screening-developmental-toddler",
+          "display": "Toddler Developmental Screening",
+          "definition": "Developmental screening for toddlers 1-3 years"
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "createdBy": "system",
+    "createdDate": "2025-12-21T10:00:00Z",
+    "lastModifiedBy": "user123",
+    "lastModifiedDate": "2025-12-21T14:30:00Z"
+  }
+}

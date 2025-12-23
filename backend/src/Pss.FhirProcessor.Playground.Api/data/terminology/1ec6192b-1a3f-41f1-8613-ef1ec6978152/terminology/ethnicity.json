@@ -1,0 +1,46 @@
+{
+  "url": "https://fhir.synapxe.sg/CodeSystem/ethnicity",
+  "version": "1.0.0",
+  "name": "Ethnicity",
+  "title": "Ethnicity",
+  "status": "active",
+  "description": "Ethnicity",
+  "publisher": "PSS Team",
+  "content": "complete",
+  "count": 4,
+  "concept": [
+    {
+      "code": "CN",
+      "display": "Chinese",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "MY",
+      "display": "Malay",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "IN",
+      "display": "Indian",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "XX",
+      "display": "Others",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    }
+  ],
+  "meta": null
+}

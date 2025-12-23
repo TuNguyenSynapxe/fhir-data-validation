@@ -1,0 +1,275 @@
+2025-12-23 00:00:04.223 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 00:00:04.250 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 31.0822 ms
+2025-12-23 00:00:04.259 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 39.6515 ms
+2025-12-23 00:00:04.265 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 00:00:04.266 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.4929 ms
+2025-12-23 09:04:53.831 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 2.7158 ms
+2025-12-23 09:05:46.944 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 09:05:46.947 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 3.0042 ms
+2025-12-23 09:05:46.950 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 5.0852 ms
+2025-12-23 09:05:46.951 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 09:05:46.952 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.4452 ms
+2025-12-23 09:05:47.033 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 09:05:47.033 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.2325 ms
+2025-12-23 09:05:47.034 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 0.9195 ms
+2025-12-23 09:05:47.036 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 09:05:47.036 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.2407 ms
+2025-12-23 09:05:50.949 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 09:05:50.949 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.3166 ms
+2025-12-23 09:05:50.950 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 1.2947 ms
+2025-12-23 09:05:50.951 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 09:05:50.952 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.4408 ms
+2025-12-23 09:06:13.866 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 09:06:13.867 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.3681 ms
+2025-12-23 09:06:13.868 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 1.5912 ms
+2025-12-23 09:06:13.876 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 09:06:13.877 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.8615 ms
+2025-12-23 09:06:14.144 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 09:06:14.145 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 1.3454 ms
+2025-12-23 09:06:14.146 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 2.4337 ms
+2025-12-23 09:06:14.148 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 09:06:14.150 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 2.2303 ms
+2025-12-23 09:06:21.334 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 09:06:21.334 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.4412 ms
+2025-12-23 09:06:21.343 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 9.1095 ms
+2025-12-23 09:06:21.344 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 09:06:21.344 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.3655 ms
+2025-12-23 09:07:10.368 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 09:07:10.369 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 09:07:10.369 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 09:07:10.374 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 09:07:10.375 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 6.6679 ms
+2025-12-23 09:07:10.377 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 09:07:10.377 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 09:07:10.377 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 09:07:10.378 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 09:07:10.378 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 0.9875 ms
+2025-12-23 09:07:13.914 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 09:07:13.915 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.7019 ms
+2025-12-23 09:07:13.920 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 6.6855 ms
+2025-12-23 09:07:13.922 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 09:07:13.922 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.9129 ms
+2025-12-23 09:07:13.939 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 09:07:13.939 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 09:07:13.940 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 09:07:13.940 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 09:07:13.941 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 1.3077 ms
+2025-12-23 09:07:13.944 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 09:07:13.944 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 09:07:13.944 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 09:07:13.945 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 09:07:13.945 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 1.3498 ms
+2025-12-23 10:01:10.013 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 10:01:10.014 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 1.4033 ms
+2025-12-23 10:01:10.015 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 2.7703 ms
+2025-12-23 10:01:10.016 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 10:01:10.016 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.3998 ms
+2025-12-23 10:01:10.047 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:01:10.047 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:01:10.048 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 10:01:10.048 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:01:10.049 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 1.5393 ms
+2025-12-23 10:01:10.050 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:01:10.050 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:01:10.051 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 10:01:10.051 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:01:10.051 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 0.7141 ms
+2025-12-23 10:03:14.727 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 10:03:14.728 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 1.2728 ms
+2025-12-23 10:03:14.733 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 10:03:14.734 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.4565 ms
+2025-12-23 10:03:14.737 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 3.1096 ms
+2025-12-23 10:03:14.795 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:03:14.795 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:03:14.795 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 10:03:14.796 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:03:14.796 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 1.0346 ms
+2025-12-23 10:03:14.797 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:03:14.798 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:03:14.798 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 10:03:14.798 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:03:14.799 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 1.1749 ms
+2025-12-23 10:04:56.142 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 10:04:56.146 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 3.1120 ms
+2025-12-23 10:04:56.150 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 8.3757 ms
+2025-12-23 10:04:56.154 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 10:04:56.156 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 2.2698 ms
+2025-12-23 10:04:56.271 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:04:56.272 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:04:56.272 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 10:04:56.273 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:04:56.273 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 1.8182 ms
+2025-12-23 10:04:56.277 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:04:56.277 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:04:56.277 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 10:04:56.278 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:04:56.278 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 0.5860 ms
+2025-12-23 10:06:57.837 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 10:06:57.837 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.8372 ms
+2025-12-23 10:06:57.847 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 10:06:57.849 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 1.7256 ms
+2025-12-23 10:06:57.854 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 12.3957 ms
+2025-12-23 10:06:57.974 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:06:57.974 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:06:57.974 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 10:06:57.975 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:06:57.975 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 1.4967 ms
+2025-12-23 10:06:57.978 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:06:57.978 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:06:57.979 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 10:06:57.979 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:06:57.979 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 1.2403 ms
+2025-12-23 10:15:08.307 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 10:15:08.311 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 4.4306 ms
+2025-12-23 10:15:08.317 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 10:15:08.319 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 1.7565 ms
+2025-12-23 10:15:08.325 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 4.7209 ms
+2025-12-23 10:15:08.356 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:15:08.356 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:15:08.357 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 10:15:08.358 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:15:08.358 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 2.2098 ms
+2025-12-23 10:15:08.361 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:15:08.362 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:15:08.362 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 10:15:08.362 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:15:08.362 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 1.0200 ms
+2025-12-23 10:32:17.964 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects responded 200 in 4.6189 ms
+2025-12-23 10:35:33.993 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 4.7451 ms
+2025-12-23 10:38:12.242 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 10:38:12.245 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 3.6696 ms
+2025-12-23 10:38:12.301 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 10:38:12.301 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.3566 ms
+2025-12-23 10:38:12.301 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 59.4883 ms
+2025-12-23 10:38:12.322 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:38:12.322 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:38:12.322 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 10:38:12.337 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:38:12.337 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 16.0606 ms
+2025-12-23 10:38:12.341 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:38:12.341 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:38:12.342 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 10:38:12.342 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 10:38:12.343 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 2.5396 ms
+2025-12-23 10:48:26.392 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 19.3817 ms
+2025-12-23 11:00:20.511 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:00:20.517 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 7.0725 ms
+2025-12-23 11:00:20.529 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 19.1494 ms
+2025-12-23 11:00:20.534 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:00:20.535 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 1.1745 ms
+2025-12-23 11:02:24.776 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:02:24.778 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 2.5716 ms
+2025-12-23 11:02:24.782 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 5.9477 ms
+2025-12-23 11:02:24.783 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:02:24.783 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.2795 ms
+2025-12-23 11:09:20.498 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:09:20.499 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 1.5328 ms
+2025-12-23 11:09:20.501 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 3.4343 ms
+2025-12-23 11:09:20.502 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:09:20.502 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.1875 ms
+2025-12-23 11:09:35.561 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 1.6841 ms
+2025-12-23 11:16:40.426 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:16:40.431 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 5.2510 ms
+2025-12-23 11:16:40.437 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:16:40.437 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.2954 ms
+2025-12-23 11:16:40.438 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 12.8718 ms
+2025-12-23 11:16:40.643 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:16:40.643 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.4485 ms
+2025-12-23 11:16:40.644 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 1.7199 ms
+2025-12-23 11:16:40.646 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:16:40.646 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.1695 ms
+2025-12-23 11:16:47.775 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:16:47.777 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 2.1682 ms
+2025-12-23 11:16:47.778 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 3.7466 ms
+2025-12-23 11:16:47.780 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:16:47.781 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 1.0945 ms
+2025-12-23 11:22:39.087 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:22:39.091 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 4.3265 ms
+2025-12-23 11:22:39.096 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 9.7545 ms
+2025-12-23 11:22:39.106 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:22:39.106 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.4846 ms
+2025-12-23 11:22:39.392 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:22:39.395 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 3.0837 ms
+2025-12-23 11:22:39.397 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 1.1828 ms
+2025-12-23 11:22:39.409 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:22:39.411 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 2.6006 ms
+2025-12-23 11:23:21.883 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:23:21.885 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 1.9913 ms
+2025-12-23 11:23:21.887 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 3.8715 ms
+2025-12-23 11:23:21.891 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:23:21.892 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.9261 ms
+2025-12-23 11:31:54.733 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:31:54.734 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:31:54.735 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 11:31:54.736 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:31:54.737 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 3.9211 ms
+2025-12-23 11:31:54.742 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:31:54.742 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:31:54.742 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 11:31:54.743 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:31:54.743 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 1.2014 ms
+2025-12-23 11:32:40.051 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:32:40.051 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:32:40.052 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 1.8519 ms
+2025-12-23 11:32:40.052 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 1.8847 ms
+2025-12-23 11:32:40.077 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 26.7484 ms
+2025-12-23 11:32:45.995 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:32:45.995 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:32:45.995 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:32:45.995 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:32:45.996 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 11:32:45.996 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 11:32:45.996 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:32:45.996 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:32:45.997 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 1.3597 ms
+2025-12-23 11:32:45.997 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 1.3597 ms
+2025-12-23 11:33:00.826 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:33:00.826 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:33:00.828 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 4.1569 ms
+2025-12-23 11:33:00.828 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 4.1126 ms
+2025-12-23 11:33:00.903 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 78.8176 ms
+2025-12-23 11:33:09.005 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:33:09.005 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:33:09.005 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:33:09.005 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:33:09.006 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 11:33:09.006 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 11:33:09.017 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:33:09.017 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:33:09.017 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 12.5568 ms
+2025-12-23 11:33:09.017 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 12.5570 ms
+2025-12-23 11:33:12.874 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:33:12.874 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:33:12.875 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 0.6247 ms
+2025-12-23 11:33:12.875 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 1.2648 ms
+2025-12-23 11:33:12.880 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 5.9298 ms
+2025-12-23 11:33:15.268 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects responded 200 in 2.0158 ms
+2025-12-23 11:33:34.101 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:33:34.101 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.SamplesController] Listing samples for version=R4, resourceType=null
+2025-12-23 11:33:34.106 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 5.4714 ms
+2025-12-23 11:33:34.106 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/fhir/samples responded 200 in 5.5921 ms
+2025-12-23 11:33:34.107 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152 responded 200 in 6.9838 ms
+2025-12-23 11:33:36.441 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:33:36.441 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:33:36.441 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:33:36.441 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:33:36.441 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 11:33:36.441 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 11:33:36.442 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:33:36.442 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 1.1513 ms
+2025-12-23 11:33:36.442 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:33:36.442 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 1.8302 ms
+2025-12-23 11:34:30.562 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:34:30.563 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:34:30.563 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 11:34:30.564 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:34:30.566 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 3.2976 ms
+2025-12-23 11:36:51.449 +08:00 [INF] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] Save CodeSystem for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152, URL: http://terminology.hl7.org/CodeSystem/v3-MaritalStatus
+2025-12-23 11:36:51.449 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Saving CodeSystem: http://terminology.hl7.org/CodeSystem/v3-MaritalStatus for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:36:51.452 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] CodeSystem saved: /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/src/Pss.FhirProcessor.Playground.Api/data/terminology/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/v3-MaritalStatus.json
+2025-12-23 11:36:51.452 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP PUT /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 12.0788 ms
+2025-12-23 11:36:51.458 +08:00 [DBG] [Pss.FhirProcessor.Playground.Api.Controllers.TerminologyController] List CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:36:51.458 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Listing CodeSystems for project: 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:36:51.459 +08:00 [DBG] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Found 2 CodeSystem files
+2025-12-23 11:36:51.459 +08:00 [INF] [Pss.FhirProcessor.Engine.Services.Terminology.TerminologyService] Loaded 2 CodeSystems for project 1ec6192b-1a3f-41f1-8613-ef1ec6978152
+2025-12-23 11:36:51.460 +08:00 [DBG] [Serilog.AspNetCore.RequestLoggingMiddleware] HTTP GET /api/projects/1ec6192b-1a3f-41f1-8613-ef1ec6978152/terminology/codesystems responded 200 in 2.1066 ms

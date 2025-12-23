@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Pss.FhirProcessor.Engine.Interfaces;
 using Pss.FhirProcessor.Playground.Api.Models;
 using Pss.FhirProcessor.Playground.Api.Services;
 
@@ -10,15 +11,18 @@ public class ProjectsController : ControllerBase
 {
     private readonly IProjectService _projectService;
     private readonly IRuleService _ruleService;
+    private readonly IRuleAdvisoryService? _ruleAdvisoryService;
     private readonly ILogger<ProjectsController> _logger;
 
     public ProjectsController(
         IProjectService projectService,
         IRuleService ruleService,
-        ILogger<ProjectsController> logger)
+        ILogger<ProjectsController> logger,
+        IRuleAdvisoryService? ruleAdvisoryService = null)
     {
         _projectService = projectService;
         _ruleService = ruleService;
+        _ruleAdvisoryService = ruleAdvisoryService;
         _logger = logger;
     }
 
@@ -301,6 +305,50 @@ public class ProjectsController : ControllerBase
         {
             _logger.LogError(ex, "Error updating features for project {ProjectId}", id);
             return StatusCode(500, new { error = "Failed to update features", message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get terminology rule advisories for a project
+    /// Returns dynamically generated advisories about potential issues in terminology authoring
+    /// (e.g., broken code references, missing displays, duplicate codes)
+    /// </summary>
+    [HttpGet("{id}/terminology/advisories")]
+    public async Task<IActionResult> GetTerminologyAdvisories(Guid id)
+    {
+        try
+        {
+            if (_ruleAdvisoryService == null)
+            {
+                return StatusCode(501, new { error = "Terminology advisory service is not configured" });
+            }
+
+            // Verify project exists
+            var project = await _projectService.GetProjectAsync(id);
+            if (project == null)
+            {
+                return NotFound(new { error = "Project not found" });
+            }
+
+            _logger.LogInformation("Generating terminology advisories for project {ProjectId}", id);
+
+            // Generate advisories (non-blocking, read-only operation)
+            var advisories = await _ruleAdvisoryService.GenerateAdvisoriesAsync(
+                id.ToString(), 
+                HttpContext.RequestAborted);
+
+            return Ok(new
+            {
+                projectId = id,
+                advisoryCount = advisories.Count,
+                advisories = advisories,
+                generatedAt = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating terminology advisories for project {ProjectId}", id);
+            return StatusCode(500, new { error = "Failed to generate advisories", message = ex.Message });
         }
     }
 }

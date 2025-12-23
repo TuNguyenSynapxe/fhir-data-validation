@@ -1,0 +1,35 @@
+{
+  "id": "TERM-OBS-001",
+  "name": "Observation Category Binding",
+  "description": "Constrains Observation.category to allowed screening types",
+  "resourceType": "Observation",
+  "path": "Observation.category.coding",
+  "constraintType": "binding",
+  "bindingStrength": "required",
+  "valueSetUrl": "http://example.org/fhir/CodeSystem/screening-observation-category",
+  "allowedAnswers": [
+    {
+      "system": "http://example.org/fhir/CodeSystem/screening-observation-category",
+      "code": "screening-mental-health",
+      "display": "Mental Health Screening"
+    },
+    {
+      "system": "http://example.org/fhir/CodeSystem/screening-observation-category",
+      "code": "screening-social",
+      "display": "Social Screening"
+    },
+    {
+      "system": "http://example.org/fhir/CodeSystem/screening-observation-category",
+      "code": "screening-substance",
+      "display": "Substance Use Screening"
+    }
+  ],
+  "severity": "error",
+  "message": "Observation category must be one of the allowed screening types",
+  "active": true,
+  "metadata": {
+    "createdBy": "admin",
+    "createdDate": "2025-12-21T10:00:00Z",
+    "project": "PSS"
+  }
+}

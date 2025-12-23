@@ -56,7 +56,7 @@ interface RightPanelProps {
 export const RightPanel: React.FC<RightPanelProps> = ({
   mode,
   rules,
-  codemaster,
+  codemaster: _codemaster, // Unused after Phase A migration
   settings,
   metadata,
   bundle,
@@ -77,14 +77,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     ruleSuggestions = [],
   } = rules;
   
-  // Destructure codemaster props
-  const {
-    codeMasterJson = '',
-    onCodeMasterChange,
-    onSaveCodeMaster,
-    hasCodeMasterChanges = false,
-    isSavingCodeMaster = false,
-  } = codemaster;
+  // Codemaster props no longer needed after Phase A migration
+  // CodeMasterEditor now manages own state via API calls
   
   // Destructure settings props
   const {
@@ -148,11 +142,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
       case 'codemaster':
         return (
           <CodeMasterEditor
-            value={codeMasterJson}
-            onChange={onCodeMasterChange || (() => {})}
-            onSave={onSaveCodeMaster || (() => {})}
-            hasChanges={hasCodeMasterChanges}
-            isSaving={isSavingCodeMaster}
+            projectId={projectId!}
           />
         );
       case 'metadata':

@@ -1,0 +1,39 @@
+{
+  "resourceType": "CodeSystem",
+  "url": "http://example.org/fhir/CodeSystem/patient-status",
+  "version": "1.0.0",
+  "name": "PatientStatus",
+  "title": "Patient Status Codes",
+  "status": "active",
+  "description": "Codes representing patient status values",
+  "publisher": "Example Healthcare Organization",
+  "content": "complete",
+  "count": 5,
+  "concept": [
+    {
+      "code": "active",
+      "display": "Active Patient",
+      "definition": "A patient who is currently receiving care"
+    },
+    {
+      "code": "inactive",
+      "display": "Inactive Patient",
+      "definition": "A patient who is no longer receiving care"
+    },
+    {
+      "code": "pending",
+      "display": "Pending Registration",
+      "definition": "A patient whose registration is being processed"
+    },
+    {
+      "code": "discharged",
+      "display": "Discharged",
+      "definition": "A patient who has been discharged from care"
+    },
+    {
+      "code": "deceased",
+      "display": "Deceased",
+      "definition": "A patient who is deceased"
+    }
+  ]
+}

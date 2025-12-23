@@ -1,0 +1,6 @@
+code,display,definition
+active,Active Patient,A patient who is currently receiving care
+inactive,Inactive Patient,A patient who is no longer receiving care
+pending,Pending Registration,A patient whose registration is being processed
+discharged,Discharged,A patient who has been discharged from care
+deceased,Deceased,A patient who is deceased
