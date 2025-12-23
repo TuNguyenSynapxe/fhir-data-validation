@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Pss.FhirProcessor.Playground.Api.Models;
 
 /// <summary>
@@ -25,16 +27,19 @@ public class CodeSetDto
     /// <summary>
     /// Canonical URL that uniquely identifies this CodeSet
     /// </summary>
+    [JsonPropertyName("url")]
     public string Url { get; set; } = string.Empty;
 
     /// <summary>
     /// Human-friendly name of the CodeSet
     /// </summary>
+    [JsonPropertyName("name")]
     public string? Name { get; set; }
 
     /// <summary>
     /// Concepts defined in this CodeSet (PHASE 1: code + display only)
     /// </summary>
+    [JsonPropertyName("concepts")]
     public List<CodeSetConceptDto> Concepts { get; set; } = new();
 }
 
@@ -65,10 +70,12 @@ public class CodeSetConceptDto
     /// <summary>
     /// Code that identifies this concept (primary key within CodeSet)
     /// </summary>
+    [JsonPropertyName("code")]
     public string Code { get; set; } = string.Empty;
 
     /// <summary>
     /// Human-readable display text (PHASE 1: single language only)
     /// </summary>
+    [JsonPropertyName("display")]
     public string? Display { get; set; }
 }

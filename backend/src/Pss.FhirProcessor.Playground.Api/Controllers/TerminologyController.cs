@@ -93,17 +93,36 @@ public class TerminologyController : ControllerBase
     [HttpPut("codesystems")]
     public async Task<ActionResult<CodeSetDto>> SaveCodeSystem(string projectId, [FromBody] CodeSetDto codeSetDto)
     {
-        try
-        {
+        try {
             if (string.IsNullOrWhiteSpace(codeSetDto?.Url))
             {
                 return BadRequest(new { error = "CodeSet.url is required" });
             }
 
-            // Validate concepts
-            if (codeSetDto.Concepts.Any(c => string.IsNullOrWhiteSpace(c.Code)))
+            // PHASE 1 STABILIZATION: Validate concept codes
+            // 1. Reject empty/whitespace-only codes
+            var invalidConcepts = codeSetDto.Concepts
+                .Where(c => string.IsNullOrWhiteSpace(c.Code))
+                .ToList();
+            
+            if (invalidConcepts.Any())
             {
-                return BadRequest(new { error = "All concepts must have a code" });
+                return BadRequest(new { error = "All concepts must have a non-empty code" });
+            }
+
+            // 2. Reject duplicate codes (case-sensitive)
+            var duplicateCodes = codeSetDto.Concepts
+                .GroupBy(c => c.Code)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+            
+            if (duplicateCodes.Any())
+            {
+                return BadRequest(new { 
+                    error = "Duplicate concept codes are not allowed", 
+                    duplicates = duplicateCodes 
+                });
             }
 
             _logger.LogInformation("Save CodeSet for project: {ProjectId}, URL: {Url}", projectId, codeSetDto.Url);
@@ -167,7 +186,7 @@ public class TerminologyController : ControllerBase
             Url = codeSystem.Url,
             Name = codeSystem.Name,
             // PHASE 1: Only code + display exposed
-            Concepts = codeSystem.Concept.Select(c => new CodeSetConceptDto
+            Concepts = (codeSystem.Concept ?? new List<CodeSystemConcept>()).Select(c => new CodeSetConceptDto
             {
                 Code = c.Code,
                 Display = c.Display
@@ -191,7 +210,7 @@ public class TerminologyController : ControllerBase
             Status = "active",
             Content = "complete",
             // PHASE 1: Only code + display persisted
-            Concept = dto.Concepts.Select(c => new CodeSystemConcept
+            Concept = (dto.Concepts ?? new List<CodeSetConceptDto>()).Select(c => new CodeSystemConcept
             {
                 Code = c.Code,
                 Display = c.Display

@@ -1,7 +1,7 @@
 {
-  "url": "https://fhir.synapxe.sg/CodeSystem/ethnicity",
+  "url": "https://fhir.synapxe.sg/CodeSystem/language",
   "version": null,
-  "name": "ethnicity",
+  "name": "language",
   "title": null,
   "status": "active",
   "description": null,
@@ -11,7 +11,7 @@
   "concept": [
     {
       "code": "CN",
-      "display": "Chinese",
+      "display": "Mandarin/Dialect",
       "definition": null,
       "designation": null,
       "property": null,
@@ -26,16 +26,24 @@
       "concept": null
     },
     {
-      "code": "IN",
-      "display": "Indian",
+      "code": "EN",
+      "display": "English",
       "definition": null,
       "designation": null,
       "property": null,
       "concept": null
     },
     {
-      "code": "XX",
-      "display": "Others",
+      "code": "IN",
+      "display": "Tamil",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "abc",
+      "display": "Def",
       "definition": null,
       "designation": null,
       "property": null,

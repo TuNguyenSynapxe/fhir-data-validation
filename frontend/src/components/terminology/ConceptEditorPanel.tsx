@@ -97,9 +97,23 @@ export const ConceptEditorPanel: React.FC<ConceptEditorPanelProps> = ({
 
   return (
     <div className="flex flex-col h-full bg-white">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-200">
+      {/* Header with Actions */}
+      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-900">Edit Concept</h3>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleDelete}
+            className="px-3 py-2 text-sm font-medium text-red-700 bg-red-50 rounded hover:bg-red-100 transition-colors"
+          >
+            Delete
+          </button>
+          <button
+            onClick={handleSave}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+          >
+            Save Changes
+          </button>
+        </div>
       </div>
 
       {/* Form */}
@@ -160,22 +174,6 @@ export const ConceptEditorPanel: React.FC<ConceptEditorPanelProps> = ({
             <p className="text-xs text-red-600 mt-1">{errors.display}</p>
           )}
         </div>
-      </div>
-
-      {/* Actions */}
-      <div className="p-4 border-t border-gray-200 flex items-center justify-between">
-        <button
-          onClick={handleDelete}
-          className="px-3 py-2 text-sm font-medium text-red-700 bg-red-50 rounded hover:bg-red-100 transition-colors"
-        >
-          Delete
-        </button>
-        <button
-          onClick={handleSave}
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
-        >
-          Save Changes
-        </button>
       </div>
     </div>
   );

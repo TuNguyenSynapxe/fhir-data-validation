@@ -11,7 +11,7 @@
  * - CodeSystem CRUD (create, read, update, delete)
  * - Concept CRUD (code + display only)
  * - Search concepts within CodeSystem
- * - Phase B: Import legacy codeMasterJson data
+ * - Bulk import from JSON/CSV files
  * 
  * OUT-OF-SCOPE (Phase 2+):
  * - definition, designation, property fields
@@ -23,16 +23,17 @@
  * 
  * Migration Status:
  * - Phase A: Connected to TerminologyController (file-based storage)
- * - Phase B: Legacy data migration implemented
+ * - Bulk import: Supports JSON and CSV formats
  * - No longer uses Project.codeMasterJson or /codemaster endpoint
  * 
  * See: /docs/TERMINOLOGY_PHASE_1.md
  */
 
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Plus, Upload, ArrowLeft, List, Loader2, Database } from 'lucide-react';
+import { AlertCircle, Plus, Upload, ArrowLeft, List, Loader2 } from 'lucide-react';
 import { ConceptListPanel } from '../../terminology/ConceptListPanel';
 import { ConceptEditorPanel } from '../../terminology/ConceptEditorPanel';
+import { ImportModal } from '../../terminology/ImportModal';
 import type { CodeSetConcept } from '../../../types/codeSystem';
 import {
   listCodeSystems,
@@ -40,7 +41,6 @@ import {
   deleteCodeSystem,
   type CodeSetDto,
 } from '../../../api/terminologyApi';
-import { getProject } from '../../../api/projectsApi';
 
 interface CodeMasterEditorProps {
   projectId: string;
@@ -55,13 +55,12 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [hasLegacyData, setHasLegacyData] = useState(false);
-  const [isMigrating, setIsMigrating] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Load CodeSystems from TerminologyController on mount
   useEffect(() => {
     loadCodeSystems();
-    checkLegacyData();
   }, [projectId]);
 
   const loadCodeSystems = async () => {
@@ -83,17 +82,7 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
     }
   };
 
-  const checkLegacyData = async () => {
-    try {
-      const project = await getProject(projectId);
-      const legacyJson = project.codeMasterJson;
-      if (legacyJson && legacyJson.trim() !== '' && legacyJson !== '{}') {
-        setHasLegacyData(true);
-      }
-    } catch (err) {
-      console.error('Failed to check legacy data:', err);
-    }
-  };
+
 
   // Auto-select first concept when CodeSet selected
   useEffect(() => {
@@ -125,13 +114,25 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
   };
 
   const handleAddCodeSet = async () => {
+    const url = prompt('Enter CodeSystem URL:', 'https://fhir.synapxe.sg/CodeSystem/');
+    
+    if (!url || url.trim() === '') {
+      return; // User cancelled or entered empty URL
+    }
+
+    // Check if URL already exists
+    if (codeSets.some(cs => cs.url === url.trim())) {
+      setError(`CodeSystem with URL "${url.trim()}" already exists`);
+      return;
+    }
+
     try {
       setIsSaving(true);
       setError(null);
       
       const newCodeSet: CodeSetDto = {
-        url: `http://example.org/fhir/CodeSystem/terminology-${Date.now()}`,
-        name: 'New Terminology',
+        url: url.trim(),
+        name: url.split('/').pop() || 'New Terminology',
         concepts: [],
       };
       
@@ -171,82 +172,128 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
     }
   };
 
-  const handleMigrateLegacyData = async () => {
-    if (!confirm('Import legacy CodeMaster data? This will convert it to the new format.')) {
-      return;
-    }
+  const handleBulkImport = () => {
+    setShowImportModal(true);
+  };
+
+  const handleFileSelect = async (file: File) => {
 
     try {
-      setIsMigrating(true);
+      setIsImporting(true);
       setError(null);
-      
-      // Fetch legacy data
-      const project = await getProject(projectId);
-      const legacyJson = project.codeMasterJson;
-      
-      if (!legacyJson || legacyJson.trim() === '' || legacyJson === '{}') {
-        setError('No legacy data found');
-        return;
-      }
 
-      // Parse legacy JSON (support 3 formats)
-      let legacyCodeSets: Array<{ url: string; name?: string; concepts: Array<{ code: string; display?: string }> }> = [];
-      
-      try {
-        const parsed = JSON.parse(legacyJson);
-        
-        if (Array.isArray(parsed)) {
-          // Format 1: Array of CodeSets
-          legacyCodeSets = parsed;
-        } else if (parsed.url && Array.isArray(parsed.concepts)) {
-          // Format 2: Single CodeSet
-          legacyCodeSets = [parsed];
-        } else if (parsed.systems && Array.isArray(parsed.systems)) {
-          // Format 3: Legacy { systems: [...] }
-          legacyCodeSets = parsed.systems.map((sys: any) => ({
-            url: sys.system,
-            name: sys.version || 'Lookup Table',
-            concepts: (sys.concepts || []).map((c: any) => ({
-              code: c.code,
-              display: c.display,
-            })),
-          }));
+      const fileContent = await file.text();
+      let codeSetsToImport: Array<{ url: string; name?: string; concepts: Array<{ code: string; display?: string }> }> = [];
+
+      if (file.name.endsWith('.json')) {
+        // Parse JSON format
+        try {
+          const parsed = JSON.parse(fileContent);
+          if (Array.isArray(parsed)) {
+            codeSetsToImport = parsed;
+          } else {
+            setError('JSON file must contain an array of CodeSystems');
+            return;
+          }
+        } catch (parseErr) {
+          setError('Invalid JSON format');
+          return;
         }
-      } catch (parseErr) {
-        setError('Failed to parse legacy JSON');
+      } else if (file.name.endsWith('.csv')) {
+        // Parse CSV format (codesystem_url,code,display)
+        const lines = fileContent.split('\n').filter(line => line.trim() !== '');
+        if (lines.length === 0) {
+          setError('CSV file is empty');
+          return;
+        }
+
+        // Skip header if present
+        const startIndex = lines[0].toLowerCase().includes('codesystem_url') ? 1 : 0;
+        const codeSystemMap = new Map<string, Array<{ code: string; display?: string }>>();
+
+        for (let i = startIndex; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+
+          const parts = line.split(',');
+          if (parts.length < 2) continue;
+
+          const url = parts[0].trim();
+          const code = parts[1].trim();
+          const display = parts.length > 2 ? parts.slice(2).join(',').trim() : code;
+
+          if (!codeSystemMap.has(url)) {
+            codeSystemMap.set(url, []);
+          }
+          codeSystemMap.get(url)!.push({ code, display });
+        }
+
+        codeSetsToImport = Array.from(codeSystemMap.entries()).map(([url, concepts]) => ({
+          url,
+          name: url.split('/').pop(),
+          concepts,
+        }));
+      } else {
+        setError('Unsupported file format. Please upload .json or .csv file');
         return;
       }
 
-      if (legacyCodeSets.length === 0) {
-        setError('No CodeSystems found in legacy data');
+      if (codeSetsToImport.length === 0) {
+        setError('No CodeSystems found in file');
         return;
       }
 
-      // Migrate each CodeSet
+      // Import each CodeSet
       let successCount = 0;
-      for (const codeSet of legacyCodeSets) {
-        const dto: CodeSetDto = {
-          url: codeSet.url,
-          name: codeSet.name,
-          concepts: (codeSet.concepts || []).map(c => ({
-            code: c.code,
-            display: c.display,
-          })),
-        };
-        
-        await saveCodeSystem(projectId, dto);
-        successCount++;
+      let errorCount = 0;
+      for (const codeSet of codeSetsToImport) {
+        try {
+          // Ensure concepts is always an array
+          const concepts = Array.isArray(codeSet.concepts) ? codeSet.concepts : [];
+          
+          console.log('Importing CodeSet:', {
+            url: codeSet.url,
+            rawConcepts: codeSet.concepts,
+            normalizedConcepts: concepts,
+            conceptsLength: concepts.length
+          });
+          
+          const dto: CodeSetDto = {
+            url: codeSet.url,
+            name: codeSet.name || codeSet.url.split('/').pop() || 'Imported CodeSystem',
+            concepts: concepts.map(c => ({
+              code: c.code || '',
+              display: c.display || c.code || '',
+            })),
+          };
+          
+          console.log('Sending DTO:', dto);
+          
+          await saveCodeSystem(projectId, dto);
+          successCount++;
+        } catch (err) {
+          console.error(`Failed to import CodeSystem ${codeSet.url}:`, err);
+          errorCount++;
+        }
       }
 
       // Refresh list
       await loadCodeSystems();
-      setHasLegacyData(false); // Hide migration button
-      setSuccessMessage(`Migrated ${successCount} terminolog${successCount !== 1 ? 'ies' : 'y'}`);
+      
+      // Close modal
+      setShowImportModal(false);
+      
+      if (errorCount === 0) {
+        setSuccessMessage(`Imported ${successCount} CodeSystem${successCount !== 1 ? 's' : ''}`);
+      } else {
+        setSuccessMessage(`Imported ${successCount} CodeSystem${successCount !== 1 ? 's' : ''} (${errorCount} failed)`);
+      }
     } catch (err) {
-      console.error('Failed to migrate legacy data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to migrate legacy data');
+      console.error('Failed to import file:', err);
+      setError(err instanceof Error ? err.message : 'Failed to import file');
+      setShowImportModal(false);
     } finally {
-      setIsMigrating(false);
+      setIsImporting(false);
     }
   };
 
@@ -302,6 +349,8 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
       
       await saveCodeSystem(projectId, updated);
       await loadCodeSystems(); // Refresh to get latest data
+      
+      // PHASE 1 STABILIZATION: Update selectedCode if code changed
       setSelectedCode(updatedConcept.code);
       setSuccessMessage('Concept saved');
     } catch (err) {
@@ -357,6 +406,14 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
   if (!selectedCodeSetUrl) {
     return (
       <div className="flex flex-col h-full">
+        {/* Import Modal */}
+        <ImportModal
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          onFileSelect={handleFileSelect}
+          isImporting={isImporting}
+        />
+
         {/* Header */}
         <div className="flex items-center justify-between border-b bg-gray-50 px-4 py-2">
           <div className="flex items-center gap-2">
@@ -364,17 +421,15 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
             <h3 className="font-semibold">Terminology</h3>
           </div>
           <div className="flex items-center gap-2">
-            {hasLegacyData && (
-              <button
-                onClick={handleMigrateLegacyData}
-                disabled={isMigrating}
-                className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-purple-700 bg-purple-50 rounded hover:bg-purple-100 transition-colors disabled:opacity-50"
-                title="Import CodeSystems from legacy CodeMaster JSON"
-              >
-                <Database className="w-4 h-4" />
-                {isMigrating ? 'Migrating...' : 'Import Legacy'}
-              </button>
-            )}
+            <button
+              onClick={handleBulkImport}
+              disabled={isImporting}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors disabled:opacity-50"
+              title="Import CodeSystems from JSON or CSV file"
+            >
+              <Upload className="w-4 h-4" />
+              {isImporting ? 'Importing...' : 'Import'}
+            </button>
             <button
               onClick={handleAddCodeSet}
               disabled={isSaving}
@@ -382,13 +437,6 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
             >
               <Plus className="w-4 h-4" />
               Add
-            </button>
-            <button
-              className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
-              title="Import from file (coming soon)"
-            >
-              <Upload className="w-4 h-4" />
-              Import
             </button>
           </div>
         </div>

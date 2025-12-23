@@ -1,7 +1,7 @@
 {
-  "url": "https://fhir.synapxe.sg/CodeSystem/ethnicity",
+  "url": "https://fhir.synapxe.sg/CodeSystem/organization-type",
   "version": null,
-  "name": "ethnicity",
+  "name": "organization-type",
   "title": null,
   "status": "active",
   "description": null,
@@ -10,32 +10,32 @@
   "count": null,
   "concept": [
     {
-      "code": "CN",
-      "display": "Chinese",
+      "code": "CLUSTER",
+      "display": "Cluster",
       "definition": null,
       "designation": null,
       "property": null,
       "concept": null
     },
     {
-      "code": "MY",
-      "display": "Malay",
+      "code": "GP",
+      "display": "General Practitioner",
       "definition": null,
       "designation": null,
       "property": null,
       "concept": null
     },
     {
-      "code": "IN",
-      "display": "Indian",
+      "code": "POLY",
+      "display": "Polyclinic",
       "definition": null,
       "designation": null,
       "property": null,
       "concept": null
     },
     {
-      "code": "XX",
-      "display": "Others",
+      "code": "OTHER",
+      "display": "Other",
       "definition": null,
       "designation": null,
       "property": null,

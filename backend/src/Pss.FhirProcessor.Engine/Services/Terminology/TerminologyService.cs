@@ -31,7 +31,8 @@ public class TerminologyService : ITerminologyService
         _jsonOptions = new JsonSerializerOptions
         {
             WriteIndented = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            PropertyNameCaseInsensitive = true
         };
     }
 
@@ -122,10 +123,28 @@ public class TerminologyService : ITerminologyService
         var fileName = GenerateFileName(codeSystem.Url);
         var filePath = Path.Combine(terminologyDir, fileName);
 
-        var json = JsonSerializer.Serialize(codeSystem, _jsonOptions);
-        await File.WriteAllTextAsync(filePath, json, cancellationToken);
-
-        _logger.LogInformation("CodeSystem saved: {FilePath}", filePath);
+        // PHASE 1 STABILIZATION: Atomic write with temp file to prevent corruption
+        var tempFilePath = filePath + ".tmp";
+        
+        try
+        {
+            var json = JsonSerializer.Serialize(codeSystem, _jsonOptions);
+            await File.WriteAllTextAsync(tempFilePath, json, cancellationToken);
+            
+            // Atomic rename: overwrites existing file if present
+            File.Move(tempFilePath, filePath, overwrite: true);
+            
+            _logger.LogInformation("CodeSystem saved: {FilePath}", filePath);
+        }
+        catch
+        {
+            // Clean up temp file if atomic write failed
+            if (File.Exists(tempFilePath))
+            {
+                try { File.Delete(tempFilePath); } catch { /* Ignore cleanup errors */ }
+            }
+            throw;
+        }
     }
 
     public async Task<bool> DeleteCodeSystemAsync(string projectId, string url, CancellationToken cancellationToken = default)

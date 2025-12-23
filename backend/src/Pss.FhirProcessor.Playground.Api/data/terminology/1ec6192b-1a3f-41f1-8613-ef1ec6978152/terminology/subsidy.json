@@ -1,0 +1,62 @@
+{
+  "url": "https://fhir.synapxe.sg/CodeSystem/subsidy",
+  "version": null,
+  "name": "subsidy",
+  "title": null,
+  "status": "active",
+  "description": null,
+  "publisher": null,
+  "content": "complete",
+  "count": null,
+  "concept": [
+    {
+      "code": "PG",
+      "display": "Pioneer Generation",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "MG",
+      "display": "Merdeka Generation",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "CHAS",
+      "display": "CHAS Blue/Orange",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "Citizen",
+      "display": "Singaporean / CHAS Green",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "PR",
+      "display": "Singapore Permanent Resident",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "Other",
+      "display": "Other Public Assistance Scheme (Public Assistance, ComCare, Medifund, Medical Fee Exemption Card)",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    }
+  ],
+  "meta": null
+}
