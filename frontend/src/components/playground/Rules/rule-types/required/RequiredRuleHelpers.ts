@@ -5,11 +5,13 @@
  * - Default rule construction
  * - FHIRPath composition
  * - Human-readable defaults
+ * 
+ * Phase 3: Instance scope now uses FHIRPath node selection
  */
 
 interface RequiredRuleData {
   resourceType: string;
-  instanceScope: 'all' | 'first';
+  scopePath: string; // FHIRPath node selection (e.g., "Patient[*]", "Observation[0]")
   fieldPath: string;
   severity: 'error' | 'warning' | 'information';
   message?: string;
@@ -30,18 +32,19 @@ interface Rule {
 
 /**
  * Build a complete Required rule from form data
+ * Phase 3: Uses scopePath for instance scope (FHIRPath node selection)
  */
 export function buildRequiredRule(data: RequiredRuleData): Rule {
-  const { resourceType, instanceScope, fieldPath, severity, message } = data;
+  const { resourceType, scopePath, fieldPath, severity, message } = data;
   
-  // Compose FHIRPath with scope
-  const scopedPath = composeFhirPath(resourceType, instanceScope, fieldPath);
+  // Compose FHIRPath: scopePath + fieldPath
+  const fullPath = composeFhirPath(scopePath, fieldPath);
   
   return {
     id: `rule-${Date.now()}`,
     type: 'Required',
     resourceType,
-    path: scopedPath,
+    path: fullPath,
     severity,
     message: message || getDefaultErrorMessage(resourceType, fieldPath),
     origin: 'manual',
@@ -51,30 +54,29 @@ export function buildRequiredRule(data: RequiredRuleData): Rule {
 }
 
 /**
- * Compose FHIRPath with resource scope
+ * Compose FHIRPath from scope and field path
+ * Phase 3: scopePath is already a full node path (e.g., "Patient[*]", "Observation.component[*]")
  */
 function composeFhirPath(
-  resourceType: string,
-  instanceScope: 'all' | 'first',
+  scopePath: string,
   fieldPath: string
 ): string {
-  // If fieldPath is already absolute (starts with resource type), return as-is
-  if (fieldPath.startsWith(resourceType + '.')) {
-    return fieldPath;
+  // scopePath is already a complete node path
+  // Append fieldPath to it
+  
+  // If fieldPath already contains the resource type, extract relative part
+  const resourceTypeMatch = scopePath.match(/^([A-Z][a-zA-Z]+)/);
+  if (resourceTypeMatch) {
+    const resourceType = resourceTypeMatch[1];
+    if (fieldPath.startsWith(resourceType + '.')) {
+      // Extract relative part
+      const relativePart = fieldPath.substring(resourceType.length + 1);
+      return `${scopePath}.${relativePart}`;
+    }
   }
   
-  // Compose: ResourceType + scope + fieldPath
-  const scope = instanceScope === 'all' ? '[*]' : '[0]';
-  
-  // Handle both absolute and relative paths
-  if (fieldPath.startsWith(resourceType)) {
-    // Path already includes resource type (e.g., "Patient.name.family")
-    const relativePart = fieldPath.substring(resourceType.length + 1);
-    return `${resourceType}${scope}.${relativePart}`;
-  }
-  
-  // Path is relative (e.g., "name.family")
-  return `${resourceType}${scope}.${fieldPath}`;
+  // fieldPath is relative, append directly
+  return `${scopePath}.${fieldPath}`;
 }
 
 /**

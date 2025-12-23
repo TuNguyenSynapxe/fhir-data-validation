@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { X, Check, AlertCircle } from 'lucide-react';
+import { FhirPathPicker } from '../../../../common/FhirPathPicker';
+import type { FhirPathPickerResult } from '../../../../common/FhirPathPicker';
 import FhirPathSelectorDrawer from '../../../../rules/FhirPathSelectorDrawer';
 import { MessageEditor } from '../../../MessageEditor';
 import {
@@ -38,15 +40,29 @@ export const RequiredRuleForm: React.FC<RequiredRuleFormProps> = ({
   initialResourceType = 'Patient',
 }) => {
   const [resourceType, setResourceType] = useState<string>(initialResourceType);
-  const [instanceScope, setInstanceScope] = useState<'all' | 'first'>('all');
+  // Instance scope now uses FHIRPath node selection (Phase 3)
+  const [scopePath, setScopePath] = useState<string>('');
   const [fieldPath, setFieldPath] = useState<string>('');
   const [severity, setSeverity] = useState<'error' | 'warning' | 'information'>('error');
   const [customMessage, setCustomMessage] = useState<string>('');
+  const [isScopePickerOpen, setIsScopePickerOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [errors, setErrors] = useState<{ fieldPath?: string }>({});
+  const [errors, setErrors] = useState<{ scopePath?: string; fieldPath?: string }>({});
 
   const handleSelectField = () => {
     setIsDrawerOpen(true);
+  };
+
+  const handleSelectScope = () => {
+    setIsScopePickerOpen(true);
+  };
+
+  const handleScopeSelected = (result: FhirPathPickerResult) => {
+    if (result.kind === 'node') {
+      setScopePath(result.path);
+      setErrors({ ...errors, scopePath: undefined });
+      setIsScopePickerOpen(false);
+    }
   };
 
   const handlePathSelected = (path: string) => {
@@ -57,7 +73,11 @@ export const RequiredRuleForm: React.FC<RequiredRuleFormProps> = ({
 
   const handleSave = () => {
     // Validate required fields
-    const newErrors: { fieldPath?: string } = {};
+    const newErrors: { scopePath?: string; fieldPath?: string } = {};
+    
+    if (!scopePath) {
+      newErrors.scopePath = 'Please select instance scope';
+    }
     
     if (!fieldPath) {
       newErrors.fieldPath = 'Please select a field';
@@ -71,7 +91,7 @@ export const RequiredRuleForm: React.FC<RequiredRuleFormProps> = ({
     // Build rule
     const rule = buildRequiredRule({
       resourceType,
-      instanceScope,
+      scopePath,
       fieldPath,
       severity,
       message: customMessage,
@@ -128,49 +148,37 @@ export const RequiredRuleForm: React.FC<RequiredRuleFormProps> = ({
           </p>
         </div>
 
-        {/* Resource Instance Scope */}
+        {/* Instance Scope - FHIRPath Node Selection */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Instance Scope
+            Instance Scope <span className="text-red-500">*</span>
           </label>
-          <div className="space-y-2">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="radio"
-                name="instanceScope"
-                value="all"
-                checked={instanceScope === 'all'}
-                onChange={() => setInstanceScope('all')}
-                className="mt-0.5"
-              />
-              <div>
-                <div className="text-sm font-medium text-gray-900">
-                  All instances <span className="text-gray-500 font-mono text-xs">[*]</span>
-                </div>
-                <div className="text-xs text-gray-600">
-                  Validate all matching resources in the bundle
-                </div>
+          <button
+            onClick={handleSelectScope}
+            className={`w-full px-4 py-3 border rounded-md text-left transition-colors ${
+              errors.scopePath
+                ? 'border-red-300 bg-red-50'
+                : 'border-gray-300 hover:border-blue-500 hover:bg-blue-50'
+            }`}
+          >
+            {scopePath ? (
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-sm text-gray-900">{scopePath}</span>
+                <Check size={16} className="text-green-600" />
               </div>
-            </label>
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="radio"
-                name="instanceScope"
-                value="first"
-                checked={instanceScope === 'first'}
-                onChange={() => setInstanceScope('first')}
-                className="mt-0.5"
-              />
-              <div>
-                <div className="text-sm font-medium text-gray-900">
-                  First only <span className="text-gray-500 font-mono text-xs">[0]</span>
-                </div>
-                <div className="text-xs text-gray-600">
-                  Validate only the first matching resource
-                </div>
-              </div>
-            </label>
-          </div>
+            ) : (
+              <span className="text-gray-500">Select target nodes...</span>
+            )}
+          </button>
+          {errors.scopePath && (
+            <div className="flex items-center gap-1 mt-1 text-xs text-red-600">
+              <AlertCircle size={12} />
+              <span>{errors.scopePath}</span>
+            </div>
+          )}
+          <p className="text-xs text-gray-500 mt-1">
+            Select the nodes this rule applies to (e.g., Patient[*], Observation[0], Observation.component[*])
+          </p>
         </div>
 
         {/* Field Selector */}
@@ -274,14 +282,24 @@ export const RequiredRuleForm: React.FC<RequiredRuleFormProps> = ({
         </button>
         <button
           onClick={handleSave}
-          disabled={!fieldPath}
+          disabled={!scopePath || !fieldPath}
           className="px-4 py-2 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           Create Rule
         </button>
       </div>
 
-      {/* FHIRPath Selector Drawer */}
+      {/* FHIRPath Picker for Instance Scope */}
+      <FhirPathPicker
+        mode="node"
+        isOpen={isScopePickerOpen}
+        bundle={projectBundle || {}}
+        resourceType={resourceType}
+        onSelect={handleScopeSelected}
+        onCancel={() => setIsScopePickerOpen(false)}
+      />
+
+      {/* FHIRPath Selector Drawer for Field Path */}
       <FhirPathSelectorDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
