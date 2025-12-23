@@ -70,10 +70,8 @@ public class ValidationPipeline : IValidationPipeline
                 return response;
             }
             
-            // Step 1: Lint Validation (best-effort, non-authoritative)
-            // CRITICAL: Always runs to provide advisory feedback, even when Firely fails
-            // In "full" mode: runs all lint checks
-            // In "standard" mode: still runs when Firely fails to provide helpful diagnostics
+            // Step 1: Lint Validation (advisory quality checks)
+            // ONLY runs in "full" analysis mode
             // Does NOT block Firely validation - all lint errors are advisory
             var validationMode = request.ValidationMode ?? "standard";
             // Support both new (standard/full) and legacy (fast/debug) mode names
@@ -85,7 +83,7 @@ public class ValidationPipeline : IValidationPipeline
             
             if (shouldRunLint)
             {
-                _logger.LogDebug("Running Lint validation in debug mode");
+                _logger.LogDebug("Running Lint validation in full analysis mode");
                 var lintIssues = await _lintService.ValidateAsync(request.BundleJson, request.FhirVersion, cancellationToken);
                 var lintErrors = await _errorBuilder.FromQualityFindingsAsync(lintIssues, null, cancellationToken);
                 _logger.LogInformation("Lint validation completed: {IssueCount} issues found", lintErrors.Count);
@@ -127,7 +125,7 @@ public class ValidationPipeline : IValidationPipeline
             }
             else
             {
-                _logger.LogInformation("=== SPECHINT CHECKPOINT X: Not in debug mode (mode={Mode}), skipping SpecHint", validationMode);
+                _logger.LogInformation("=== SPECHINT CHECKPOINT X: Not in full analysis mode (mode={Mode}), skipping SpecHint", validationMode);
             }
             
             // Step 2: Firely Structural Validation (authoritative)
@@ -140,28 +138,8 @@ public class ValidationPipeline : IValidationPipeline
             var firelyErrorCount = firelyErrors.Count(e => e.Source == "FHIR" && e.Severity == "error");
             _logger.LogInformation("Firely validation completed: {ErrorCount} structural errors found", firelyErrorCount);
             
-            // Step 2.5: Fallback Lint Check - If Firely reported structural errors AND we're in fast mode
-            // Run lint to provide MISSING_REQUIRED_FIELD and other advisory checks
-            // This ensures users get helpful feedback even when data is structurally invalid
-            if (!shouldRunLint && firelyErrors.Any(e => e.Source == "FHIR" && e.Severity == "error"))
-            {
-                _logger.LogInformation("Firely structural errors detected in fast mode - running advisory lint checks for diagnostics");
-                var fallbackLintIssues = await _lintService.ValidateAsync(request.BundleJson, request.FhirVersion, cancellationToken);
-                _logger.LogDebug("Fallback Lint validation found {RawIssueCount} raw issues", fallbackLintIssues.Count);
-                var fallbackLintErrors = await _errorBuilder.FromQualityFindingsAsync(fallbackLintIssues, null, cancellationToken);
-                _logger.LogInformation("Fallback Lint validation converted to {ErrorCount} errors", fallbackLintErrors.Count);
-                // Mark these as fallback diagnostics
-                foreach (var error in fallbackLintErrors)
-                {
-                    if (error.Details == null) error.Details = new Dictionary<string, object>();
-                    error.Details["triggeredBy"] = "firely_error_fallback";
-                }
-                response.Errors.AddRange(fallbackLintErrors);
-            }
-            else
-            {
-                _logger.LogDebug("Skipping fallback lint: LintAlreadyRan={LintRan}, FirelyErrorCount={ErrorCount}", shouldRunLint, firelyErrorCount);
-            }
+            // Note: Removed fallback lint check - Lint only runs in full analysis mode
+            // In standard mode, only Firely structural validation, business rules, and reference validation run
             
             // Step 3: Parse to POCO Bundle for business rule processing
             // Even if Firely found structural errors, we still attempt parsing to get as many errors as possible

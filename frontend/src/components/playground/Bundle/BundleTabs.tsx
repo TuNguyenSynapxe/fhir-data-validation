@@ -78,18 +78,69 @@ export const BundleTabs = forwardRef<BundleTabsRef, BundleTabsProps>(({
   // Debounced change handler
   const handleEditorChange = useCallback((value: string) => {
     setLocalValue(value);
-    validateJson(value);
+    const isValid = validateJson(value);
 
-    // Clear existing timer
+    // Debounce the onChange callback
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
 
-    // Set new debounced timer (500ms)
-    debounceTimerRef.current = setTimeout(() => {
-      onBundleChange(value);
-    }, 500);
+    if (isValid) {
+      debounceTimerRef.current = setTimeout(() => {
+        onBundleChange(value);
+      }, 500);
+    }
   }, [onBundleChange]);
+
+  // Handle tree node updates
+  const handleUpdateValue = useCallback((path: string[], newValue: any) => {
+    try {
+      const bundle = JSON.parse(localValue);
+      
+      // Navigate to the path and update the value
+      let current: any = bundle;
+      for (let i = 0; i < path.length - 1; i++) {
+        current = current[path[i]];
+      }
+      current[path[path.length - 1]] = newValue;
+      
+      const updatedJson = JSON.stringify(bundle, null, 2);
+      setLocalValue(updatedJson);
+      onBundleChange(updatedJson);
+    } catch (err) {
+      console.error('Failed to update value:', err);
+      alert(`Failed to update: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  }, [localValue, onBundleChange]);
+
+  // Handle tree node deletion
+  const handleDeleteNode = useCallback((path: string[]) => {
+    try {
+      const bundle = JSON.parse(localValue);
+      
+      // Navigate to parent and delete the key
+      if (path.length === 0) return;
+      
+      let current: any = bundle;
+      for (let i = 0; i < path.length - 1; i++) {
+        current = current[path[i]];
+      }
+      
+      const lastKey = path[path.length - 1];
+      if (Array.isArray(current)) {
+        current.splice(Number(lastKey), 1);
+      } else {
+        delete current[lastKey];
+      }
+      
+      const updatedJson = JSON.stringify(bundle, null, 2);
+      setLocalValue(updatedJson);
+      onBundleChange(updatedJson);
+    } catch (err) {
+      console.error('Failed to delete node:', err);
+      alert(`Failed to delete: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  }, [localValue, onBundleChange]);
 
   // Cleanup debounce timer on unmount
   useEffect(() => {
@@ -185,6 +236,8 @@ export const BundleTabs = forwardRef<BundleTabsRef, BundleTabsProps>(({
             bundleJson={localValue}
             onNodeSelect={handleNodeSelect}
             selectedPath={selectedPath}
+            onUpdateValue={handleUpdateValue}
+            onDeleteNode={handleDeleteNode}
           />
         ) : (
           <div className="h-full">

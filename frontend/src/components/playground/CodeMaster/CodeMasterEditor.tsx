@@ -34,6 +34,8 @@ import { AlertCircle, Plus, Upload, ArrowLeft, List, Loader2 } from 'lucide-reac
 import { ConceptListPanel } from '../../terminology/ConceptListPanel';
 import { ConceptEditorPanel } from '../../terminology/ConceptEditorPanel';
 import { ImportModal } from '../../terminology/ImportModal';
+import { AddTerminologyModal } from '../../terminology/AddTerminologyModal';
+import { DeleteConfirmModal } from '../../terminology/DeleteConfirmModal';
 import type { CodeSetConcept } from '../../../types/codeSystem';
 import {
   listCodeSystems,
@@ -57,6 +59,8 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ url: string; name: string } | null>(null);
 
   // Load CodeSystems from TerminologyController on mount
   useEffect(() => {
@@ -113,26 +117,19 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
     setError(null);
   };
 
-  const handleAddCodeSet = async () => {
-    const url = prompt('Enter CodeSystem URL:', 'https://fhir.synapxe.sg/CodeSystem/');
-    
-    if (!url || url.trim() === '') {
-      return; // User cancelled or entered empty URL
-    }
+  const handleAddCodeSet = () => {
+    setShowAddModal(true);
+  };
 
-    // Check if URL already exists
-    if (codeSets.some(cs => cs.url === url.trim())) {
-      setError(`CodeSystem with URL "${url.trim()}" already exists`);
-      return;
-    }
-
+  const handleConfirmAddCodeSet = async (url: string, name: string) => {
     try {
       setIsSaving(true);
       setError(null);
+      setShowAddModal(false);
       
       const newCodeSet: CodeSetDto = {
-        url: url.trim(),
-        name: url.split('/').pop() || 'New Terminology',
+        url,
+        name,
         concepts: [],
       };
       
@@ -148,25 +145,32 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
     }
   };
 
-  const handleDeleteCodeSet = async (url: string) => {
-    if (!confirm('Delete this terminology? This cannot be undone.')) {
-      return;
+  const handleDeleteCodeSet = (url: string) => {
+    const codeSet = codeSets.find(cs => cs.url === url);
+    if (codeSet) {
+      setDeleteTarget({ url: codeSet.url, name: codeSet.name || codeSet.url });
     }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
     
     try {
       setIsSaving(true);
       setError(null);
       
-      await deleteCodeSystem(projectId, url);
+      await deleteCodeSystem(projectId, deleteTarget.url);
       await loadCodeSystems(); // Refresh list
       
-      if (selectedCodeSetUrl === url) {
+      if (selectedCodeSetUrl === deleteTarget.url) {
         handleBackToList();
       }
       setSuccessMessage('Terminology deleted');
+      setDeleteTarget(null); // Close modal
     } catch (err) {
       console.error('Failed to delete CodeSystem:', err);
       setError(err instanceof Error ? err.message : 'Failed to delete terminology');
+      setDeleteTarget(null); // Close modal even on error
     } finally {
       setIsSaving(false);
     }
@@ -390,9 +394,12 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
   const selectedCodeSet = codeSets.find((cs) => cs.url === selectedCodeSetUrl);
   const selectedConcept = selectedCodeSet?.concepts.find((c) => c.code === selectedCode) || null;
 
+  // Render content based on state
+  let content;
+
   // Loading state
   if (isLoading) {
-    return (
+    content = (
       <div className="flex items-center justify-center h-full bg-gray-50">
         <div className="flex items-center gap-2 text-gray-600">
           <Loader2 className="w-5 h-5 animate-spin" />
@@ -401,19 +408,10 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
       </div>
     );
   }
-
   // List View - Show all CodeSets
-  if (!selectedCodeSetUrl) {
-    return (
+  else if (!selectedCodeSetUrl) {
+    content = (
       <div className="flex flex-col h-full">
-        {/* Import Modal */}
-        <ImportModal
-          isOpen={showImportModal}
-          onClose={() => setShowImportModal(false)}
-          onFileSelect={handleFileSelect}
-          isImporting={isImporting}
-        />
-
         {/* Header */}
         <div className="flex items-center justify-between border-b bg-gray-50 px-4 py-2">
           <div className="flex items-center gap-2">
@@ -515,74 +513,108 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
       </div>
     );
   }
-
   // Detail View - Edit selected CodeSet
-  return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="border-b bg-gray-50">
-        <div className="flex items-center justify-between px-4 py-2">
-          <button
-            onClick={handleBackToList}
-            className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </button>
-          <div>
-            <h3 className="font-semibold">{selectedCodeSet?.name}</h3>
-            <p className="text-xs text-gray-500 font-mono">{selectedCodeSet?.url}</p>
+  else {
+    content = (
+      <div className="flex flex-col h-full">
+        {/* Header */}
+        <div className="border-b bg-gray-50">
+          <div className="flex items-center justify-between px-4 py-2">
+            <button
+              onClick={handleBackToList}
+              className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </button>
+            <div>
+              <h3 className="font-semibold">{selectedCodeSet?.name}</h3>
+              <p className="text-xs text-gray-500 font-mono">{selectedCodeSet?.url}</p>
+            </div>
           </div>
+          {isSaving && (
+            <div className="flex items-center gap-2 px-2 py-1 bg-blue-50 text-blue-700 text-xs">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span>Saving...</span>
+            </div>
+          )}
         </div>
-        {isSaving && (
-          <div className="flex items-center gap-2 px-2 py-1 bg-blue-50 text-blue-700 text-xs">
-            <Loader2 className="w-3 h-3 animate-spin" />
-            <span>Saving...</span>
+
+        {/* Success/Error Messages */}
+        {successMessage && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border-b border-green-200 text-green-700 text-sm">
+            <AlertCircle className="w-4 h-4" />
+            <span>{successMessage}</span>
+          </div>
+        )}
+        {error && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border-b border-red-200 text-red-700 text-sm">
+            <AlertCircle className="w-4 h-4" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* 2-Column Layout */}
+        {selectedCodeSet && (
+          <div className="flex flex-1 overflow-hidden">
+            {/* Left: Concept List (1/3 width) */}
+            <div className="w-1/3 min-w-[250px]">
+              <ConceptListPanel
+                concepts={selectedCodeSet.concepts || []}
+                selectedCode={selectedCode}
+                onSelectConcept={setSelectedCode}
+                onAddConcept={handleAddConcept}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+              />
+            </div>
+
+            {/* Right: Concept Editor (2/3 width) */}
+            <div className="flex-1">
+              <ConceptEditorPanel
+                concept={selectedConcept}
+                systemUrl={selectedCodeSet.url}
+                allConcepts={selectedCodeSet.concepts || []}
+                onSave={handleSaveConcept}
+                onDelete={handleDeleteConcept}
+              />
+            </div>
           </div>
         )}
       </div>
+    );
+  }
 
-      {/* Success/Error Messages */}
-      {successMessage && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border-b border-green-200 text-green-700 text-sm">
-          <AlertCircle className="w-4 h-4" />
-          <span>{successMessage}</span>
-        </div>
-      )}
-      {error && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border-b border-red-200 text-red-700 text-sm">
-          <AlertCircle className="w-4 h-4" />
-          <span>{error}</span>
-        </div>
-      )}
+  // Render with modals always available
+  return (
+    <>
+      {content}
 
-      {/* 2-Column Layout */}
-      {selectedCodeSet && (
-        <div className="flex flex-1 overflow-hidden">
-          {/* Left: Concept List (1/3 width) */}
-          <div className="w-1/3 min-w-[250px]">
-            <ConceptListPanel
-              concepts={selectedCodeSet.concepts || []}
-              selectedCode={selectedCode}
-              onSelectConcept={setSelectedCode}
-              onAddConcept={handleAddConcept}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-            />
-          </div>
+      {/* Add Terminology Modal */}
+      <AddTerminologyModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onConfirm={handleConfirmAddCodeSet}
+        existingUrls={codeSets.map(cs => cs.url)}
+      />
 
-          {/* Right: Concept Editor (2/3 width) */}
-          <div className="flex-1">
-            <ConceptEditorPanel
-              concept={selectedConcept}
-              systemUrl={selectedCodeSet.url}
-              allConcepts={selectedCodeSet.concepts || []}
-              onSave={handleSaveConcept}
-              onDelete={handleDeleteConcept}
-            />
-          </div>
-        </div>
-      )}
-    </div>
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Terminology"
+        message={`Are you sure you want to delete "${deleteTarget?.name}"?`}
+        confirmText="Delete"
+      />
+
+      {/* Import Modal */}
+      <ImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onFileSelect={handleFileSelect}
+        isImporting={isImporting}
+      />
+    </>
   );
 };

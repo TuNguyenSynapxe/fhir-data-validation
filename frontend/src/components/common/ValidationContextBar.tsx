@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, CheckCircle2, XCircle, PlayCircle, Eye, RotateCcw } from 'lucide-react';
+import { AlertCircle, CheckCircle2, XCircle, Eye, RotateCcw } from 'lucide-react';
 import { ValidationState } from '../../types/validationState';
 import { useProjectValidationContext } from '../../contexts/project-validation/ProjectValidationContext';
 
@@ -142,24 +142,6 @@ export const ValidationContextBar: React.FC<ValidationContextBarProps> = ({
       {/* Right: Actions */}
       {showActions && (
         <div className="flex items-center gap-2">
-          {/* NotValidated: Run Validation */}
-          {canRunValidation && (
-            <button
-              onClick={() => runValidation('standard')}
-              className="
-                inline-flex items-center gap-1.5 
-                px-3 py-1 
-                text-xs font-medium
-                text-white bg-blue-600 
-                rounded hover:bg-blue-700 
-                transition-colors
-              "
-            >
-              <PlayCircle className="w-3.5 h-3.5" />
-              Run Validation
-            </button>
-          )}
-
           {/* Failed: View Errors */}
           {canViewErrors && onViewErrors && (
             <button

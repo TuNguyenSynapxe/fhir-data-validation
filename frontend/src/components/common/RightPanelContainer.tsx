@@ -157,7 +157,7 @@ export const RightPanelContainer: React.FC<RightPanelContainerProps> = ({
                 : 'border-transparent text-gray-600 hover:text-gray-900'
             }`}
           >
-            CodeMaster
+            Terminology
           </button>
           <button
             onClick={() => onTabChange?.('metadata')}
@@ -172,7 +172,7 @@ export const RightPanelContainer: React.FC<RightPanelContainerProps> = ({
         </div>
       )}
 
-      {/* L2 Tabs - Validation mode: Run | Results | Settings */}
+      {/* L2 Tabs - Validation mode: Run | Settings */}
       {currentMode === RightPanelMode.Validation && (
         <div className="flex border-b bg-gray-50 flex-shrink-0">
           <button
@@ -184,16 +184,6 @@ export const RightPanelContainer: React.FC<RightPanelContainerProps> = ({
             }`}
           >
             Run
-          </button>
-          <button
-            onClick={() => onTabChange?.('results')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'results'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Results
           </button>
           <button
             onClick={() => onTabChange?.('settings')}
@@ -208,8 +198,8 @@ export const RightPanelContainer: React.FC<RightPanelContainerProps> = ({
         </div>
       )}
 
-      {/* Validation Context Bar - Sticky status strip */}
-      {validationState && (
+      {/* Validation Context Bar - Sticky status strip (Overview only) */}
+      {validationState && activeTab === 'overview' && (
         <ValidationContextBar
           fhirVersion="R4"
           bundleSource="Current"

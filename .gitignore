@@ -54,5 +54,10 @@ appsettings.Development.json
 **/temp/
 *.zip
 
+# Application logs
+*.log
+logs/
+*.log.*
+
 # FHIR Spec backups (local only)
 **/StructureDefinitions.backup/

@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { ChevronRight, ChevronDown, FileJson, Braces, Hash, Type, CheckSquare } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { ChevronRight, ChevronDown, FileJson, Braces, Hash, Type, CheckSquare, Edit2, Trash2, Check, X } from 'lucide-react';
 
 interface NodeData {
   key: string;
@@ -15,6 +15,8 @@ interface BundleTreeProps {
   onNodeSelect?: (path: string) => void;
   selectedPath?: string;
   highlightEntryIndex?: number; // Entry index to highlight for validation error navigation
+  onUpdateValue?: (path: string[], newValue: any) => void; // Update leaf node value
+  onDeleteNode?: (path: string[]) => void; // Delete any node
 }
 
 /**
@@ -129,6 +131,8 @@ interface TreeNodeProps {
   isSelected: boolean;
   onToggle: () => void;
   onSelect: (nodeData: NodeData) => void;
+  onUpdateValue?: (path: string[], newValue: any) => void;
+  onDeleteNode?: (path: string[]) => void;
 }
 
 const TreeNode: React.FC<TreeNodeProps> = ({
@@ -140,27 +144,42 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   isSelected,
   onToggle,
   onSelect,
+  onUpdateValue,
+  onDeleteNode,
 }) => {
   const type = getValueType(value);
   const hasChildren = type === 'object' || type === 'array';
   const jsonPointer = computeJsonPointer(path);
   const fhirPath = computeFhirPath(path);
-  const nodeRef = React.useRef<HTMLDivElement>(null);
+  const nodeRef = useRef<HTMLDivElement>(null);
   const isHighlighted = jsonPointer === (onSelect as any).highlightedPath;
+  
+  // Edit state for leaf nodes
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Scroll into view when selected
-  React.useEffect(() => {
+  useEffect(() => {
     if (isSelected && nodeRef.current) {
       nodeRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }, [isSelected]);
   
   // Scroll into view when highlighted
-  React.useEffect(() => {
+  useEffect(() => {
     if (isHighlighted && nodeRef.current) {
       nodeRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }, [isHighlighted]);
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
 
   const handleClick = () => {
     if (hasChildren) {
@@ -176,6 +195,68 @@ const TreeNode: React.FC<TreeNodeProps> = ({
       fhirPath,
       type,
     });
+  };
+
+  const handleStartEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!hasChildren && onUpdateValue) {
+      setEditValue(type === 'string' ? value : JSON.stringify(value));
+      setIsEditing(true);
+    }
+  };
+
+  const handleSaveEdit = () => {
+    if (!onUpdateValue) return;
+    
+    try {
+      let parsedValue: any;
+      
+      // Parse based on original type
+      switch (type) {
+        case 'string':
+          parsedValue = editValue;
+          break;
+        case 'number':
+          parsedValue = parseFloat(editValue);
+          if (isNaN(parsedValue)) {
+            alert('Invalid number');
+            return;
+          }
+          break;
+        case 'boolean':
+          parsedValue = editValue.toLowerCase() === 'true';
+          break;
+        case 'null':
+          parsedValue = null;
+          break;
+        default:
+          parsedValue = JSON.parse(editValue);
+      }
+      
+      onUpdateValue(path.map(String), parsedValue);
+      setIsEditing(false);
+    } catch (err) {
+      alert(`Invalid value: ${err instanceof Error ? err.message : 'Parse error'}`);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDeleteNode && confirm(`Delete "${nodeKey}"?`)) {
+      onDeleteNode(path.map(String));
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveEdit();
+    } else if (e.key === 'Escape') {
+      handleCancelEdit();
+    }
   };
 
   const renderChildren = () => {
@@ -194,6 +275,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           onSelect={onSelect}
           externalSelectedPath={(onSelect as any).externalSelectedPath}
           collapseKey={collapseKey}
+          onUpdateValue={onUpdateValue}
+          onDeleteNode={onDeleteNode}
         />
       ));
     }
@@ -209,6 +292,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           onSelect={onSelect}
           externalSelectedPath={(onSelect as any).externalSelectedPath}
           collapseKey={collapseKey}
+          onUpdateValue={onUpdateValue}
+          onDeleteNode={onDeleteNode}
         />
       ));
     }
@@ -221,11 +306,52 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   // Extract resourceType from entry.resource.resourceType
   const resourceType = isEntryNode && type === 'object' ? (value as any)?.resource?.resourceType : null;
 
+  if (isEditing) {
+    // Inline editing mode
+    return (
+      <div
+        ref={nodeRef}
+        className="flex items-center gap-2 py-1 px-2 bg-blue-50 border-l-2 border-blue-600"
+        style={{ paddingLeft: `${level * 20 + 8}px` }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <span className="w-4 flex-shrink-0" />
+        <span className="mr-1.5 flex-shrink-0">{getTypeIcon(type)}</span>
+        <span className="text-sm font-mono font-medium text-gray-800 flex-shrink-0">
+          {typeof nodeKey === 'number' ? `[${nodeKey}]` : nodeKey}
+        </span>
+        <span className="text-xs text-gray-500 mx-1">:</span>
+        <input
+          ref={inputRef}
+          type="text"
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="flex-1 px-2 py-0.5 text-xs font-mono border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+        />
+        <button
+          onClick={handleSaveEdit}
+          className="p-1 text-green-600 hover:bg-green-100 rounded transition-colors"
+          title="Save (Enter)"
+        >
+          <Check className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={handleCancelEdit}
+          className="p-1 text-gray-600 hover:bg-gray-200 rounded transition-colors"
+          title="Cancel (Esc)"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div
         ref={nodeRef}
-        className={`flex items-center justify-between py-1 px-2 cursor-pointer transition-colors ${
+        className={`group flex items-center justify-between py-1 px-2 cursor-pointer transition-colors ${
           isHighlighted
             ? 'bg-yellow-100 border-l-4 border-yellow-500'
             : isSelected
@@ -268,20 +394,45 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           )}
         </div>
 
-        {/* Right side: Resource context badge (only for Bundle.entry nodes) */}
-        {isEntryNode && resourceType && (
-          <span
-            className={`ml-4 px-2 py-0.5 text-xs font-medium rounded border opacity-75 flex-shrink-0 pointer-events-none ${
-              getResourceBadgeStyle(resourceType).bg
-            } ${
-              getResourceBadgeStyle(resourceType).text
-            } ${
-              getResourceBadgeStyle(resourceType).border
-            }`}
-          >
-            Resource: {resourceType}
-          </span>
-        )}
+        {/* Right side: Action buttons and Resource badge */}
+        <div className="flex items-center gap-1 ml-2">
+          {/* Edit button (leaf nodes only) */}
+          {!hasChildren && onUpdateValue && (
+            <button
+              onClick={handleStartEdit}
+              className="opacity-0 group-hover:opacity-100 p-1 text-blue-600 hover:bg-blue-100 rounded transition-all"
+              title="Edit value"
+            >
+              <Edit2 className="w-3 h-3" />
+            </button>
+          )}
+
+          {/* Delete button (all nodes) */}
+          {onDeleteNode && (
+            <button
+              onClick={handleDelete}
+              className="opacity-0 group-hover:opacity-100 p-1 text-red-600 hover:bg-red-100 rounded transition-all"
+              title="Delete node"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          )}
+
+          {/* Resource context badge (only for Bundle.entry nodes) */}
+          {isEntryNode && resourceType && (
+            <span
+              className={`ml-2 px-2 py-0.5 text-xs font-medium rounded border opacity-75 flex-shrink-0 pointer-events-none ${
+                getResourceBadgeStyle(resourceType).bg
+              } ${
+                getResourceBadgeStyle(resourceType).text
+              } ${
+                getResourceBadgeStyle(resourceType).border
+              }`}
+            >
+              Resource: {resourceType}
+            </span>
+          )}
+        </div>
       </div>
 
       {renderChildren()}
@@ -296,6 +447,8 @@ const TreeNodeWrapper: React.FC<Omit<TreeNodeProps, 'isExpanded' | 'isSelected' 
   onSelect: (nodeData: NodeData) => void;
   externalSelectedPath?: string;
   collapseKey?: number;
+  onUpdateValue?: (path: string[], newValue: any) => void;
+  onDeleteNode?: (path: string[]) => void;
 }> = (props) => {
   const jsonPointer = computeJsonPointer(props.path);
   
@@ -419,6 +572,8 @@ const TreeNodeWrapper: React.FC<Omit<TreeNodeProps, 'isExpanded' | 'isSelected' 
       isSelected={isSelected}
       onToggle={handleToggle}
       onSelect={props.onSelect}
+      onUpdateValue={props.onUpdateValue}
+      onDeleteNode={props.onDeleteNode}
     />
   );
 };
@@ -430,6 +585,8 @@ export const BundleTree: React.FC<BundleTreeProps> = ({
   bundleJson,
   onNodeSelect: _onNodeSelect,
   selectedPath,
+  onUpdateValue,
+  onDeleteNode,
   // highlightEntryIndex,
 }) => {
   const [internalSelectedPath, setInternalSelectedPath] = useState<string>('');
@@ -577,6 +734,8 @@ export const BundleTree: React.FC<BundleTreeProps> = ({
               onSelect={handleNodeSelectWithPath}
               externalSelectedPath={activeSelectedPath}
               collapseKey={collapseKey}
+              onUpdateValue={onUpdateValue}
+              onDeleteNode={onDeleteNode}
             />
           ))}
         </div>
