@@ -96,7 +96,26 @@ export const InstanceScopeDrawer: React.FC<InstanceScopeDrawerProps> = ({
     }
   };
 
-  const summary = getInstanceScopeSummary(resourceType, value);
+  // Calculate preview scope based on current selections
+  const getPreviewScope = (): InstanceScope => {
+    switch (selectedKind) {
+      case 'first':
+        return { kind: 'first' };
+      case 'all':
+        return { kind: 'all' };
+      case 'filter':
+        if (selectedFilter) {
+          return { kind: 'filter', filter: selectedFilter.filterSpec };
+        }
+        // No filter selected yet, show default
+        return { kind: 'all' };
+      default:
+        return { kind: 'all' };
+    }
+  };
+
+  const previewScope = getPreviewScope();
+  const summary = getInstanceScopeSummary(resourceType, previewScope);
 
   if (!isOpen) return null;
 
