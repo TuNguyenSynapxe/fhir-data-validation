@@ -36,19 +36,28 @@ export function composeInstanceScopedPath(
 
 /**
  * Compose where() filter expression from FilterSpec
+ * 
+ * RULE: System-generated filters MUST use flat boolean expressions.
+ * NO .exists() patterns allowed. Rely on FHIRPath implicit collection evaluation.
+ * Manual filters (custom type) are treated as opaque and not rewritten.
  */
 function composeFilterExpression(filter: FilterSpec): string {
   switch (filter.type) {
     case 'code':
+      // Simple code filter: code.coding.code = 'X'
       return `where(code.coding.code='${escapeString(filter.code)}')`;
     
     case 'systemCode':
-      return `where(code.coding.where(system='${escapeString(filter.system)}' and code='${escapeString(filter.code)}').exists())`;
+      // System + Code filter: flat boolean expression
+      // Relies on FHIRPath implicit collection semantics
+      return `where(code.coding.system='${escapeString(filter.system)}' and code.coding.code='${escapeString(filter.code)}')`;
     
     case 'identifier':
-      return `where(identifier.where(system='${escapeString(filter.system)}' and value='${escapeString(filter.value)}').exists())`;
+      // Identifier filter: flat boolean expression
+      return `where(identifier.system='${escapeString(filter.system)}' and identifier.value='${escapeString(filter.value)}')`;
     
     case 'custom':
+      // Manual filter: treated as opaque, no rewriting
       return filter.fhirPath;
     
     default:
@@ -150,8 +159,42 @@ export function validateFilterSpec(
       if (!filter.fhirPath.startsWith('where(')) {
         return { valid: false, error: 'Filter must start with where(...)' };
       }
+      // Manual filters may include .exists() - this is allowed
       break;
   }
   
   return { valid: true };
+}
+
+/**
+ * Format FHIRPath expression for display (UX only)
+ * 
+ * Adds line breaks and indentation for readability.
+ * Does NOT modify the semantic meaning of the expression.
+ * 
+ * Example:
+ * Input:  "Observation.where(code.coding.system='X' and code.coding.code='Y')"
+ * Output: "Observation.where(\n  code.coding.system='X'\n  and\n  code.coding.code='Y'\n)"
+ */
+export function formatFhirPathForDisplay(fhirPath: string): string {
+  // Check if this is a where() expression with multiple conditions
+  const whereMatch = fhirPath.match(/^(.+)\.where\((.+)\)$/);
+  
+  if (!whereMatch) {
+    return fhirPath;
+  }
+  
+  const [, basePath, condition] = whereMatch;
+  
+  // Check if condition contains 'and' or 'or'
+  if (!condition.includes(' and ') && !condition.includes(' or ')) {
+    return fhirPath;
+  }
+  
+  // Format multi-line
+  const formattedCondition = condition
+    .replace(/ and /g, '\n  and\n  ')
+    .replace(/ or /g, '\n  or\n  ');
+  
+  return `${basePath}.where(\n  ${formattedCondition}\n)`;
 }

@@ -9,7 +9,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Check, AlertCircle, Filter as FilterIcon } from 'lucide-react';
 import type { InstanceScope, DetectedFilterOption } from './InstanceScope.types';
 import { detectFilterOptions } from './BundleAnalysis.utils';
-import { getInstanceScopeSummary } from './InstanceScope.utils';
+import { getInstanceScopeSummary, formatFhirPathForDisplay } from './InstanceScope.utils';
 import { FhirPathPicker } from '../../../common/FhirPathPicker';
 import type { FhirPathPickerResult } from '../../../common/FhirPathPicker';
 
@@ -309,7 +309,9 @@ export const InstanceScopeDrawer: React.FC<InstanceScopeDrawerProps> = ({
             <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
               <div className="text-xs font-medium text-blue-900 mb-2">Preview:</div>
               <div className="text-sm text-blue-900 mb-1">{summary.text}</div>
-              <div className="text-xs font-mono text-blue-700">{summary.fhirPath}</div>
+              <pre className="text-xs font-mono text-blue-700 whitespace-pre-wrap break-all">
+                {formatFhirPathForDisplay(summary.fhirPath)}
+              </pre>
             </div>
           )}
         </div>
