@@ -36,7 +36,7 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({
   hasChanges = false,
   projectBundle,
   hl7Samples,
-}}) => {
+}) => {
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddRuleModalOpen, setIsAddRuleModalOpen] = useState(false);

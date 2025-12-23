@@ -5,9 +5,9 @@ import { RuleNavigator } from './RuleNavigator';
 import { RuleList } from './RuleList';
 import { RuleEditorModal } from './RuleEditorModal';
 import { SuggestedRulesPanel } from './SuggestedRulesPanel';
-import { RuleModeSelectorModal } from './RuleModeSelectorModal';
+// RuleModeSelectorModal removed - creation uses AddRuleModal only
 import { AddRuleModal } from './add-rule/AddRuleModal';
-import type { RuleTypeOption } from './add-rule/RuleTypeSelector';
+// RuleTypeOption import removed - no longer needed
 import { AdvancedRulesDrawer } from './AdvancedRulesDrawer';
 import type { SystemRuleSuggestion } from '../../../api/projects';
 import type { DraftRule } from '../../../types/ruleIntent';
@@ -26,7 +26,7 @@ interface Rule {
   severity: string;
   message: string;
   params?: Record<string, any>;
-  origin?: 'manual' | 'system-suggested' | 'ai-suggested';
+  origin?: string; // Compatible with AddRuleModal
   explainability?: any;
   enabled?: boolean;
   saveState?: SaveState;
@@ -71,7 +71,7 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
-  const [isModeSelectorOpen, setIsModeSelectorOpen] = useState(false);
+  // isModeSelectorOpen state removed - creation uses AddRuleModal only
   const [isAddRuleModalOpen, setIsAddRuleModalOpen] = useState(false);
   const [isAdvancedDrawerOpen, setIsAdvancedDrawerOpen] = useState(false);
   const [isRuleReviewDismissed, setIsRuleReviewDismissed] = useState(false);
@@ -279,35 +279,12 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
   }, [rules, filters, selectedResourceType, validationState, bundleAnalysis]);
 
   const handleAddRule = () => {
-    // Check if feature flag is enabled for tree authoring
-    if (features?.treeRuleAuthoring) {
-      // Show mode selector (for advanced/tree-based authoring)
-      setIsModeSelectorOpen(true);
-    } else {
-      // Show new rule-type-first modal
-      setIsAddRuleModalOpen(true);
-    }
+    // Always use AddRuleModal (rule-type-first UX)
+    setIsAddRuleModalOpen(true);
   };
 
-  const openBasicRuleModal = () => {
-    const newRule: Rule = {
-      id: `rule-${Date.now()}`,
-      type: 'Required',
-      resourceType: selectedResourceType || 'Patient',
-      path: '',
-      severity: 'error',
-      message: '',
-      origin: 'manual',
-      enabled: true,
-    };
-    setEditingRule(newRule);
-    setIsModalOpen(true);
-  };
-
-  const handleSelectBasicRule = () => {
-    setIsModeSelectorOpen(false);
-    openBasicRuleModal();
-  };
+  // Legacy functions removed - creation now uses AddRuleModal only
+  // openBasicRuleModal and handleSelectBasicRule removed
 
   // handleSelectAdvancedRule removed - Advanced Rules (Preview) is hidden
 
@@ -656,12 +633,7 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
         projectId={projectId}
       />
 
-      {/* Rule Mode Selector Modal */}
-      <RuleModeSelectorModal
-        isOpen={isModeSelectorOpen}
-        onClose={() => setIsModeSelectorOpen(false)}
-        onSelectBasic={handleSelectBasicRule}
-      />
+      {/* Rule Mode Selector Modal - REMOVED: Creation uses AddRuleModal only */}
 
       {/* Advanced Rules Drawer */}
       {features?.treeRuleAuthoring && projectId && (

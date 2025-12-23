@@ -11,7 +11,7 @@ interface Rule {
   severity: string;
   message: string;
   params?: Record<string, any>;
-  origin?: 'manual' | 'system-suggested' | 'ai-suggested';
+  origin?: string; // Compatible with AddRuleModal and RulesPanel
   explainability?: any;
   isMessageCustomized?: boolean;
 }

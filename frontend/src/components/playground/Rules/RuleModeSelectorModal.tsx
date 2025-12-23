@@ -13,6 +13,13 @@ export const RuleModeSelectorModal: React.FC<RuleModeSelectorModalProps> = ({
   onClose,
   onSelectBasic,
 }) => {
+  // ⚠️ LEGACY WARNING: This component should NOT be used for rule creation.
+  // Rule creation now uses AddRuleModal (rule-type-first UX).
+  // This component is kept for backward compatibility only.
+  if (isOpen) {
+    console.warn('[RuleModeSelectorModal] LEGACY: This modal should not be used for creation. Use AddRuleModal instead.');
+  }
+  
   if (!isOpen) return null;
 
   return (
