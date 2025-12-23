@@ -2,8 +2,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Plus } from 'lucide-react';
 import { RuleCard } from './RuleCard';
 import { RuleEditorModal } from './RuleEditorModal';
+import { AddRuleModal } from './add-rule/AddRuleModal';
 import RuleCoveragePanel from '../../rules/RuleCoveragePanel';
 import type { SchemaNode, ValidationRule } from '../../../types/ruleCoverage';
+
+// ⚠️ LEGACY: Do not extend.
+// New rules must be created via rule-type-first flow.
+// See: src/components/playground/Rules/rule-types/
 
 interface Rule {
   id: string;
@@ -31,9 +36,10 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({
   hasChanges = false,
   projectBundle,
   hl7Samples,
-}) => {
+}}) => {
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddRuleModalOpen, setIsAddRuleModalOpen] = useState(false);
   const [schemaTree, setSchemaTree] = useState<SchemaNode[]>([]);
   const [isLoadingSchema, setIsLoadingSchema] = useState(false);
 
@@ -90,16 +96,7 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({
   }, [rules]);
 
   const handleAddRule = () => {
-    const newRule: Rule = {
-      id: `rule-${Date.now()}`,
-      type: 'Required',
-      resourceType: 'Patient',
-      path: '',
-      severity: 'error',
-      message: '',
-    };
-    setEditingRule(newRule);
-    setIsModalOpen(true);
+    setIsAddRuleModalOpen(true);
   };
 
   const handleDeleteRule = (ruleId: string) => {
@@ -188,6 +185,16 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         onSave={handleSaveRule}
+        projectBundle={projectBundle}
+        hl7Samples={hl7Samples}
+      />
+
+      {/* Add Rule Modal */}
+      <AddRuleModal
+        isOpen={isAddRuleModalOpen}
+        onClose={() => setIsAddRuleModalOpen(false)}
+        onSaveRule={handleSaveRule}
+        selectedResourceType={resourceType}
         projectBundle={projectBundle}
         hl7Samples={hl7Samples}
       />

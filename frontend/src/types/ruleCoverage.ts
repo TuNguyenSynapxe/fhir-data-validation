@@ -97,10 +97,15 @@ export interface SchemaNode {
  */
 export interface ValidationRule {
   id?: string;
-  fhirPath: string;
+  fhirPath: string;          // Iteration scope - defines the collection of nodes to validate
   operator: string;
   value?: any;
   message?: string;
+  
+  // Relative paths for question-answer validation
+  // These paths are evaluated RELATIVE to each node selected by fhirPath
+  questionPath?: string;     // Relative path to the question field within the scoped node
+  answerPath?: string;       // Relative path to the answer field within the scoped node
 }
 
 /**

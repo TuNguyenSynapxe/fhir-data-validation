@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Pss.FhirProcessor.Engine.Interfaces;
 using Pss.FhirProcessor.Engine.Services;
 using Pss.FhirProcessor.Engine.Services.Terminology;
+using Pss.FhirProcessor.Engine.Services.Questions;
 
 namespace Pss.FhirProcessor.Engine.DependencyInjection;
 
@@ -82,6 +83,12 @@ public static class EngineServiceCollectionExtensions
 
         // Register Rule Advisory service
         services.AddScoped<IRuleAdvisoryService, RuleAdvisoryService>();
+
+        // Register Question services (Phase 3A)
+        services.AddScoped<IQuestionService>(sp =>
+        {
+            return new QuestionService(baseDataPath);
+        });
 
         return services;
     }

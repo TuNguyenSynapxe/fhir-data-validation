@@ -6,6 +6,8 @@ import { RuleList } from './RuleList';
 import { RuleEditorModal } from './RuleEditorModal';
 import { SuggestedRulesPanel } from './SuggestedRulesPanel';
 import { RuleModeSelectorModal } from './RuleModeSelectorModal';
+import { AddRuleModal } from './add-rule/AddRuleModal';
+import type { RuleTypeOption } from './add-rule/RuleTypeSelector';
 import { AdvancedRulesDrawer } from './AdvancedRulesDrawer';
 import type { SystemRuleSuggestion } from '../../../api/projects';
 import type { DraftRule } from '../../../types/ruleIntent';
@@ -70,6 +72,7 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
   const [isModeSelectorOpen, setIsModeSelectorOpen] = useState(false);
+  const [isAddRuleModalOpen, setIsAddRuleModalOpen] = useState(false);
   const [isAdvancedDrawerOpen, setIsAdvancedDrawerOpen] = useState(false);
   const [isRuleReviewDismissed, setIsRuleReviewDismissed] = useState(false);
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
@@ -276,13 +279,13 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
   }, [rules, filters, selectedResourceType, validationState, bundleAnalysis]);
 
   const handleAddRule = () => {
-    // Check if feature flag is enabled
+    // Check if feature flag is enabled for tree authoring
     if (features?.treeRuleAuthoring) {
-      // Show mode selector
+      // Show mode selector (for advanced/tree-based authoring)
       setIsModeSelectorOpen(true);
     } else {
-      // Directly open basic rule modal (existing behavior)
-      openBasicRuleModal();
+      // Show new rule-type-first modal
+      setIsAddRuleModalOpen(true);
     }
   };
 
@@ -640,6 +643,17 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
         onSave={handleSaveRule}
         projectBundle={projectBundle}
         hl7Samples={hl7Samples}
+      />
+
+      {/* Add Rule Modal - Rule Type First UX */}
+      <AddRuleModal
+        isOpen={isAddRuleModalOpen}
+        onClose={() => setIsAddRuleModalOpen(false)}
+        onSaveRule={handleSaveRule}
+        selectedResourceType={selectedResourceType || 'Patient'}
+        projectBundle={projectBundle}
+        hl7Samples={hl7Samples}
+        projectId={projectId}
       />
 
       {/* Rule Mode Selector Modal */}

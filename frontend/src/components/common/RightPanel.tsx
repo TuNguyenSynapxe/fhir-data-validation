@@ -2,7 +2,7 @@ import React from 'react';
 import { RightPanelMode } from '../../types/rightPanel';
 import { RulesPanel } from '../playground/Rules/RulesPanel';
 import { ValidationPanel } from '../playground/Validation/ValidationPanel';
-import { CodeMasterEditor } from '../playground/CodeMaster/CodeMasterEditor';
+import { TerminologyEditor } from '../playground/TerminologyEditor';
 import { RuleSetMetadata } from '../playground/Metadata/RuleSetMetadata';
 import { ValidationSettingsEditor } from '../playground/Settings/ValidationSettingsEditor';
 import { OverviewPanel } from '../playground/Overview/OverviewPanel';
@@ -141,7 +141,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         );
       case 'codemaster':
         return (
-          <CodeMasterEditor
+          <TerminologyEditor
             projectId={projectId!}
           />
         );

@@ -7,6 +7,10 @@ import {
   type RuleContext 
 } from '../../../utils/ruleMessageTemplates';
 
+// ⚠️ LEGACY: Used only for editing existing rules.
+// New rule creation is handled by rule-type-specific forms.
+// See: src/components/playground/Rules/rule-types/
+
 interface Rule {
   id: string;
   type: string;
