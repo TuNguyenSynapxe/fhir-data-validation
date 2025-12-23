@@ -1,5 +1,4 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import AppRouter from './routes/AppRouter';
 
 // Server state managed by TanStack Query by design
@@ -20,7 +19,6 @@ export default function App() {
       <div className="min-h-screen bg-gray-50">
         <AppRouter />
       </div>
-      {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>
   );
 }
