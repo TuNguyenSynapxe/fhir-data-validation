@@ -162,12 +162,12 @@ export const RequiredRuleForm: React.FC<RequiredRuleFormProps> = ({
                 : 'border-gray-300 hover:border-blue-500 hover:bg-blue-50'
             }`}
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium text-gray-900">{scopeSummary.text}</div>
-                <div className="text-xs font-mono text-gray-500 mt-0.5">{scopeSummary.fhirPath}</div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-900 break-words">{scopeSummary.text}</div>
+                <div className="text-xs font-mono text-gray-500 mt-0.5 break-all">{scopeSummary.fhirPath}</div>
               </div>
-              <Check size={16} className="text-green-600" />
+              <Check size={16} className="text-green-600 flex-shrink-0 mt-0.5" />
             </div>
           </button>
           {errors.instanceScope && (
