@@ -329,6 +329,92 @@ Defined by HL7 FHIR.`}
     );
   };
 
+  const renderEnumeratedStringSection = () => {
+    const handleAddValue = () => {
+      const currentValues = formData.enumeratedValues || [];
+      onChange('enumeratedValues', [...currentValues, '']);
+    };
+    
+    const handleRemoveValue = (index: number) => {
+      const currentValues = formData.enumeratedValues || [];
+      onChange('enumeratedValues', currentValues.filter((_, i) => i !== index));
+    };
+    
+    const handleUpdateValue = (index: number, value: string) => {
+      const currentValues = formData.enumeratedValues || [];
+      const updated = [...currentValues];
+      updated[index] = value;
+      onChange('enumeratedValues', updated);
+    };
+    
+    return (
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Allowed Values</h3>
+          <p className="text-xs text-gray-500 mt-2">
+            This defines a fixed list of allowed text values.
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            These are not terminology codes.
+          </p>
+        </div>
+        
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-gray-700">Values</label>
+            <button
+              type="button"
+              onClick={handleAddValue}
+              className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded transition-colors"
+            >
+              <Plus className="w-3 h-3" />
+              Add value
+            </button>
+          </div>
+          
+          {(!formData.enumeratedValues || formData.enumeratedValues.length === 0) && (
+            <div className="p-4 bg-gray-50 rounded-md text-center">
+              <p className="text-sm text-gray-500">No values defined yet.</p>
+              <p className="text-xs text-gray-400 mt-1">Click "Add value" to define allowed text values.</p>
+            </div>
+          )}
+          
+          {formData.enumeratedValues && formData.enumeratedValues.length > 0 && (
+            <div className="space-y-2">
+              {formData.enumeratedValues.map((value, index) => (
+                <div key={index} className="flex gap-2 items-center p-2 bg-gray-50 rounded-md">
+                  <input
+                    type="text"
+                    value={value}
+                    onChange={(e) => handleUpdateValue(index, e.target.value)}
+                    placeholder="e.g., Yes, No, Unknown"
+                    className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveValue(index)}
+                    className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                    title="Remove this value"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {errors.enumeratedValues && (
+            <p className="text-xs text-red-500 mt-1">{errors.enumeratedValues}</p>
+          )}
+          
+          <p className="text-xs text-gray-500">
+            Each value must be unique and non-empty. Duplicates are not allowed.
+          </p>
+        </div>
+      </div>
+    );
+  };
+
   const renderStringSection = () => (
     <div className="space-y-4">
       <div>
@@ -528,6 +614,8 @@ These are structural constraints, not terminology bindings.`}
       return renderCodeSection();
     case 'String':
       return renderStringSection();
+    case 'String (Enumerated)':
+      return renderEnumeratedStringSection();
     case 'Integer':
       return renderIntegerSection();
     case 'Decimal':

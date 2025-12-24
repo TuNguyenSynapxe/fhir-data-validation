@@ -7,6 +7,7 @@ export const ANSWER_TYPES: QuestionAnswerType[] = [
   'Integer',
   'Decimal',
   'String',
+  'String (Enumerated)',
   'Boolean',
 ];
 
@@ -44,6 +45,7 @@ export function questionToFormData(question: QuestionDto): QuestionFormData {
     // Determine mode based on presence of valueSet
     terminologyMode: question.valueSet?.url ? 'valueset' : undefined,
     allowedValues: undefined, // Backend doesn't store inline values yet
+    enumeratedValues: undefined, // Backend doesn't store enumerated values yet (UI-only)
   };
 }
 
@@ -179,6 +181,27 @@ export function validateQuestionForm(formData: QuestionFormData): QuestionValida
         }
       }
       break;
+
+    case 'String (Enumerated)':
+      if (!formData.enumeratedValues || formData.enumeratedValues.length === 0) {
+        errors.push({ field: 'enumeratedValues', message: 'At least one allowed value is required' });
+      } else {
+        // Check for empty values
+        formData.enumeratedValues.forEach((value, index) => {
+          if (!value.trim()) {
+            errors.push({ field: `enumeratedValues[${index}]`, message: `Value ${index + 1} cannot be empty` });
+          }
+        });
+        
+        // Check for duplicates (case-sensitive)
+        const duplicates = formData.enumeratedValues.filter((value, index, self) => 
+          self.indexOf(value) !== index
+        );
+        if (duplicates.length > 0) {
+          errors.push({ field: 'enumeratedValues', message: `Duplicate values found: ${duplicates.join(', ')}` });
+        }
+      }
+      break;
   }
 
   return errors;
@@ -214,6 +237,8 @@ export function getAnswerTypeDescription(answerType: QuestionAnswerType): string
       return 'Decimal number';
     case 'String':
       return 'Free text';
+    case 'String (Enumerated)':
+      return 'Fixed list of text values';
     case 'Boolean':
       return 'Yes/No answer';
     default:

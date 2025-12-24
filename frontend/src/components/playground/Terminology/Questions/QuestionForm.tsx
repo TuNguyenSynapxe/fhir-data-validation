@@ -48,6 +48,9 @@ export const QuestionForm: React.FC<QuestionFormProps> = ({
       onChange('regex', undefined);
       onChange('valueSetUrl', undefined);
       onChange('bindingStrength', 'required');
+      onChange('enumeratedValues', undefined);
+      onChange('allowedValues', undefined);
+      onChange('terminologyMode', undefined);
     }
     setShowAnswerTypeWarning(false);
     setPendingAnswerType(null);

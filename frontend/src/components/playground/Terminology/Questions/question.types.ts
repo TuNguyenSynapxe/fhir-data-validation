@@ -1,6 +1,6 @@
 import type { QuestionDto, CreateQuestionDto } from '../../../../api/questionsApi';
 
-export type QuestionAnswerType = 'Code' | 'Quantity' | 'Integer' | 'Decimal' | 'String' | 'Boolean';
+export type QuestionAnswerType = 'Code' | 'Quantity' | 'Integer' | 'Decimal' | 'String' | 'String (Enumerated)' | 'Boolean';
 
 export type TerminologyMode = 'inline' | 'valueset';
 
@@ -29,6 +29,9 @@ export interface QuestionFormData {
   // String constraints
   maxLength?: number;
   regex?: string;
+  
+  // String (Enumerated) - PSS-specific pattern
+  enumeratedValues?: string[]; // Array of allowed string values (NOT codes)
   
   // Code-specific - terminology configuration
   terminologyMode?: TerminologyMode; // 'inline' or 'valueset'
