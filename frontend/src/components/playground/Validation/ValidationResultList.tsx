@@ -114,7 +114,7 @@ export const ValidationResultList: React.FC<ValidationResultListProps> = ({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="p-4 space-y-3">
       {/* PROJECT RULES Section */}
       {projectRulesIssues.length > 0 && (
         <>

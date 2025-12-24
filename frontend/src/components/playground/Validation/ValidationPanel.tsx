@@ -68,7 +68,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
   
   // UI-only state (presentation, not validation lifecycle)
   const [isOpen, setIsOpen] = useState(true);
-  const [validationMode, setValidationMode] = useState<'standard' | 'full'>('full'); // Default to Full Analysis for UI
+  const [validationMode, setValidationMode] = useState<'standard' | 'full'>('standard'); // Default to Standard mode
   
   // Derive validation state from current conditions
   const { state: validationState } = useValidationState(
@@ -108,11 +108,11 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
   
   /**
    * Run validation (via Context)
-   * Always triggers full analysis mode
+   * Uses current validationMode state (standard or full)
    */
   const handleRunValidation = async () => {
     setIsOpen(true); // Auto-expand after validation
-    await runValidation('full');
+    await runValidation(validationMode);
   };
 
   /**
