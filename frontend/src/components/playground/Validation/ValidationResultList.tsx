@@ -1,9 +1,8 @@
 import React from 'react';
-import { IssueGroupCard } from './IssueGroupCard';
 import { IssueCard } from './IssueCard';
 import { CheckCircle2 } from 'lucide-react';
 import { normalizeSource, getLayerSortPriority } from '../../../utils/validationLayers';
-import { groupValidationIssues } from '../../../utils/validationGrouping';
+import { convertToIssue } from '../../../utils/validationGrouping';
 import type { SourceFilterState } from './ValidationSourceFilter';
 import type { ValidationIssue } from '../../../types/validationIssues';
 
@@ -71,17 +70,29 @@ export const ValidationResultList: React.FC<ValidationResultListProps> = ({
     );
   }
 
-  // Use new grouping logic
-  const { grouped, ungrouped } = groupValidationIssues(filteredErrors);
+  // Option A: Convert all errors to issues (no grouping)
+  // All validation issues render as individual rows
+  const allIssues = filteredErrors.map((error, index) => convertToIssue(error, index));
   
-  // Sort grouped by layer priority
-  const sortedGrouped = grouped.sort((a, b) => 
+  // Sort by layer priority for consistent ordering
+  const sortedIssues = allIssues.sort((a, b) => 
     getLayerSortPriority(a.source) - getLayerSortPriority(b.source)
   );
+
+  // Split into three categories for visual section headers
+  const projectRulesIssues = sortedIssues.filter(i => 
+    i.source === 'Business' || i.details?.source === 'ProjectRule'
+  );
   
-  // Sort ungrouped by layer priority
-  const sortedUngrouped = ungrouped.sort((a, b) => 
-    getLayerSortPriority(a.source) - getLayerSortPriority(b.source)
+  const specHintIssues = sortedIssues.filter(i => i.source === 'SPEC_HINT');
+  
+  const lintIssues = sortedIssues.filter(i => i.source === 'LINT');
+  
+  const otherIssues = sortedIssues.filter(i => 
+    i.source !== 'Business' && 
+    i.source !== 'SPEC_HINT' && 
+    i.source !== 'LINT' &&
+    i.details?.source !== 'ProjectRule'
   );
 
   // Handler to convert ValidationIssue click to ValidationError click
@@ -104,29 +115,87 @@ export const ValidationResultList: React.FC<ValidationResultListProps> = ({
 
   return (
     <div className="space-y-3">
-      {/* Grouped issues (2+ occurrences) - EACH ITEM HAS ITS OWN MESSAGE */}
-      {sortedGrouped.map((group) => (
-        <IssueGroupCard
-          key={group.groupId}
-          group={group}
-          onIssueClick={handleIssueClick}
-          onNavigateToPath={onNavigateToPath}
-          showExplanations={showExplanations}
-          bundleJson={bundleJson}
-        />
-      ))}
-      
-      {/* Ungrouped issues (single occurrences) */}
-      {sortedUngrouped.map((issue) => (
-        <IssueCard
-          key={issue.id}
-          issue={issue}
-          onClick={handleIssueClick}
-          onNavigateToPath={onNavigateToPath}
-          showExplanations={showExplanations}
-          bundleJson={bundleJson}
-        />
-      ))}
+      {/* PROJECT RULES Section */}
+      {projectRulesIssues.length > 0 && (
+        <>
+          <div className="mt-6 mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+            Project Rules
+          </div>
+          
+          <div className="space-y-3">
+            {projectRulesIssues.map((issue) => (
+              <IssueCard
+                key={issue.id}
+                issue={issue}
+                onClick={handleIssueClick}
+                onNavigateToPath={onNavigateToPath}
+                showExplanations={showExplanations}
+                bundleJson={bundleJson}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* FHIR STANDARD HINTS Section */}
+      {specHintIssues.length > 0 && (
+        <>
+          <div className="mt-6 mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+            FHIR Standard Hints
+          </div>
+          
+          <div className="space-y-3">
+            {specHintIssues.map((issue) => (
+              <IssueCard
+                key={issue.id}
+                issue={issue}
+                onClick={handleIssueClick}
+                onNavigateToPath={onNavigateToPath}
+                showExplanations={showExplanations}
+                bundleJson={bundleJson}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* QUALITY CHECKS Section */}
+      {lintIssues.length > 0 && (
+        <>
+          <div className="mt-6 mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+            Quality Checks
+          </div>
+          
+          <div className="space-y-3">
+            {lintIssues.map((issue) => (
+              <IssueCard
+                key={issue.id}
+                issue={issue}
+                onClick={handleIssueClick}
+                onNavigateToPath={onNavigateToPath}
+                showExplanations={showExplanations}
+                bundleJson={bundleJson}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Other sources (FHIR, CodeMaster, Reference) - no section header */}
+      {otherIssues.length > 0 && (
+        <div className="space-y-3">
+          {otherIssues.map((issue) => (
+            <IssueCard
+              key={issue.id}
+              issue={issue}
+              onClick={handleIssueClick}
+              onNavigateToPath={onNavigateToPath}
+              showExplanations={showExplanations}
+              bundleJson={bundleJson}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };

@@ -49,7 +49,7 @@ export const IssueCard: React.FC<IssueCardProps> = ({
 
   return (
     <div
-      className={`border ${borderColor} rounded-lg p-3 transition-colors ${
+      className={`border ${borderColor} rounded-lg p-4 transition-colors ${
         canNavigate ? 'cursor-pointer hover:shadow-sm' : ''
       } ${cardBgColor}`}
       onClick={(e) => {
@@ -61,7 +61,7 @@ export const IssueCard: React.FC<IssueCardProps> = ({
     >
       {/* Advisory Notice */}
       {isAdvisorySource && (
-        <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+        <div className="mb-3 p-2.5 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
           <p className="font-medium">ℹ️ Advisory - Non-blocking</p>
           <p className="mt-0.5 text-gray-700">
             This is a recommendation that does not prevent validation or rule editing.
@@ -81,7 +81,7 @@ export const IssueCard: React.FC<IssueCardProps> = ({
         <div className="flex-1 min-w-0">
           {/* Location breadcrumb + scope selectors */}
           {issue.resourceType && issue.location && issue.location !== 'unknown' ? (
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {/* Structure-only breadcrumb */}
               <SmartPathBreadcrumb
                 resourceType={issue.resourceType}
@@ -101,11 +101,11 @@ export const IssueCard: React.FC<IssueCardProps> = ({
           )}
 
           {/* Message */}
-          <p className="text-sm text-gray-900 mt-1.5">{issue.message}</p>
+          <p className="text-sm text-gray-900 mt-2 leading-6">{issue.message}</p>
 
           {/* Optional: Rule path for Project Rules */}
           {issue.rulePath && issue.source === 'PROJECT' && (
-            <p className="text-xs text-gray-500 mt-1 font-mono">
+            <p className="text-xs text-gray-500 mt-1.5 font-mono">
               Rule: {issue.rulePath}
             </p>
           )}
