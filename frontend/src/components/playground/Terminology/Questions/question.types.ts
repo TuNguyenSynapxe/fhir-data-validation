@@ -2,6 +2,14 @@ import type { QuestionDto, CreateQuestionDto } from '../../../../api/questionsAp
 
 export type QuestionAnswerType = 'Code' | 'Quantity' | 'Integer' | 'Decimal' | 'String' | 'Boolean';
 
+export type TerminologyMode = 'inline' | 'valueset';
+
+export interface InlineAllowedValue {
+  code: string;
+  display: string;
+  system?: string;
+}
+
 export interface QuestionFormData {
   code: string;
   display: string;
@@ -22,9 +30,11 @@ export interface QuestionFormData {
   maxLength?: number;
   regex?: string;
   
-  // Code-specific
-  valueSetUrl?: string;
-  bindingStrength?: 'required' | 'extensible' | 'preferred';
+  // Code-specific - terminology configuration
+  terminologyMode?: TerminologyMode; // 'inline' or 'valueset'
+  allowedValues?: InlineAllowedValue[]; // For inline mode
+  valueSetUrl?: string; // For valueset mode
+  bindingStrength?: 'required' | 'extensible' | 'preferred'; // For valueset mode only
 }
 
 export interface QuestionValidationError {

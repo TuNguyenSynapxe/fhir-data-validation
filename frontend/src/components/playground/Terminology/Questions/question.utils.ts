@@ -41,6 +41,9 @@ export function questionToFormData(question: QuestionDto): QuestionFormData {
     regex: question.constraints?.regex,
     valueSetUrl: question.valueSet?.url,
     bindingStrength: question.valueSet?.bindingStrength as 'required' | 'extensible' | 'preferred',
+    // Determine mode based on presence of valueSet
+    terminologyMode: question.valueSet?.url ? 'valueset' : undefined,
+    allowedValues: undefined, // Backend doesn't store inline values yet
   };
 }
 
@@ -66,11 +69,16 @@ export function formDataToCreateDto(formData: QuestionFormData, existingId?: str
     };
   }
 
-  if (formData.answerType === 'Code' && formData.valueSetUrl) {
-    dto.valueSet = {
-      url: formData.valueSetUrl,
-      bindingStrength: formData.bindingStrength || 'required',
-    };
+  if (formData.answerType === 'Code') {
+    // Only send valueSet if using valueset mode
+    const mode = formData.terminologyMode || 'valueset';
+    if (mode === 'valueset' && formData.valueSetUrl) {
+      dto.valueSet = {
+        url: formData.valueSetUrl,
+        bindingStrength: formData.bindingStrength || 'required',
+      };
+    }
+    // Note: inline allowed values are not sent to backend (UI-only feature)
   }
 
   // Add constraints
@@ -137,8 +145,25 @@ export function validateQuestionForm(formData: QuestionFormData): QuestionValida
       break;
 
     case 'Code':
-      if (!formData.valueSetUrl?.trim()) {
-        errors.push({ field: 'valueSetUrl', message: 'Value Set is required for Code questions' });
+      const mode = formData.terminologyMode || 'valueset';
+      if (mode === 'valueset') {
+        if (!formData.valueSetUrl?.trim()) {
+          errors.push({ field: 'valueSetUrl', message: 'Value Set is required for external ValueSet mode' });
+        }
+      } else if (mode === 'inline') {
+        if (!formData.allowedValues || formData.allowedValues.length === 0) {
+          errors.push({ field: 'allowedValues', message: 'At least one allowed value is required' });
+        } else {
+          // Validate each allowed value
+          formData.allowedValues.forEach((value, index) => {
+            if (!value.code.trim()) {
+              errors.push({ field: `allowedValues[${index}].code`, message: `Code is required for value ${index + 1}` });
+            }
+            if (!value.display.trim()) {
+              errors.push({ field: `allowedValues[${index}].display`, message: `Display is required for value ${index + 1}` });
+            }
+          });
+        }
       }
       break;
 
