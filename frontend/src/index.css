@@ -20,3 +20,25 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+/* Phase 8: Parent Highlight Animation for Ghost Node Navigation */
+@keyframes parent-highlight-pulse {
+  0% {
+    outline: 2px solid rgba(239, 68, 68, 0);
+    outline-offset: 0px;
+    background-color: rgba(254, 226, 226, 0);
+  }
+  50% {
+    outline: 2px solid rgba(239, 68, 68, 0.5);
+    outline-offset: 2px;
+    background-color: rgba(254, 226, 226, 0.3);
+  }
+  100% {
+    outline: 2px solid rgba(239, 68, 68, 0);
+    outline-offset: 0px;
+    background-color: rgba(254, 226, 226, 0);
+  }
+}
+
+.parent-highlight-pulse {
+  animation: parent-highlight-pulse 500ms ease-out;
+}

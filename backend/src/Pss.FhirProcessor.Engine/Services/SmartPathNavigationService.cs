@@ -13,7 +13,14 @@ namespace Pss.FhirProcessor.Engine.Services;
 /// </summary>
 public class SmartPathNavigationService : ISmartPathNavigationService
 {
-    public async Task<string?> ResolvePathAsync(Bundle bundle, string path, string? resourceType = null, int? entryIndex = null, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Resolves a FHIRPath expression to a JSON pointer for navigation.
+    /// Navigation operates on raw JSON to ensure deterministic behavior.
+    /// Validation may normalize POCOs independently.
+    /// </summary>
+    /// <param name="rawBundleJson">Raw JSON for navigation - preserves original structure</param>
+    /// <param name="bundle">Optional Bundle POCO for resource-level where() filtering</param>
+    public async Task<string?> ResolvePathAsync(JsonElement rawBundleJson, Bundle? bundle, string path, string? resourceType = null, int? entryIndex = null, CancellationToken cancellationToken = default)
     {
         // Internal helper class for navigation metadata
         var navInfo = new NavigationInfoInternal();
@@ -33,44 +40,97 @@ public class SmartPathNavigationService : ISmartPathNavigationService
             // Start with Bundle
             breadcrumbs.Add("Bundle");
             
-            // Use FhirJsonSerializer for proper FHIR serialization
-            var fhirSerializer = new Hl7.Fhir.Serialization.FhirJsonSerializer();
-            var json = fhirSerializer.SerializeToString(bundle);
-            var currentNode = JsonDocument.Parse(json).RootElement;
+            // Use the raw JSON directly - DO NOT re-serialize POCOs
+            // This ensures navigation behavior is independent of POCO parsing success
+            var currentNode = rawBundleJson;
             
             // If path doesn't start with "entry", check if first segment is a resource type
             int segmentStartIndex = 0;
             if (segments.Count > 0 && segments[0].PropertyName != "entry")
             {
-                // Check if first segment is a FHIR resource type
-                var firstSegment = segments[0].PropertyName;
-                var isResourceType = bundle.Entry.Any(e => e.Resource?.TypeName == firstSegment);
-                
-                string? targetResourceType = null;
-                if (isResourceType)
-                {
-                    // First segment is a resource type, use it to find the entry
-                    targetResourceType = firstSegment;
-                    segmentStartIndex = 1; // Skip first segment, continue from second
-                }
-                else if (!string.IsNullOrEmpty(resourceType))
-                {
-                    // Use provided resourceType parameter
-                    targetResourceType = resourceType;
-                    segmentStartIndex = 0; // Process all segments
-                }
-                else
-                {
-                    // Default to first entry
-                    targetResourceType = null;
-                    segmentStartIndex = 0;
-                }
-                
-                // Find entry index - use provided entryIndex if available
+                // RESOURCE-LEVEL WHERE() DETECTION
+                // Resource-level where() filters Bundle.entry, not JSON structure.
+                // Detect: first segment is WhereClause AND PropertyName is a resource type
+                // Example: Observation.where(code.coding.code='HS') → filter bundle entries, not JSON property
                 int? targetEntryIndex = entryIndex;
+                string? targetResourceType = null;
+                
+                if (!targetEntryIndex.HasValue && 
+                    segments[0].Type == SegmentType.WhereClause &&
+                    bundle != null)  // Resource-level where() requires Bundle POCO
+                {
+                    // Check if WhereClause PropertyName is a FHIR resource type
+                    var wherePropertyName = segments[0].PropertyName;
+                    var isResourceType = bundle.Entry.Any(e => e.Resource?.TypeName == wherePropertyName);
+                    
+                    if (isResourceType)
+                    {
+                        // This is a resource-level where() - filter Bundle.entry before JSON traversal
+                        targetResourceType = wherePropertyName;
+                        var whereSegment = segments[0];
+                        
+                        var fhirSerializer = new Hl7.Fhir.Serialization.FhirJsonSerializer();
+                        
+                        // Iterate bundle entries to find first match
+                        for (int i = 0; i < bundle.Entry.Count; i++)
+                        {
+                            var entry = bundle.Entry[i];
+                            if (entry.Resource?.TypeName == targetResourceType)
+                            {
+                                // Serialize resource to JsonElement for where() evaluation
+                                var resourceJson = fhirSerializer.SerializeToString(entry.Resource);
+                                var resourceElement = JsonDocument.Parse(resourceJson).RootElement;
+                                
+                                // Evaluate where() expression against resource
+                                if (EvaluateWhereCondition(resourceElement, whereSegment.WhereExpression ?? ""))
+                                {
+                                    targetEntryIndex = i;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // If no match found, return null immediately
+                        if (!targetEntryIndex.HasValue)
+                        {
+                            return await System.Threading.Tasks.Task.FromResult<string?>(null);
+                        }
+                        
+                        // Match found - advance past the where() segment
+                        segmentStartIndex = 1;
+                    }
+                }
+                
+                // If not a resource-level where(), check if first segment is a resource type (Property)
+                if (targetResourceType == null && bundle != null)
+                {
+                    var firstSegment = segments[0].PropertyName;
+                    var isResourceType = bundle.Entry.Any(e => e.Resource?.TypeName == firstSegment);
+                    
+                    if (isResourceType)
+                    {
+                        // First segment is a resource type, use it to find the entry
+                        targetResourceType = firstSegment;
+                        segmentStartIndex = 1; // Skip first segment, continue from second
+                    }
+                    else if (!string.IsNullOrEmpty(resourceType))
+                    {
+                        // Use provided resourceType parameter
+                        targetResourceType = resourceType;
+                        segmentStartIndex = 0; // Process all segments
+                    }
+                    else
+                    {
+                        // Default to first entry
+                        targetResourceType = null;
+                        segmentStartIndex = 0;
+                    }
+                }
+                
+                // Find entry index - use provided entryIndex or found index from where()
                 if (!targetEntryIndex.HasValue)
                 {
-                    if (!string.IsNullOrEmpty(targetResourceType))
+                    if (!string.IsNullOrEmpty(targetResourceType) && bundle != null)
                     {
                         // Find first entry matching resource type
                         for (int i = 0; i < bundle.Entry.Count; i++)
@@ -88,7 +148,8 @@ public class SmartPathNavigationService : ISmartPathNavigationService
                     }
                 }
                 
-                if (targetEntryIndex.HasValue && targetEntryIndex.Value < bundle.Entry.Count)
+                // Validate entry index
+                if (targetEntryIndex.HasValue && bundle != null && targetEntryIndex.Value < bundle.Entry.Count)
                 {
                     // Navigate to entry[index].resource
                     pointer.Append($"/entry/{targetEntryIndex.Value}");
@@ -188,27 +249,83 @@ public class SmartPathNavigationService : ISmartPathNavigationService
                 }
                 else if (segment.Type == SegmentType.Property)
                 {
+                    // Navigation is structural-only. Empty value ≠ missing node.
+                    // Check if property KEY exists, not whether VALUE is empty/null.
                     if (currentNode.TryGetProperty(segment.PropertyName, out var prop))
                     {
-                        // If property is an array and no explicit index, take first element
+                        // BUG FIX: Check if this is the last segment in the path
+                        bool isLastSegment = (i == segments.Count - 1);
+                        
+                        // If property is an array and no explicit index
                         if (prop.ValueKind == JsonValueKind.Array)
                         {
-                            pointer.Append($"/{segment.PropertyName}/0");
-                            breadcrumbs.Add($"{segment.PropertyName}[0]");
-                            
-                            if (prop.GetArrayLength() > 0)
+                            if (isLastSegment)
                             {
-                                currentNode = prop[0];
+                                // Last segment: return the array itself, even if empty
+                                // Navigation is structural-only. Empty value ≠ missing node.
+                                pointer.Append($"/{segment.PropertyName}");
+                                breadcrumbs.Add($"{segment.PropertyName}");
+                                currentNode = prop;
                             }
                             else
                             {
-                                exists = false;
-                                missingParents.Add($"{segment.PropertyName}[0]");
-                                break;
+                                // Not last segment: try to navigate into array[0] to continue path traversal
+                                pointer.Append($"/{segment.PropertyName}/0");
+                                breadcrumbs.Add($"{segment.PropertyName}[0]");
+                                
+                                if (prop.GetArrayLength() > 0)
+                                {
+                                    currentNode = prop[0];
+                                }
+                                else
+                                {
+                                    // Array is empty AND we need to navigate deeper
+                                    // This is genuinely a structural issue - can't navigate through empty array
+                                    exists = false;
+                                    missingParents.Add($"{segment.PropertyName}[0]");
+                                    break;
+                                }
+                            }
+                        }
+                        else if (prop.ValueKind == JsonValueKind.Object)
+                        {
+                            // Navigation is tolerant to object-vs-array mismatches.
+                            // Validation remains strict per FHIR R4 cardinality rules.
+                            
+                            // HEURISTIC: Treat as implicit array[0] ONLY for KNOWN repeatable fields
+                            // that are commonly malformed as objects: performer, address, identifier, etc.
+                            bool isKnownRepeatableField = !isLastSegment && 
+                                                           (segment.PropertyName == "performer" ||
+                                                            segment.PropertyName == "address" ||
+                                                            segment.PropertyName == "identifier" ||
+                                                            segment.PropertyName == "telecom" ||
+                                                            segment.PropertyName == "contact");
+                            
+                            // Additionally check if it looks like a Reference/Address/etc structure
+                            bool hasReferenceStructure = prop.TryGetProperty("reference", out _) || 
+                                                          prop.TryGetProperty("display", out _);
+                            bool hasAddressStructure = prop.TryGetProperty("line", out _) || 
+                                                        prop.TryGetProperty("city", out _);
+                            
+                            if (isKnownRepeatableField && (hasReferenceStructure || hasAddressStructure))
+                            {
+                                // Treat as array[0] for deeper traversal
+                                pointer.Append($"/{segment.PropertyName}/0");
+                                breadcrumbs.Add($"{segment.PropertyName}[0]");
+                                currentNode = prop;
+                            }
+                            else
+                            {
+                                // Normal object navigation
+                                pointer.Append($"/{segment.PropertyName}");
+                                breadcrumbs.Add(segment.PropertyName);
+                                currentNode = prop;
                             }
                         }
                         else
                         {
+                            // Scalar property (string, number, boolean, null): always return jsonPointer
+                            // Navigation is structural-only. Empty value ≠ missing node.
                             pointer.Append($"/{segment.PropertyName}");
                             breadcrumbs.Add(segment.PropertyName);
                             currentNode = prop;
@@ -216,6 +333,7 @@ public class SmartPathNavigationService : ISmartPathNavigationService
                     }
                     else
                     {
+                        // Property key does not exist in JSON structure - structurally missing
                         exists = false;
                         missingParents.Add(segment.PropertyName);
                         break;
@@ -223,6 +341,8 @@ public class SmartPathNavigationService : ISmartPathNavigationService
                 }
                 else if (segment.Type == SegmentType.WhereClause)
                 {
+                    // where() is a SCOPE SELECTOR, not a structural node
+                    // It filters array elements, then normal structural rules apply to children
                     // First access the property (should be an array)
                     if (currentNode.TryGetProperty(segment.PropertyName, out var arrayProp))
                     {
@@ -232,6 +352,7 @@ public class SmartPathNavigationService : ISmartPathNavigationService
                         var matchIndex = EvaluateWhereClause(arrayProp, segment.WhereExpression);
                         if (matchIndex >= 0)
                         {
+                            // where() matched an element - navigate to it
                             pointer.Append($"/{matchIndex}");
                             breadcrumbs.Add($"{segment.PropertyName}[{matchIndex}]");
                             
@@ -271,6 +392,25 @@ public class SmartPathNavigationService : ISmartPathNavigationService
             // Return null if path cannot be resolved
             return await System.Threading.Tasks.Task.FromResult<string?>(null);
         }
+    }
+    
+    /// <summary>
+    /// Legacy overload - serializes Bundle POCO to JSON then navigates.
+    /// WARNING: This causes navigation behavior to depend on POCO parsing success.
+    /// Use ResolvePathAsync(JsonElement, Bundle) instead.
+    /// </summary>
+    [Obsolete("Use ResolvePathAsync(JsonElement rawBundleJson, Bundle bundle, ...) to ensure consistent navigation behavior")]
+#pragma warning disable CS0618 // Type or member is obsolete
+    public async Task<string?> ResolvePathAsync(Bundle bundle, string path, string? resourceType = null, int? entryIndex = null, CancellationToken cancellationToken = default)
+#pragma warning restore CS0618 // Type or member is obsolete
+    {
+        // Serialize Bundle POCO to JSON (this normalizes the JSON)
+        var fhirSerializer = new Hl7.Fhir.Serialization.FhirJsonSerializer();
+        var json = fhirSerializer.SerializeToString(bundle);
+        var jsonElement = JsonDocument.Parse(json).RootElement;
+        
+        // Delegate to new method - pass BOTH JSON and Bundle
+        return await ResolvePathAsync(jsonElement, bundle, path, resourceType, entryIndex, cancellationToken);
     }
     
     public int? FindEntryIndexByReference(Bundle bundle, string reference)
@@ -463,6 +603,12 @@ public class SmartPathNavigationService : ISmartPathNavigationService
             if (current.TryGetProperty(part, out var next))
             {
                 current = next;
+                
+                // If current is an array, navigate into first element for next iteration
+                if (current.ValueKind == JsonValueKind.Array && current.GetArrayLength() > 0)
+                {
+                    current = current[0];
+                }
             }
             else
             {

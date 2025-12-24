@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { ChevronRight, ChevronDown, FileJson, Braces, Hash, Type, CheckSquare, Edit2, Trash2, Check, X } from 'lucide-react';
+import { ChevronRight, ChevronDown, FileJson, Braces, Hash, Type, CheckSquare, Edit2, Trash2, Check, X, AlertTriangle } from 'lucide-react';
 
 interface NodeData {
   key: string;
@@ -17,6 +17,8 @@ interface BundleTreeProps {
   highlightEntryIndex?: number; // Entry index to highlight for validation error navigation
   onUpdateValue?: (path: string[], newValue: any) => void; // Update leaf node value
   onDeleteNode?: (path: string[]) => void; // Delete any node
+  expectedChildAt?: string; // Phase 7.1: JSON Pointer of parent node that should show expected child
+  expectedChildKey?: string; // Phase 7.1: Key of the expected but missing child
 }
 
 /**
@@ -120,6 +122,41 @@ const formatValuePreview = (value: any, type: NodeData['type']): string => {
 };
 
 /**
+ * Phase 7.1: MissingChildNode Component
+ * 
+ * Renders an expected but missing child node with visual distinction:
+ * - Dashed border
+ * - Italic text
+ * - Warning icon
+ * - Non-interactive (cannot click or edit)
+ * - Tooltip explaining absence
+ */
+interface MissingChildNodeProps {
+  childKey: string;
+  level: number;
+  description?: string;
+}
+
+const MissingChildNode: React.FC<MissingChildNodeProps> = ({ childKey, level, description }) => {
+  return (
+    <div
+      className="flex items-center gap-2 py-1 px-2 border-l-2 border-dashed border-amber-400 bg-amber-50/30 cursor-not-allowed"
+      style={{ paddingLeft: `${level * 20 + 8}px` }}
+      title={description || `Required field '${childKey}' is missing here.`}
+    >
+      <span className="w-4 flex-shrink-0" />
+      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+      <span className="text-sm font-mono italic text-amber-700 flex-shrink-0">
+        {childKey}
+      </span>
+      <span className="ml-2 text-xs text-amber-600 italic flex-shrink-0">
+        (missing)
+      </span>
+    </div>
+  );
+};
+
+/**
  * Recursive TreeNode component
  */
 interface TreeNodeProps {
@@ -133,6 +170,7 @@ interface TreeNodeProps {
   onSelect: (nodeData: NodeData) => void;
   onUpdateValue?: (path: string[], newValue: any) => void;
   onDeleteNode?: (path: string[]) => void;
+  expectedChildKey?: string; // Phase 7.1: Expected but missing child to render
 }
 
 const TreeNode: React.FC<TreeNodeProps> = ({
@@ -146,6 +184,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   onSelect,
   onUpdateValue,
   onDeleteNode,
+  expectedChildKey: _expectedChildKey, // Phase 7.1: Renamed to avoid unused warning
 }) => {
   const type = getValueType(value);
   const hasChildren = type === 'object' || type === 'array';
@@ -263,6 +302,9 @@ const TreeNode: React.FC<TreeNodeProps> = ({
     if (!hasChildren || !isExpanded) return null;
 
     const collapseKey = (onSelect as any).collapseKey;
+    const expectedChildAtPath = (onSelect as any).expectedChildAtPath;
+    const expectedChild = (onSelect as any).expectedChildKey;
+    const currentJsonPointer = computeJsonPointer(path);
 
     if (type === 'array') {
       return (value as any[]).map((item, index) => (
@@ -277,12 +319,14 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           collapseKey={collapseKey}
           onUpdateValue={onUpdateValue}
           onDeleteNode={onDeleteNode}
+          expectedChildAtPath={expectedChildAtPath}
+          expectedChildKey={expectedChild}
         />
       ));
     }
 
     if (type === 'object') {
-      return Object.entries(value).map(([key, val]) => (
+      const children = Object.entries(value).map(([key, val]) => (
         <TreeNodeWrapper
           key={key}
           nodeKey={key}
@@ -294,8 +338,28 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           collapseKey={collapseKey}
           onUpdateValue={onUpdateValue}
           onDeleteNode={onDeleteNode}
+          expectedChildAtPath={expectedChildAtPath}
+          expectedChildKey={expectedChild}
         />
       ));
+
+      // Phase 7.1: Add missing child node if this is the target parent
+      if (expectedChildAtPath === currentJsonPointer && expectedChild) {
+        // Check if the child already exists
+        const childExists = value.hasOwnProperty(expectedChild);
+        if (!childExists) {
+          children.push(
+            <MissingChildNode
+              key={`missing-${expectedChild}`}
+              childKey={expectedChild}
+              level={level + 1}
+              description={`Required field '${expectedChild}' is missing here.`}
+            />
+          );
+        }
+      }
+
+      return children;
     }
 
     return null;
@@ -449,6 +513,8 @@ const TreeNodeWrapper: React.FC<Omit<TreeNodeProps, 'isExpanded' | 'isSelected' 
   collapseKey?: number;
   onUpdateValue?: (path: string[], newValue: any) => void;
   onDeleteNode?: (path: string[]) => void;
+  expectedChildAtPath?: string; // Phase 7.1: JSON Pointer of parent for missing child
+  expectedChildKey?: string; // Phase 7.1: Missing child key
 }> = (props) => {
   const jsonPointer = computeJsonPointer(props.path);
   
@@ -587,6 +653,8 @@ export const BundleTree: React.FC<BundleTreeProps> = ({
   selectedPath,
   onUpdateValue,
   onDeleteNode,
+  expectedChildAt, // Phase 7.1: Missing Node Assist
+  expectedChildKey, // Phase 7.1: Missing Node Assist
   // highlightEntryIndex,
 }) => {
   const [internalSelectedPath, setInternalSelectedPath] = useState<string>('');
@@ -681,6 +749,8 @@ export const BundleTree: React.FC<BundleTreeProps> = ({
     externalSelectedPath: activeSelectedPath,
     collapseKey: collapseKey,
     highlightedPath: highlightedPath,
+    expectedChildAtPath: expectedChildAt, // Phase 7.1: Missing Node Assist
+    expectedChildKey: expectedChildKey, // Phase 7.1: Missing Node Assist
   });
   
   console.log('[BundleTree] Augmented callback - externalSelectedPath:', activeSelectedPath, 'collapseKey:', collapseKey, 'highlightedPath:', highlightedPath);
@@ -736,6 +806,8 @@ export const BundleTree: React.FC<BundleTreeProps> = ({
               collapseKey={collapseKey}
               onUpdateValue={onUpdateValue}
               onDeleteNode={onDeleteNode}
+              expectedChildAtPath={expectedChildAt}
+              expectedChildKey={expectedChildKey}
             />
           ))}
         </div>

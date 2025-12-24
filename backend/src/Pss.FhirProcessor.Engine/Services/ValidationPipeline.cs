@@ -89,7 +89,7 @@ public class ValidationPipeline : IValidationPipeline
             {
                 _logger.LogDebug("Running Lint validation in full analysis mode");
                 var lintIssues = await _lintService.ValidateAsync(request.BundleJson, request.FhirVersion, cancellationToken);
-                var lintErrors = await _errorBuilder.FromQualityFindingsAsync(lintIssues, null, cancellationToken);
+                var lintErrors = await _errorBuilder.FromQualityFindingsAsync(lintIssues, request.BundleJson, null, cancellationToken);
                 _logger.LogInformation("Lint validation completed: {IssueCount} issues found", lintErrors.Count);
                 response.Errors.AddRange(lintErrors);
             }
@@ -123,7 +123,7 @@ public class ValidationPipeline : IValidationPipeline
                 if (specHintIssues.Any())
                 {
                     _logger.LogInformation("=== SPECHINT CHECKPOINT 6: Building error models for {IssueCount} spec hint issues", specHintIssues.Count);
-                    var specHintErrors = await _errorBuilder.FromSpecHintIssuesAsync(specHintIssues, bundlePoco, cancellationToken);
+                    var specHintErrors = await _errorBuilder.FromSpecHintIssuesAsync(specHintIssues, request.BundleJson, bundlePoco, cancellationToken);
                     response.Errors.AddRange(specHintErrors);
                 }
             }
@@ -136,16 +136,9 @@ public class ValidationPipeline : IValidationPipeline
             // This is the source of truth for FHIR compliance
             // Uses node-based validation to collect structural issues
             var firelyOutcome = await _firelyService.ValidateAsync(request.BundleJson, request.FhirVersion, cancellationToken);
-            var firelyErrors = await _errorBuilder.FromFirelyIssuesAsync(firelyOutcome, null, cancellationToken);
-            response.Errors.AddRange(firelyErrors);
-            
-            var firelyErrorCount = firelyErrors.Count(e => e.Source == "FHIR" && e.Severity == "error");
-            _logger.LogInformation("Firely validation completed: {ErrorCount} structural errors found", firelyErrorCount);
-            
-            // Note: Removed fallback lint check - Lint only runs in full analysis mode
-            // In standard mode, only Firely structural validation, business rules, and reference validation run
             
             // Step 3: Parse to POCO Bundle for business rule processing
+            // Parse early so we can use it for navigation if available
             // Even if Firely found structural errors, we still attempt parsing to get as many errors as possible
             // Use lenient parser to maximize success rate
             Bundle? bundle = null;
@@ -185,6 +178,16 @@ public class ValidationPipeline : IValidationPipeline
                 }
             }
             
+            // Now build Firely errors with raw JSON for navigation
+            var firelyErrors = await _errorBuilder.FromFirelyIssuesAsync(firelyOutcome, request.BundleJson, bundle, cancellationToken);
+            response.Errors.AddRange(firelyErrors);
+            
+            var firelyErrorCount = firelyErrors.Count(e => e.Source == "FHIR" && e.Severity == "error");
+            _logger.LogInformation("Firely validation completed: {ErrorCount} structural errors found", firelyErrorCount);
+            
+            // Note: Removed fallback lint check - Lint only runs in full analysis mode
+            // In standard mode, only Firely structural validation, business rules, and reference validation run
+            
             // Step 4: Business Rule Validation (FHIRPath)
             // CRITICAL: Always attempt to run business rules even if Firely failed
             // This ensures users get all possible errors in one validation run
@@ -196,7 +199,7 @@ public class ValidationPipeline : IValidationPipeline
                     {
                         // Use POCO-based validation (preferred, more complete)
                         var ruleErrors = await _ruleEngine.ValidateAsync(bundle, ruleSet, cancellationToken);
-                        var businessErrors = await _errorBuilder.FromRuleErrorsAsync(ruleErrors, bundle, cancellationToken);
+                        var businessErrors = await _errorBuilder.FromRuleErrorsAsync(ruleErrors, request.BundleJson, bundle, cancellationToken);
                         response.Errors.AddRange(businessErrors);
                     }
                     else
@@ -205,7 +208,7 @@ public class ValidationPipeline : IValidationPipeline
                         // This works even when POCO parsing fails due to structural errors
                         Console.WriteLine("Using JSON fallback for business rule validation");
                         var ruleErrors = await _ruleEngine.ValidateJsonAsync(request.BundleJson, ruleSet, cancellationToken);
-                        var businessErrors = await _errorBuilder.FromRuleErrorsAsync(ruleErrors, null, cancellationToken);
+                        var businessErrors = await _errorBuilder.FromRuleErrorsAsync(ruleErrors, request.BundleJson, null, cancellationToken);
                         response.Errors.AddRange(businessErrors);
                     }
                 }
@@ -226,7 +229,7 @@ public class ValidationPipeline : IValidationPipeline
                     var projectId = request.ProjectId ?? "default";
                     
                     var questionAnswerResult = await _questionAnswerValidator.ValidateAsync(bundle, ruleSet, projectId, cancellationToken);
-                    var qaErrors = await _errorBuilder.FromRuleErrorsAsync(questionAnswerResult.Errors, bundle, cancellationToken);
+                    var qaErrors = await _errorBuilder.FromRuleErrorsAsync(questionAnswerResult.Errors, request.BundleJson, bundle, cancellationToken);
                     response.Errors.AddRange(qaErrors);
                     
                     // Log advisory notes
@@ -249,7 +252,7 @@ public class ValidationPipeline : IValidationPipeline
                 try
                 {
                     var codeMasterErrors = await _codeMasterEngine.ValidateAsync(bundle, codeMaster, cancellationToken);
-                    var cmErrors = await _errorBuilder.FromCodeMasterErrorsAsync(codeMasterErrors, bundle, cancellationToken);
+                    var cmErrors = await _errorBuilder.FromCodeMasterErrorsAsync(codeMasterErrors, request.BundleJson, bundle, cancellationToken);
                     response.Errors.AddRange(cmErrors);
                 }
                 catch (Exception ex)
@@ -267,7 +270,7 @@ public class ValidationPipeline : IValidationPipeline
                 try
                 {
                     var referenceErrors = await _referenceResolver.ValidateAsync(bundle, request.ValidationSettings, cancellationToken);
-                    var refErrors = await _errorBuilder.FromReferenceErrorsAsync(referenceErrors, bundle, cancellationToken);
+                    var refErrors = await _errorBuilder.FromReferenceErrorsAsync(referenceErrors, request.BundleJson, bundle, cancellationToken);
                     response.Errors.AddRange(refErrors);
                 }
                 catch (Exception ex)

@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, HelpCircle } from 'lucide-react';
+import { X, HelpCircle, Check } from 'lucide-react';
 import { MessageEditor } from '../../../MessageEditor';
 import { QuestionSetSelector } from './QuestionSetSelector';
 import { RelativePathFields } from './RelativePathFields';
+import { InstanceScopeDrawer } from '../../common/InstanceScopeDrawer';
+import type { InstanceScope } from '../../common/InstanceScope.types';
+import { getInstanceScopeSummary } from '../../common/InstanceScope.utils';
 import {
   buildQuestionAnswerRule,
   getDefaultQuestionPath,
@@ -41,16 +44,20 @@ export const QuestionAnswerRuleForm: React.FC<QuestionAnswerRuleFormProps> = ({
   projectId,
   onCancel,
   onSave,
+  projectBundle,
+  hl7Samples,
   initialResourceType = 'Observation',
 }) => {
   const [resourceType, setResourceType] = useState<string>(initialResourceType);
-  const [instanceScope, setInstanceScope] = useState<'all' | 'first'>('all');
+  // Instance scope uses structured drawer-based selection (RULE: Instance Scope must ALWAYS open in a drawer)
+  const [instanceScope, setInstanceScope] = useState<InstanceScope>({ kind: 'all' });
   const [iterationScope, setIterationScope] = useState<string>('');
   const [questionPath, setQuestionPath] = useState<string>('');
   const [answerPath, setAnswerPath] = useState<string>('');
   const [questionSetId, setQuestionSetId] = useState<string>('');
   const [severity, setSeverity] = useState<'error' | 'warning' | 'information'>('error');
   const [customMessage, setCustomMessage] = useState<string>('');
+  const [isScopeDrawerOpen, setIsScopeDrawerOpen] = useState(false);
   const [errors, setErrors] = useState<{
     questionSetId?: string;
     iterationScope?: string;
@@ -60,10 +67,19 @@ export const QuestionAnswerRuleForm: React.FC<QuestionAnswerRuleFormProps> = ({
 
   // Initialize defaults when resource type changes
   useEffect(() => {
+    setInstanceScope({ kind: 'all' });
     setIterationScope(getDefaultIterationScope(resourceType));
     setQuestionPath(getDefaultQuestionPath(resourceType));
     setAnswerPath(getDefaultAnswerPath(resourceType));
   }, [resourceType]);
+
+  const handleSelectScope = () => {
+    setIsScopeDrawerOpen(true);
+  };
+
+  const handleScopeChange = (scope: InstanceScope) => {
+    setInstanceScope(scope);
+  };
 
   const handleSave = () => {
     // Validate required fields
@@ -172,49 +188,26 @@ export const QuestionAnswerRuleForm: React.FC<QuestionAnswerRuleFormProps> = ({
           </select>
         </div>
 
-        {/* Instance Scope */}
+        {/* Instance Scope - DRAWER-BASED (RULE: Instance Scope must ALWAYS open in a drawer) */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Which Instances?
+            Instance Scope
           </label>
-          <div className="space-y-2">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="radio"
-                name="instanceScope"
-                value="all"
-                checked={instanceScope === 'all'}
-                onChange={() => setInstanceScope('all')}
-                className="mt-0.5"
-              />
-              <div>
-                <div className="text-sm font-medium text-gray-900">
-                  All <span className="text-gray-500 font-mono text-xs">(*)</span>
-                </div>
-                <div className="text-xs text-gray-600">
-                  Validate all matching resources
-                </div>
+          <button
+            onClick={handleSelectScope}
+            className="w-full px-4 py-3 border border-gray-300 rounded-md text-left hover:border-blue-500 hover:bg-blue-50 transition-colors"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-900 break-words">{getInstanceScopeSummary(resourceType, instanceScope).text}</div>
+                <div className="text-xs font-mono text-gray-500 mt-0.5 break-all">{getInstanceScopeSummary(resourceType, instanceScope).fhirPath}</div>
               </div>
-            </label>
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="radio"
-                name="instanceScope"
-                value="first"
-                checked={instanceScope === 'first'}
-                onChange={() => setInstanceScope('first')}
-                className="mt-0.5"
-              />
-              <div>
-                <div className="text-sm font-medium text-gray-900">
-                  First only <span className="text-gray-500 font-mono text-xs">[0]</span>
-                </div>
-                <div className="text-xs text-gray-600">
-                  Validate only the first resource
-                </div>
-              </div>
-            </label>
-          </div>
+              <Check size={16} className="text-green-600 flex-shrink-0 mt-0.5" />
+            </div>
+          </button>
+          <p className="text-xs text-gray-500 mt-1">
+            Click to change which {resourceType} instances this rule applies to
+          </p>
         </div>
 
         {/* Iteration Scope */}
@@ -332,6 +325,16 @@ export const QuestionAnswerRuleForm: React.FC<QuestionAnswerRuleFormProps> = ({
           Create Rule
         </button>
       </div>
+
+      {/* DRAWER: Instance Scope Selection */}
+      <InstanceScopeDrawer
+        isOpen={isScopeDrawerOpen}
+        resourceType={resourceType}
+        bundle={projectBundle || {}}
+        value={instanceScope}
+        onChange={handleScopeChange}
+        onClose={() => setIsScopeDrawerOpen(false)}
+      />
     </div>
   );
 };

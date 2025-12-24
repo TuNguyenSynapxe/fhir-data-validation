@@ -21,6 +21,8 @@ import { ValidationState } from '../types/validationState';
 import { useProjectValidation } from '../contexts/project-validation/useProjectValidation';
 import { ProjectValidationProvider } from '../contexts/project-validation/ProjectValidationContext';
 import { findNearestValidPath } from '../utils/pathNavigation';
+import { detectMissingChild } from '../utils/missingNodeAssist'; // Phase 7.1: Missing Node Assist
+import { resolveNavigationTarget, jsonPointerToPathArray } from '../utils/navigationFallback'; // Phase 8: Navigation Fallback
 
 import type { FhirSampleMetadata } from '../types/fhirSample';
 
@@ -72,7 +74,7 @@ export default function PlaygroundPage() {
   // Navigation state for Smart Path
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_navigationFeedback, setNavigationFeedback] = useState<string | null>(null);
-  const bundleTabsRef = useRef<{ switchToTreeView: () => void; navigateToPath: (path: string) => void }>(null);
+  const bundleTabsRef = useRef<{ switchToTreeView: () => void; navigateToPath: (path: string, expectedChildKey?: string) => void }>(null); // Phase 7.1: Updated signature
   
   // TreeView focus state for context dimming
   const [treeViewFocused, setTreeViewFocused] = useState(false);
@@ -261,39 +263,58 @@ export default function PlaygroundPage() {
   };
 
   /**
-   * Handle Smart Path navigation from validation errors
-   * @param jsonPointer - JSON Pointer path like "/entry/0/resource/extension/0/valueCodeableConcept"
+   * Phase 8: Handle Smart Path navigation from validation errors with fallback support
+   * Supports ghost nodes for missing fields and parent highlighting.
+   * 
+   * @param jsonPointerOrError - JSON Pointer string OR ValidationError object
+   * @param fhirPath - Optional FHIRPath for fallback (if jsonPointer is null)
    */
-  const handleNavigateToPath = (jsonPointer: string) => {
+  const handleNavigateToPath = (jsonPointerOrError: string | { jsonPointer?: string; path?: string }, fhirPath?: string) => {
     try {
-      if (!jsonPointer) {
+      // Extract jsonPointer and fhirPath from error object or use direct string
+      const jsonPointer = typeof jsonPointerOrError === 'string' 
+        ? jsonPointerOrError 
+        : (jsonPointerOrError.jsonPointer || null);
+      
+      const errorFhirPath = typeof jsonPointerOrError === 'object' 
+        ? jsonPointerOrError.path 
+        : fhirPath;
+      
+      // Phase 8: Use navigation fallback resolver
+      const navTarget = resolveNavigationTarget(bundleJson, errorFhirPath || '', jsonPointer);
+      
+      if (!navTarget || navTarget.targetPointer === null) {
         setNavigationFeedback('No navigation path available for this error');
         setTimeout(() => setNavigationFeedback(null), 5000);
         return;
       }
 
-      // Find the nearest valid path if exact path doesn't exist
-      const pathResult = findNearestValidPath(bundleJson, jsonPointer);
+      // Get missing segments for ghost node rendering
+      const missingSegments = navTarget.missingSegments;
+      const targetPointer = navTarget.targetPointer;
       
-      if (!pathResult) {
-        setNavigationFeedback('Path not found in bundle');
-        setTimeout(() => setNavigationFeedback(null), 5000);
-        return;
-      }
-
-      const targetPath = pathResult.path;
-      
-      // Switch to tree view and navigate to target path (exact or nearest parent)
+      // Switch to tree view and navigate
       bundleTabsRef.current?.switchToTreeView();
-      bundleTabsRef.current?.navigateToPath(targetPath);
       
-      // Show feedback if navigating to parent
-      if (!pathResult.isExact) {
-        setNavigationFeedback(`Path not found. Navigated to nearest parent: ${targetPath || '(root)'}`);
-        setTimeout(() => setNavigationFeedback(null), 3000);
+      if (missingSegments.length > 0) {
+        // Navigate to parent + show first missing segment as ghost child
+        bundleTabsRef.current?.navigateToPath(
+          targetPointer,
+          missingSegments[0] // Show first missing segment as expected child
+        );
+        
+        setNavigationFeedback(
+          navTarget.fallbackReason || 
+          `Field '${missingSegments[0]}' is missing. Showing parent node.`
+        );
+      } else {
+        // Navigate directly to exact target
+        bundleTabsRef.current?.navigateToPath(targetPointer);
       }
       
-      // Activate TreeView focus mode
+      setTimeout(() => setNavigationFeedback(null), 3000);
+      
+      // Activate TreeView focus mode with highlight
       setTreeViewFocused(true);
       
       // Clear any previous timeout
@@ -489,9 +510,9 @@ export default function PlaygroundPage() {
                   projectId: projectId!,
                   onNavigateToPath: handleNavigateToPath,
                   onSelectError: (error) => {
-                    const jsonPointer = error.jsonPointer;
-                    if (jsonPointer) {
-                      handleNavigateToPath(jsonPointer);
+                    // Phase 8: Always attempt navigation if path exists (fallback resolver handles missing jsonPointer)
+                    if (error.path || error.jsonPointer) {
+                      handleNavigateToPath(error, error.path);
                     }
                   },
                   onSuggestionsReceived: setRuleSuggestions,

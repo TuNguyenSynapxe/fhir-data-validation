@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Hl7.Fhir.Model;
 using Pss.FhirProcessor.Engine.Models;
 using Pss.FhirProcessor.Engine.Interfaces;
@@ -26,48 +27,58 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
         if (!string.IsNullOrEmpty(error.JsonPointer))
             return error;
         
-        // Try to add navigation context if we have a path and the bundle is parseable
+        // Try to add navigation context if we have a path and the raw JSON
         if (!string.IsNullOrEmpty(error.Path) && !string.IsNullOrEmpty(rawBundleJson))
         {
             try
             {
-                // Attempt to parse bundle for navigation context
-                // If this fails, we just return the error without navigation
-                var parser = new Hl7.Fhir.Serialization.FhirJsonParser();
-                var bundle = parser.Parse<Bundle>(rawBundleJson);
+                // Parse raw JSON directly for navigation - DO NOT use POCO
+                // Navigation must work consistently whether POCO parsing succeeds or fails
+                var jsonDoc = JsonDocument.Parse(rawBundleJson);
+                var rawJson = jsonDoc.RootElement;
                 
-                if (bundle != null)
+                var jsonPointer = await _navigationService.ResolvePathAsync(
+                    rawJson,
+                    null,  // No Bundle POCO available for parsing errors
+                    error.Path, 
+                    error.ResourceType, 
+                    null,
+                    cancellationToken);
+                
+                // Update JsonPointer if resolved
+                if (!string.IsNullOrEmpty(jsonPointer))
                 {
-                    var jsonPointer = await _navigationService.ResolvePathAsync(
-                        bundle, 
-                        error.Path, 
-                        error.ResourceType, 
-                        null,
-                        cancellationToken);
-                    
-                    // Update JsonPointer if resolved
-                    if (!string.IsNullOrEmpty(jsonPointer))
-                    {
-                        error.JsonPointer = jsonPointer;
-                    }
+                    error.JsonPointer = jsonPointer;
                 }
             }
             catch
             {
-                // Parsing failed - this is expected for deserialization errors
-                // Just return the error without navigation enhancement
+                // JSON parsing failed - return error without navigation
             }
         }
         
         return error;
     }
     
-    public async Task<List<ValidationError>> FromFirelyIssuesAsync(OperationOutcome outcome, Bundle? bundle, CancellationToken cancellationToken = default)
+    public async Task<List<ValidationError>> FromFirelyIssuesAsync(OperationOutcome outcome, string rawBundleJson, Bundle bundle, CancellationToken cancellationToken = default)
     {
         var errors = new List<ValidationError>();
         
         if (outcome?.Issue == null)
             return errors;
+        
+        // Parse raw JSON for navigation - DO NOT use POCO serialization
+        JsonElement rawJson;
+        try
+        {
+            var jsonDoc = JsonDocument.Parse(rawBundleJson);
+            rawJson = jsonDoc.RootElement;
+        }
+        catch
+        {
+            // JSON parsing failed - continue without navigation
+            rawJson = default;
+        }
         
         foreach (var issue in outcome.Issue)
         {
@@ -79,14 +90,13 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
             
             var path = issue.Expression?.FirstOrDefault() ?? issue.Location?.FirstOrDefault();
             
-            // Try to resolve navigation if bundle is available
-            // If bundle is null (structural validation before POCO parsing), jsonPointer will be null
+            // Try to resolve navigation using raw JSON
             string? jsonPointer = null;
-            if (bundle != null && path != null)
+            if (rawJson.ValueKind != JsonValueKind.Undefined && path != null)
             {
                 try
                 {
-                    jsonPointer = await _navigationService.ResolvePathAsync(bundle, path, null, null, cancellationToken);
+                    jsonPointer = await _navigationService.ResolvePathAsync(rawJson, bundle, path, null, null, cancellationToken);
                 }
                 catch
                 {
@@ -118,9 +128,22 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
         return errors;
     }
     
-    public async Task<List<ValidationError>> FromRuleErrorsAsync(List<RuleValidationError> errors, Bundle bundle, CancellationToken cancellationToken = default)
+    public async Task<List<ValidationError>> FromRuleErrorsAsync(List<RuleValidationError> errors, string rawBundleJson, Bundle bundle, CancellationToken cancellationToken = default)
     {
         var validationErrors = new List<ValidationError>();
+        
+        // Parse raw JSON for navigation - DO NOT use POCO serialization
+        JsonElement rawJson;
+        try
+        {
+            var jsonDoc = JsonDocument.Parse(rawBundleJson);
+            rawJson = jsonDoc.RootElement;
+        }
+        catch
+        {
+            // JSON parsing failed - continue without navigation
+            rawJson = default;
+        }
         
         foreach (var error in errors)
         {
@@ -134,10 +157,10 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 // Remove it from details so it doesn't appear in API response
                 error.Details.Remove("_precomputedJsonPointer");
             }
-            else if (bundle != null)
+            else if (rawJson.ValueKind != JsonValueKind.Undefined)
             {
-                // Normal path: resolve using SmartPathNavigation
-                jsonPointer = await _navigationService.ResolvePathAsync(bundle, error.Path, error.ResourceType, null, cancellationToken);
+                // Normal path: resolve using SmartPathNavigation on raw JSON
+                jsonPointer = await _navigationService.ResolvePathAsync(rawJson, bundle, error.Path, error.ResourceType, null, cancellationToken);
             }
             
             // Include engine metadata in details for Firely-preferred with safe fallback strategy
@@ -181,13 +204,30 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
         return validationErrors;
     }
     
-    public async Task<List<ValidationError>> FromCodeMasterErrorsAsync(List<CodeMasterValidationError> errors, Bundle bundle, CancellationToken cancellationToken = default)
+    public async Task<List<ValidationError>> FromCodeMasterErrorsAsync(List<CodeMasterValidationError> errors, string rawBundleJson, Bundle bundle, CancellationToken cancellationToken = default)
     {
         var validationErrors = new List<ValidationError>();
         
+        // Parse raw JSON for navigation - DO NOT use POCO serialization
+        JsonElement rawJson;
+        try
+        {
+            var jsonDoc = JsonDocument.Parse(rawBundleJson);
+            rawJson = jsonDoc.RootElement;
+        }
+        catch
+        {
+            // JSON parsing failed - continue without navigation
+            rawJson = default;
+        }
+        
         foreach (var error in errors)
         {
-            var jsonPointer = await _navigationService.ResolvePathAsync(bundle, error.Path, error.ResourceType, null, cancellationToken);
+            string? jsonPointer = null;
+            if (rawJson.ValueKind != JsonValueKind.Undefined)
+            {
+                jsonPointer = await _navigationService.ResolvePathAsync(rawJson, bundle, error.Path, error.ResourceType, null, cancellationToken);
+            }
             
             validationErrors.Add(new ValidationError
             {
@@ -210,13 +250,30 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
         return validationErrors;
     }
     
-    public async Task<List<ValidationError>> FromReferenceErrorsAsync(List<ReferenceValidationError> errors, Bundle bundle, CancellationToken cancellationToken = default)
+    public async Task<List<ValidationError>> FromReferenceErrorsAsync(List<ReferenceValidationError> errors, string rawBundleJson, Bundle bundle, CancellationToken cancellationToken = default)
     {
         var validationErrors = new List<ValidationError>();
         
+        // Parse raw JSON for navigation - DO NOT use POCO serialization
+        JsonElement rawJson;
+        try
+        {
+            var jsonDoc = JsonDocument.Parse(rawBundleJson);
+            rawJson = jsonDoc.RootElement;
+        }
+        catch
+        {
+            // JSON parsing failed - continue without navigation
+            rawJson = default;
+        }
+        
         foreach (var error in errors)
         {
-            var jsonPointer = await _navigationService.ResolvePathAsync(bundle, error.Path, error.ResourceType, error.EntryIndex, cancellationToken);
+            string? jsonPointer = null;
+            if (rawJson.ValueKind != JsonValueKind.Undefined)
+            {
+                jsonPointer = await _navigationService.ResolvePathAsync(rawJson, bundle, error.Path, error.ResourceType, error.EntryIndex, cancellationToken);
+            }
             
             validationErrors.Add(new ValidationError
             {
@@ -257,10 +314,26 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
     /// </summary>
     public async Task<List<ValidationError>> FromQualityFindingsAsync(
         IReadOnlyList<QualityFinding> findings,
+        string? rawBundleJson,
         Bundle? bundle,
         CancellationToken cancellationToken = default)
     {
         var errors = new List<ValidationError>();
+        
+        // Parse raw JSON for navigation if available - DO NOT use POCO serialization
+        JsonElement rawJson = default;
+        if (!string.IsNullOrEmpty(rawBundleJson))
+        {
+            try
+            {
+                var jsonDoc = JsonDocument.Parse(rawBundleJson);
+                rawJson = jsonDoc.RootElement;
+            }
+            catch
+            {
+                // JSON parsing failed - continue without navigation
+            }
+        }
         
         foreach (var issue in findings)
         {
@@ -277,12 +350,13 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 Explanation = ValidationExplanationService.ForLint(issue.RuleId, issue.Message)
             };
             
-            // Try to resolve navigation if we have a bundle and a path
-            if (bundle != null && !string.IsNullOrEmpty(issue.FhirPath))
+            // Try to resolve navigation if we have raw JSON and a path
+            if (rawJson.ValueKind != JsonValueKind.Undefined && !string.IsNullOrEmpty(issue.FhirPath))
             {
                 try
                 {
                     var jsonPointer = await _navigationService.ResolvePathAsync(
+                        rawJson,
                         bundle,
                         issue.FhirPath,
                         issue.ResourceType,
@@ -315,11 +389,12 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
     [Obsolete("Use FromQualityFindingsAsync - clarifies that these findings are advisory, not blocking")]
     public async Task<List<ValidationError>> FromLintIssuesAsync(
         IReadOnlyList<LintIssue> lintIssues,
+        string? rawBundleJson,
         Bundle? bundle,
         CancellationToken cancellationToken = default)
     {
         // LintIssue inherits from QualityFinding, safe to cast
-        return await FromQualityFindingsAsync(lintIssues.Cast<QualityFinding>().ToList(), bundle, cancellationToken);
+        return await FromQualityFindingsAsync(lintIssues.Cast<QualityFinding>().ToList(), rawBundleJson, bundle, cancellationToken);
     }
     
     /// <summary>
@@ -327,9 +402,22 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
     /// METADATA-DRIVEN: Uses IsConditional flag from issue, no path-based inference.
     /// Spec hints are advisory and clearly marked as not enforced.
     /// </summary>
-    public async Task<List<ValidationError>> FromSpecHintIssuesAsync(List<SpecHintIssue> issues, Bundle bundle, CancellationToken cancellationToken = default)
+    public async Task<List<ValidationError>> FromSpecHintIssuesAsync(List<SpecHintIssue> issues, string rawBundleJson, Bundle? bundle, CancellationToken cancellationToken = default)
     {
         var errors = new List<ValidationError>();
+        
+        // Parse raw JSON for navigation - DO NOT use POCO serialization
+        JsonElement rawJson;
+        try
+        {
+            var jsonDoc = JsonDocument.Parse(rawBundleJson);
+            rawJson = jsonDoc.RootElement;
+        }
+        catch
+        {
+            // JSON parsing failed - continue without navigation
+            rawJson = default;
+        }
         
         foreach (var issue in issues)
         {
@@ -362,19 +450,24 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 error.Details["condition"] = issue.Condition;
             }
             
-            // Add navigation context
-            if (!string.IsNullOrEmpty(issue.Path))
+            // Add navigation context using raw JSON
+            // SPEC_HINT FIX: If issue already has jsonPointer (instance-scoped), preserve it
+            // Only resolve navigation if jsonPointer is missing
+            if (string.IsNullOrEmpty(issue.JsonPointer) && 
+                rawJson.ValueKind != JsonValueKind.Undefined && 
+                !string.IsNullOrEmpty(issue.Path))
             {
                 try
                 {
                     var jsonPointer = await _navigationService.ResolvePathAsync(
-                        bundle, 
+                        rawJson, 
+                        bundle,
                         issue.Path, 
                         issue.ResourceType, 
                         null,
                         cancellationToken);
                     
-                    // Update jsonPointer if resolved (SpecHintIssue may have precomputed one)
+                    // Update jsonPointer if resolved
                     if (!string.IsNullOrEmpty(jsonPointer))
                     {
                         error.JsonPointer = jsonPointer;

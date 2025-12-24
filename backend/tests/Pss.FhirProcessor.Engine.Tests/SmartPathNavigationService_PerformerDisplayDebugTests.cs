@@ -1,0 +1,149 @@
+using Hl7.Fhir.Model;
+using Pss.FhirProcessor.Engine.Services;
+using Xunit;
+using Task = System.Threading.Tasks.Task;
+
+namespace Pss.FhirProcessor.Engine.Tests;
+
+/// <summary>
+/// Tests to debug UI issue with performer.display returning null jsonPointer
+/// </summary>
+public class SmartPathNavigationService_PerformerDisplayDebugTests
+{
+    private readonly SmartPathNavigationService _service;
+
+    public SmartPathNavigationService_PerformerDisplayDebugTests()
+    {
+        _service = new SmartPathNavigationService();
+    }
+
+    [Fact]
+    public async Task PerformerDisplay_NoResourcePrefix_WithResourceTypeParam_EmptyPerformer_ReturnsNull()
+    {
+        // Scenario: performer array is empty
+        var obs = new Observation
+        {
+            Id = "obs-001",
+            Status = ObservationStatus.Final,
+            Code = new CodeableConcept { Text = "Test" },
+            Performer = new List<ResourceReference>() // EMPTY array
+        };
+        
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent { FullUrl = "urn:uuid:obs-001", Resource = obs }
+            }
+        };
+        
+        // Path without resource prefix, resourceType provided
+        var path = "performer.display";
+        var resourceType = "Observation";
+
+        var jsonPointer = await _service.ResolvePathAsync(bundle, path, resourceType);
+
+        // Expected: null (can't navigate through empty array to display)
+        Assert.Null(jsonPointer);
+    }
+    
+    [Fact]
+    public async Task PerformerDisplay_NoResourcePrefix_WithResourceTypeParam_NoPerformer_ReturnsNull()
+    {
+        // Scenario: performer property doesn't exist at all
+        var obs = new Observation
+        {
+            Id = "obs-001",
+            Status = ObservationStatus.Final,
+            Code = new CodeableConcept { Text = "Test" }
+            // NO Performer property
+        };
+        
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent { FullUrl = "urn:uuid:obs-001", Resource = obs }
+            }
+        };
+        
+        // Path without resource prefix, resourceType provided
+        var path = "performer.display";
+        var resourceType = "Observation";
+
+        var jsonPointer = await _service.ResolvePathAsync(bundle, path, resourceType);
+
+        // Expected: null (performer doesn't exist)
+        Assert.Null(jsonPointer);
+    }
+    
+    [Fact]
+    public async Task PerformerDisplay_NoResourcePrefix_WithResourceTypeParam_EmptyDisplay_ReturnsPointer()
+    {
+        // Scenario: performer has element with empty display
+        var obs = new Observation
+        {
+            Id = "obs-001",
+            Status = ObservationStatus.Final,
+            Code = new CodeableConcept { Text = "Test" },
+            Performer = new List<ResourceReference>
+            {
+                new ResourceReference { Display = "" } // Empty but present
+            }
+        };
+        
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent { FullUrl = "urn:uuid:obs-001", Resource = obs }
+            }
+        };
+        
+        // Path without resource prefix, resourceType provided
+        var path = "performer.display";
+        var resourceType = "Observation";
+
+        var jsonPointer = await _service.ResolvePathAsync(bundle, path, resourceType);
+
+        // Expected: pointer to display (empty value is still a structurally present node)
+        Assert.Equal("/entry/0/resource/performer/0/display", jsonPointer);
+    }
+    
+    [Fact]
+    public async Task PerformerDisplay_NoResourcePrefix_WithResourceTypeParam_NoDisplay_ReturnsNull()
+    {
+        // Scenario: performer has element but no display property
+        var obs = new Observation
+        {
+            Id = "obs-001",
+            Status = ObservationStatus.Final,
+            Code = new CodeableConcept { Text = "Test" },
+            Performer = new List<ResourceReference>
+            {
+                new ResourceReference { Reference = "Practitioner/123" } // No Display
+            }
+        };
+        
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent { FullUrl = "urn:uuid:obs-001", Resource = obs }
+            }
+        };
+        
+        // Path without resource prefix, resourceType provided
+        var path = "performer.display";
+        var resourceType = "Observation";
+
+        var jsonPointer = await _service.ResolvePathAsync(bundle, path, resourceType);
+
+        // Expected: null (display property doesn't exist)
+        Assert.Null(jsonPointer);
+    }
+}

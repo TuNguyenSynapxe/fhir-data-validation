@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Check, AlertCircle, HelpCircle, Lightbulb } from 'lucide-react';
 import FhirPathSelectorDrawer from '../../../../rules/FhirPathSelectorDrawer';
 import { MessageEditor } from '../../../MessageEditor';
+import { InstanceScopeDrawer } from '../../common/InstanceScopeDrawer';
+import type { InstanceScope } from '../../common/InstanceScope.types';
+import { getInstanceScopeSummary } from '../../common/InstanceScope.utils';
 import {
   buildPatternRule,
   getDefaultErrorMessage,
@@ -41,26 +44,41 @@ export const PatternRuleForm: React.FC<PatternRuleFormProps> = ({
   initialResourceType = 'Patient',
 }) => {
   const [resourceType, setResourceType] = useState<string>(initialResourceType);
-  const [instanceScope, setInstanceScope] = useState<'all' | 'first'>('all');
+  // Instance scope uses structured drawer-based selection (RULE: Instance Scope must ALWAYS open in a drawer)
+  const [instanceScope, setInstanceScope] = useState<InstanceScope>({ kind: 'all' });
   const [fieldPath, setFieldPath] = useState<string>('');
   const [pattern, setPattern] = useState<string>('');
   const [negate, setNegate] = useState<boolean>(false);
   const [caseSensitive, setCaseSensitive] = useState<boolean>(true);
   const [severity, setSeverity] = useState<'error' | 'warning' | 'information'>('error');
   const [customMessage, setCustomMessage] = useState<string>('');
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isFieldDrawerOpen, setIsFieldDrawerOpen] = useState(false);
+  const [isScopeDrawerOpen, setIsScopeDrawerOpen] = useState(false);
   const [showPatternHelp, setShowPatternHelp] = useState(false);
   const [testValue, setTestValue] = useState<string>('');
   const [errors, setErrors] = useState<{ fieldPath?: string; pattern?: string }>({});
 
+  // Reset instance scope when resource type changes
+  useEffect(() => {
+    setInstanceScope({ kind: 'all' });
+  }, [resourceType]);
+
   const handleSelectField = () => {
-    setIsDrawerOpen(true);
+    setIsFieldDrawerOpen(true);
+  };
+
+  const handleSelectScope = () => {
+    setIsScopeDrawerOpen(true);
+  };
+
+  const handleScopeChange = (scope: InstanceScope) => {
+    setInstanceScope(scope);
   };
 
   const handlePathSelected = (path: string) => {
     setFieldPath(path);
     setErrors({ ...errors, fieldPath: undefined });
-    setIsDrawerOpen(false);
+    setIsFieldDrawerOpen(false);
   };
 
   const handlePatternChange = (value: string) => {
@@ -163,49 +181,26 @@ export const PatternRuleForm: React.FC<PatternRuleFormProps> = ({
           </select>
         </div>
 
-        {/* Resource Instance Scope */}
+        {/* Instance Scope - DRAWER-BASED (RULE: Instance Scope must ALWAYS open in a drawer) */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Which Instances?
+            Instance Scope
           </label>
-          <div className="space-y-2">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="radio"
-                name="instanceScope"
-                value="all"
-                checked={instanceScope === 'all'}
-                onChange={() => setInstanceScope('all')}
-                className="mt-0.5"
-              />
-              <div>
-                <div className="text-sm font-medium text-gray-900">
-                  All <span className="text-gray-500 font-mono text-xs">(*)</span>
-                </div>
-                <div className="text-xs text-gray-600">
-                  Validate all matching resources in the bundle
-                </div>
+          <button
+            onClick={handleSelectScope}
+            className="w-full px-4 py-3 border border-gray-300 rounded-md text-left hover:border-blue-500 hover:bg-blue-50 transition-colors"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-900 break-words">{getInstanceScopeSummary(resourceType, instanceScope).text}</div>
+                <div className="text-xs font-mono text-gray-500 mt-0.5 break-all">{getInstanceScopeSummary(resourceType, instanceScope).fhirPath}</div>
               </div>
-            </label>
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="radio"
-                name="instanceScope"
-                value="first"
-                checked={instanceScope === 'first'}
-                onChange={() => setInstanceScope('first')}
-                className="mt-0.5"
-              />
-              <div>
-                <div className="text-sm font-medium text-gray-900">
-                  First only <span className="text-gray-500 font-mono text-xs">[0]</span>
-                </div>
-                <div className="text-xs text-gray-600">
-                  Validate only the first matching resource
-                </div>
-              </div>
-            </label>
-          </div>
+              <Check size={16} className="text-green-600 flex-shrink-0 mt-0.5" />
+            </div>
+          </button>
+          <p className="text-xs text-gray-500 mt-1">
+            Click to change which {resourceType} instances this rule applies to
+          </p>
         </div>
 
         {/* Field Selector */}
@@ -450,10 +445,20 @@ export const PatternRuleForm: React.FC<PatternRuleFormProps> = ({
         </button>
       </div>
 
-      {/* FHIRPath Selector Drawer */}
+      {/* Instance Scope Drawer (RULE: Instance Scope must ALWAYS open in a drawer) */}
+      <InstanceScopeDrawer
+        isOpen={isScopeDrawerOpen}
+        resourceType={resourceType}
+        bundle={projectBundle || {}}
+        value={instanceScope}
+        onChange={handleScopeChange}
+        onClose={() => setIsScopeDrawerOpen(false)}
+      />
+
+      {/* FHIRPath Selector Drawer for Field Path */}
       <FhirPathSelectorDrawer
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
+        isOpen={isFieldDrawerOpen}
+        onClose={() => setIsFieldDrawerOpen(false)}
         onSelect={handlePathSelected}
         resourceType={resourceType}
         projectBundle={projectBundle}

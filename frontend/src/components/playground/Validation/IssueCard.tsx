@@ -8,6 +8,7 @@ import { PathInfoTooltip } from './PathInfoTooltip';
 import { formatSmartPath, getScopedSegments, convertToJsonPath } from '../../../utils/smartPathFormatting';
 import { isIssueBlocking } from '../../../types/validationIssues';
 import type { ValidationIssue } from '../../../types/validationIssues';
+import { ExplanationPanel } from './ExplanationPanel';
 
 interface IssueCardProps {
   issue: ValidationIssue;
@@ -40,16 +41,19 @@ export const IssueCard: React.FC<IssueCardProps> = ({
   // Determine if this is a non-blocking advisory source
   const isAdvisorySource = issue.source === 'LINT' || issue.source === 'HL7Advisory' || issue.source === 'Lint' || issue.source === 'HL7_SPEC_HINT';
   
+  // Phase 8: Check path/location for navigation (not just jsonPointer)
+  const canNavigate = !!(issue.location || issue.jsonPointer);
+  
   const cardBgColor = isAdvisorySource ? 'bg-blue-50/30' : 'bg-gray-50/50';
   const borderColor = isAdvisorySource ? 'border-blue-200/50' : 'border-gray-200';
 
   return (
     <div
       className={`border ${borderColor} rounded-lg p-3 transition-colors ${
-        issue.jsonPointer ? 'cursor-pointer hover:shadow-sm' : ''
+        canNavigate ? 'cursor-pointer hover:shadow-sm' : ''
       } ${cardBgColor}`}
       onClick={(e) => {
-        if (issue.jsonPointer) {
+        if (canNavigate) {
           e.stopPropagation();
           onClick?.(issue);
         }
@@ -197,6 +201,18 @@ export const IssueCard: React.FC<IssueCardProps> = ({
           <PathInfoTooltip fhirPath={formattedPath.fullPath} jsonPath={jsonPath} />
         </div>
       </div>
+
+      {/* Phase 7: Explanation Panel */}
+      <ExplanationPanel 
+        error={{
+          path: issue.location,
+          jsonPointer: issue.jsonPointer ?? undefined,
+          message: issue.message,
+          errorCode: issue.code,
+          resourceType: issue.resourceType,
+          details: issue.details
+        }} 
+      />
     </div>
   );
 };

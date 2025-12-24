@@ -184,14 +184,17 @@ export const IssueGroupCard: React.FC<IssueGroupCardProps> = ({
               ? 'bg-blue-50/30 hover:bg-blue-50/50'
               : 'bg-gray-50/50 hover:bg-gray-50/80';
 
+            // Phase 8: Check path/location for navigation (not just jsonPointer)
+            const canNavigate = !!(item.location || item.jsonPointer);
+            
             return (
               <div
                 key={item.id}
                 className={`border-b ${borderColor} last:border-b-0 p-3 transition-colors ${
-                  item.jsonPointer ? 'cursor-pointer' : ''
+                  canNavigate ? 'cursor-pointer' : ''
                 } ${rowBgColor}`}
                 onClick={(e) => {
-                  if (item.jsonPointer) {
+                  if (canNavigate) {
                     e.stopPropagation();
                     onIssueClick?.(item);
                   }
@@ -208,8 +211,8 @@ export const IssueGroupCard: React.FC<IssueGroupCardProps> = ({
                           segments={scopedSegments}
                           fullPath={item.location}
                           onNavigate={
-                            item.jsonPointer
-                              ? () => onNavigateToPath?.(item.jsonPointer!)
+                            canNavigate
+                              ? () => onNavigateToPath?.({ jsonPointer: item.jsonPointer, path: item.location })
                               : undefined
                           }
                           bundleJson={bundleJson}

@@ -6,6 +6,7 @@ import { SmartPathBreadcrumb } from './SmartPathBreadcrumb';
 import { ScopeSelectorChip } from './ScopeSelectorChip';
 import { PathInfoTooltip } from './PathInfoTooltip';
 import { getBlockingStatusDisplay } from '../../../utils/validationOverrides';
+import { ExplanationPanel } from './ExplanationPanel';
 
 interface ValidationError {
   source: string;
@@ -66,7 +67,8 @@ export const ErrorCard: React.FC<ErrorCardProps> = ({ error, allErrors = [], onC
   const severityColor = getSeverityColor(error.severity);
   
   const fhirPath = error.details?.fhirPath || error.path;
-  const hasNavigation = !!error.jsonPointer;
+  // Phase 8: Check path for navigation (fallback resolver handles missing jsonPointer)
+  const hasNavigation = !!(error.path || error.jsonPointer);
   
   // Get blocking status with override detection
   const blockingStatus = getBlockingStatusDisplay(error, allErrors);
@@ -194,6 +196,18 @@ export const ErrorCard: React.FC<ErrorCardProps> = ({ error, allErrors = [], onC
           )}
         </div>
       </div>
+
+      {/* Phase 7: Explanation Panel */}
+      <ExplanationPanel 
+        error={{
+          path: error.path,
+          jsonPointer: error.jsonPointer,
+          message: error.message,
+          errorCode: error.errorCode,
+          resourceType: error.resourceType,
+          details: error.details
+        }} 
+      />
     </div>
   );
 };

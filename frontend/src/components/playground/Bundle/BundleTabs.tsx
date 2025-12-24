@@ -15,7 +15,7 @@ interface BundleTabsProps {
 
 export interface BundleTabsRef {
   switchToTreeView: () => void;
-  navigateToPath: (jsonPointer: string) => void;
+  navigateToPath: (jsonPointer: string, expectedChildKey?: string) => void; // Phase 7.1: Support expected child
 }
 
 export const BundleTabs = forwardRef<BundleTabsRef, BundleTabsProps>(({
@@ -28,6 +28,7 @@ export const BundleTabs = forwardRef<BundleTabsRef, BundleTabsProps>(({
 }, ref) => {
   const [activeTab, setActiveTab] = useState<'tree' | 'json'>('tree');
   const [selectedPath, setSelectedPath] = useState<string>();
+  const [expectedChildKey, setExpectedChildKey] = useState<string>(); // Phase 7.1: Track expected child
   const [localValue, setLocalValue] = useState(bundleJson);
   const [parseError, setParseError] = useState<string | null>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -39,8 +40,9 @@ export const BundleTabs = forwardRef<BundleTabsRef, BundleTabsProps>(({
         setActiveTab('tree');
       }
     },
-    navigateToPath: (jsonPointer: string) => {
+    navigateToPath: (jsonPointer: string, childKey?: string) => { // Phase 7.1: Accept expected child
       setSelectedPath(jsonPointer);
+      setExpectedChildKey(childKey); // Phase 7.1: Store expected child
       onSelectNode?.(jsonPointer);
     },
   }));
@@ -238,6 +240,8 @@ export const BundleTabs = forwardRef<BundleTabsRef, BundleTabsProps>(({
             selectedPath={selectedPath}
             onUpdateValue={handleUpdateValue}
             onDeleteNode={handleDeleteNode}
+            expectedChildAt={selectedPath} // Phase 7.1: Pass parent path
+            expectedChildKey={expectedChildKey} // Phase 7.1: Pass expected child key
           />
         ) : (
           <div className="h-full">

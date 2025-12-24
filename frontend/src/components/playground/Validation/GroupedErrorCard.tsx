@@ -7,6 +7,7 @@ import { SmartPathBreadcrumb } from './SmartPathBreadcrumb';
 import { ScopeSelectorChip } from './ScopeSelectorChip';
 import { PathInfoTooltip } from './PathInfoTooltip';
 import { getBlockingStatusDisplay } from '../../../utils/validationOverrides';
+import { ExplanationPanel } from './ExplanationPanel';
 
 interface ValidationError {
   source: string;
@@ -342,14 +343,17 @@ export const GroupedErrorCard: React.FC<GroupedErrorCardProps> = ({
                           ? 'bg-amber-50/40 border-amber-200/60 hover:bg-amber-50/60' 
                           : 'bg-gray-50/50 border-gray-200/60 hover:bg-gray-50/80';
                         
+                        // Phase 8: Check if error has navigable path
+                        const canNavigate = !!(path || jsonPointer);
+                        
                         return (
                           <div
                             key={path}
                             className={`group/row p-2.5 rounded-md border transition-all ${rowBgColor} ${
-                              jsonPointer ? 'hover:shadow-sm cursor-pointer' : ''
+                              canNavigate ? 'hover:shadow-sm cursor-pointer' : ''
                             }`}
                             onClick={(e) => {
-                              if (jsonPointer) {
+                              if (canNavigate) {
                                 e.stopPropagation();
                                 onClick?.(error);
                               }
@@ -363,7 +367,7 @@ export const GroupedErrorCard: React.FC<GroupedErrorCardProps> = ({
                                   resourceType={resourceType}
                                   segments={scopedSegments}
                                   fullPath={path}
-                                  onNavigate={jsonPointer ? () => onNavigateToPath?.(jsonPointer) : undefined}
+                                  onNavigate={canNavigate ? () => onNavigateToPath?.({ jsonPointer, path } as any) : undefined}
                                 />
                                 {/* Scope selectors (where clauses) - Phase 6 */}
                                 <ScopeSelectorChip fhirPath={path} />
@@ -395,6 +399,20 @@ export const GroupedErrorCard: React.FC<GroupedErrorCardProps> = ({
           )}
         </div>
       </div>
+
+      {/* Phase 7: Explanation Panel (group-level) */}
+      {errors.length > 0 && (
+        <ExplanationPanel 
+          error={{
+            path: firstError.path,
+            jsonPointer: firstError.jsonPointer,
+            message: firstError.message,
+            errorCode: errorCode,
+            resourceType: firstError.resourceType,
+            details: firstError.details
+          }} 
+        />
+      )}
     </div>
   );
 };
