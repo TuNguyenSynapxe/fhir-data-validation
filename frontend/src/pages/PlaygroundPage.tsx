@@ -58,12 +58,19 @@ export default function PlaygroundPage() {
   const [codeMasterJson, setCodeMasterJson] = useState('');
   const [validationSettings, setValidationSettings] = useState<ValidationSettings>(DEFAULT_VALIDATION_SETTINGS);
   const [rules, setRules] = useState<Rule[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'rules' | 'codemaster' | 'metadata' | 'settings' | 'run' | 'results'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'rules' | 'codemaster' | 'metadata' | 'settings' | 'run' | 'results' | 'bundle'>('overview');
+  const [bundleView, setBundleView] = useState<'tree' | 'json'>('tree'); // Bundle tab view (Tree View or JSON Editor)
   const [hl7Samples, setHl7Samples] = useState<FhirSampleMetadata[]>([]);
   const [ruleSuggestions, setRuleSuggestions] = useState<any[]>([]);
   
   // Right Panel Mode (default: Rules)
   const [rightPanelMode, setRightPanelMode] = useState<RightPanelMode>(RightPanelMode.Rules);
+  
+  // Bundle drawer state (collapsed by default on mobile, visible on desktop)
+  const [isBundleOpen, setIsBundleOpen] = useState(false);
+  
+  // Bundle collapse state (desktop split mode only)
+  const [isBundleCollapsed, setIsBundleCollapsed] = useState(false);
   
   // Track original values for change detection
   const [originalBundleJson, setOriginalBundleJson] = useState('');
@@ -155,7 +162,16 @@ export default function PlaygroundPage() {
   // Parse rules JSON to extract rules array and load settings
   useEffect(() => {
     if (project) {
-      const bundle = project.sampleBundleJson || '{}';
+      // Normalize bundle JSON by parsing and re-stringifying to fix any double-escaped characters
+      let bundle = project.sampleBundleJson || '{}';
+      try {
+        // Parse and re-stringify to normalize escape sequences
+        const parsed = JSON.parse(bundle);
+        bundle = JSON.stringify(parsed, null, 2);
+      } catch {
+        // If parsing fails, use as-is
+      }
+      
       const codeMaster = project.codeMasterJson || '{}';
       
       setBundleJson(bundle);
@@ -270,6 +286,10 @@ export default function PlaygroundPage() {
    * @param fhirPath - Optional FHIRPath for fallback (if jsonPointer is null)
    */
   const handleNavigateToPath = (jsonPointerOrError: string | { jsonPointer?: string; path?: string }, fhirPath?: string) => {
+    // Auto-open bundle and ensure it's not collapsed
+    setIsBundleOpen(true);
+    setIsBundleCollapsed(false);
+    
     try {
       // Extract jsonPointer and fhirPath from error object or use direct string
       const jsonPointer = typeof jsonPointerOrError === 'string' 
@@ -294,6 +314,7 @@ export default function PlaygroundPage() {
       const targetPointer = navTarget.targetPointer;
       
       // Switch to tree view and navigate
+      setBundleView('tree');
       bundleTabsRef.current?.switchToTreeView();
       
       if (missingSegments.length > 0) {
@@ -444,10 +465,15 @@ export default function PlaygroundPage() {
       {/* IDE-Style Playground Layout */}
       <div className="flex-1 overflow-hidden">
         <PlaygroundLayout
+          isBundleOpen={isBundleOpen}
+          onBundleToggle={() => setIsBundleOpen(!isBundleOpen)}
+          isBundleCollapsed={isBundleCollapsed}
+          onBundleCollapse={() => setIsBundleCollapsed(!isBundleCollapsed)}
+          currentMode={rightPanelMode}
           bundleContent={
             <div className={`h-full transition-all duration-200 ${
               treeViewFocused ? 'ring-2 ring-blue-400 ring-opacity-50 shadow-lg' : ''
-            }`}>
+            }`}>              
               <BundleTabs
                 ref={bundleTabsRef}
                 bundleJson={bundleJson}
@@ -516,6 +542,26 @@ export default function PlaygroundPage() {
                     }
                   },
                   onSuggestionsReceived: setRuleSuggestions,
+                  isBundleOpen,
+                  onBundleToggle: () => setIsBundleOpen(!isBundleOpen),
+                  bundleTabsContent: (
+                    <div className={`h-full transition-all duration-200 ${
+                      treeViewFocused ? 'ring-2 ring-blue-400 ring-opacity-50 shadow-lg' : ''
+                    }`}>
+                      <BundleTabs
+                        ref={bundleTabsRef}
+                        bundleJson={bundleJson}
+                        onBundleChange={setBundleJson}
+                        onSave={handleSaveBundle}
+                        hasChanges={bundleJson !== originalBundleJson}
+                        isSaving={saveBundleMutation.isPending}
+                        activeTab={bundleView}
+                        onTabChange={setBundleView}
+                      />
+                    </div>
+                  ),
+                  bundleView,
+                  onBundleViewChange: setBundleView,
                 }}
                 ui={{
                   isDimmed: treeViewFocused,

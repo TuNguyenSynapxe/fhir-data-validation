@@ -21,6 +21,7 @@ import { ValidationState } from '../../../types/validationState';
 import { useProjectValidationContext } from '../../../contexts/project-validation/ProjectValidationContext';
 import type { ValidationError } from '../../../contexts/project-validation/useProjectValidation';
 import { buildValidationUICounters } from '../../../utils/validationUICounters';
+import { useMediaQuery } from '../../../hooks/useMediaQuery';
 
 interface ValidationPanelProps {
   projectId: string;
@@ -32,6 +33,10 @@ interface ValidationPanelProps {
   bundleJson?: string; // Current bundle content
   bundleChanged?: boolean; // Whether bundle has changed since last validation
   rulesChanged?: boolean; // Whether rules have changed since last validation
+  
+  // Bundle drawer control (Phase 16: Contextual Bundle)
+  isBundleOpen?: boolean;
+  onBundleToggle?: () => void;
 }
 
 /**
@@ -56,6 +61,8 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
   bundleJson = '',
   bundleChanged = false,
   rulesChanged = false,
+  isBundleOpen = false,
+  onBundleToggle,
 }) => {
   // Get validation state/actions from Context
   const { 
@@ -69,6 +76,9 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
   // UI-only state (presentation, not validation lifecycle)
   const [isOpen, setIsOpen] = useState(true);
   const [validationMode, setValidationMode] = useState<'standard' | 'full'>('standard'); // Default to Standard mode
+  
+  // Detect desktop layout for button text
+  const isDesktop = useMediaQuery('(min-width: 1280px)');
   
   // Derive validation state from current conditions
   const { state: validationState } = useValidationState(
@@ -288,6 +298,31 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
                 )}
                 {isValidating ? 'Running...' : 'Run Validation'}
               </button>
+
+              {/* Bundle Toggle Button */}
+              {onBundleToggle && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onBundleToggle();
+                  }}
+                  className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded border transition-colors ${
+                    isBundleOpen
+                      ? 'bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100'
+                      : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                  title={isDesktop 
+                    ? (isBundleOpen ? 'Collapse bundle panel' : 'Show bundle panel')
+                    : (isBundleOpen ? 'Hide bundle' : 'Show bundle')
+                  }
+                >
+                  <FileJson className="w-4 h-4" />
+                  {isDesktop 
+                    ? (isBundleOpen ? 'Bundle' : 'Bundle')
+                    : (isBundleOpen ? 'Hide Bundle' : 'Show Bundle')
+                  }
+                </button>
+              )}
 
               {/* Validation Mode Toggle */}
               <div className="flex items-center gap-1 px-2 py-1 bg-gray-100 rounded">

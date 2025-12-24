@@ -11,6 +11,8 @@ interface BundleTabsProps {
   isSaving?: boolean;
   hasChanges?: boolean;
   onSelectNode?: (path: string) => void;
+  activeTab?: 'tree' | 'json'; // External control of active tab
+  onTabChange?: (tab: 'tree' | 'json') => void; // External tab change handler
 }
 
 export interface BundleTabsRef {
@@ -25,13 +27,19 @@ export const BundleTabs = forwardRef<BundleTabsRef, BundleTabsProps>(({
   isSaving = false,
   hasChanges = false,
   onSelectNode,
+  activeTab: externalActiveTab,
+  onTabChange: externalOnTabChange,
 }, ref) => {
-  const [activeTab, setActiveTab] = useState<'tree' | 'json'>('tree');
+  const [internalActiveTab, setInternalActiveTab] = useState<'tree' | 'json'>('tree');
   const [selectedPath, setSelectedPath] = useState<string>();
   const [expectedChildKey, setExpectedChildKey] = useState<string>(); // Phase 7.1: Track expected child
   const [localValue, setLocalValue] = useState(bundleJson);
   const [parseError, setParseError] = useState<string | null>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  
+  // Use external activeTab if provided, otherwise use internal state
+  const activeTab = externalActiveTab || internalActiveTab;
+  const setActiveTab = externalOnTabChange || setInternalActiveTab;
   
   // Expose imperative methods via ref
   useImperativeHandle(ref, () => ({
@@ -173,19 +181,23 @@ export const BundleTabs = forwardRef<BundleTabsRef, BundleTabsProps>(({
   
   // Check if bundle is empty
   const isBundleEmpty = !bundleJson || bundleJson.trim() === '' || bundleJson.trim() === '{}';
+  
+  // Hide internal tabs when externally controlled
+  const showInternalTabs = !externalActiveTab;
 
   return (
     <div className="flex flex-col h-full bg-white">
-      {/* Tab Header */}
-      <div className="flex items-center justify-between border-b bg-gray-50 px-4 py-2.5 flex-shrink-0">
-        <div className="flex gap-1">
-          <button
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all ${
-              activeTab === 'tree'
-                ? 'text-blue-600 border-b-2 border-blue-600 -mb-[11px]'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-t'
-            } ${parseError ? 'cursor-not-allowed opacity-50' : ''}`}
-            onClick={() => handleTabSwitch('tree')}
+      {/* Tab Header - Only show when not externally controlled */}
+      {showInternalTabs && (
+        <div className="flex items-center justify-between border-b bg-gray-50 px-4 py-2.5 flex-shrink-0">
+          <div className="flex gap-1">
+            <button
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all ${
+                activeTab === 'tree'
+                  ? 'text-blue-600 border-b-2 border-blue-600 -mb-[11px]'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-t'
+              } ${parseError ? 'cursor-not-allowed opacity-50' : ''}`}
+              onClick={() => handleTabSwitch('tree')}
             disabled={!!parseError}
             title={parseError ? 'Fix JSON errors to view tree' : 'Tree View'}
           >
@@ -222,6 +234,7 @@ export const BundleTabs = forwardRef<BundleTabsRef, BundleTabsProps>(({
           </button>
         </div>
       </div>
+      )}
 
       {/* Tab Content */}
       <div className="flex-1 overflow-hidden">

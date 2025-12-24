@@ -136,6 +136,15 @@ export interface NavigationProps {
   onNavigateToPath?: (path: string) => void;
   onSelectError?: (error: any) => void;
   onSuggestionsReceived?: (suggestions: any[]) => void;
+  
+  // Bundle drawer control (Phase 16: Contextual Bundle)
+  isBundleOpen?: boolean;
+  onBundleToggle?: () => void;
+  
+  // Bundle tab content (Phase 18+: Bundle Tab)
+  bundleTabsContent?: React.ReactNode;
+  bundleView?: 'tree' | 'json';
+  onBundleViewChange?: (view: 'tree' | 'json') => void;
 }
 
 /**
@@ -173,6 +182,6 @@ export interface ModeControlProps {
   currentMode: RightPanelMode;
   onModeChange?: (mode: RightPanelMode) => void;
   showModeTabs?: boolean;
-  activeTab?: 'overview' | 'rules' | 'codemaster' | 'metadata' | 'settings' | 'run' | 'results';
-  onTabChange?: (tab: 'overview' | 'rules' | 'codemaster' | 'metadata' | 'settings' | 'run' | 'results') => void;
+  activeTab?: 'overview' | 'rules' | 'codemaster' | 'metadata' | 'settings' | 'run' | 'results' | 'bundle';
+  onTabChange?: (tab: 'overview' | 'rules' | 'codemaster' | 'metadata' | 'settings' | 'run' | 'results' | 'bundle') => void;
 }

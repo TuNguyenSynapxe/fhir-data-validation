@@ -110,10 +110,19 @@ const getValueType = (value: any): NodeData['type'] => {
 
 /**
  * Format value preview for display
+ * Escapes special characters like \n, \t, \r to prevent them from rendering literally
  */
 const formatValuePreview = (value: any, type: NodeData['type']): string => {
   if (type === 'null') return 'null';
-  if (type === 'string') return `"${value.length > 50 ? value.substring(0, 50) + '...' : value}"`;
+  if (type === 'string') {
+    // Escape special characters in string values
+    const escaped = value
+      .replace(/\\/g, '\\\\')
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r')
+      .replace(/\t/g, '\\t');
+    return `"${escaped.length > 50 ? escaped.substring(0, 50) + '...' : escaped}"`;
+  }
   if (type === 'boolean') return value ? 'true' : 'false';
   if (type === 'number') return String(value);
   if (type === 'array') return `Array[${value.length}]`;

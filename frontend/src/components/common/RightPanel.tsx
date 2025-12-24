@@ -102,7 +102,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   } = bundle;
   
   // Destructure navigation props
-  const { projectId, onNavigateToPath, onSelectError, onSuggestionsReceived } = navigation;
+  const { projectId, onNavigateToPath, onSelectError, onSuggestionsReceived, isBundleOpen, onBundleToggle } = navigation;
   
   // Destructure ui props
   const { isDimmed = false, onClearFocus } = ui;
@@ -138,7 +138,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             features={projectFeatures}
             validationState={validationState}
           />
-        );
+        );      case 'bundle':
+        // Render BundleTabs component from navigation.bundleTabsContent
+        return navigation.bundleTabsContent || null;      case 'bundle':
+        // Render BundleTabs component from navigation.bundleTabsContent
+        return navigation.bundleTabsContent || null;
       case 'codemaster':
         return (
           <TerminologyEditor
@@ -196,6 +200,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         bundleJson={bundleJson}
         bundleChanged={bundleChanged}
         rulesChanged={rulesChanged}
+        isBundleOpen={isBundleOpen}
+        onBundleToggle={onBundleToggle}
       />
     );
   };

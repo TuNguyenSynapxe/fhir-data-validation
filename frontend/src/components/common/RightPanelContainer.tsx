@@ -80,7 +80,7 @@ export const RightPanelContainer: React.FC<RightPanelContainerProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-      {/* L1 Tabs - Top level navigation: Overview | Rules | Validation | Observations */}
+      {/* L1 Tabs - Top level navigation: Overview | Bundle | Rules | Validation | Observations */}
       {showModeTabs && (
         <div className="flex border-b bg-gray-100 flex-shrink-0">
           <button
@@ -100,10 +100,24 @@ export const RightPanelContainer: React.FC<RightPanelContainerProps> = ({
           <button
             onClick={() => {
               onModeChange?.(RightPanelMode.Rules);
+              onTabChange?.('bundle');
+            }}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+              activeTab === 'bundle'
+                ? 'border-blue-600 text-blue-600 bg-white'
+                : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}
+          >
+            <DocumentTextIcon className="w-4 h-4" />
+            Bundle
+          </button>
+          <button
+            onClick={() => {
+              onModeChange?.(RightPanelMode.Rules);
               onTabChange?.('rules');
             }}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
-              currentMode === RightPanelMode.Rules && activeTab !== 'overview'
+              currentMode === RightPanelMode.Rules && activeTab !== 'overview' && activeTab !== 'bundle'
                 ? 'border-blue-600 text-blue-600 bg-white'
                 : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             }`}
@@ -136,8 +150,34 @@ export const RightPanelContainer: React.FC<RightPanelContainerProps> = ({
         </div>
       )}
 
+      {/* L2 Tabs - Bundle mode: Tree View | JSON Editor */}
+      {activeTab === 'bundle' && (
+        <div className="flex border-b bg-gray-50 flex-shrink-0">
+          <button
+            onClick={() => navigation.onBundleViewChange?.('tree')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              navigation.bundleView === 'tree'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Tree View
+          </button>
+          <button
+            onClick={() => navigation.onBundleViewChange?.('json')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              navigation.bundleView === 'json'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            JSON Editor
+          </button>
+        </div>
+      )}
+
       {/* L2 Tabs - Rules mode: Rules | CodeMaster | Metadata */}
-      {showSubTabs && activeTab !== 'overview' && (
+      {showSubTabs && activeTab !== 'overview' && activeTab !== 'bundle' && (
         <div className="flex border-b bg-gray-50 flex-shrink-0">
           <button
             onClick={() => onTabChange?.('rules')}
