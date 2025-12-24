@@ -16,6 +16,7 @@ export const QuestionConstraintsSection: React.FC<QuestionConstraintsSectionProp
   errors,
 }) => {
   const [regexTestValue, setRegexTestValue] = React.useState('');
+  const [showModeWarning, setShowModeWarning] = React.useState(false);
 
   const renderQuantitySection = () => (
     <div className="space-y-4">
@@ -79,8 +80,6 @@ These are structural constraints, not terminology bindings.`}
     // Default to valueset mode if no data, or infer from existing data
     const currentMode: TerminologyMode = formData.terminologyMode || 
       (formData.allowedValues && formData.allowedValues.length > 0 ? 'inline' : 'valueset');
-    
-    const [showModeWarning, setShowModeWarning] = React.useState(false);
     
     const handleModeChange = (newMode: TerminologyMode) => {
       // Check if switching modes with existing data
