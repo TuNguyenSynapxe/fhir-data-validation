@@ -18,7 +18,21 @@ export const QuestionConstraintsSection: React.FC<QuestionConstraintsSectionProp
 
   const renderQuantitySection = () => (
     <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Quantity Configuration</h3>
+      <div>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-gray-700 border-b pb-2 flex-1">Value Constraints</h3>
+          <HelpTooltip
+            title="Value Constraints"
+            body="Used for non-coded answers.\n\nExamples:\n• Number range (min / max)\n• Text length\n• Regular expression patterns\n• Required fields\n\nThese are structural constraints, not terminology bindings."
+          />
+        </div>
+        <p className="text-xs text-gray-500 mt-2">
+          Value constraints control the shape or range of the answer.
+        </p>
+        <p className="text-xs text-gray-400 mt-1">
+          Binding strength is not applicable to this answer type.
+        </p>
+      </div>
       
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -51,14 +65,22 @@ export const QuestionConstraintsSection: React.FC<QuestionConstraintsSectionProp
     </div>
   );
 
-  const renderCodeSection = () => (
-    <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Coded Answer Configuration</h3>
-      
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Value Set <span className="text-red-500">*</span>
-        </label>
+  const renderCodeSection = () => {
+    const hasValueSet = !!formData.valueSetUrl;
+    
+    return (
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Terminology</h3>
+          <p className="text-xs text-gray-500 mt-2">
+            Terminology binding controls which codes are allowed.
+          </p>
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Value Set <span className="text-red-500">*</span>
+          </label>
         <input
           type="text"
           value={formData.valueSetUrl || ''}
@@ -74,13 +96,20 @@ export const QuestionConstraintsSection: React.FC<QuestionConstraintsSectionProp
 
       <div>
         <div className="flex items-center gap-2 mb-2">
-          <label className="text-sm font-medium text-gray-700">Binding Strength</label>
+          <label className={`text-sm font-medium ${hasValueSet ? 'text-gray-700' : 'text-gray-400'}`}>
+            Binding Strength
+          </label>
           <HelpTooltip
             title="FHIR Binding Strength"
-            body="Controls how strictly the answer must follow the selected ValueSet.\n\n• Required — Must use one of the allowed codes (Validation Error)\n• Extensible — Should use the ValueSet, but other codes are allowed (Warning)\n• Preferred — Best practice recommendation only (Advisory)"
+            body="Applies only to coded answers.\n\nControls how strictly the answer must conform to the selected ValueSet.\n\n• Required — Must use one of the allowed codes (Error)\n• Extensible — Other codes allowed if needed (Warning)\n• Preferred — Recommendation only (Advisory)\n\nDefined by HL7 FHIR."
             footer="These definitions follow HL7 FHIR standards."
           />
         </div>
+        {!hasValueSet && (
+          <p className="text-xs text-gray-500 mb-2">
+            Binding strength is available after a ValueSet is selected.
+          </p>
+        )}
         <div className="space-y-2">
           {['required', 'extensible', 'preferred'].map((strength) => {
             const severityInfo = {
@@ -91,13 +120,16 @@ export const QuestionConstraintsSection: React.FC<QuestionConstraintsSectionProp
             const info = severityInfo[strength as keyof typeof severityInfo];
             
             return (
-              <label key={strength} className="flex items-center justify-between group hover:bg-gray-50 p-2 rounded transition-colors">
+              <label key={strength} className={`flex items-center justify-between group p-2 rounded transition-colors ${
+                hasValueSet ? 'hover:bg-gray-50 cursor-pointer' : 'opacity-50 cursor-not-allowed'
+              }`}>
                 <div className="flex items-center">
                   <input
                     type="radio"
                     value={strength}
                     checked={formData.bindingStrength === strength}
                     onChange={(e) => onChange('bindingStrength', e.target.value)}
+                    disabled={!hasValueSet}
                     className="mr-2"
                   />
                   <span className="text-sm capitalize">{strength}</span>
@@ -114,11 +146,26 @@ export const QuestionConstraintsSection: React.FC<QuestionConstraintsSectionProp
         </div>
       </div>
     </div>
-  );
+    );
+  };
 
   const renderStringSection = () => (
     <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Text Configuration</h3>
+      <div>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-gray-700 border-b pb-2 flex-1">Value Constraints</h3>
+          <HelpTooltip
+            title="Value Constraints"
+            body="Used for non-coded answers.\n\nExamples:\n• Number range (min / max)\n• Text length\n• Regular expression patterns\n• Required fields\n\nThese are structural constraints, not terminology bindings."
+          />
+        </div>
+        <p className="text-xs text-gray-500 mt-2">
+          Value constraints control the shape or range of the answer.
+        </p>
+        <p className="text-xs text-gray-400 mt-1">
+          Binding strength is not applicable to this answer type.
+        </p>
+      </div>
       
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Max Length</label>
@@ -221,14 +268,42 @@ export const QuestionConstraintsSection: React.FC<QuestionConstraintsSectionProp
 
   const renderIntegerSection = () => (
     <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Numeric Configuration</h3>
+      <div>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-gray-700 border-b pb-2 flex-1">Value Constraints</h3>
+          <HelpTooltip
+            title="Value Constraints"
+            body="Used for non-coded answers.\n\nExamples:\n• Number range (min / max)\n• Text length\n• Regular expression patterns\n• Required fields\n\nThese are structural constraints, not terminology bindings."
+          />
+        </div>
+        <p className="text-xs text-gray-500 mt-2">
+          Value constraints control the shape or range of the answer.
+        </p>
+        <p className="text-xs text-gray-400 mt-1">
+          Binding strength is not applicable to this answer type.
+        </p>
+      </div>
       {renderNumericConstraints(false)}
     </div>
   );
 
   const renderDecimalSection = () => (
     <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Numeric Configuration</h3>
+      <div>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-gray-700 border-b pb-2 flex-1">Value Constraints</h3>
+          <HelpTooltip
+            title="Value Constraints"
+            body="Used for non-coded answers.\n\nExamples:\n• Number range (min / max)\n• Text length\n• Regular expression patterns\n• Required fields\n\nThese are structural constraints, not terminology bindings."
+          />
+        </div>
+        <p className="text-xs text-gray-500 mt-2">
+          Value constraints control the shape or range of the answer.
+        </p>
+        <p className="text-xs text-gray-400 mt-1">
+          Binding strength is not applicable to this answer type.
+        </p>
+      </div>
       {renderNumericConstraints(true)}
     </div>
   );
