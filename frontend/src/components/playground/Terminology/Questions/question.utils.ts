@@ -105,6 +105,10 @@ export function validateQuestionForm(formData: QuestionFormData): QuestionValida
     errors.push({ field: 'display', message: 'Display is required' });
   }
 
+  if (!formData.system.trim()) {
+    errors.push({ field: 'system', message: 'System is required' });
+  }
+
   if (!formData.answerType) {
     errors.push({ field: 'answerType', message: 'Answer type is required' });
   }

@@ -1,13 +1,16 @@
 import React from 'react';
+import { Search } from 'lucide-react';
 import type { QuestionFormData, QuestionAnswerType } from './question.types';
 import { ANSWER_TYPES, getAnswerTypeDescription } from './question.utils';
 import { QuestionConstraintsSection } from './QuestionConstraintsSection';
+import { TerminologyBrowserDrawer } from './TerminologyBrowserDrawer';
 
 interface QuestionFormProps {
   formData: QuestionFormData;
   onChange: (field: keyof QuestionFormData, value: any) => void;
   errors: { [key: string]: string };
   isEditing: boolean;
+  projectId: string;
 }
 
 export const QuestionForm: React.FC<QuestionFormProps> = ({
@@ -15,9 +18,11 @@ export const QuestionForm: React.FC<QuestionFormProps> = ({
   onChange,
   errors,
   isEditing,
+  projectId,
 }) => {
   const [showAnswerTypeWarning, setShowAnswerTypeWarning] = React.useState(false);
   const [pendingAnswerType, setPendingAnswerType] = React.useState<QuestionAnswerType | null>(null);
+  const [isBrowserOpen, setIsBrowserOpen] = React.useState(false);
 
   const handleAnswerTypeChange = (newType: QuestionAnswerType) => {
     if (isEditing && formData.answerType && formData.answerType !== newType) {
@@ -52,6 +57,12 @@ export const QuestionForm: React.FC<QuestionFormProps> = ({
     setPendingAnswerType(null);
   };
 
+  const handleTerminologySelect = (system: string, code: string, display: string) => {
+    onChange('system', system);
+    onChange('code', code);
+    onChange('display', display);
+  };
+
   return (
     <div className="space-y-6">
       {/* Warning Dialog */}
@@ -82,6 +93,38 @@ export const QuestionForm: React.FC<QuestionFormProps> = ({
 
       {/* Common Fields */}
       <div className="space-y-4">
+        {/* System Field with Browse Button */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            System <span className="text-red-500">*</span>
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={formData.system}
+              onChange={(e) => onChange('system', e.target.value)}
+              placeholder="http://example.org/questions"
+              className={`flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 ${
+                errors.system ? 'border-red-500' : 'border-gray-300'
+              }`}
+            />
+            <button
+              type="button"
+              onClick={() => setIsBrowserOpen(true)}
+              className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors flex items-center gap-2 whitespace-nowrap"
+              title="Browse terminology"
+            >
+              <Search className="w-4 h-4" />
+              <span className="text-sm">Browse</span>
+            </button>
+          </div>
+          {errors.system && <p className="text-xs text-red-500 mt-1">{errors.system}</p>}
+          <p className="text-xs text-gray-500 mt-1">
+            You may enter local or provisional codes. Terminology validation can be applied during validation.
+          </p>
+        </div>
+
+        {/* Code Field */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Code <span className="text-red-500">*</span>
@@ -118,19 +161,7 @@ export const QuestionForm: React.FC<QuestionFormProps> = ({
           {errors.display && <p className="text-xs text-red-500 mt-1">{errors.display}</p>}
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            System
-          </label>
-          <input
-            type="text"
-            value={formData.system}
-            onChange={(e) => onChange('system', e.target.value)}
-            placeholder="http://example.org/questions"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-          />
-          <p className="text-xs text-gray-500 mt-1">Coding system for this question</p>
-        </div>
+
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -171,6 +202,14 @@ export const QuestionForm: React.FC<QuestionFormProps> = ({
           <QuestionConstraintsSection formData={formData} onChange={onChange} errors={errors} />
         </div>
       )}
+
+      {/* Terminology Browser Drawer */}
+      <TerminologyBrowserDrawer
+        isOpen={isBrowserOpen}
+        onClose={() => setIsBrowserOpen(false)}
+        onSelect={handleTerminologySelect}
+        projectId={projectId}
+      />
     </div>
   );
 };

@@ -133,6 +133,7 @@ export const QuestionEditorPanel: React.FC<QuestionEditorPanelProps> = ({
                   onChange={handleChange}
                   errors={errors}
                   isEditing={!!selectedQuestion}
+                  projectId={projectId}
                 />
               </div>
             </div>
