@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, HelpCircle, Wrench, AlertTriangle } from 'lucide-react';
+import React, { useState, ReactNode } from 'react';
+import { ChevronDown, ChevronRight, HelpCircle, Wrench, AlertTriangle, XCircle, CheckCircle } from 'lucide-react';
 
 interface ExplanationPanelProps {
   error: {
@@ -8,6 +8,7 @@ interface ExplanationPanelProps {
     message: string;
     errorCode?: string;
     resourceType?: string;
+    source?: string;
     details?: Record<string, any>;
   };
   className?: string;
@@ -73,33 +74,110 @@ export const ExplanationPanel: React.FC<ExplanationPanelProps> = ({ error, class
     return content;
   };
 
-  // Generate "How do I fix this?" content
-  const getHowContent = (): string => {
-    const { path, errorCode, details } = error;
+  // Generate "How do I fix this?" content - Context-aware and actionable
+  const getHowToFix = (): ReactNode | null => {
+    const { path, errorCode, source, jsonPointer, resourceType, details } = error;
     const field = getLastSegment(path);
     
-    if (errorCode?.includes('REQUIRED')) {
-      return `Add the field '${field}' to the matching resource.\n\nExample structure:\n{\n  "${field}": "value"\n}`;
-    } else if (errorCode?.includes('INVALID')) {
-      if (details?.expectedFormat) {
-        return `Ensure the value matches the expected format: ${details.expectedFormat}`;
-      }
-      return `Verify the value meets the expected format and constraints for this field.`;
-    } else if (errorCode?.includes('REFERENCE')) {
-      if (details?.reference) {
-        return `Ensure the referenced resource '${details.reference}' exists in the bundle.`;
-      }
-      return `Add the referenced resource to the bundle or update the reference to point to an existing resource.`;
-    } else if (errorCode?.includes('CODE')) {
-      if (details?.expectedCode || details?.expectedSystem) {
-        return `Use a valid code from the required terminology system${details.expectedSystem ? `: ${details.expectedSystem}` : ''}.`;
-      }
-      return `Update the code value to match the expected terminology.`;
-    } else if (errorCode?.includes('ARRAY_LENGTH') || errorCode?.includes('CARDINALITY')) {
-      return `Adjust the number of elements to meet the cardinality requirements.`;
+    // 1️⃣ LINT — UNKNOWN_ELEMENT
+    if (source === 'LINT' && errorCode === 'UNKNOWN_ELEMENT') {
+      return (
+        <div className="space-y-3">
+          <div className="flex items-start gap-2 mb-2">
+            <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+            <span className="text-sm font-semibold text-green-900">NON-BLOCKING</span>
+          </div>
+          <p className="text-sm text-gray-700 leading-relaxed">
+            The field <code className="px-1.5 py-0.5 bg-gray-100 rounded text-xs font-mono">{path || field}</code> is not defined in HL7 FHIR R4.
+          </p>
+          <p className="text-sm text-gray-700 leading-relaxed">
+            Some permissive FHIR engines may accept this field, but strict validators and downstream systems may reject it.
+          </p>
+          <div className="bg-blue-50 border border-blue-200 rounded p-3 mt-2">
+            <p className="text-xs font-medium text-blue-900 mb-2">FHIR-correct alternatives:</p>
+            <ul className="text-xs text-gray-700 space-y-1 list-disc list-inside">
+              <li><code className="px-1 py-0.5 bg-white rounded font-mono">valueCodeableConcept</code> - for coded values</li>
+              <li><code className="px-1 py-0.5 bg-white rounded font-mono">valueString</code> - for text values</li>
+              <li><code className="px-1 py-0.5 bg-white rounded font-mono">valueInteger</code> - for numeric values</li>
+              <li><code className="px-1 py-0.5 bg-white rounded font-mono">valueBoolean</code> - for true/false</li>
+            </ul>
+          </div>
+          <p className="text-xs text-gray-600 italic mt-2">
+            This is a quality check and will not prevent validation or rule editing.
+          </p>
+        </div>
+      );
     }
     
-    return `Review the validation message and adjust the resource structure accordingly.`;
+    // 2️⃣ Business / ProjectRule — MANDATORY_MISSING
+    if (source === 'Business' && errorCode === 'MANDATORY_MISSING') {
+      const isFieldMissing = !jsonPointer;
+      
+      return (
+        <div className="space-y-3">
+          <div className="flex items-start gap-2 mb-2">
+            <XCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+            <span className="text-sm font-semibold text-red-900">BLOCKING</span>
+          </div>
+          <p className="text-sm text-gray-700 leading-relaxed">
+            Add the missing field <code className="px-1.5 py-0.5 bg-gray-100 rounded text-xs font-mono">{field}</code> to the {resourceType || 'resource'}.
+          </p>
+          
+          <div className="bg-gray-50 border border-gray-200 rounded p-3 mt-2">
+            <p className="text-xs font-medium text-gray-900 mb-2">Minimal JSON structure:</p>
+            <pre className="text-xs font-mono bg-white p-2 rounded border border-gray-200 overflow-x-auto">
+              {`{\n  "${field}": "<value>"\n}`}
+            </pre>
+          </div>
+          
+          {isFieldMissing && (
+            <div className="bg-amber-50 border border-amber-200 rounded p-3 mt-2">
+              <p className="text-xs text-amber-800">
+                <AlertTriangle className="w-3 h-3 inline mr-1" />
+                This field does not exist yet. Click the error to navigate to the parent resource and add it manually.
+              </p>
+            </div>
+          )}
+          
+          <p className="text-xs text-gray-600 italic mt-2">
+            This field is required by your project rules and must be present for validation to pass.
+          </p>
+        </div>
+      );
+    }
+    
+    // 3️⃣ SPEC_HINT — FHIR advisory
+    if (source === 'SPEC_HINT') {
+      return (
+        <div className="space-y-3">
+          <div className="flex items-start gap-2 mb-2">
+            <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+            <span className="text-sm font-semibold text-blue-900">ADVISORY ONLY</span>
+          </div>
+          <p className="text-sm text-gray-700 leading-relaxed">
+            The field <code className="px-1.5 py-0.5 bg-gray-100 rounded text-xs font-mono">{field}</code> is conditionally required by HL7 FHIR specifications.
+          </p>
+          <p className="text-sm text-gray-700 leading-relaxed">
+            This field is required only when its parent element is present. You have two options:
+          </p>
+          
+          <div className="bg-blue-50 border border-blue-200 rounded p-3 mt-2">
+            <p className="text-xs font-medium text-blue-900 mb-2">Resolution options:</p>
+            <ol className="text-xs text-gray-700 space-y-2 list-decimal list-inside">
+              <li>Add the missing field <code className="px-1 py-0.5 bg-white rounded font-mono">{field}</code> to the resource</li>
+              <li>Remove the parent element if the field is not needed</li>
+            </ol>
+          </div>
+          
+          <p className="text-xs text-gray-600 italic mt-2">
+            This is informational guidance and will not block validation or rule editing.
+          </p>
+        </div>
+      );
+    }
+    
+    // 4️⃣ Fallback: return null (no "How to fix this" section)
+    return null;
   };
 
   // Phase 8: Navigation is now always available via fallback resolver
@@ -138,16 +216,18 @@ export const ExplanationPanel: React.FC<ExplanationPanelProps> = ({ error, class
             </p>
           </div>
 
-          {/* Section 2: How do I fix this? */}
-          <div className="bg-green-50/50 border border-green-100 rounded-md p-3">
-            <div className="flex items-start gap-2 mb-2">
-              <Wrench className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-              <h4 className="text-sm font-medium text-green-900">How to fix this</h4>
+          {/* Section 2: How to fix this - Context-aware and actionable */}
+          {getHowToFix() && (
+            <div className="bg-green-50/50 border border-green-100 rounded-md p-3">
+              <div className="flex items-start gap-2 mb-2">
+                <Wrench className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                <h4 className="text-sm font-medium text-green-900">How to fix this</h4>
+              </div>
+              <div className="pl-6">
+                {getHowToFix()}
+              </div>
             </div>
-            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line pl-6">
-              {getHowContent()}
-            </p>
-          </div>
+          )}
 
           {/* Section 3: Navigation explanation (only if jsonPointer is null) */}
           {needsNavigationExplanation && (
