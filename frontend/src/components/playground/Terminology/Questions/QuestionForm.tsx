@@ -68,7 +68,7 @@ export const QuestionForm: React.FC<QuestionFormProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Warning Dialog */}
       {showAnswerTypeWarning && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -95,9 +95,10 @@ export const QuestionForm: React.FC<QuestionFormProps> = ({
         </div>
       )}
 
-      {/* Common Fields */}
-      <div className="space-y-4">
-        {/* System Field with Browse Button */}
+      {/* Section 1: Question Identity */}
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+        <h4 className="text-sm font-semibold text-gray-900 mb-4">Question Identity</h4>
+        <div className="space-y-5">{/* System Field with Browse Button */}
         <div>
           <div className="flex items-center gap-2 mb-1">
             <label className="text-sm font-medium text-gray-700">
@@ -161,6 +162,7 @@ Manual entries are supported for:
           )}
         </div>
 
+        {/* Display Field */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Display <span className="text-red-500">*</span>
@@ -177,8 +179,25 @@ Manual entries are supported for:
           {errors.display && <p className="text-xs text-red-500 mt-1">{errors.display}</p>}
         </div>
 
+        {/* Description Field */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <textarea
+            value={formData.description}
+            onChange={(e) => onChange('description', e.target.value)}
+            placeholder="Additional context or help text for this question"
+            rows={3}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        </div>
+      </div>
 
-
+      {/* Section 2: Answer Definition */}
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+        <h4 className="text-sm font-semibold text-gray-900 mb-4">Answer Definition</h4>
+        <div className="space-y-5">
+        {/* Answer Type Field */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Answer Type <span className="text-red-500">*</span>
@@ -200,25 +219,14 @@ Manual entries are supported for:
           {errors.answerType && <p className="text-xs text-red-500 mt-1">{errors.answerType}</p>}
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-          <textarea
-            value={formData.description}
-            onChange={(e) => onChange('description', e.target.value)}
-            placeholder="Additional context or help text for this question"
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-          />
+        {/* Answer Type Specific Constraints */}
+        {formData.answerType && (
+          <div className="pt-2">
+            <QuestionConstraintsSection formData={formData} onChange={onChange} errors={errors} />
+          </div>
+        )}
         </div>
       </div>
-
-      {/* Answer Type Specific Section */}
-      {formData.answerType && (
-        <div className="pt-4 border-t">
-          <QuestionConstraintsSection formData={formData} onChange={onChange} errors={errors} />
-        </div>
-      )}
-
       {/* Terminology Browser Drawer */}
       <TerminologyBrowserDrawer
         isOpen={isBrowserOpen}

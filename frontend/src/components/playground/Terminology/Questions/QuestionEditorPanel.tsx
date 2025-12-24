@@ -1,4 +1,5 @@
 import React from 'react';
+import { Eye, X } from 'lucide-react';
 import type { QuestionFormData, QuestionDto } from './question.types';
 import { questionToFormData, formDataToCreateDto, validateQuestionForm } from './question.utils';
 import { questionsApi } from '../../../../api/questionsApi';
@@ -30,6 +31,7 @@ export const QuestionEditorPanel: React.FC<QuestionEditorPanelProps> = ({
   const [errors, setErrors] = React.useState<{ [key: string]: string }>({});
   const [isSaving, setIsSaving] = React.useState(false);
   const [saveError, setSaveError] = React.useState<string | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (selectedQuestion) {
@@ -113,6 +115,15 @@ export const QuestionEditorPanel: React.FC<QuestionEditorPanelProps> = ({
             <h2 className="text-xl font-semibold text-gray-900">
               {selectedQuestion ? 'Edit Question' : 'New Question'}
             </h2>
+            <button
+              type="button"
+              onClick={() => setIsPreviewOpen(true)}
+              className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors flex items-center gap-2"
+              title="Preview question"
+            >
+              <Eye className="w-4 h-4" />
+              <span className="text-sm">Preview</span>
+            </button>
           </div>
 
           {saveError && (
@@ -121,28 +132,19 @@ export const QuestionEditorPanel: React.FC<QuestionEditorPanelProps> = ({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-6">
-            {/* Left: Form */}
-            <div>
-              <div className="bg-white border border-gray-200 rounded-lg p-6">
-                <h3 className="text-sm font-semibold text-gray-700 mb-4 border-b pb-2">
-                  Question Details
-                </h3>
-                <QuestionForm
-                  formData={formData}
-                  onChange={handleChange}
-                  errors={errors}
-                  isEditing={!!selectedQuestion}
-                  projectId={projectId}
-                />
-              </div>
-            </div>
-
-            {/* Right: Preview */}
-            <div>
-              <div className="sticky top-6">
-                <QuestionPreviewPanel formData={formData} />
-              </div>
+          {/* Single-column form with max-width */}
+          <div className="max-w-[720px] mx-auto">
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <h3 className="text-sm font-semibold text-gray-700 mb-6 border-b pb-2">
+                Question Details
+              </h3>
+              <QuestionForm
+                formData={formData}
+                onChange={handleChange}
+                errors={errors}
+                isEditing={!!selectedQuestion}
+                projectId={projectId}
+              />
             </div>
           </div>
         </div>
@@ -165,6 +167,34 @@ export const QuestionEditorPanel: React.FC<QuestionEditorPanelProps> = ({
           {isSaving ? 'Saving...' : selectedQuestion ? 'Update Question' : 'Create Question'}
         </button>
       </div>
+
+      {/* Preview Drawer */}
+      {isPreviewOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black bg-opacity-30 z-40 transition-opacity"
+            onClick={() => setIsPreviewOpen(false)}
+          />
+          
+          {/* Drawer */}
+          <div className="fixed top-0 right-0 h-full w-[45%] bg-white shadow-xl z-50 overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Preview</h3>
+              <button
+                onClick={() => setIsPreviewOpen(false)}
+                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                title="Close preview"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-6">
+              <QuestionPreviewPanel formData={formData} />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
