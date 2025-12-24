@@ -102,7 +102,12 @@ export const QuestionForm: React.FC<QuestionFormProps> = ({
             </label>
             <HelpTooltip
               title="Terminology Source"
-              body="You may select codes from a known terminology or enter them manually.\n\nManual entries are supported for:\n• Local extensions\n• Custom code systems\n• Early or draft implementations"
+              body={`You may select codes from a known terminology or enter them manually.
+
+Manual entries are supported for:
+• Local extensions
+• Custom code systems
+• Early or draft implementations`}
               footer="Validation severity depends on the binding strength."
             />
           </div>

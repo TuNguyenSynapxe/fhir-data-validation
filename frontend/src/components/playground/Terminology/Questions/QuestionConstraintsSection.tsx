@@ -23,7 +23,15 @@ export const QuestionConstraintsSection: React.FC<QuestionConstraintsSectionProp
           <h3 className="text-sm font-semibold text-gray-700 border-b pb-2 flex-1">Value Constraints</h3>
           <HelpTooltip
             title="Value Constraints"
-            body="Used for non-coded answers.\n\nExamples:\n• Number range (min / max)\n• Text length\n• Regular expression patterns\n• Required fields\n\nThese are structural constraints, not terminology bindings."
+            body={`Used for non-coded answers.
+
+Examples:
+• Number range (min / max)
+• Text length
+• Regular expression patterns
+• Required fields
+
+These are structural constraints, not terminology bindings.`}
           />
         </div>
         <p className="text-xs text-gray-500 mt-2">
@@ -101,7 +109,15 @@ export const QuestionConstraintsSection: React.FC<QuestionConstraintsSectionProp
           </label>
           <HelpTooltip
             title="FHIR Binding Strength"
-            body="Applies only to coded answers.\n\nControls how strictly the answer must conform to the selected ValueSet.\n\n• Required — Must use one of the allowed codes (Error)\n• Extensible — Other codes allowed if needed (Warning)\n• Preferred — Recommendation only (Advisory)\n\nDefined by HL7 FHIR."
+            body={`Applies only to coded answers.
+
+Controls how strictly the answer must conform to the selected ValueSet.
+
+• Required — Must use one of the allowed codes (Error)
+• Extensible — Other codes allowed if needed (Warning)
+• Preferred — Recommendation only (Advisory)
+
+Defined by HL7 FHIR.`}
             footer="These definitions follow HL7 FHIR standards."
           />
         </div>
@@ -156,7 +172,15 @@ export const QuestionConstraintsSection: React.FC<QuestionConstraintsSectionProp
           <h3 className="text-sm font-semibold text-gray-700 border-b pb-2 flex-1">Value Constraints</h3>
           <HelpTooltip
             title="Value Constraints"
-            body="Used for non-coded answers.\n\nExamples:\n• Number range (min / max)\n• Text length\n• Regular expression patterns\n• Required fields\n\nThese are structural constraints, not terminology bindings."
+            body={`Used for non-coded answers.
+
+Examples:
+• Number range (min / max)
+• Text length
+• Regular expression patterns
+• Required fields
+
+These are structural constraints, not terminology bindings.`}
           />
         </div>
         <p className="text-xs text-gray-500 mt-2">
@@ -273,7 +297,15 @@ export const QuestionConstraintsSection: React.FC<QuestionConstraintsSectionProp
           <h3 className="text-sm font-semibold text-gray-700 border-b pb-2 flex-1">Value Constraints</h3>
           <HelpTooltip
             title="Value Constraints"
-            body="Used for non-coded answers.\n\nExamples:\n• Number range (min / max)\n• Text length\n• Regular expression patterns\n• Required fields\n\nThese are structural constraints, not terminology bindings."
+            body={`Used for non-coded answers.
+
+Examples:
+• Number range (min / max)
+• Text length
+• Regular expression patterns
+• Required fields
+
+These are structural constraints, not terminology bindings.`}
           />
         </div>
         <p className="text-xs text-gray-500 mt-2">
@@ -294,7 +326,15 @@ export const QuestionConstraintsSection: React.FC<QuestionConstraintsSectionProp
           <h3 className="text-sm font-semibold text-gray-700 border-b pb-2 flex-1">Value Constraints</h3>
           <HelpTooltip
             title="Value Constraints"
-            body="Used for non-coded answers.\n\nExamples:\n• Number range (min / max)\n• Text length\n• Regular expression patterns\n• Required fields\n\nThese are structural constraints, not terminology bindings."
+            body={`Used for non-coded answers.
+
+Examples:
+• Number range (min / max)
+• Text length
+• Regular expression patterns
+• Required fields
+
+These are structural constraints, not terminology bindings.`}
           />
         </div>
         <p className="text-xs text-gray-500 mt-2">
