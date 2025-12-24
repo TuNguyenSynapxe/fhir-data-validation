@@ -1,6 +1,7 @@
 import React from 'react';
 import type { QuestionFormData } from './question.types';
 import { COMMON_UCUM_UNITS, testRegexPattern } from './question.utils';
+import { HelpTooltip } from '../../../common/HelpTooltip';
 
 interface QuestionConstraintsSectionProps {
   formData: QuestionFormData;
@@ -72,20 +73,44 @@ export const QuestionConstraintsSection: React.FC<QuestionConstraintsSectionProp
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Binding Strength</label>
+        <div className="flex items-center gap-2 mb-2">
+          <label className="text-sm font-medium text-gray-700">Binding Strength</label>
+          <HelpTooltip
+            title="FHIR Binding Strength"
+            body="Controls how strictly the answer must follow the selected ValueSet.\n\n• Required — Must use one of the allowed codes (Validation Error)\n• Extensible — Should use the ValueSet, but other codes are allowed (Warning)\n• Preferred — Best practice recommendation only (Advisory)"
+            footer="These definitions follow HL7 FHIR standards."
+          />
+        </div>
         <div className="space-y-2">
-          {['required', 'extensible', 'preferred'].map((strength) => (
-            <label key={strength} className="flex items-center">
-              <input
-                type="radio"
-                value={strength}
-                checked={formData.bindingStrength === strength}
-                onChange={(e) => onChange('bindingStrength', e.target.value)}
-                className="mr-2"
-              />
-              <span className="text-sm capitalize">{strength}</span>
-            </label>
-          ))}
+          {['required', 'extensible', 'preferred'].map((strength) => {
+            const severityInfo = {
+              required: { label: 'Error', color: 'text-red-600', tooltip: 'Blocking validation issue. Must be fixed before validation can pass.' },
+              extensible: { label: 'Warning', color: 'text-amber-600', tooltip: 'Non-blocking issue. Data is allowed but does not fully follow best practice.' },
+              preferred: { label: 'Advisory', color: 'text-blue-600', tooltip: 'Informational guidance only. Does not affect validation results.' }
+            };
+            const info = severityInfo[strength as keyof typeof severityInfo];
+            
+            return (
+              <label key={strength} className="flex items-center justify-between group hover:bg-gray-50 p-2 rounded transition-colors">
+                <div className="flex items-center">
+                  <input
+                    type="radio"
+                    value={strength}
+                    checked={formData.bindingStrength === strength}
+                    onChange={(e) => onChange('bindingStrength', e.target.value)}
+                    className="mr-2"
+                  />
+                  <span className="text-sm capitalize">{strength}</span>
+                </div>
+                <span
+                  className={`text-xs font-medium ${info.color} cursor-help`}
+                  title={info.tooltip}
+                >
+                  {info.label}
+                </span>
+              </label>
+            );
+          })}
         </div>
       </div>
     </div>

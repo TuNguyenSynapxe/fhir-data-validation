@@ -4,6 +4,7 @@ import type { QuestionFormData, QuestionAnswerType } from './question.types';
 import { ANSWER_TYPES, getAnswerTypeDescription } from './question.utils';
 import { QuestionConstraintsSection } from './QuestionConstraintsSection';
 import { TerminologyBrowserDrawer } from './TerminologyBrowserDrawer';
+import { HelpTooltip } from '../../../common/HelpTooltip';
 
 interface QuestionFormProps {
   formData: QuestionFormData;
@@ -95,9 +96,16 @@ export const QuestionForm: React.FC<QuestionFormProps> = ({
       <div className="space-y-4">
         {/* System Field with Browse Button */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            System <span className="text-red-500">*</span>
-          </label>
+          <div className="flex items-center gap-2 mb-1">
+            <label className="text-sm font-medium text-gray-700">
+              System <span className="text-red-500">*</span>
+            </label>
+            <HelpTooltip
+              title="Terminology Source"
+              body="You may select codes from a known terminology or enter them manually.\n\nManual entries are supported for:\n• Local extensions\n• Custom code systems\n• Early or draft implementations"
+              footer="Validation severity depends on the binding strength."
+            />
+          </div>
           <div className="flex gap-2">
             <input
               type="text"
