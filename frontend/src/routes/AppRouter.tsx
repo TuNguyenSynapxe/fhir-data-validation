@@ -7,7 +7,8 @@ export default function AppRouter() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<ProjectsPage />} />
-        <Route path="/projects/:projectId" element={<PlaygroundPage />} />
+        {/* Use wildcard to capture all tab paths */}
+        <Route path="/projects/:projectId/*" element={<PlaygroundPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

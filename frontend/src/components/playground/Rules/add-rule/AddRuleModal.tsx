@@ -57,7 +57,7 @@ export const AddRuleModal: React.FC<AddRuleModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black bg-opacity-50"
@@ -65,7 +65,7 @@ export const AddRuleModal: React.FC<AddRuleModalProps> = ({
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col">
+      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         {selectedRuleType === null ? (
           <>
             {/* Header */}
@@ -80,7 +80,7 @@ export const AddRuleModal: React.FC<AddRuleModalProps> = ({
             </div>
 
             {/* Content */}
-            <div className="px-6 py-6">
+            <div className="px-6 py-6 overflow-y-auto">
               <RuleTypeSelector onSelectType={handleSelectType} />
             </div>
 

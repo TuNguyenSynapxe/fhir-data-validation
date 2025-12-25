@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Loader2, AlertCircle, Download } from 'lucide-react';
 import dayjs from 'dayjs';
@@ -43,6 +43,7 @@ interface Rule {
 export default function PlaygroundPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
 
   const { data: project, isLoading, error } = useProject(projectId!);
@@ -78,6 +79,79 @@ export default function PlaygroundPage() {
   const [originalValidationSettings, setOriginalValidationSettings] = useState<ValidationSettings>(DEFAULT_VALIDATION_SETTINGS);
   const [originalRulesJson, setOriginalRulesJson] = useState('');
   
+  // Track if we're syncing from URL to prevent circular updates
+  const isSyncingFromURL = useRef(false);
+  
+  // Sync URL params with tab state (runs on mount and URL changes)
+  useEffect(() => {
+    isSyncingFromURL.current = true;
+    
+    // Parse the current pathname to extract tab info
+    // Format: /projects/:projectId/[l1]/[l2]
+    const pathParts = location.pathname.split('/').filter(Boolean);
+    // pathParts = ['projects', projectId, l1, l2]
+    
+    // Redirect to overview if no tab specified
+    if (pathParts.length < 3) {
+      navigate(`/projects/${projectId}/overview`, { replace: true });
+      isSyncingFromURL.current = false;
+      return;
+    }
+    
+    const l1 = pathParts[2]; // First tab level (after 'projects' and projectId)
+    const l2 = pathParts[3]; // Second tab level (optional)
+    
+    // L1: Bundle
+    if (l1 === 'bundle') {
+      setActiveTab('bundle');
+      if (l2 === 'tree' || l2 === 'json') {
+        setBundleView(l2);
+      } else {
+        // Default to tree if no view specified
+        navigate(`/projects/${projectId}/bundle/tree`, { replace: true });
+      }
+    }
+    // L1: Rules
+    else if (l1 === 'rules') {
+      if (l2 === 'list') {
+        setActiveTab('rules');
+      } else if (l2 === 'terminology') {
+        setActiveTab('codemaster');
+      } else if (l2 === 'metadata') {
+        setActiveTab('metadata');
+      } else {
+        // Default to list if no sub-tab specified
+        navigate(`/projects/${projectId}/rules/list`, { replace: true });
+      }
+    }
+    // L1: Validation
+    else if (l1 === 'validation') {
+      if (l2 === 'run') {
+        setActiveTab('run');
+        setRightPanelMode(RightPanelMode.Validation);
+      } else if (l2 === 'settings') {
+        setActiveTab('settings');
+        setRightPanelMode(RightPanelMode.Validation);
+      } else {
+        // Default to run if no sub-tab specified
+        navigate(`/projects/${projectId}/validation/run`, { replace: true });
+      }
+    }
+    // L1: Overview
+    else if (l1 === 'overview') {
+      setActiveTab('overview');
+      setRightPanelMode(RightPanelMode.Rules);
+    } else {
+      // Invalid tab, redirect to overview
+      navigate(`/projects/${projectId}/overview`, { replace: true });
+    }
+    
+    // Small delay to ensure state updates complete before allowing navigation
+    setTimeout(() => {
+      isSyncingFromURL.current = false;
+    }, 100);
+  }, [location.pathname, navigate, projectId]);
+  
   // Navigation state for Smart Path
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_navigationFeedback, setNavigationFeedback] = useState<string | null>(null);
@@ -98,6 +172,36 @@ export default function PlaygroundPage() {
       total: rules.length
     };
   }, [rules]);
+  
+  // Navigation helpers for tab changes
+  const handleTabChange = useCallback((tab: string) => {
+    // Prevent navigation during URL sync
+    if (isSyncingFromURL.current) return;
+    
+    setActiveTab(tab as any);
+    
+    // Map internal tab names to URL paths
+    const tabToPath: Record<string, string> = {
+      'overview': 'overview',
+      'bundle': 'bundle/tree',
+      'rules': 'rules/list',
+      'codemaster': 'rules/terminology',
+      'metadata': 'rules/metadata',
+      'run': 'validation/run',
+      'settings': 'validation/settings',
+    };
+    
+    const path = tabToPath[tab] || 'overview';
+    navigate(`/projects/${projectId}/${path}`, { replace: true });
+  }, [projectId, navigate]);
+  
+  const handleBundleViewChange = useCallback((view: 'tree' | 'json') => {
+    // Prevent navigation during URL sync
+    if (isSyncingFromURL.current) return;
+    
+    setBundleView(view);
+    navigate(`/projects/${projectId}/bundle/${view}`, { replace: true });
+  }, [projectId, navigate]);
 
   /**
    * Check Bundle structural sanity
@@ -533,7 +637,7 @@ export default function PlaygroundPage() {
                   onModeChange: setRightPanelMode,
                   showModeTabs: true,
                   activeTab: activeTab,
-                  onTabChange: setActiveTab,
+                  onTabChange: handleTabChange,
                 }}
                 rules={{
                   rules: rules,
@@ -580,7 +684,7 @@ export default function PlaygroundPage() {
                   onSuggestionsReceived: setRuleSuggestions,
                   isBundleOpen,
                   onBundleToggle: () => setIsBundleOpen(!isBundleOpen),
-                  onOpenBundleTab: () => setActiveTab('bundle'),
+                  onOpenBundleTab: () => handleTabChange('bundle'),
                   bundleTabsContent: (
                     <div className={`h-full transition-all duration-200 ${
                       treeViewFocused ? 'ring-2 ring-blue-400 ring-opacity-50 shadow-lg' : ''
@@ -593,13 +697,13 @@ export default function PlaygroundPage() {
                         hasChanges={bundleJson !== originalBundleJson}
                         isSaving={saveBundleMutation.isPending}
                         activeTab={bundleView}
-                        onTabChange={setBundleView}
+                        onTabChange={handleBundleViewChange}
                         hideUploadButton={rightPanelMode === RightPanelMode.Validation}
                       />
                     </div>
                   ),
                   bundleView,
-                  onBundleViewChange: setBundleView,
+                  onBundleViewChange: handleBundleViewChange,
                 }}
                 ui={{
                   isDimmed: treeViewFocused,
