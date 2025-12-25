@@ -424,8 +424,13 @@ public class ValidationPipeline : IValidationPipeline
             // - Type mismatches
             // - Mandatory fields missing
             
+            _logger.LogInformation($"[ValidationPipeline] About to call FirelyExceptionMapper with exception: {firelyEx.Message}");
+            
             // Use our mapper to extract detailed context
             var detailedError = FirelyExceptionMapper.MapToValidationError(firelyEx, bundleJson);
+            
+            _logger.LogInformation($"[ValidationPipeline] Mapper returned - Path: '{detailedError.Path}', JsonPointer: '{detailedError.JsonPointer}', ErrorCode: {detailedError.ErrorCode}");
+            
             result.Errors.Add(detailedError);
             
             // Also log for debugging

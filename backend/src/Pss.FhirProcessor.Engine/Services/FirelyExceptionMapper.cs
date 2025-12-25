@@ -20,6 +20,8 @@ public static class FirelyExceptionMapper
         var exceptionMessage = exception.Message;
         var exceptionType = exception.GetType().Name;
         
+        Console.WriteLine($"[FirelyExceptionMapper] Processing exception: {exceptionMessage}");
+        
         // Check for specific error patterns
         
         // Pattern 1: Invalid enum value
@@ -38,14 +40,16 @@ public static class FirelyExceptionMapper
         
         // Pattern 2: Unknown element/property
         // Example: "Encountered unknown element 'invalidField' while parsing..."
-        var unknownElementMatch = Regex.Match(exceptionMessage,
-            @"Encountered unknown element '([^']+)'",
-            RegexOptions.IgnoreCase);
+        // Example: "Encountered unknown element 'actualPeriod' at location 'Bundle.entry[1].resource[0].actualPeriod[0]' while parsing"
+        var unknownElementMatch = Regex.Match(
+            exceptionMessage,
+            @"Encountered unknown element\s+['""](?<element>[^'""]+)['""](?:\s+at location\s+['""]?(?<location>[^'""]+)['""]?)?",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         
         if (unknownElementMatch.Success)
         {
-            var unknownElement = unknownElementMatch.Groups[1].Value;
-            return CreateUnknownElementError(unknownElement, exceptionMessage, rawBundleJson);
+            var unknownElement = unknownElementMatch.Groups["element"].Value;
+            var location = unknownElementMatch.Groups["location"].Success ? unknownElementMatch.Groups["location"].Value : null;            Console.WriteLine($"[FirelyExceptionMapper] Unknown element match - Element: '{unknownElement}', Location: '{location ?? "(null)"}'" );            return CreateUnknownElementError(unknownElement, location, exceptionMessage, rawBundleJson);
         }
         
         // Pattern 3: Type mismatch
@@ -119,7 +123,7 @@ public static class FirelyExceptionMapper
         };
     }
     
-    private static ValidationError CreateUnknownElementError(string unknownElement, string exceptionMessage, string? rawBundleJson)
+    private static ValidationError CreateUnknownElementError(string unknownElement, string? location, string exceptionMessage, string? rawBundleJson)
     {
         var details = new Dictionary<string, object>
         {
@@ -128,18 +132,89 @@ public static class FirelyExceptionMapper
             ["fullMessage"] = exceptionMessage
         };
         
-        var jsonPointer = TryFindJsonPointer(rawBundleJson, unknownElement, null);
+        // Extract path and jsonPointer from location if available
+        // Example location: "Bundle.entry[1].resource[0].actualPeriod[0]"
+        string? fhirPath = null;
+        string? jsonPointer = null;
+        
+        if (!string.IsNullOrEmpty(location))
+        {
+            fhirPath = location;
+            jsonPointer = ConvertFhirPathToJsonPointer(location);
+            details["location"] = location;
+            Console.WriteLine($"[CreateUnknownElementError] FhirPath: '{fhirPath}', JsonPointer: '{jsonPointer ?? "(null)"}'" );
+        }
+        else
+        {
+            Console.WriteLine($"[CreateUnknownElementError] No location provided, using fallback");
+            // Fallback to trying to find it in the JSON
+            jsonPointer = TryFindJsonPointer(rawBundleJson, unknownElement, null);
+        }
+        
+        Console.WriteLine($"[CreateUnknownElementError] Final - Path: '{fhirPath ?? unknownElement}', JsonPointer: '{jsonPointer ?? "(null)"}'" );
         
         return new ValidationError
         {
             Source = "FHIR",
             Severity = "error",
             ErrorCode = "UNKNOWN_ELEMENT",
-            Path = unknownElement,
+            Path = fhirPath ?? unknownElement,
             JsonPointer = jsonPointer,
             Message = $"Unknown element '{unknownElement}' is not valid in FHIR R4 schema",
             Details = details
         };
+    }
+    
+    /// <summary>
+    /// Converts a FHIR location path to JSON Pointer format
+    /// Example: "Bundle.entry[1].resource[0].actualPeriod[0]" -> "/entry/1/resource/actualPeriod/0"
+    /// Note: Firely SDK incorrectly adds [0] to resource, which is not an array in Bundle entries
+    /// </summary>
+    private static string? ConvertFhirPathToJsonPointer(string fhirPath)
+    {
+        if (string.IsNullOrEmpty(fhirPath))
+            return null;
+        
+        try
+        {
+            Console.WriteLine($"[ConvertFhirPathToJsonPointer] Input: '{fhirPath}'");
+            
+            // Remove "Bundle." prefix if present
+            var path = fhirPath.StartsWith("Bundle.", StringComparison.OrdinalIgnoreCase)
+                ? fhirPath.Substring(7)
+                : fhirPath;
+            
+            Console.WriteLine($"[ConvertFhirPathToJsonPointer] After prefix removal: '{path}'");
+            
+            // FIX: Firely SDK incorrectly reports resource[0] but resource is not an array in Bundle.entry
+            // Replace .resource[0]. with .resource. before general conversion
+            path = Regex.Replace(path, @"\.resource\[0\]\.", ".resource.", RegexOptions.IgnoreCase);
+            
+            // FIX: Firely SDK adds [0] to single-value fields that aren't actually arrays
+            // Remove trailing [0] at the end of the path (e.g., actualPeriod[0] -> actualPeriod)
+            path = Regex.Replace(path, @"\[0\]$", "", RegexOptions.IgnoreCase);
+            
+            Console.WriteLine($"[ConvertFhirPathToJsonPointer] After [0] cleanup: '{path}'");
+            
+            // Convert notation: entry[1].resource.actualPeriod -> /entry/1/resource/actualPeriod
+            // Replace .property with /property
+            path = path.Replace(".", "/");
+            
+            // Replace [index] with /index
+            path = Regex.Replace(path, @"\[(\d+)\]", "/$1");
+            
+            // Ensure it starts with /
+            if (!path.StartsWith("/"))
+                path = "/" + path;
+            
+            Console.WriteLine($"[ConvertFhirPathToJsonPointer] Output: '{path}'");
+            
+            return path;
+        }
+        catch
+        {
+            return null;
+        }
     }
     
     private static ValidationError CreateTypeMismatchError(string expectedType, string exceptionMessage, string? rawBundleJson)

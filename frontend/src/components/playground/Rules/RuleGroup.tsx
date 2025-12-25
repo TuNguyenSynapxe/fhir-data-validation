@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronRight, ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { RuleRow } from './RuleRow';
 import type { RuleReviewIssue } from '../../../playground/rule-review';
 
@@ -28,6 +28,7 @@ interface RuleGroupProps {
   showObservationIndicators?: boolean;
   getAdvisoryIssues?: (ruleId: string) => RuleReviewIssue[];
   projectBundle?: object;
+  forceExpanded?: boolean | null;
 }
 
 export const RuleGroup: React.FC<RuleGroupProps> = ({
@@ -42,8 +43,16 @@ export const RuleGroup: React.FC<RuleGroupProps> = ({
   showObservationIndicators = false,
   getAdvisoryIssues,
   projectBundle,
+  forceExpanded,
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  
+  // Apply forced expansion/collapse when forceExpanded changes
+  React.useEffect(() => {
+    if (forceExpanded !== null && forceExpanded !== undefined) {
+      setIsExpanded(forceExpanded);
+    }
+  }, [forceExpanded]);
 
   return (
     <div className="mb-3">

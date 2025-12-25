@@ -27,6 +27,7 @@ interface RuleListProps {
   showObservationIndicators?: boolean;
   getAdvisoryIssues?: (ruleId: string) => RuleReviewIssue[];
   projectBundle?: object;
+  allGroupsExpanded?: boolean | null;
 }
 
 export const RuleList: React.FC<RuleListProps> = ({
@@ -40,6 +41,7 @@ export const RuleList: React.FC<RuleListProps> = ({
   showObservationIndicators = false,
   getAdvisoryIssues,
   projectBundle,
+  allGroupsExpanded,
 }) => {
   // Group rules based on groupBy prop
   const groupedRules = React.useMemo(() => {
@@ -108,6 +110,7 @@ export const RuleList: React.FC<RuleListProps> = ({
               showObservationIndicators={showObservationIndicators}
               getAdvisoryIssues={getAdvisoryIssues}
               projectBundle={projectBundle}
+              forceExpanded={allGroupsExpanded}
             />
           ));
       })}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Loader2, AlertCircle, Download } from 'lucide-react';
@@ -86,9 +86,6 @@ export default function PlaygroundPage() {
   // TreeView focus state for context dimming
   const [treeViewFocused, setTreeViewFocused] = useState(false);
   const focusTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  
-  // Track if we've already auto-focused on validation failure
-  const hasAutoFocusedRef = useRef(false);
 
   // Calculate rule alignment stats for Overview (simplified version without bundle analysis)
   // Full analysis happens in RulesPanel, this is just for Overview summary
@@ -101,6 +98,57 @@ export default function PlaygroundPage() {
       total: rules.length
     };
   }, [rules]);
+
+  /**
+   * Check Bundle structural sanity
+   * Used to gate rule authoring workflow
+   */
+  const checkBundleSanity = useCallback((json: string): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+
+    // 1. Check JSON parses
+    let parsed: any;
+    try {
+      parsed = JSON.parse(json);
+    } catch (e) {
+      errors.push('JSON does not parse successfully');
+      return { isValid: false, errors };
+    }
+
+    // 2. Check root resourceType
+    if (parsed.resourceType !== 'Bundle') {
+      errors.push('Root resourceType must be "Bundle"');
+    }
+
+    // 3. Check entry exists and is array
+    if (!parsed.entry) {
+      errors.push('Bundle must have an "entry" property');
+    } else if (!Array.isArray(parsed.entry)) {
+      errors.push('Bundle entry must be an array');
+    } else {
+      // 4. Check entry.length > 0
+      if (parsed.entry.length === 0) {
+        errors.push('Bundle entry array must contain at least one entry');
+      } else {
+        // 5. Check each entry has resource.resourceType
+        parsed.entry.forEach((entry: any, index: number) => {
+          if (!entry.resource) {
+            errors.push(`Entry[${index}] is missing "resource" property`);
+          } else if (!entry.resource.resourceType) {
+            errors.push(`Entry[${index}].resource is missing "resourceType" property`);
+          }
+        });
+      }
+    }
+
+    return { isValid: errors.length === 0, errors };
+  }, []);
+
+  // Compute bundle sanity state from SAVED bundle (not current edited value)
+  // This gates rule authoring workflow
+  const bundleSanityState = useMemo(() => {
+    return checkBundleSanity(originalBundleJson);
+  }, [originalBundleJson, checkBundleSanity]);
 
   // Compute current rules JSON for change detection
   const currentRulesJson = useMemo(() => JSON.stringify({
@@ -121,20 +169,6 @@ export default function PlaygroundPage() {
     bundleChanged,
     rulesChanged
   );
-
-  // Auto-focus Validation mode when validation fails (only once per failure)
-  useEffect(() => {
-    if (validationState === ValidationState.Failed) {
-      // Only auto-focus if we haven't already done so for this failure
-      if (!hasAutoFocusedRef.current && rightPanelMode !== RightPanelMode.Validation) {
-        setRightPanelMode(RightPanelMode.Validation);
-        hasAutoFocusedRef.current = true;
-      }
-    } else {
-      // Reset the flag when validation state changes away from Failed
-      hasAutoFocusedRef.current = false;
-    }
-  }, [validationState, rightPanelMode]);
 
   // Load HL7 samples once on mount (read-only for drawer)
   useEffect(() => {
@@ -481,6 +515,7 @@ export default function PlaygroundPage() {
                 onSave={handleSaveBundle}
                 hasChanges={bundleJson !== originalBundleJson}
                 isSaving={saveBundleMutation.isPending}
+                hideUploadButton={rightPanelMode === RightPanelMode.Validation}
               />
             </div>
           }
@@ -507,6 +542,7 @@ export default function PlaygroundPage() {
                   hasRulesChanges: saveRulesMutation.isPending,
                   ruleAlignmentStats: ruleAlignmentStats,
                   ruleSuggestions: ruleSuggestions,
+                  bundleSanityState: bundleSanityState,
                 }}
                 codemaster={{
                   codeMasterJson: codeMasterJson,
@@ -544,6 +580,7 @@ export default function PlaygroundPage() {
                   onSuggestionsReceived: setRuleSuggestions,
                   isBundleOpen,
                   onBundleToggle: () => setIsBundleOpen(!isBundleOpen),
+                  onOpenBundleTab: () => setActiveTab('bundle'),
                   bundleTabsContent: (
                     <div className={`h-full transition-all duration-200 ${
                       treeViewFocused ? 'ring-2 ring-blue-400 ring-opacity-50 shadow-lg' : ''
@@ -557,6 +594,7 @@ export default function PlaygroundPage() {
                         isSaving={saveBundleMutation.isPending}
                         activeTab={bundleView}
                         onTabChange={setBundleView}
+                        hideUploadButton={rightPanelMode === RightPanelMode.Validation}
                       />
                     </div>
                   ),

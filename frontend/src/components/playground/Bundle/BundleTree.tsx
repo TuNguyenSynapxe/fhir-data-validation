@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { ChevronRight, ChevronDown, FileJson, Braces, Hash, Type, CheckSquare, Edit2, Trash2, Check, X, AlertTriangle } from 'lucide-react';
+import { ChevronRight, ChevronDown, FileJson, Braces, Hash, Type, CheckSquare, Edit2, Trash2, Check, X, AlertTriangle, Minimize, Maximize } from 'lucide-react';
 
 interface NodeData {
   key: string;
@@ -540,6 +540,8 @@ const TreeNodeWrapper: React.FC<Omit<TreeNodeProps, 'isExpanded' | 'isSelected' 
   const isFirstMountRef = React.useRef(true);
   // Track pending timer to prevent multiple timers
   const pendingTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Track last expandAll state to detect changes
+  const lastExpandAllKeyRef = React.useRef<number | undefined>(undefined);
   
   const pathMatch = props.externalSelectedPath?.startsWith(jsonPointer + '/');
   if (jsonPointer.startsWith('/entry/0')) {
@@ -551,6 +553,22 @@ const TreeNodeWrapper: React.FC<Omit<TreeNodeProps, 'isExpanded' | 'isSelected' 
     console.log(`  - collapseKey: ${props.collapseKey}`);
     console.log(`  - pathMatch: ${pathMatch}`);
   }
+  
+  // Handle expand/collapse all
+  React.useEffect(() => {
+    const expandAllKey = (props.onSelect as any).expandAllKey;
+    const expandAllState = (props.onSelect as any).expandAllState;
+    
+    if (expandAllKey !== undefined && expandAllKey !== lastExpandAllKeyRef.current) {
+      lastExpandAllKeyRef.current = expandAllKey;
+      
+      if (expandAllState === 'expanded') {
+        setIsExpanded(true);
+      } else if (expandAllState === 'collapsed') {
+        setIsExpanded(false);
+      }
+    }
+  }, [(props.onSelect as any).expandAllKey, (props.onSelect as any).expandAllState]);
   
   // When collapseKey changes (external navigation), reset expansion state
   React.useEffect(() => {
@@ -670,6 +688,8 @@ export const BundleTree: React.FC<BundleTreeProps> = ({
   const [collapseKey, setCollapseKey] = useState<number>(0);
   const [resourceContext, setResourceContext] = useState<string | null>(null);
   const [highlightedPath, setHighlightedPath] = useState<string | null>(null);
+  const [expandAllKey, setExpandAllKey] = useState(0);
+  const [expandAllState, setExpandAllState] = useState<'expanded' | 'collapsed' | null>(null);
   
   // Use external selectedPath if provided, otherwise use internal state
   const activeSelectedPath = selectedPath || internalSelectedPath;
@@ -753,6 +773,16 @@ export const BundleTree: React.FC<BundleTreeProps> = ({
     // onNodeSelect?.(nodeData.jsonPointer);
   };
   
+  const handleExpandAll = () => {
+    setExpandAllState('expanded');
+    setExpandAllKey(prev => prev + 1);
+  };
+  
+  const handleCollapseAll = () => {
+    setExpandAllState('collapsed');
+    setExpandAllKey(prev => prev + 1);
+  };
+  
   // Augment the callback with external selected path for children to access
   const handleNodeSelectWithPath = Object.assign(handleNodeSelect, {
     externalSelectedPath: activeSelectedPath,
@@ -760,6 +790,8 @@ export const BundleTree: React.FC<BundleTreeProps> = ({
     highlightedPath: highlightedPath,
     expectedChildAtPath: expectedChildAt, // Phase 7.1: Missing Node Assist
     expectedChildKey: expectedChildKey, // Phase 7.1: Missing Node Assist
+    expandAllKey: expandAllKey,
+    expandAllState: expandAllState,
   });
   
   console.log('[BundleTree] Augmented callback - externalSelectedPath:', activeSelectedPath, 'collapseKey:', collapseKey, 'highlightedPath:', highlightedPath);
@@ -796,9 +828,25 @@ export const BundleTree: React.FC<BundleTreeProps> = ({
         <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
           Bundle Structure
         </span>
-        <span className="text-xs text-gray-500">
-          {Object.keys(parsedBundle).length} properties
-        </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExpandAll}
+            className="p-1 hover:bg-gray-200 rounded transition-colors"
+            title="Expand All"
+          >
+            <Maximize className="w-3.5 h-3.5 text-gray-600" />
+          </button>
+          <button
+            onClick={handleCollapseAll}
+            className="p-1 hover:bg-gray-200 rounded transition-colors"
+            title="Collapse All"
+          >
+            <Minimize className="w-3.5 h-3.5 text-gray-600" />
+          </button>
+          <span className="text-xs text-gray-500 ml-1">
+            {Object.keys(parsedBundle).length} properties
+          </span>
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto">

@@ -71,6 +71,12 @@ export interface RulesProps {
   
   // Rule suggestions from validation
   ruleSuggestions?: any[];
+  
+  // Bundle structural sanity state (gates rule authoring)
+  bundleSanityState?: {
+    isValid: boolean;
+    errors: string[];
+  };
 }
 
 /**
@@ -145,6 +151,7 @@ export interface NavigationProps {
   bundleTabsContent?: React.ReactNode;
   bundleView?: 'tree' | 'json';
   onBundleViewChange?: (view: 'tree' | 'json') => void;
+  onOpenBundleTab?: () => void; // Navigate to Bundle tab
 }
 
 /**

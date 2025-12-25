@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Hl7.Fhir.Model;
+using Microsoft.Extensions.Logging;
 using Pss.FhirProcessor.Engine.Models;
 using Pss.FhirProcessor.Engine.Interfaces;
 
@@ -11,10 +12,12 @@ namespace Pss.FhirProcessor.Engine.Services;
 public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
 {
     private readonly ISmartPathNavigationService _navigationService;
+    private readonly ILogger<UnifiedErrorModelBuilder> _logger;
     
-    public UnifiedErrorModelBuilder(ISmartPathNavigationService navigationService)
+    public UnifiedErrorModelBuilder(ISmartPathNavigationService navigationService, ILogger<UnifiedErrorModelBuilder> logger)
     {
         _navigationService = navigationService;
+        _logger = logger;
     }
     
     /// <summary>
@@ -87,6 +90,20 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 (issue.Diagnostics?.Contains("passed") == true || 
                  issue.Diagnostics?.Contains("no issues") == true))
                 continue;
+            
+            // Check if this is a Firely SDK exception that we stored structured info for
+            if (issue.Details?.Text != null && 
+                issue.Details.Coding?.Any(c => c.System == "http://fhir-processor-v2/error-type") == true)
+            {
+                // Use FirelyExceptionMapper to extract location information
+                var exceptionMessage = issue.Details.Text;
+                var mockException = new Exception(exceptionMessage);
+                var mappedError = FirelyExceptionMapper.MapToValidationError(mockException, rawBundleJson);
+                
+                // The mapper already populated Path and JsonPointer
+                errors.Add(mappedError);
+                continue;
+            }
             
             var path = issue.Expression?.FirstOrDefault() ?? issue.Location?.FirstOrDefault();
             

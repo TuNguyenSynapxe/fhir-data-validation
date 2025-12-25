@@ -37,9 +37,14 @@ interface OverviewPanelProps {
     notObserved: number;
     total: number;
   };
+  bundleSanityState?: {
+    isValid: boolean;
+    errors: string[];
+  };
   onNavigateToValidation?: () => void;
   onNavigateToRules?: () => void;
-  onTabChange?: (tab: 'rules' | 'codemaster' | 'metadata' | 'settings') => void;
+  onTabChange?: (tab: 'rules' | 'codemaster' | 'metadata' | 'settings' | 'bundle') => void;
+  onOpenBundleTab?: () => void;
 }
 
 export const OverviewPanel: React.FC<OverviewPanelProps> = ({
@@ -47,8 +52,10 @@ export const OverviewPanel: React.FC<OverviewPanelProps> = ({
   rules = [],
   bundleJson,
   ruleAlignmentStats,
+  bundleSanityState,
   onNavigateToRules,
   onTabChange,
+  onOpenBundleTab,
 }) => {
   // Get validation result and action from Context
   const { validationResult, runValidation } = useProjectValidationContext();
@@ -175,6 +182,38 @@ export const OverviewPanel: React.FC<OverviewPanelProps> = ({
 
       {/* Content */}
       <div className="flex-1 p-6 space-y-6">
+        {/* Bundle Sanity Blocking Card - Only shown when bundle structure is invalid */}
+        {bundleSanityState && !bundleSanityState.isValid && (
+          <div className="bg-amber-50 rounded-lg border-2 border-amber-300 shadow-sm p-5">
+            <div className="flex items-start gap-4">
+              <div className="p-2 bg-amber-100 rounded-lg flex-shrink-0">
+                <AlertTriangle className="w-6 h-6 text-amber-700" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-amber-900 mb-2">
+                  Rules Authoring Locked
+                </h3>
+                <p className="text-sm text-amber-800 mb-3 leading-relaxed">
+                  A valid FHIR Bundle is required before rules can be created. Fix the following structural issues in your bundle:
+                </p>
+                <ul className="text-sm text-amber-800 space-y-1 list-disc list-inside mb-4">
+                  {bundleSanityState.errors.map((error, index) => (
+                    <li key={index}>{error}</li>
+                  ))}
+                </ul>
+                <button
+                  onClick={() => onOpenBundleTab?.()}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-900 bg-amber-200 rounded-lg hover:bg-amber-300 transition-colors"
+                >
+                  <FileJson className="w-4 h-4" />
+                  Open Bundle Editor
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Validation Status Card - Neutral explanatory copy only */}
         <div className="bg-white rounded-lg border shadow-sm p-5">
           <div className="flex items-center gap-3 mb-4">

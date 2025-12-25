@@ -119,8 +119,19 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
   /**
    * Run validation (via Context)
    * Uses current validationMode state (standard or full)
+   * Resets source filters to show all
    */
   const handleRunValidation = async () => {
+    // Reset filters to show all sources
+    const allFilters = {
+      firely: true,
+      business: true,
+      codeMaster: true,
+      specHint: true,
+    };
+    setSourceFilters(allFilters);
+    localStorage.setItem(`validation-filters-${projectId}`, JSON.stringify(allFilters));
+    
     setIsOpen(true); // Auto-expand after validation
     await runValidation(validationMode);
   };

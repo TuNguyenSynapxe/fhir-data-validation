@@ -75,6 +75,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     onSaveRules,
     ruleAlignmentStats,
     ruleSuggestions = [],
+    bundleSanityState,
   } = rules;
   
   // Codemaster props no longer needed after Phase A migration
@@ -102,7 +103,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   } = bundle;
   
   // Destructure navigation props
-  const { projectId, onNavigateToPath, onSelectError, onSuggestionsReceived, isBundleOpen, onBundleToggle } = navigation;
+  const { projectId, onNavigateToPath, onSelectError, onSuggestionsReceived, isBundleOpen, onBundleToggle, onOpenBundleTab } = navigation;
   
   // Destructure ui props
   const { isDimmed = false, onClearFocus } = ui;
@@ -119,9 +120,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             rules={rulesData}
             bundleJson={bundleJson}
             ruleAlignmentStats={ruleAlignmentStats}
+            bundleSanityState={bundleSanityState}
             onNavigateToValidation={() => onModeChange?.(RightPanelMode.Validation)}
             onNavigateToRules={() => onTabChange?.('rules')}
             onTabChange={onTabChange}
+            onOpenBundleTab={onOpenBundleTab}
           />
         );
       case 'rules':
@@ -137,16 +140,19 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             projectId={projectId!}
             features={projectFeatures}
             validationState={validationState}
+            bundleSanityState={bundleSanityState}
+            onOpenBundleTab={onOpenBundleTab}
           />
-        );      case 'bundle':
-        // Render BundleTabs component from navigation.bundleTabsContent
-        return navigation.bundleTabsContent || null;      case 'bundle':
+        );
+      case 'bundle':
         // Render BundleTabs component from navigation.bundleTabsContent
         return navigation.bundleTabsContent || null;
       case 'codemaster':
         return (
           <TerminologyEditor
             projectId={projectId!}
+            bundleSanityState={bundleSanityState}
+            onOpenBundleTab={onOpenBundleTab}
           />
         );
       case 'metadata':
@@ -160,6 +166,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             onFhirVersionChange={() => {}}
             onSave={() => {}}
             hasChanges={false}
+            bundleSanityState={bundleSanityState}
+            onOpenBundleTab={onOpenBundleTab}
           />
         );
       case 'settings':
@@ -184,6 +192,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             onSave={onSaveValidationSettings || (() => {})}
             hasChanges={hasValidationSettingsChanges}
             isSaving={isSavingValidationSettings}
+            bundleSanityState={bundleSanityState}
+            onOpenBundleTab={onOpenBundleTab}
           />
           {/* Experimental Features Section - Hidden per requirements */}
         </div>

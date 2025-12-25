@@ -102,11 +102,28 @@ public class FirelyValidationService : IFirelyValidationService
                 // Structural validation error
                 _logger.LogWarning(ex, "Firely structural validation error");
                 
+                // Store the full exception message in diagnostics
+                // And store structured info in details for later extraction
+                var diagnostics = $"FHIR structural validation error: {ex.Message}";
+                
                 outcome.Issue.Add(new OperationOutcome.IssueComponent
                 {
                     Severity = OperationOutcome.IssueSeverity.Error,
                     Code = OperationOutcome.IssueType.Structure,
-                    Diagnostics = $"FHIR structural validation error: {ex.Message}"
+                    Diagnostics = diagnostics,
+                    Details = new CodeableConcept
+                    {
+                        Text = ex.Message,  // Store original message for parsing
+                        Coding = new List<Coding>
+                        {
+                            new Coding
+                            {
+                                System = "http://fhir-processor-v2/error-type",
+                                Code = ex.GetType().Name,  // e.g., "StructuralTypeException"
+                                Display = "Firely SDK Exception"
+                            }
+                        }
+                    }
                 });
             }
             

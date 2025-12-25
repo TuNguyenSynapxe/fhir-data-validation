@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Plus, Download, FileJson, Info, CheckCircle, ChevronDown, ChevronUp, Filter } from 'lucide-react';
+import { Plus, Download, FileJson, Info, CheckCircle, ChevronDown, ChevronUp, Filter, AlertTriangle, Maximize, Minimize } from 'lucide-react';
 import { RuleFilters, type RuleFilterState } from './RuleFilters';
 import { RuleNavigator } from './RuleNavigator';
 import { RuleList } from './RuleList';
@@ -45,6 +45,11 @@ interface RulesPanelProps {
     treeRuleAuthoring?: boolean;
   };
   validationState?: string; // ValidationState from useValidationState hook
+  bundleSanityState?: {
+    isValid: boolean;
+    errors: string[];
+  };
+  onOpenBundleTab?: () => void;
 }
 
 export const RulesPanel: React.FC<RulesPanelProps> = ({
@@ -58,6 +63,8 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
   projectId,
   features,
   validationState,
+  bundleSanityState,
+  onOpenBundleTab,
 }) => {
   const [filters, setFilters] = useState<RuleFilterState>({
     searchQuery: '',
@@ -77,6 +84,7 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
   const [isRuleReviewDismissed, setIsRuleReviewDismissed] = useState(false);
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
   const [ruleSaveStates, setRuleSaveStates] = useState<Map<string, SaveState>>(new Map());
+  const [allGroupsExpanded, setAllGroupsExpanded] = useState<boolean | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedRulesRef = useRef<string>('');
   const isInitialMount = useRef(true);
@@ -281,6 +289,14 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
   const handleAddRule = () => {
     // Always use AddRuleModal (rule-type-first UX)
     setIsAddRuleModalOpen(true);
+  };
+  
+  const handleExpandAll = () => {
+    setAllGroupsExpanded(true);
+  };
+  
+  const handleCollapseAll = () => {
+    setAllGroupsExpanded(false);
   };
 
   // Legacy functions removed - creation now uses AddRuleModal only
@@ -503,6 +519,32 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
         </div>
       )}
 
+      {/* Bundle Sanity Blocking Alert */}
+      {bundleSanityState && !bundleSanityState.isValid && (
+        <div className="border-b border-amber-300 bg-amber-50">
+          <div className="px-4 py-3">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-amber-900">
+                  Rules Locked
+                </p>
+                <p className="text-xs text-amber-700 mt-1">
+                  Fix the bundle structure to enable rule authoring. Existing rules are read-only until the bundle is valid.
+                </p>
+              </div>
+              <button
+                onClick={onOpenBundleTab}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-md transition-colors flex-shrink-0"
+              >
+                <FileJson className="w-3.5 h-3.5" />
+                Fix Bundle
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Unified Control Bar: Filters + Actions */}
       <div className="border-b border-gray-200 bg-white">
         <div className="flex items-center justify-between px-4 py-2 gap-4">
@@ -543,6 +585,21 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
           {/* Right: Action Buttons */}
           <div className="flex items-center gap-2 flex-shrink-0">
             <button
+              onClick={handleExpandAll}
+              className="p-1.5 hover:bg-gray-200 rounded transition-colors"
+              title="Expand All Groups"
+            >
+              <Maximize className="w-4 h-4 text-gray-600" />
+            </button>
+            <button
+              onClick={handleCollapseAll}
+              className="p-1.5 hover:bg-gray-200 rounded transition-colors"
+              title="Collapse All Groups"
+            >
+              <Minimize className="w-4 h-4 text-gray-600" />
+            </button>
+            <div className="w-px h-4 bg-gray-300" />
+            <button
               onClick={handleExportRules}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
             >
@@ -551,8 +608,17 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
             </button>
             <button
               onClick={handleAddRule}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors"
-              title="Add new rule"
+              disabled={bundleSanityState && !bundleSanityState.isValid}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-white rounded-md transition-colors ${
+                bundleSanityState && !bundleSanityState.isValid
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-green-600 hover:bg-green-700'
+              }`}
+              title={
+                bundleSanityState && !bundleSanityState.isValid
+                  ? 'Fix bundle structure to add rules'
+                  : 'Add new rule'
+              }
             >
               <Plus size={14} />
               Add Rule
@@ -608,6 +674,7 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
             showObservationIndicators={showValidatedSuccess}
             getAdvisoryIssues={getAdvisoryIssuesForRule}
             projectBundle={projectBundle}
+            allGroupsExpanded={allGroupsExpanded}
           />
         </div>
       </div>

@@ -77,6 +77,31 @@ public class FirelyExceptionMapperTests
     }
     
     [Fact]
+    public void MapToValidationError_UnknownElementWithLocation_ExtractsPathAndJsonPointer()
+    {
+        // Arrange
+        var exceptionMessage = "FHIR structural validation error: Type checking the data: Encountered unknown element 'actualPeriod' at location 'Bundle.entry[1].resource[0].actualPeriod[0]' while parsing";
+        var exception = new Exception(exceptionMessage);
+        
+        // Act
+        var error = FirelyExceptionMapper.MapToValidationError(exception, null);
+        
+        // Assert
+        Assert.Equal("FHIR", error.Source);
+        Assert.Equal("error", error.Severity);
+        Assert.Equal("UNKNOWN_ELEMENT", error.ErrorCode);
+        Assert.Equal("Bundle.entry[1].resource[0].actualPeriod[0]", error.Path);
+        Assert.Equal("/entry/1/resource/actualPeriod/0", error.JsonPointer);
+        Assert.Contains("Unknown element", error.Message);
+        Assert.Contains("actualPeriod", error.Message);
+        
+        // Check details
+        Assert.NotNull(error.Details);
+        Assert.Equal("actualPeriod", error.Details["unknownElement"]);
+        Assert.Equal("Bundle.entry[1].resource[0].actualPeriod[0]", error.Details["location"]);
+    }
+    
+    [Fact]
     public void MapToValidationError_TypeMismatch_ExtractsDetails()
     {
         // Arrange
