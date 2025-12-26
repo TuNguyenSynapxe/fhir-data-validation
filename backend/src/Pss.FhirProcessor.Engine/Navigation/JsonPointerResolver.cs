@@ -1,6 +1,8 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Pss.FhirProcessor.Engine.Navigation.Predicates;
+using Pss.FhirProcessor.Engine.Navigation.Structure;
 
 namespace Pss.FhirProcessor.Engine.Navigation;
 
@@ -15,6 +17,23 @@ namespace Pss.FhirProcessor.Engine.Navigation;
 /// </summary>
 public class JsonPointerResolver : IJsonPointerResolver
 {
+    private readonly IPredicateEvaluator _predicateEvaluator;
+    private readonly IFhirStructureHintProvider _structureHints;
+    
+    public JsonPointerResolver(IFhirStructureHintProvider structureHints)
+    {
+        _predicateEvaluator = new JsonPredicateEvaluator();
+        _structureHints = structureHints ?? throw new ArgumentNullException(nameof(structureHints));
+    }
+    
+    // Internal constructor for testing
+    internal JsonPointerResolver(
+        IPredicateEvaluator predicateEvaluator,
+        IFhirStructureHintProvider structureHints)
+    {
+        _predicateEvaluator = predicateEvaluator;
+        _structureHints = structureHints ?? throw new ArgumentNullException(nameof(structureHints));
+    }
     /// <summary>
     /// DLL-SAFE: Resolves FHIRPath to JSON pointer using pure JSON navigation.
     /// </summary>
@@ -116,23 +135,20 @@ public class JsonPointerResolver : IJsonPointerResolver
                 }
                 else if (segment.Type == SegmentType.Property)
                 {
-                    // DLL-SAFE: Property navigation
+                    // DLL-SAFE: Property navigation with structural awareness
                     if (currentNode.TryGetProperty(segment.PropertyName, out var prop))
                     {
                         bool isLastSegment = (i == segments.Count - 1);
                         
                         if (prop.ValueKind == JsonValueKind.Array)
                         {
-                            if (isLastSegment)
-                            {
-                                // Last segment: return the array itself
-                                pointer.Append($"/{segment.PropertyName}");
-                                currentNode = prop;
-                            }
-                            else
+                            // Property is JSON array
+                            pointer.Append($"/{segment.PropertyName}");
+                            
+                            if (!isLastSegment)
                             {
                                 // Not last segment: navigate into array[0]
-                                pointer.Append($"/{segment.PropertyName}/0");
+                                pointer.Append("/0");
                                 
                                 if (prop.GetArrayLength() > 0)
                                 {
@@ -143,25 +159,25 @@ public class JsonPointerResolver : IJsonPointerResolver
                                     return null; // Empty array, can't navigate deeper
                                 }
                             }
+                            else
+                            {
+                                // Last segment: return the array itself
+                                currentNode = prop;
+                            }
                         }
                         else if (prop.ValueKind == JsonValueKind.Object)
                         {
-                            // HEURISTIC: Treat known repeatable fields as implicit array[0]
-                            bool isKnownRepeatableField = !isLastSegment &&
-                                (segment.PropertyName == "performer" ||
-                                 segment.PropertyName == "address" ||
-                                 segment.PropertyName == "identifier" ||
-                                 segment.PropertyName == "telecom" ||
-                                 segment.PropertyName == "contact");
+                            // Check if structure hints indicate this should be treated as array
+                            var fullPath = BuildPathUpTo(segments, i);
+                            var currentResourceType = ExtractResourceType(currentNode);
                             
-                            bool hasReferenceStructure = prop.TryGetProperty("reference", out _) ||
-                                                          prop.TryGetProperty("display", out _);
-                            bool hasAddressStructure = prop.TryGetProperty("line", out _) ||
-                                                        prop.TryGetProperty("city", out _);
+                            bool isStructurallyRepeating = !isLastSegment &&
+                                _structureHints.IsRepeating(currentResourceType ?? resourceType ?? "", fullPath);
                             
-                            if (isKnownRepeatableField && (hasReferenceStructure || hasAddressStructure))
+                            if (isStructurallyRepeating)
                             {
-                                // Treat as array[0] for traversal
+                                // FHIR spec defines this as repeating but JSON has single object
+                                // Treat as array[0] for backward compatibility
                                 pointer.Append($"/{segment.PropertyName}/0");
                                 currentNode = prop;
                             }
@@ -186,16 +202,15 @@ public class JsonPointerResolver : IJsonPointerResolver
                 }
                 else if (segment.Type == SegmentType.WhereClause)
                 {
-                    // DLL-SAFE: Simple JSON-based where() evaluation
-                    // LIMITATION: Only supports basic equality checks (e.g., code='value')
-                    // Complex FHIRPath expressions require POCO-based evaluation
+                    // DLL-SAFE: JSON-based where() evaluation using predicate engine
+                    // Supports: equality, exists(), empty()
                     
                     if (currentNode.TryGetProperty(segment.PropertyName, out var arrayProp) &&
                         arrayProp.ValueKind == JsonValueKind.Array)
                     {
                         pointer.Append($"/{segment.PropertyName}");
                         
-                        var matchIndex = EvaluateSimpleWhereClause(arrayProp, segment.WhereExpression);
+                        var matchIndex = EvaluateWhereClause(arrayProp, segment.WhereExpression);
                         if (matchIndex >= 0)
                         {
                             pointer.Append($"/{matchIndex}");
@@ -391,17 +406,25 @@ public class JsonPointerResolver : IJsonPointerResolver
         return null;
     }
     
-    private int EvaluateSimpleWhereClause(JsonElement arrayElement, string? whereExpression)
+    private int EvaluateWhereClause(JsonElement arrayElement, string? whereExpression)
     {
         if (arrayElement.ValueKind != JsonValueKind.Array || string.IsNullOrWhiteSpace(whereExpression))
         {
             return -1;
         }
         
+        // Parse where expression into predicate AST
+        var predicate = PredicateParser.Parse(whereExpression);
+        if (predicate == null)
+        {
+            return -1; // Invalid expression - fail safely
+        }
+        
+        // Evaluate predicate against each array element
         for (int i = 0; i < arrayElement.GetArrayLength(); i++)
         {
             var item = arrayElement[i];
-            if (EvaluateSimpleCondition(item, whereExpression))
+            if (_predicateEvaluator.Evaluate(item, predicate))
             {
                 return i;
             }
@@ -410,46 +433,35 @@ public class JsonPointerResolver : IJsonPointerResolver
         return -1;
     }
     
-    private bool EvaluateSimpleCondition(JsonElement element, string condition)
+    /// <summary>
+    /// Build property path up to specified segment index.
+    /// Example: segments = ["code", "coding", "system"], index = 1 → "code.coding"
+    /// </summary>
+    private static string BuildPathUpTo(List<PathSegment> segments, int index)
     {
-        // Parse simple conditions: property.path='value'
-        var eqMatch = Regex.Match(condition, @"([^=]+)='([^']+)'");
-        if (eqMatch.Success)
+        var pathParts = new List<string>();
+        for (int i = 0; i <= index && i < segments.Count; i++)
         {
-            var path = eqMatch.Groups[1].Value.Trim();
-            var expectedValue = eqMatch.Groups[2].Value;
-            
-            var actualValue = NavigateJsonPath(element, path);
-            return actualValue == expectedValue;
+            if (segments[i].Type == SegmentType.Property)
+            {
+                pathParts.Add(segments[i].PropertyName);
+            }
         }
-        
-        return false;
+        return string.Join(".", pathParts);
     }
     
-    private string? NavigateJsonPath(JsonElement element, string path)
+    /// <summary>
+    /// Extract resourceType from current JSON node if available.
+    /// </summary>
+    private static string? ExtractResourceType(JsonElement node)
     {
-        var parts = path.Split('.');
-        var current = element;
-        
-        foreach (var part in parts)
+        if (node.ValueKind == JsonValueKind.Object &&
+            node.TryGetProperty("resourceType", out var rtProp) &&
+            rtProp.ValueKind == JsonValueKind.String)
         {
-            if (current.TryGetProperty(part, out var next))
-            {
-                current = next;
-                
-                // If array, navigate into first element
-                if (current.ValueKind == JsonValueKind.Array && current.GetArrayLength() > 0)
-                {
-                    current = current[0];
-                }
-            }
-            else
-            {
-                return null;
-            }
+            return rtProp.GetString();
         }
-        
-        return current.ValueKind == JsonValueKind.String ? current.GetString() : current.ToString();
+        return null;
     }
 }
 

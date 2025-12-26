@@ -6,6 +6,7 @@ using Hl7.FhirPath;
 using Microsoft.Extensions.Logging;
 using Pss.FhirProcessor.Engine.Models;
 using Pss.FhirProcessor.Engine.Interfaces;
+using Pss.FhirProcessor.Engine.Navigation.Structure;
 
 namespace Pss.FhirProcessor.Engine.Navigation;
 

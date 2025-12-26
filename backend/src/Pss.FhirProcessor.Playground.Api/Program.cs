@@ -1,4 +1,5 @@
 using Pss.FhirProcessor.Engine.DependencyInjection;
+using Pss.FhirProcessor.Engine.Navigation.Structure;
 using Pss.FhirProcessor.Playground.Api.Commands;
 using Pss.FhirProcessor.Playground.Api.Services;
 using Pss.FhirProcessor.Playground.Api.Storage;
@@ -54,6 +55,12 @@ try
 
     // Register FhirProcessor.Engine services
     builder.Services.AddFhirProcessorEngine();
+
+    // PLAYGROUND OVERRIDE: Use KnownFhirStructureHintProvider for tolerant navigation
+    // Engine default (NullFhirStructureHintProvider) is strict, but Playground needs
+    // implicit array[0] behavior for common repeating fields like performer, identifier, etc.
+    builder.Services.AddSingleton<IFhirStructureHintProvider, KnownFhirStructureHintProvider>();
+    Log.Information("Playground configured with KnownFhirStructureHintProvider for tolerant navigation");
 
     // Register Terminology Services (Phase 2)
     // Configure base data path for file-based storage

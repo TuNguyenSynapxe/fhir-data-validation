@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Pss.FhirProcessor.Engine.Navigation;
+using Pss.FhirProcessor.Engine.Navigation.Structure;
 using Xunit;
 
 namespace Pss.FhirProcessor.Engine.Tests.Navigation;
@@ -14,7 +15,7 @@ public class JsonPointerResolverTests
     
     public JsonPointerResolverTests()
     {
-        _resolver = new JsonPointerResolver();
+        _resolver = new JsonPointerResolver(new NullFhirStructureHintProvider());
     }
     
     /// <summary>

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Pss.FhirProcessor.Engine.Core;
 using Pss.FhirProcessor.Engine.RuleEngines;
 using Pss.FhirProcessor.Engine.Navigation;
+using Pss.FhirProcessor.Engine.Navigation.Structure;
 using Pss.FhirProcessor.Engine.Firely;
 using Pss.FhirProcessor.Engine.Authoring;
 using Pss.FhirProcessor.Engine.Interfaces;
@@ -59,6 +60,10 @@ public static class EngineServiceCollectionExtensions
         services.AddScoped<IFhirPathRuleEngine, FhirPathRuleEngine>();
         services.AddScoped<ICodeMasterEngine, CodeMasterEngine>();
         services.AddScoped<IReferenceResolver, ReferenceResolver>();
+        
+        // DLL-SAFE: Structural hints (default no-op for runtime safety)
+        services.AddSingleton<IFhirStructureHintProvider, NullFhirStructureHintProvider>();
+        
         services.AddScoped<IJsonPointerResolver, JsonPointerResolver>(); // DLL-SAFE: Pure JSON navigation
         services.AddScoped<ISmartPathNavigationService, SmartPathNavigationService>();
         services.AddScoped<IUnifiedErrorModelBuilder, UnifiedErrorModelBuilder>();
