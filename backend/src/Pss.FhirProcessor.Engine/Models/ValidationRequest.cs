@@ -45,16 +45,36 @@ public class ValidationRequest
     public string FhirVersion { get; set; } = "R4";
     
     /// <summary>
-    /// Project ID for loading project-specific master data (Questions, QuestionSets, etc.)
+    /// AUTHORING MODE ONLY: Project ID for loading project-specific master data (Questions, QuestionSets, etc.).
+    /// 
+    /// Runtime DLL consumers should leave this null and pass all configuration as JSON strings
+    /// (RulesJson, CodesJson, CodeMasterJson, ProjectJson).
+    /// 
+    /// When provided, the engine will attempt to load Questions/QuestionSets from a database,
+    /// which is only available in the Playground authoring environment.
     /// </summary>
     [JsonPropertyName("projectId")]
     public string? ProjectId { get; set; }
     
     /// <summary>
-    /// Validation mode: "standard" (blocking checks only) or "full" (includes advisory checks)
-    /// Default: "standard" - blocking validation only (FHIR structural + business rules)
-    /// "full" - includes additional advisory checks (lint quality + SpecHint guidance)
-    /// Both modes produce identical blocking decisions - only advisory feedback differs
+    /// Validation mode: controls which validation checks are executed.
+    /// 
+    /// Modes:
+    /// - "standard" (default): Runtime-friendly mode with blocking checks only
+    ///   * FHIR structural validation (Firely)
+    ///   * Business rules (FHIRPath)
+    ///   * CodeMaster validation
+    ///   * Reference validation
+    ///   
+    /// - "full": Authoring mode with all checks including advisory/UX features
+    ///   * All "standard" checks
+    ///   * Lint quality hints (best-effort, non-blocking)
+    ///   * SpecHint guidance (HL7 required fields advisory)
+    ///   * System rule suggestions (pattern analysis)
+    ///   * Full explanations (what/how/confidence)
+    ///   
+    /// Runtime DLL consumers should use "standard" or leave null.
+    /// Both modes produce identical blocking validation decisions - only advisory metadata differs.
     /// </summary>
     [JsonPropertyName("validationMode")]
     public string? ValidationMode { get; set; } = "standard";

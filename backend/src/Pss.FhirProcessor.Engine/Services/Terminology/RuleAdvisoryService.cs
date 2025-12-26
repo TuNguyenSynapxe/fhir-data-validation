@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
-using Pss.FhirProcessor.Engine.Interfaces;
 using Pss.FhirProcessor.Engine.Models.Terminology;
+using Pss.FhirProcessor.Engine.Interfaces;
 
 namespace Pss.FhirProcessor.Engine.Services.Terminology;
 

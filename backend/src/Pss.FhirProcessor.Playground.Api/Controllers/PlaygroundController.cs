@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Pss.FhirProcessor.Engine.Interfaces;
+using Pss.FhirProcessor.Engine.Core;
 using Pss.FhirProcessor.Engine.Models;
 
 namespace Pss.FhirProcessor.Playground.Api.Controllers;

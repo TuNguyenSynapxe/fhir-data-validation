@@ -1,5 +1,10 @@
 using Hl7.Fhir.Model;
 using Pss.FhirProcessor.Engine.Interfaces;
+using Pss.FhirProcessor.Engine.Core;
+using Pss.FhirProcessor.Engine.RuleEngines;
+using Pss.FhirProcessor.Engine.Navigation;
+using Pss.FhirProcessor.Engine.Firely;
+using Pss.FhirProcessor.Engine.Authoring;
 using Pss.FhirProcessor.Engine.Models;
 using Xunit;
 

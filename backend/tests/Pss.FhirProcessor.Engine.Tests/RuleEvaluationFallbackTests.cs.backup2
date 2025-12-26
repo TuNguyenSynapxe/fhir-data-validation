@@ -1,0 +1,204 @@
+using Xunit;
+using FluentAssertions;
+using Pss.FhirProcessor.Engine.Services;
+using Pss.FhirProcessor.Engine.Core;
+using Pss.FhirProcessor.Engine.RuleEngines;
+using Pss.FhirProcessor.Engine.Navigation;
+using Pss.FhirProcessor.Engine.Firely;
+using Pss.FhirProcessor.Engine.Authoring;
+using Pss.FhirProcessor.Engine.Models;
+using Pss.FhirProcessor.Engine.Interfaces;
+using Hl7.Fhir.Model;
+using System.Text.Json;
+using SystemTask = System.Threading.Tasks.Task;
+
+namespace Pss.FhirProcessor.Engine.Tests;
+
+/// <summary>
+/// Tests for Firely-preferred with safe fallback strategy
+/// Verifies that Project Rules can execute with either Firely (strict) or custom (best-effort) evaluation
+/// </summary>
+public class RuleEvaluationFallbackTests
+{
+    [Fact]
+    public void BuildPlan_FirelySuccess_ShouldPreferFirely()
+    {
+        // Arrange
+        var planner = new RuleEvaluationPlanner();
+        var rule = new RuleDefinition
+        {
+            Id = "test-rule",
+            Type = "Required",
+            ResourceType = "Patient",
+            Path = "gender",
+            Message = "Gender is required"
+        };
+        var patient = new Patient { Gender = AdministrativeGender.Male };
+        var json = @"{""resourceType"": ""Patient"", ""gender"": ""male""}";
+        
+        // Act
+        var plan = planner.BuildPlan(rule, json, patient, firelyParsingSucceeded: true);
+        
+        // Assert
+        plan.PreferFirely.Should().BeTrue();
+        plan.FallbackReasons.Should().BeEmpty();
+    }
+    
+    [Fact]
+    public void BuildPlan_FirelyParsingFailed_ShouldFallback()
+    {
+        // Arrange
+        var planner = new RuleEvaluationPlanner();
+        var rule = new RuleDefinition
+        {
+            Id = "test-rule",
+            Type = "Required",
+            ResourceType = "Patient",
+            Path = "gender",
+            Message = "Gender is required"
+        };
+        
+        // Act
+        var plan = planner.BuildPlan(rule, rawJson: null, firelyPoco: null, firelyParsingSucceeded: false);
+        
+        // Assert
+        plan.PreferFirely.Should().BeFalse();
+        plan.FallbackReasons.Should().Contain(r => r.Contains("Firely POCO parsing failed"));
+    }
+    
+    [Fact]
+    public void BuildPlan_CustomFHIRPathRule_ShouldAlwaysFallback()
+    {
+        // Arrange
+        var planner = new RuleEvaluationPlanner();
+        var rule = new RuleDefinition
+        {
+            Id = "test-rule",
+            Type = "CustomFHIRPath",
+            ResourceType = "Patient",
+            Path = "name.exists()",
+            Message = "Name must exist"
+        };
+        var patient = new Patient();
+        var json = "{}";
+        
+        // Act
+        var plan = planner.BuildPlan(rule, json, patient, firelyParsingSucceeded: true);
+        
+        // Assert
+        plan.PreferFirely.Should().BeFalse();
+        plan.FallbackReasons.Should().Contain(r => r.Contains("CustomFHIRPath rules always use best-effort"));
+    }
+    
+    [Fact]
+    public void BuildPlan_ExtensionPath_ShouldFallback()
+    {
+        // Arrange
+        var planner = new RuleEvaluationPlanner();
+        var rule = new RuleDefinition
+        {
+            Id = "test-rule",
+            Type = "Required",
+            ResourceType = "Patient",
+            Path = "extension.where(url='http://example.com').value",
+            Message = "Extension value required"
+        };
+        var patient = new Patient();
+        var json = "{}";
+        
+        // Act
+        var plan = planner.BuildPlan(rule, json, patient, firelyParsingSucceeded: true);
+        
+        // Assert
+        plan.PreferFirely.Should().BeFalse();
+        plan.FallbackReasons.Should().Contain(r => r.Contains("extension"));
+    }
+    
+    [Fact]
+    public void BuildPlan_ArrayIndexing_ShouldFallback()
+    {
+        // Arrange
+        var planner = new RuleEvaluationPlanner();
+        var rule = new RuleDefinition
+        {
+            Id = "test-rule",
+            Type = "Required",
+            ResourceType = "Patient",
+            Path = "name[0].given",
+            Message = "First name is required"
+        };
+        var patient = new Patient();
+        var json = @"{
+            ""resourceType"": ""Patient"",
+            ""name"": [
+                { ""given"": [""John""] }
+            ]
+        }";
+        
+        // Act
+        var plan = planner.BuildPlan(rule, json, patient, firelyParsingSucceeded: true);
+        
+        // Assert
+        plan.PreferFirely.Should().BeFalse();
+        plan.FallbackReasons.Should().Contain(r => r.Contains("structural mismatch"));
+    }
+    
+    [Fact]
+    public void BuildPlan_EmptyObjectInJson_ShouldFallback()
+    {
+        // Arrange
+        var planner = new RuleEvaluationPlanner();
+        var rule = new RuleDefinition
+        {
+            Id = "test-rule",
+            Type = "Required",
+            ResourceType = "Patient",
+            Path = "contact.name",
+            Message = "Contact name required"
+        };
+        var patient = new Patient();
+        var json = @"{
+            ""resourceType"": ""Patient"",
+            ""contact"": [
+                { }
+            ]
+        }";
+        
+        // Act
+        var plan = planner.BuildPlan(rule, json, patient, firelyParsingSucceeded: true);
+        
+        // Assert
+        plan.PreferFirely.Should().BeFalse();
+        plan.FallbackReasons.Should().Contain(r => r.Contains("structural mismatch"));
+    }
+}
+
+/// <summary>
+/// Integration tests for rule evaluation with metadata tracking
+/// </summary>
+public class RuleEvaluationMetadataTests
+{
+    [Fact]
+    public async SystemTask ValidateAsync_SuccessfulFirelyEvaluation_ShouldAnnotateWithStrictConfidence()
+    {
+        // TODO: Integration test - requires full DI setup
+        // This test demonstrates the expected behavior when Firely evaluation succeeds
+        Assert.True(true); // Placeholder
+    }
+    
+    [Fact]
+    public async SystemTask ValidateAsync_MissingRequiredField_ShouldAnnotateWithEngine()
+    {
+        // TODO: Integration test - requires full DI setup
+        // This test demonstrates the expected behavior when a rule fails
+        Assert.True(true); // Placeholder
+    }
+    
+    [Fact]
+    public async SystemTask ValidateAsync_CustomFHIRPathRule_ShouldUseBestEffort()
+    {
+        // TODO: Integration test - requires full DI setup
+        // This test demonstrates that CustomFHIRPath rules always use best-effort mode
+        Assert.True(true); // Placeholder
+    }
+}

@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Pss.FhirProcessor.Engine.Authoring;
 
 namespace Pss.FhirProcessor.Engine.Models;
 

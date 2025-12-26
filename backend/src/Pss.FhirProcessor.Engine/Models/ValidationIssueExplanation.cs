@@ -4,6 +4,18 @@ namespace Pss.FhirProcessor.Engine.Models;
 
 /// <summary>
 /// Structured explanation for a validation issue.
+/// 
+/// AUTHORING/UX METADATA: This field provides human-readable guidance for developers
+/// in the Playground authoring environment. It does not affect validation decisions.
+/// 
+/// Runtime DLL consumers can safely ignore this field or set ValidationMode="standard"
+/// to avoid generating explanations entirely.
+/// 
+/// Content:
+/// - "what": Explains the validation rule or constraint
+/// - "how": Actionable fix guidance (only when high confidence)
+/// - "confidence": Reliability indicator (high/medium/low)
+/// 
 /// Provides context and actionable guidance without blocking validation.
 /// </summary>
 public class ValidationIssueExplanation

@@ -1,0 +1,249 @@
+using Xunit;
+using Pss.FhirProcessor.Engine.Services;
+using Pss.FhirProcessor.Engine.Catalogs;
+using Microsoft.Extensions.Logging.Abstractions;
+
+namespace Pss.FhirProcessor.Engine.Tests;
+
+/// <summary>
+/// Verification tests confirming that LintIssue and LintValidationService
+/// are properly integrated with LintRuleCatalog metadata.
+/// </summary>
+public class LintCatalogRefactoringVerificationTests
+{
+    private readonly LintValidationService _lintService;
+
+    public LintCatalogRefactoringVerificationTests()
+    {
+        var schemaService = TestHelper.CreateFhirSchemaService();
+        _lintService = new LintValidationService(
+            NullLogger<LintValidationService>.Instance,
+            schemaService);
+    }
+
+    [Fact]
+    public async Task LintIssue_ContainsAllCatalogMetadata()
+    {
+        // Arrange
+        var json = @"{ ""invalid"": ""json"" }";
+
+        // Act
+        var issues = await _lintService.ValidateAsync(json, "R4");
+
+        // Assert
+        var issue = issues.First();
+        
+        // Verify all metadata fields are populated
+        Assert.NotNull(issue.RuleId);
+        Assert.NotNull(issue.Category);
+        Assert.NotNull(issue.Severity);
+        Assert.NotNull(issue.Confidence);
+        Assert.NotNull(issue.Title);
+        Assert.NotNull(issue.Description);
+        Assert.NotNull(issue.Disclaimer);
+        
+        // Verify metadata comes from catalog
+        var catalogRule = LintRuleCatalog.GetRuleById(issue.RuleId);
+        Assert.NotNull(catalogRule);
+        Assert.Equal(catalogRule.Category.ToString(), issue.Category);
+        Assert.Equal(catalogRule.Severity, issue.Severity);
+        Assert.Equal(catalogRule.Confidence, issue.Confidence);
+        Assert.Equal(catalogRule.Title, issue.Title);
+        Assert.Equal(catalogRule.Description, issue.Description);
+        Assert.Equal(catalogRule.Disclaimer, issue.Disclaimer);
+    }
+
+    [Fact]
+    public async Task LintIssue_MessageIsContextualNotDuplicateOfMetadata()
+    {
+        // Arrange - Invalid array structure
+        var json = @"{
+            ""resourceType"": ""Bundle"",
+            ""type"": ""collection"",
+            ""entry"": {
+                ""resource"": { ""resourceType"": ""Patient"" }
+            }
+        }";
+
+        // Act
+        var issues = await _lintService.ValidateAsync(json, "R4");
+
+        // Assert
+        var arrayIssue = issues.FirstOrDefault(i => i.RuleId == "LINT_ENTRY_NOT_ARRAY");
+        Assert.NotNull(arrayIssue);
+        
+        // Message should be contextual (path + brief reason)
+        Assert.Contains("entry", arrayIssue.Message.ToLower());
+        Assert.Contains("not an array", arrayIssue.Message.ToLower());
+        
+        // Message should NOT duplicate title/description
+        Assert.DoesNotContain(arrayIssue.Title, arrayIssue.Message);
+        
+        // Metadata provides the full context
+        Assert.Equal("Bundle Entry Not Array", arrayIssue.Title);
+        Assert.Contains("must be an array", arrayIssue.Description.ToLower());
+        Assert.Equal("Structure", arrayIssue.Category);
+    }
+
+    [Fact]
+    public async Task AllLintIssues_ReferenceValidCatalogRules()
+    {
+        // Arrange - Multiple errors
+        var json = @"{
+            ""resourceType"": ""Bundle"",
+            ""type"": ""collection"",
+            ""entry"": {
+                ""resource"": {
+                    ""resourceType"": ""Patient"",
+                    ""birthDate"": ""not-a-date"",
+                    ""active"": ""true""
+                }
+            }
+        }";
+
+        // Act
+        var issues = await _lintService.ValidateAsync(json, "R4");
+
+        // Assert
+        Assert.NotEmpty(issues);
+        
+        // Every issue must reference a valid catalog rule
+        foreach (var issue in issues)
+        {
+            var catalogRule = LintRuleCatalog.GetRuleById(issue.RuleId);
+            Assert.NotNull(catalogRule);
+            
+            // Metadata must match catalog
+            Assert.Equal(catalogRule.Title, issue.Title);
+            Assert.Equal(catalogRule.Description, issue.Description);
+            Assert.Equal(catalogRule.Severity, issue.Severity);
+            Assert.Equal(catalogRule.Confidence, issue.Confidence);
+        }
+    }
+
+    [Fact]
+    public async Task SchemaBasedRules_IncludeSchemaDisclaimer()
+    {
+        // Arrange - Schema-based validation error
+        var json = @"{
+            ""resourceType"": ""Bundle"",
+            ""type"": ""collection"",
+            ""entry"": [
+                {
+                    ""resource"": {
+                        ""resourceType"": ""Patient"",
+                        ""name"": {
+                            ""family"": ""Smith""
+                        }
+                    }
+                }
+            ]
+        }";
+
+        // Act
+        var issues = await _lintService.ValidateAsync(json, "R4");
+
+        // Assert
+        var schemaIssue = issues.FirstOrDefault(i => 
+            i.Category == "SchemaShape" && i.RuleId == "LINT_EXPECTED_ARRAY");
+        
+        Assert.NotNull(schemaIssue);
+        Assert.Contains("schema", schemaIssue.Disclaimer.ToLower());
+        Assert.Contains("best-effort", schemaIssue.Disclaimer.ToLower());
+    }
+
+    [Fact]
+    public async Task LintIssue_SeverityAndConfidenceComeFromCatalog()
+    {
+        // Arrange - Different severity/confidence levels
+        var invalidJsonWithStructureErrors = @"{
+            ""resourceType"": ""Bundle"",
+            ""entry"": ""not-an-array"",
+            ""birthDate"": ""invalid-date""
+        }";
+
+        // Act
+        var issues = await _lintService.ValidateAsync(invalidJsonWithStructureErrors, "R4");
+
+        // Assert
+        Assert.NotEmpty(issues);
+        
+        // Verify no hardcoded severity/confidence in validation logic
+        foreach (var issue in issues)
+        {
+            var catalogRule = LintRuleCatalog.GetRuleById(issue.RuleId);
+            Assert.NotNull(catalogRule);
+            
+            // Severity and confidence must come from catalog
+            Assert.Equal(catalogRule.Severity, issue.Severity);
+            Assert.Equal(catalogRule.Confidence, issue.Confidence);
+            
+            // Valid values as per catalog definitions
+            Assert.True(issue.Severity == "Error" || issue.Severity == "Warning", 
+                $"Severity should be 'Error' or 'Warning', got '{issue.Severity}'");
+            Assert.True(issue.Confidence == "High" || issue.Confidence == "Medium" || issue.Confidence == "Low",
+                $"Confidence should be 'High', 'Medium', or 'Low', got '{issue.Confidence}'");
+        }
+    }
+
+    [Fact]
+    public async Task LintIssue_CategoryMatchesCatalogEnum()
+    {
+        // Arrange - Mix of different categories
+        var json = "{ invalid json }";
+
+        // Act
+        var issues = await _lintService.ValidateAsync(json, "R4");
+
+        // Assert
+        var jsonIssue = issues.First();
+        Assert.Equal("LINT_INVALID_JSON", jsonIssue.RuleId);
+        
+        // Category should match catalog
+        var catalogRule = LintRuleCatalog.InvalidJson;
+        Assert.Equal(catalogRule.Category.ToString(), jsonIssue.Category);
+        Assert.Equal("Json", jsonIssue.Category);
+    }
+
+    [Fact]
+    public async Task LintValidationService_NoHardcodedSeverityOrMessages()
+    {
+        // This test verifies the refactoring requirement:
+        // "No hardcoded severity/confidence in validation logic"
+        
+        // Arrange - Schema validation error
+        var json = @"{
+            ""resourceType"": ""Bundle"",
+            ""type"": ""collection"",
+            ""entry"": [
+                {
+                    ""resource"": {
+                        ""resourceType"": ""Patient"",
+                        ""name"": {
+                            ""family"": ""Smith""
+                        }
+                    }
+                }
+            ]
+        }";
+
+        // Act
+        var issues = await _lintService.ValidateAsync(json, "R4");
+
+        // Assert - Should detect Patient.name should be array, not object
+        var nameIssue = issues.FirstOrDefault(i => 
+            i.RuleId == "LINT_EXPECTED_ARRAY" && i.Message.Contains("name"));
+        
+        Assert.NotNull(nameIssue);
+        
+        // Verify metadata comes from catalog
+        Assert.Equal("Expected Array", nameIssue.Title);
+        Assert.Equal("Error", nameIssue.Severity);
+        Assert.Equal("High", nameIssue.Confidence);
+        Assert.Equal("SchemaShape", nameIssue.Category);
+        
+        // Message is minimal and contextual
+        Assert.Contains("name", nameIssue.Message.ToLower());
+        Assert.Contains("array", nameIssue.Message.ToLower());
+    }
+}

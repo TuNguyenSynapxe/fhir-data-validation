@@ -1,0 +1,295 @@
+using Xunit;
+using Pss.FhirProcessor.Engine.Services;
+using Microsoft.Extensions.Logging.Abstractions;
+
+namespace Pss.FhirProcessor.Engine.Tests;
+
+/// <summary>
+/// Tests for schema-based array/object validation in LintValidationService.
+/// These tests verify that lint uses FHIR schema (not heuristics) to determine cardinality.
+/// </summary>
+public class LintSchemaBasedValidationTests
+{
+    private readonly LintValidationService _lintService;
+
+    public LintSchemaBasedValidationTests()
+    {
+        var schemaService = TestHelper.CreateFhirSchemaService();
+        _lintService = new LintValidationService(
+            NullLogger<LintValidationService>.Instance,
+            schemaService);
+    }
+
+    [Fact]
+    public async Task PatientName_ShouldBeArray_DetectedBySchema()
+    {
+        // Arrange - Patient.name is array (0..*)
+        var json = @"{
+            ""resourceType"": ""Bundle"",
+            ""type"": ""collection"",
+            ""entry"": [
+                {
+                    ""resource"": {
+                        ""resourceType"": ""Patient"",
+                        ""name"": {
+                            ""family"": ""Smith""
+                        }
+                    }
+                }
+            ]
+        }";
+
+        // Act
+        var issues = await _lintService.ValidateAsync(json, "R4");
+
+        // Assert
+        var arrayIssue = issues.FirstOrDefault(i => 
+            i.RuleId == "LINT_EXPECTED_ARRAY" && 
+            i.FhirPath?.Contains("name") == true);
+        
+        Assert.NotNull(arrayIssue);
+        Assert.Contains("Patient.name", arrayIssue.FhirPath);
+        Assert.Equal("Expected Array", arrayIssue.Title);
+        Assert.Equal("SchemaShape", arrayIssue.Category);
+    }
+
+    [Fact]
+    public async Task PatientContactName_ShouldBeObject_CorrectlyValidated()
+    {
+        // Arrange - Patient.contact.name is single object (0..1), NOT an array
+        // This test verifies that when name is correctly provided as object inside contact array,
+        // there are NO schema errors
+        var json = @"{
+            ""resourceType"": ""Bundle"",
+            ""type"": ""collection"",
+            ""entry"": [
+                {
+                    ""resource"": {
+                        ""resourceType"": ""Patient"",
+                        ""contact"": [
+                            {
+                                ""name"": {
+                                    ""family"": ""Wife""
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }";
+
+        // Act
+        var issues = await _lintService.ValidateAsync(json, "R4");
+
+        // Assert - When contact.name is correctly an object, no schema errors
+        var schemaErrors = issues.Where(i => 
+            i.RuleId == "LINT_EXPECTED_ARRAY" || 
+            i.RuleId == "LINT_EXPECTED_OBJECT").ToList();
+        
+        Assert.Empty(schemaErrors);
+    }
+
+    [Fact]
+    public async Task ObservationComponent_ShouldBeArray_DetectedBySchema()
+    {
+        // Arrange - Observation.component is array (0..*)
+        var json = @"{
+            ""resourceType"": ""Bundle"",
+            ""type"": ""collection"",
+            ""entry"": [
+                {
+                    ""resource"": {
+                        ""resourceType"": ""Observation"",
+                        ""status"": ""final"",
+                        ""code"": {
+                            ""text"": ""Test""
+                        },
+                        ""component"": {
+                            ""code"": {
+                                ""text"": ""Sub-test""
+                            }
+                        }
+                    }
+                }
+            ]
+        }";
+
+        // Act
+        var issues = await _lintService.ValidateAsync(json, "R4");
+
+        // Assert
+        var arrayIssue = issues.FirstOrDefault(i => 
+            i.RuleId == "LINT_EXPECTED_ARRAY" && 
+            i.FhirPath?.Contains("component") == true);
+        
+        Assert.NotNull(arrayIssue);
+        Assert.Contains("Observation.component", arrayIssue.FhirPath);
+    }
+
+    [Fact]
+    public async Task PatientIdentifier_ShouldBeArray_ObjectProvided_ReturnsError()
+    {
+        // Arrange - Patient.identifier should be array
+        var json = @"{
+            ""resourceType"": ""Bundle"",
+            ""type"": ""collection"",
+            ""entry"": [
+                {
+                    ""resource"": {
+                        ""resourceType"": ""Patient"",
+                        ""identifier"": {
+                            ""system"": ""http://example.org"",
+                            ""value"": ""12345""
+                        }
+                    }
+                }
+            ]
+        }";
+
+        // Act
+        var issues = await _lintService.ValidateAsync(json, "R4");
+
+        // Assert
+        var arrayError = issues.FirstOrDefault(i => 
+            i.RuleId == "LINT_EXPECTED_ARRAY" && 
+            i.FhirPath?.Contains("identifier") == true);
+        
+        Assert.NotNull(arrayError);
+        Assert.Equal("Error", arrayError.Severity);
+        Assert.Contains("array", arrayError.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task PatientGender_ShouldBeValue_ArrayProvided_ReturnsError()
+    {
+        // Arrange - Patient.gender should be single code value
+        var json = @"{
+            ""resourceType"": ""Bundle"",
+            ""type"": ""collection"",
+            ""entry"": [
+                {
+                    ""resource"": {
+                        ""resourceType"": ""Patient"",
+                        ""gender"": [""male"", ""female""]
+                    }
+                }
+            ]
+        }";
+
+        // Act
+        var issues = await _lintService.ValidateAsync(json, "R4");
+
+        // Assert - gender is a primitive, but lint should catch array vs non-array
+        // Since gender is not an object type, this may not trigger LINT_EXPECTED_OBJECT
+        // But it demonstrates schema awareness
+        var relevantIssues = issues.Where(i => i.FhirPath?.Contains("gender") == true).ToList();
+        Assert.NotEmpty(relevantIssues); // Should have some issue with gender being an array
+    }
+
+    [Fact]
+    public async Task ValidBundle_CorrectCardinality_NoSchemaErrors()
+    {
+        // Arrange - All cardinalities match schema
+        var json = @"{
+            ""resourceType"": ""Bundle"",
+            ""type"": ""collection"",
+            ""entry"": [
+                {
+                    ""resource"": {
+                        ""resourceType"": ""Patient"",
+                        ""identifier"": [
+                            {
+                                ""system"": ""http://example.org"",
+                                ""value"": ""12345""
+                            }
+                        ],
+                        ""name"": [
+                            {
+                                ""family"": ""Smith"",
+                                ""given"": [""John""]
+                            }
+                        ],
+                        ""gender"": ""male"",
+                        ""birthDate"": ""1990-01-01""
+                    }
+                }
+            ]
+        }";
+
+        // Act
+        var issues = await _lintService.ValidateAsync(json, "R4");
+
+        // Assert - No schema-based array/object errors
+        var schemaErrors = issues.Where(i => 
+            i.RuleId == "LINT_EXPECTED_ARRAY" || 
+            i.RuleId == "LINT_EXPECTED_OBJECT").ToList();
+        
+        Assert.Empty(schemaErrors);
+    }
+
+    [Fact]
+    public async Task PatientContact_IsArray_CorrectlyValidated()
+    {
+        // Arrange - Patient.contact should be array
+        var json = @"{
+            ""resourceType"": ""Bundle"",
+            ""type"": ""collection"",
+            ""entry"": [
+                {
+                    ""resource"": {
+                        ""resourceType"": ""Patient"",
+                        ""contact"": [
+                            {
+                                ""name"": {
+                                    ""family"": ""Wife""
+                                },
+                                ""relationship"": [
+                                    {
+                                        ""text"": ""Spouse""
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            ]
+        }";
+
+        // Act
+        var issues = await _lintService.ValidateAsync(json, "R4");
+
+        // Assert - contact is array (correct), contact.name is object (correct)
+        var schemaErrors = issues.Where(i => 
+            i.RuleId == "LINT_EXPECTED_ARRAY" || 
+            i.RuleId == "LINT_EXPECTED_OBJECT").ToList();
+        
+        Assert.Empty(schemaErrors);
+    }
+
+    [Fact]
+    public async Task SchemaNotAvailable_SkipsValidation_NoErrors()
+    {
+        // Arrange - Use a resource type that might not have schema loaded
+        var json = @"{
+            ""resourceType"": ""Bundle"",
+            ""type"": ""collection"",
+            ""entry"": [
+                {
+                    ""resource"": {
+                        ""resourceType"": ""UnknownResource"",
+                        ""someField"": {
+                            ""value"": ""test""
+                        }
+                    }
+                }
+            ]
+        }";
+
+        // Act
+        var issues = await _lintService.ValidateAsync(json, "R4");
+
+        // Assert - Should not crash, and should skip schema validation for unknown resource
+        // May have LINT_RESOURCE_MISSING_TYPE or similar, but not schema-based errors
+        Assert.DoesNotContain(issues, i => i.RuleId == "LINT_INTERNAL_ERROR");
+    }
+}

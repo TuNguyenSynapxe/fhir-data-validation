@@ -1,7 +1,7 @@
 using Hl7.Fhir.Model;
 using Microsoft.Extensions.Logging;
-using Pss.FhirProcessor.Engine.Interfaces;
 using Pss.FhirProcessor.Engine.Models;
+using Pss.FhirProcessor.Engine.Interfaces;
 
 namespace Pss.FhirProcessor.Engine.Services;
 

@@ -1,4 +1,5 @@
 using Pss.FhirProcessor.Engine.Models;
+using Pss.FhirProcessor.Engine.Authoring;
 
 namespace Pss.FhirProcessor.Engine.Catalogs;
 
