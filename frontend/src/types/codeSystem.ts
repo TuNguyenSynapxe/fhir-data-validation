@@ -34,8 +34,10 @@ export interface CodeSetConcept {
   /** Human-readable display label (PHASE 1: single language only) */
   display?: string;
   
+  /** Optional description/definition of the concept */
+  description?: string;
+  
   // PHASE 1 LIMITATION: NOT supported
-  // definition?: string;           // TODO (Phase 2)
   // designation?: Designation[];   // TODO (Phase 2)
   // property?: Property[];         // TODO (Phase 2)
   // concept?: CodeSetConcept[];    // TODO (Phase 2)

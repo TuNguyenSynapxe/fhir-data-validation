@@ -30,9 +30,9 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Plus, Upload, ArrowLeft, List, Loader2 } from 'lucide-react';
-import { ConceptListPanel } from '../../terminology/ConceptListPanel';
-import { ConceptEditorPanel } from '../../terminology/ConceptEditorPanel';
+import { AlertCircle, Plus, Upload, List, Loader2 } from 'lucide-react';
+import { ConceptTable } from '../../terminology/ConceptTable';
+import { ConceptDrawer } from '../../terminology/ConceptDrawer';
 import { ImportModal } from '../../terminology/ImportModal';
 import { AddTerminologyModal } from '../../terminology/AddTerminologyModal';
 import { DeleteConfirmModal } from '../../terminology/DeleteConfirmModal';
@@ -43,6 +43,7 @@ import {
   deleteCodeSystem,
   type CodeSetDto,
 } from '../../../api/terminologyApi';
+import { checkConceptReferences, type ConceptReferenceInfo } from '../../../utils/conceptReferenceChecker';
 
 interface CodeMasterEditorProps {
   projectId: string;
@@ -51,8 +52,9 @@ interface CodeMasterEditorProps {
 export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId }) => {
   const [codeSets, setCodeSets] = useState<CodeSetDto[]>([]);
   const [selectedCodeSetUrl, setSelectedCodeSetUrl] = useState<string | null>(null);
-  const [selectedCode, setSelectedCode] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [editingConcept, setEditingConcept] = useState<CodeSetConcept | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [conceptReferenceInfo, setConceptReferenceInfo] = useState<ConceptReferenceInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,14 +90,6 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
 
 
 
-  // Auto-select first concept when CodeSet selected
-  useEffect(() => {
-    const selectedCodeSet = codeSets.find((cs) => cs.url === selectedCodeSetUrl);
-    if (selectedCodeSet && selectedCodeSet.concepts.length > 0 && !selectedCode) {
-      setSelectedCode(selectedCodeSet.concepts[0].code);
-    }
-  }, [selectedCodeSetUrl, codeSets, selectedCode]);
-
   // Show success message temporarily
   useEffect(() => {
     if (successMessage) {
@@ -106,14 +100,6 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
 
   const handleSelectCodeSet = (url: string) => {
     setSelectedCodeSetUrl(url);
-    setSelectedCode(null);
-    setError(null);
-  };
-
-  const handleBackToList = () => {
-    setSelectedCodeSetUrl(null);
-    setSelectedCode(null);
-    setSearchQuery('');
     setError(null);
   };
 
@@ -163,7 +149,7 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
       await loadCodeSystems(); // Refresh list
       
       if (selectedCodeSetUrl === deleteTarget.url) {
-        handleBackToList();
+        setSelectedCodeSetUrl(null); // Deselect if deleting the currently selected CodeSystem
       }
       setSuccessMessage('Terminology deleted');
       setDeleteTarget(null); // Close modal
@@ -302,33 +288,25 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
   };
 
   const handleAddConcept = async () => {
+    setEditingConcept(null); // New concept
+    setConceptReferenceInfo(null);
+    setIsDrawerOpen(true);
+  };
+
+  const handleEditConcept = async (concept: CodeSetConcept) => {
+    setEditingConcept(concept);
+    setIsDrawerOpen(true);
+    
+    // Check if concept is referenced
     const codeSet = codeSets.find((cs) => cs.url === selectedCodeSetUrl);
-    if (!codeSet) return;
-
-    const newCode = `NEW_${Date.now()}`;
-    const newConcept: CodeSetConcept = {
-      code: newCode,
-      display: 'New Concept',
-    };
-
-    try {
-      setIsSaving(true);
-      setError(null);
-      
-      const updated: CodeSetDto = {
-        ...codeSet,
-        concepts: [...codeSet.concepts, newConcept],
-      };
-      
-      await saveCodeSystem(projectId, updated);
-      await loadCodeSystems(); // Refresh to get latest data
-      setSelectedCode(newCode);
-      setSuccessMessage('Concept added');
-    } catch (err) {
-      console.error('Failed to add concept:', err);
-      setError(err instanceof Error ? err.message : 'Failed to add concept');
-    } finally {
-      setIsSaving(false);
+    if (codeSet) {
+      try {
+        const refInfo = await checkConceptReferences(projectId, codeSet.url, concept.code);
+        setConceptReferenceInfo(refInfo);
+      } catch (error) {
+        console.error('Failed to check concept references:', error);
+        setConceptReferenceInfo(null);
+      }
     }
   };
 
@@ -336,15 +314,25 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
     const codeSet = codeSets.find((cs) => cs.url === selectedCodeSetUrl);
     if (!codeSet) return;
 
-    const conceptIndex = codeSet.concepts.findIndex((c) => c.code === selectedCode);
-    if (conceptIndex === -1) return;
-
     try {
       setIsSaving(true);
       setError(null);
       
-      const updatedConcepts = [...codeSet.concepts];
-      updatedConcepts[conceptIndex] = updatedConcept;
+      let updatedConcepts: CodeSetConcept[];
+      
+      if (editingConcept) {
+        // Update existing concept
+        const conceptIndex = codeSet.concepts.findIndex((c) => c.code === editingConcept.code);
+        if (conceptIndex === -1) {
+          setError('Concept not found');
+          return;
+        }
+        updatedConcepts = [...codeSet.concepts];
+        updatedConcepts[conceptIndex] = updatedConcept;
+      } else {
+        // Add new concept
+        updatedConcepts = [...codeSet.concepts, updatedConcept];
+      }
 
       const updated: CodeSetDto = {
         ...codeSet,
@@ -353,10 +341,10 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
       
       await saveCodeSystem(projectId, updated);
       await loadCodeSystems(); // Refresh to get latest data
-      
-      // PHASE 1 STABILIZATION: Update selectedCode if code changed
-      setSelectedCode(updatedConcept.code);
-      setSuccessMessage('Concept saved');
+      setSuccessMessage(editingConcept ? 'Concept updated' : 'Concept added');
+      setIsDrawerOpen(false);
+      setEditingConcept(null);
+      setConceptReferenceInfo(null);
     } catch (err) {
       console.error('Failed to save concept:', err);
       setError(err instanceof Error ? err.message : 'Failed to save concept');
@@ -380,9 +368,11 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
       };
       
       await saveCodeSystem(projectId, updated);
-      await loadCodeSystems(); // Refresh to get latest data
-      setSelectedCode(updatedConcepts.length > 0 ? updatedConcepts[0].code : null);
+      await loadCodeSystems(); // Refresh
       setSuccessMessage('Concept deleted');
+      setIsDrawerOpen(false);
+      setEditingConcept(null);
+      setConceptReferenceInfo(null);
     } catch (err) {
       console.error('Failed to delete concept:', err);
       setError(err instanceof Error ? err.message : 'Failed to delete concept');
@@ -391,204 +381,157 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
     }
   };
 
+  const handleCloseDrawer = () => {
+    setIsDrawerOpen(false);
+    setEditingConcept(null);
+    setConceptReferenceInfo(null);
+  };
+
   const selectedCodeSet = codeSets.find((cs) => cs.url === selectedCodeSetUrl);
-  const selectedConcept = selectedCodeSet?.concepts.find((c) => c.code === selectedCode) || null;
 
-  // Render content based on state
-  let content;
-
-  // Loading state
-  if (isLoading) {
-    content = (
-      <div className="flex items-center justify-center h-full bg-gray-50">
-        <div className="flex items-center gap-2 text-gray-600">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          <span>Loading terminologies...</span>
-        </div>
-      </div>
-    );
-  }
-  // List View - Show all CodeSets
-  else if (!selectedCodeSetUrl) {
-    content = (
-      <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b bg-gray-50 px-4 py-2">
-          <div className="flex items-center gap-2">
-            <List className="w-5 h-5 text-gray-600" />
-            <h3 className="font-semibold">Terminology</h3>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleBulkImport}
-              disabled={isImporting}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors disabled:opacity-50"
-              title="Import CodeSystems from JSON or CSV file"
-            >
-              <Upload className="w-4 h-4" />
-              {isImporting ? 'Importing...' : 'Import'}
-            </button>
-            <button
-              onClick={handleAddCodeSet}
-              disabled={isSaving}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 transition-colors disabled:opacity-50"
-            >
-              <Plus className="w-4 h-4" />
-              Add
-            </button>
-          </div>
-        </div>
-
-        {/* Success Message */}
-        {successMessage && (
-          <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border-b border-green-200 text-green-700 text-sm">
-            <AlertCircle className="w-4 h-4" />
-            <span>{successMessage}</span>
-          </div>
-        )}
-
-        {/* Error Message */}
-        {error && (
-          <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border-b border-red-200 text-red-700 text-sm">
-            <AlertCircle className="w-4 h-4" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {/* Terminology List */}
-        <div className="flex-1 overflow-auto p-4">
-          {codeSets.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <List className="w-12 h-12 text-gray-300 mb-3" />
-              <p className="text-sm font-medium text-gray-900 mb-1">No Terminologies</p>
-              <p className="text-sm text-gray-500 mb-4">Create your first lookup table</p>
+  // Always render 2-panel master-detail layout
+  return (
+    <>
+      <div className="flex h-full">
+        {/* LEFT PANEL: CodeSystem Navigator */}
+        <div className="w-80 border-r border-gray-200 bg-gray-50 flex flex-col">
+          {/* Header */}
+          <div className="px-3 py-2 border-b border-gray-200 bg-white flex items-center justify-between">
+            <h2 className="text-base font-semibold text-gray-900">Code Systems</h2>
+            <div className="flex items-center gap-1">
               <button
                 onClick={handleAddCodeSet}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+                disabled={isSaving}
+                title="Add CodeSystem"
+                className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 transition-colors disabled:opacity-50"
               >
-                <Plus className="w-4 h-4" />
-                Add Terminology
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add</span>
+              </button>
+              <button
+                onClick={handleBulkImport}
+                disabled={isImporting}
+                title="Import CodeSystem"
+                className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                {isImporting ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Upload className="w-3.5 h-3.5" />
+                )}
+                <span>Import</span>
               </button>
             </div>
-          ) : (
-            <div className="grid gap-3">
-              {codeSets.map((codeSet) => (
-                <div
-                  key={codeSet.url}
-                  className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-sm transition-all"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-semibold text-gray-900 truncate">
-                        {codeSet.name || 'Unnamed Terminology'}
-                      </h4>
-                      <p className="text-xs text-gray-500 font-mono truncate mt-0.5">
-                        {codeSet.url}
-                      </p>
-                      <p className="text-xs text-gray-600 mt-1">
-                        {(codeSet.concepts || []).length} concept{(codeSet.concepts || []).length !== 1 ? 's' : ''}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleDeleteCodeSet(codeSet.url)}
-                        disabled={isSaving}
-                        className="px-3 py-1 text-xs font-medium text-red-700 bg-red-50 rounded hover:bg-red-100 transition-colors disabled:opacity-50"
-                      >
-                        Delete
-                      </button>
-                      <button
-                        onClick={() => handleSelectCodeSet(codeSet.url)}
-                        className="px-3 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
-                      >
-                        Edit Concepts →
-                      </button>
-                    </div>
-                  </div>
+          </div>
+
+          {/* Loading State */}
+          {isLoading && (
+            <div className="flex items-center justify-center p-8">
+              <div className="flex items-center gap-2 text-gray-500">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-xs">Loading...</span>
+              </div>
+            </div>
+          )}
+
+          {/* CodeSystem List */}
+          {!isLoading && (
+            <div className="flex-1 overflow-auto">
+              {codeSets.length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-8 text-center">
+                  <List className="w-10 h-10 text-gray-300 mb-2" />
+                  <p className="text-xs text-gray-500">No code systems yet</p>
                 </div>
-              ))}
+              ) : (
+                <div className="p-1.5 space-y-0.5">
+                  {codeSets.map((codeSet) => (
+                    <button
+                      key={codeSet.url}
+                      onClick={() => handleSelectCodeSet(codeSet.url)}
+                      className={`w-full text-left px-2.5 py-2 rounded transition-colors ${
+                        codeSet.url === selectedCodeSetUrl
+                          ? 'bg-blue-100 border-2 border-blue-500'
+                          : 'bg-white border border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                      }`}
+                    >
+                      <div className="text-sm font-medium text-gray-900 truncate">
+                        {codeSet.name || 'Unnamed CodeSystem'}
+                      </div>
+                      <div className="text-xs text-gray-400 font-mono truncate mt-0.5">
+                        {codeSet.url}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {(codeSet.concepts || []).length} concept{(codeSet.concepts || []).length !== 1 ? 's' : ''}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
-      </div>
-    );
-  }
-  // Detail View - Edit selected CodeSet
-  else {
-    content = (
-      <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="border-b bg-gray-50">
-          <div className="flex items-center justify-between px-4 py-2">
-            <button
-              onClick={handleBackToList}
-              className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back
-            </button>
-            <div>
-              <h3 className="font-semibold">{selectedCodeSet?.name}</h3>
-              <p className="text-xs text-gray-500 font-mono">{selectedCodeSet?.url}</p>
-            </div>
-          </div>
+
+        {/* RIGHT PANEL: CodeSystem Workspace */}
+        <div className="flex-1 flex flex-col bg-white">
+          {/* Messages */}
           {isSaving && (
-            <div className="flex items-center gap-2 px-2 py-1 bg-blue-50 text-blue-700 text-xs">
-              <Loader2 className="w-3 h-3 animate-spin" />
+            <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border-b border-blue-200 text-blue-700 text-sm">
+              <Loader2 className="w-4 h-4 animate-spin" />
               <span>Saving...</span>
             </div>
           )}
+          {successMessage && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border-b border-green-200 text-green-700 text-sm">
+              <AlertCircle className="w-4 h-4" />
+              <span>{successMessage}</span>
+            </div>
+          )}
+          {error && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border-b border-red-200 text-red-700 text-sm">
+              <AlertCircle className="w-4 h-4" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Workspace Content */}
+          {!selectedCodeSet ? (
+            <div className="flex-1 flex items-center justify-center p-8">
+              <div className="text-center max-w-md">
+                <div className="text-6xl mb-4">📋</div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No CodeSystem Selected</h3>
+                <p className="text-sm text-gray-600">
+                  Select a code system from the left panel to view and manage its concepts
+                </p>
+              </div>
+            </div>
+          ) : (
+            <ConceptTable
+              concepts={selectedCodeSet.concepts || []}
+              systemName={selectedCodeSet.name || selectedCodeSet.url}
+              systemUrl={selectedCodeSet.url}
+              onEditConcept={handleEditConcept}
+              onAddConcept={handleAddConcept}
+              onDeleteCodeSystem={() => handleDeleteCodeSet(selectedCodeSet.url)}
+            />
+          )}
         </div>
-
-        {/* Success/Error Messages */}
-        {successMessage && (
-          <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border-b border-green-200 text-green-700 text-sm">
-            <AlertCircle className="w-4 h-4" />
-            <span>{successMessage}</span>
-          </div>
-        )}
-        {error && (
-          <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border-b border-red-200 text-red-700 text-sm">
-            <AlertCircle className="w-4 h-4" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {/* 2-Column Layout */}
-        {selectedCodeSet && (
-          <div className="flex flex-1 overflow-hidden">
-            {/* Left: Concept List (1/3 width) */}
-            <div className="w-1/3 min-w-[250px]">
-              <ConceptListPanel
-                concepts={selectedCodeSet.concepts || []}
-                selectedCode={selectedCode}
-                onSelectConcept={setSelectedCode}
-                onAddConcept={handleAddConcept}
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
-              />
-            </div>
-
-            {/* Right: Concept Editor (2/3 width) */}
-            <div className="flex-1">
-              <ConceptEditorPanel
-                concept={selectedConcept}
-                systemUrl={selectedCodeSet.url}
-                allConcepts={selectedCodeSet.concepts || []}
-                onSave={handleSaveConcept}
-                onDelete={handleDeleteConcept}
-              />
-            </div>
-          </div>
-        )}
       </div>
-    );
-  }
 
-  // Render with modals always available
-  return (
-    <>
-      {content}
+      {/* Concept Drawer */}
+      {selectedCodeSet && (
+        <ConceptDrawer
+          isOpen={isDrawerOpen}
+          concept={editingConcept}
+          systemUrl={selectedCodeSet.url}
+          systemName={selectedCodeSet.name || selectedCodeSet.url}
+          allConcepts={selectedCodeSet.concepts || []}
+          isReferenced={conceptReferenceInfo?.isReferenced || false}
+          referenceInfo={conceptReferenceInfo?.referenceDetails}
+          onClose={handleCloseDrawer}
+          onSave={handleSaveConcept}
+          onDelete={handleDeleteConcept}
+        />
+      )}
 
       {/* Add Terminology Modal */}
       <AddTerminologyModal

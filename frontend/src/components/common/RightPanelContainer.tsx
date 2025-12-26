@@ -176,39 +176,74 @@ export const RightPanelContainer: React.FC<RightPanelContainerProps> = ({
         </div>
       )}
 
-      {/* L2 Tabs - Rules mode: Rules | CodeMaster | Metadata */}
+      {/* L2 Tabs - Rules mode: Primary context + conditional secondary context */}
       {showSubTabs && activeTab !== 'overview' && activeTab !== 'bundle' && (
-        <div className="flex border-b bg-gray-50 flex-shrink-0">
-          <button
-            onClick={() => onTabChange?.('rules')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'rules'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Rules
-          </button>
-          <button
-            onClick={() => onTabChange?.('codemaster')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'codemaster'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Terminology
-          </button>
-          <button
-            onClick={() => onTabChange?.('metadata')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'metadata'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Metadata
-          </button>
+        <div className="border-b bg-gray-50 flex-shrink-0">
+          {/* Primary Context: Rules | Terminology | Metadata */}
+          <div className="flex items-center">
+            <button
+              onClick={() => onTabChange?.('rules')}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'rules'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Rules
+            </button>
+            <button
+              onClick={() => onTabChange?.('codemaster')}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'codemaster' || activeTab === 'codesystems' || activeTab === 'questionsets'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Terminology
+            </button>
+            <button
+              onClick={() => onTabChange?.('metadata')}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'metadata'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Metadata
+            </button>
+          </div>
+          
+          {/* L3 Sub-menu: Code Systems | Question Sets (nested under Terminology) */}
+          {(activeTab === 'codemaster' || activeTab === 'codesystems' || activeTab === 'questionsets') && (
+            <div className="flex items-center bg-gray-100 border-t border-gray-200 px-6 py-1.5 gap-1">
+              <button
+                onClick={() => onTabChange?.('codesystems')}
+                className={`px-2.5 py-1 text-xs rounded transition-colors relative ${
+                  activeTab === 'codesystems' || (activeTab === 'codemaster' && !['questionsets'].includes(activeTab))
+                    ? 'text-blue-700 bg-blue-50'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                Code Systems
+                {(activeTab === 'codesystems' || (activeTab === 'codemaster' && !['questionsets'].includes(activeTab))) && (
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-blue-600 rounded-full" />
+                )}
+              </button>
+              <button
+                onClick={() => onTabChange?.('questionsets')}
+                className={`px-2.5 py-1 text-xs rounded transition-colors relative ${
+                  activeTab === 'questionsets'
+                    ? 'text-blue-700 bg-blue-50'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                Question Sets
+                {activeTab === 'questionsets' && (
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-blue-600 rounded-full" />
+                )}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

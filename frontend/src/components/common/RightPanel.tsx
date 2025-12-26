@@ -148,11 +148,14 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         // Render BundleTabs component from navigation.bundleTabsContent
         return navigation.bundleTabsContent || null;
       case 'codemaster':
+      case 'codesystems':
+      case 'questionsets':
         return (
           <TerminologyEditor
             projectId={projectId!}
             bundleSanityState={bundleSanityState}
             onOpenBundleTab={onOpenBundleTab}
+            activeSubTab={activeTab === 'questionsets' ? 'questionsets' : 'codesystems'}
           />
         );
       case 'metadata':

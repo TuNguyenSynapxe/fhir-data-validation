@@ -59,7 +59,7 @@ export default function PlaygroundPage() {
   const [codeMasterJson, setCodeMasterJson] = useState('');
   const [validationSettings, setValidationSettings] = useState<ValidationSettings>(DEFAULT_VALIDATION_SETTINGS);
   const [rules, setRules] = useState<Rule[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'rules' | 'codemaster' | 'metadata' | 'settings' | 'run' | 'results' | 'bundle'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'rules' | 'codemaster' | 'codesystems' | 'questionsets' | 'metadata' | 'settings' | 'run' | 'results' | 'bundle'>('overview');
   const [bundleView, setBundleView] = useState<'tree' | 'json'>('tree'); // Bundle tab view (Tree View or JSON Editor)
   const [hl7Samples, setHl7Samples] = useState<FhirSampleMetadata[]>([]);
   const [ruleSuggestions, setRuleSuggestions] = useState<any[]>([]);
@@ -116,7 +116,17 @@ export default function PlaygroundPage() {
       if (l2 === 'list') {
         setActiveTab('rules');
       } else if (l2 === 'terminology') {
-        setActiveTab('codemaster');
+        // Check for L3 sub-tab: codesystems or questionsets
+        const l3 = pathParts[4];
+        if (l3 === 'questionsets') {
+          setActiveTab('questionsets');
+        } else if (l3 === 'codesystems') {
+          setActiveTab('codesystems');
+        } else {
+          // Default to codesystems if terminology selected without sub-tab
+          setActiveTab('codesystems');
+          navigate(`/projects/${projectId}/rules/terminology/codesystems`, { replace: true });
+        }
       } else if (l2 === 'metadata') {
         setActiveTab('metadata');
       } else {
@@ -185,7 +195,9 @@ export default function PlaygroundPage() {
       'overview': 'overview',
       'bundle': 'bundle/tree',
       'rules': 'rules/list',
-      'codemaster': 'rules/terminology',
+      'codemaster': 'rules/terminology/codesystems', // Legacy support
+      'codesystems': 'rules/terminology/codesystems',
+      'questionsets': 'rules/terminology/questionsets',
       'metadata': 'rules/metadata',
       'run': 'validation/run',
       'settings': 'validation/settings',
