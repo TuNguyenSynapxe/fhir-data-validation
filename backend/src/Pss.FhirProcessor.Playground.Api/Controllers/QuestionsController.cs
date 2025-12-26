@@ -147,7 +147,7 @@ public class QuestionsController : ControllerBase
 
     #region Mapping Helpers
 
-    private static QuestionDto MapToDto(Question question)
+    public static QuestionDto MapToDto(Question question)
     {
         return new QuestionDto
         {

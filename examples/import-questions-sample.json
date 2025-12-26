@@ -1,0 +1,42 @@
+[
+  {
+    "system": "http://example.org/fhir/terminology",
+    "conceptCode": "blood-type",
+    "questionText": "What is your blood type?",
+    "allowedValues": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
+    "allowMultiple": false,
+    "separator": ","
+  },
+  {
+    "system": "http://example.org/fhir/terminology",
+    "conceptCode": "marital-status",
+    "questionText": "What is your marital status?",
+    "allowedValues": ["Single", "Married", "Divorced", "Widowed"],
+    "allowMultiple": false,
+    "separator": ","
+  },
+  {
+    "system": "http://example.org/fhir/terminology",
+    "conceptCode": "employment-status",
+    "questionText": "What is your employment status?",
+    "allowedValues": ["Employed", "Self-employed", "Unemployed", "Retired", "Student"],
+    "allowMultiple": true,
+    "separator": ";"
+  },
+  {
+    "system": "http://example.org/fhir/terminology",
+    "conceptCode": "smoking-status",
+    "questionText": "Do you smoke?",
+    "allowedValues": ["Never", "Former", "Current"],
+    "allowMultiple": false,
+    "separator": ","
+  },
+  {
+    "system": "http://example.org/fhir/terminology",
+    "conceptCode": "alcohol-use",
+    "questionText": "How often do you consume alcohol?",
+    "allowedValues": ["Never", "Occasionally", "Regularly", "Daily"],
+    "allowMultiple": false,
+    "separator": ","
+  }
+]

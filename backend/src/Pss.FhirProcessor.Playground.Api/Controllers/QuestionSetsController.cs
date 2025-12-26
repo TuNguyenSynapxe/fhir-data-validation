@@ -10,13 +10,16 @@ namespace Pss.FhirProcessor.Playground.Api.Controllers;
 public class QuestionSetsController : ControllerBase
 {
     private readonly IQuestionSetService _questionSetService;
+    private readonly IQuestionService _questionService;
     private readonly ILogger<QuestionSetsController> _logger;
 
     public QuestionSetsController(
         IQuestionSetService questionSetService,
+        IQuestionService questionService,
         ILogger<QuestionSetsController> logger)
     {
         _questionSetService = questionSetService;
+        _questionService = questionService;
         _logger = logger;
     }
 
@@ -51,7 +54,7 @@ public class QuestionSetsController : ControllerBase
             {
                 return NotFound(new { error = $"Question set {questionSetId} not found" });
             }
-            return Ok(MapToDto(questionSet));
+            return Ok(await MapToDtoWithQuestionsAsync(projectId, questionSet));
         }
         catch (Exception ex)
         {
@@ -167,5 +170,46 @@ public class QuestionSetsController : ControllerBase
             CreatedAt = questionSet.CreatedAt,
             UpdatedAt = questionSet.UpdatedAt
         };
+    }
+
+    private async Task<QuestionSetDto> MapToDtoWithQuestionsAsync(string projectId, QuestionSet questionSet)
+    {
+        var dto = MapToDto(questionSet);
+
+        _logger.LogInformation("Hydrating {Count} questions for question set {QuestionSetId}", 
+            dto.Questions.Count, questionSet.Id);
+
+        // Hydrate question details
+        foreach (var questionRef in dto.Questions)
+        {
+            try
+            {
+                _logger.LogDebug("Loading question {QuestionId} from project {ProjectId}", 
+                    questionRef.QuestionId, projectId);
+                
+                var question = await _questionService.GetQuestionAsync(projectId, questionRef.QuestionId);
+                if (question != null)
+                {
+                    questionRef.Question = QuestionsController.MapToDto(question);
+                    _logger.LogDebug("Successfully loaded question {QuestionId}", questionRef.QuestionId);
+                }
+                else
+                {
+                    _logger.LogWarning("Question {QuestionId} not found for project {ProjectId}", 
+                        questionRef.QuestionId, projectId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to load question {QuestionId} for question set {QuestionSetId}", 
+                    questionRef.QuestionId, questionSet.Id);
+                // Continue without this question's details
+            }
+        }
+
+        _logger.LogInformation("Hydrated {Count} questions for question set {QuestionSetId}", 
+            dto.Questions.Count(q => q.Question != null), questionSet.Id);
+
+        return dto;
     }
 }

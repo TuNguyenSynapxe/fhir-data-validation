@@ -1,0 +1,6 @@
+system,conceptCode,questionText,allowedValues,allowMultiple,separator
+http://example.org/fhir/terminology,blood-type,What is your blood type?,A+|A-|B+|B-|AB+|AB-|O+|O-,false,|
+http://example.org/fhir/terminology,marital-status,What is your marital status?,Single,Married,Divorced,Widowed,false,,
+http://example.org/fhir/terminology,employment-status,What is your employment status?,Employed;Self-employed;Unemployed;Retired;Student,true,;
+http://example.org/fhir/terminology,smoking-status,Do you smoke?,Never,Former,Current,false,,
+http://example.org/fhir/terminology,alcohol-use,How often do you consume alcohol?,Never,Occasionally,Regularly,Daily,false,,

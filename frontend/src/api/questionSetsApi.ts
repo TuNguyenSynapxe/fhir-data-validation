@@ -2,9 +2,31 @@ import axios from 'axios';
 
 const API_BASE = '/api';
 
+export interface CodingDto {
+  system: string;
+  code: string;
+  display?: string;
+}
+
+export interface QuestionMetadataDto {
+  text: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QuestionDto {
+  id: string;
+  code: CodingDto;
+  answerType: string;
+  metadata: QuestionMetadataDto;
+}
+
 export interface QuestionSetQuestionRefDto {
   questionId: string;
   required: boolean;
+  // Hydrated question details (loaded separately)
+  question?: QuestionDto;
 }
 
 export interface QuestionSetDto {

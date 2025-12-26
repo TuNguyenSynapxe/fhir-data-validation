@@ -21,6 +21,7 @@ public class QuestionSetQuestionRefDto
 {
     public string QuestionId { get; set; } = string.Empty;
     public bool Required { get; set; }
+    public QuestionDto? Question { get; set; }
 }
 
 /// <summary>
