@@ -14,6 +14,7 @@ import type {
 import { listCodeSystems, type CodeSetDto } from '../../../../api/terminologyApi';
 import { questionsApi, type CreateQuestionDto } from '../../../../api/questionsApi';
 import { questionSetsApi, type CreateQuestionSetDto } from '../../../../api/questionSetsApi';
+import { QuestionImportTab } from './import/QuestionImportTab';
 
 interface QuestionAuthoringScreenProps {
   projectId: string;
@@ -157,9 +158,9 @@ export const QuestionAuthoringScreen: React.FC<QuestionAuthoringScreenProps> = (
     const newStaged: StagedQuestion[] = conceptsToAdd.map((concept, index) => ({
       stagingId: `staged-${Date.now()}-${Math.random()}`,
       text: concept.display || concept.code,
-      answerType: 'EnumeratedString' as AnswerType,
+      answerType: 'String' as AnswerType,
       answerMode: 'enumerated-string' as AnswerMode,
-      code: {
+      coding: {
         system: selectedSystemUrl,
         code: concept.code,
         display: concept.display,
@@ -252,7 +253,7 @@ export const QuestionAuthoringScreen: React.FC<QuestionAuthoringScreenProps> = (
 
   const [manualForm, setManualForm] = React.useState({
     text: '',
-    answerType: 'EnumeratedString' as AnswerType,
+    answerType: 'String' as AnswerType,
     answerMode: 'enumerated-string' as AnswerMode,
   });
 
@@ -282,9 +283,29 @@ export const QuestionAuthoringScreen: React.FC<QuestionAuthoringScreenProps> = (
     // Reset form
     setManualForm({
       text: '',
-      answerType: 'EnumeratedString',
+      answerType: 'String',
       answerMode: 'enumerated-string',
     });
+  };
+
+  // ============================================================================
+  // SECTION B - IMPORT QUESTIONS (IMPORT TAB)
+  // ============================================================================
+
+  const handleImportQuestions = (questions: StagedQuestion[]) => {
+    setState((prev) => ({
+      ...prev,
+      stagedQuestions: [...prev.stagedQuestions, ...questions],
+      activeTab: 'terminology', // Switch back to default tab after import
+    }));
+
+    // Auto-scroll to Section C after a brief delay
+    setTimeout(() => {
+      const sectionC = document.querySelector('[data-section="section-c"]');
+      if (sectionC) {
+        sectionC.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
   };
 
   // ============================================================================
@@ -489,7 +510,7 @@ export const QuestionAuthoringScreen: React.FC<QuestionAuthoringScreenProps> = (
         if (!questionId) {
           // Create new question
           const dto: CreateQuestionDto = {
-            code: staged.code || { system: 'http://example.org/local', code: staged.stagingId, display: staged.text },
+            code: staged.coding || { system: 'http://example.org/local', code: staged.stagingId, display: staged.text },
             answerType: staged.answerType,
             text: staged.text,
             description: staged.description,
@@ -873,15 +894,12 @@ export const QuestionAuthoringScreen: React.FC<QuestionAuthoringScreenProps> = (
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="String">String</option>
+                      <option value="Code">Code</option>
+                      <option value="Quantity">Quantity</option>
                       <option value="Integer">Integer</option>
                       <option value="Decimal">Decimal</option>
+                      <option value="String">String</option>
                       <option value="Boolean">Boolean</option>
-                      <option value="Date">Date</option>
-                      <option value="DateTime">DateTime</option>
-                      <option value="Time">Time</option>
-                      <option value="EnumeratedString">Enumerated String</option>
-                      <option value="Coded">Coded</option>
                     </select>
                   </div>
 
@@ -919,9 +937,7 @@ export const QuestionAuthoringScreen: React.FC<QuestionAuthoringScreenProps> = (
 
             {/* IMPORT TAB */}
             {state.activeTab === 'import' && (
-              <div className="text-center py-8 text-gray-500">
-                <p className="text-sm">Import functionality coming soon</p>
-              </div>
+              <QuestionImportTab onImport={handleImportQuestions} />
             )}
           </div>
         )}
@@ -1297,16 +1313,16 @@ const QuestionConfigRow: React.FC<QuestionConfigRowProps> = ({
 
     switch (value) {
       case 'Coded (Manual)':
-        onUpdate({ answerType: 'Coded', answerMode: 'coded-manual' });
+        onUpdate({ answerType: 'Code', answerMode: 'coded-manual' });
         break;
       case 'Coded (ValueSet)':
-        onUpdate({ answerType: 'Coded', answerMode: 'external-valueset' });
+        onUpdate({ answerType: 'Code', answerMode: 'external-valueset' });
         break;
       case 'String (Free)':
         onUpdate({ answerType: 'String', answerMode: 'string' });
         break;
       case 'String (Enum)':
-        onUpdate({ answerType: 'EnumeratedString', answerMode: 'enumerated-string' });
+        onUpdate({ answerType: 'String', answerMode: 'enumerated-string' });
         break;
       case 'Number':
         onUpdate({ answerType: 'Integer', answerMode: 'numeric' });
@@ -1315,7 +1331,7 @@ const QuestionConfigRow: React.FC<QuestionConfigRowProps> = ({
         onUpdate({ answerType: 'Boolean', answerMode: 'boolean' });
         break;
       case 'Date/Time':
-        onUpdate({ answerType: 'DateTime', answerMode: 'date-time' });
+        onUpdate({ answerType: 'String', answerMode: 'date-time' });
         break;
     }
   };
@@ -1427,7 +1443,7 @@ const QuestionConfigRow: React.FC<QuestionConfigRowProps> = ({
       {expanded && (
         <div className="p-4 border-t border-gray-200 bg-white space-y-4">
           {/* Question Metadata (Code + System) */}
-          {question.code && (
+          {question.coding && (
             <div className={`text-xs space-y-1 pb-2 border-b border-gray-100 ${
               question.isLocked ? 'text-gray-600' : 'text-gray-500'
             }`}>
@@ -1441,13 +1457,13 @@ const QuestionConfigRow: React.FC<QuestionConfigRowProps> = ({
                   </span>
                 )}
                 <span className="font-medium">Code:</span>
-                <span className="font-mono">{question.code.code}</span>
+                <span className="font-mono">{question.coding.code}</span>
               </div>
-              {question.code.system && (
+              {question.coding.system && (
                 <div className="flex gap-2 ml-5">
                   <span className="font-medium">System:</span>
-                  <span className="font-mono truncate" title={question.code.system}>
-                    {question.code.system}
+                  <span className="font-mono truncate" title={question.coding.system}>
+                    {question.coding.system}
                   </span>
                 </div>
               )}

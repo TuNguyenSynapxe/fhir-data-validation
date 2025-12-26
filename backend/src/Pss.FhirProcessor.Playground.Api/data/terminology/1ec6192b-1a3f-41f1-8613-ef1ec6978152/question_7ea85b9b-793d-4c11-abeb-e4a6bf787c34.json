@@ -1,0 +1,30 @@
+{
+  "id": "7ea85b9b-793d-4c11-abeb-e4a6bf787c34",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-L9J4-00000029"
+    },
+    "display": {
+      "value": "Pinhole Test (Right Eye)\n(If Snellen is worse than 6/12, please continue with Pinhole and test the right eye first)"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": null
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Pinhole Test (Right Eye)\n(If Snellen is worse than 6/12, please continue with Pinhole and test the right eye first)",
+    "description": "Screening Type: VS",
+    "createdAt": "2025-12-26T01:19:43.179007+00:00",
+    "updatedAt": "2025-12-26T01:19:43.179007+00:00"
+  }
+}

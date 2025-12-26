@@ -16,8 +16,12 @@ public class QuestionValidator
         var result = new ValidationResult();
 
         // Basic validation
-        if (string.IsNullOrWhiteSpace(question.Id))
-            result.AddError("Id is required");
+        // Note: Id can be empty during creation - service will generate it
+        // Only validate Id format if present
+        if (!string.IsNullOrWhiteSpace(question.Id))
+        {
+            // Optionally validate ID format here if needed
+        }
 
         if (question.Code == null || string.IsNullOrWhiteSpace(question.Code.Code))
             result.AddError("Code is required");

@@ -6,18 +6,15 @@
 import type { CodingDto } from '../../../../api/questionsApi';
 
 /**
- * Answer types for questions
+ * Answer types for questions (must match backend QuestionAnswerType enum)
  */
 export type AnswerType =
-  | 'String'
+  | 'Code'
+  | 'Quantity'
   | 'Integer'
   | 'Decimal'
-  | 'Boolean'
-  | 'Date'
-  | 'DateTime'
-  | 'Time'
-  | 'EnumeratedString'
-  | 'Coded';
+  | 'String'
+  | 'Boolean';
 
 /**
  * Answer modes define how the answer value is configured
@@ -108,7 +105,7 @@ export interface StagedQuestion {
   answerMode: AnswerMode;
 
   // Coding information (for terminology-sourced questions)
-  code?: CodingDto;
+  coding?: CodingDto;
 
   // Answer configuration based on mode
   answerOptions?: AnswerOption[]; // DEPRECATED: For enumerated-string (backward compatibility)

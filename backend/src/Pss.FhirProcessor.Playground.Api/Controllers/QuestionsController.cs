@@ -203,7 +203,7 @@ public class QuestionsController : ControllerBase
 
         return new Question
         {
-            Id = dto.Id ?? string.Empty,
+            Id = dto.Id ?? string.Empty, // Will be replaced by service if empty
             Code = new Coding
             {
                 System = dto.Code.System,

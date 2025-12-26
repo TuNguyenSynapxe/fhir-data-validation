@@ -91,6 +91,13 @@ public static class EngineServiceCollectionExtensions
             return new QuestionService(baseDataPath);
         });
 
+        // Register QuestionSet services (Phase 3B)
+        services.AddScoped<IQuestionSetService>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<QuestionSetService>>();
+            return new QuestionSetService(logger);
+        });
+
         // Register QuestionAnswer validation services (Phase 3D)
         services.AddScoped<QuestionAnswerValueExtractor>();
         services.AddScoped<QuestionAnswerValidator>();

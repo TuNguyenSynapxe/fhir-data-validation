@@ -1,0 +1,5 @@
+system,code,display,description,allowed_values,allow_multiple,separator
+http://example.org/questions,Q001,What is your age?,Patient age in years,0-18|19-30|31-50|51-65|65+,false,
+http://example.org/questions,Q002,Select your symptoms,Common symptoms reported,"Fever,Cough,Headache,Fatigue,Nausea",true,","
+http://example.org/questions,Q003,Blood type,Patient blood type,A+;A-;B+;B-;O+;O-;AB+;AB-,false,
+http://example.org/questions,Q004,Medication allergies,Known allergies to medications,"Penicillin,Aspirin,Sulfa drugs,None",true,"|"

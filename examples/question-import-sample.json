@@ -1,0 +1,52 @@
+{
+  "format": "pss-question-import",
+  "version": "1.0",
+  "questions": [
+    {
+      "system": "http://example.org/questions",
+      "code": "Q001",
+      "display": "What is your age?",
+      "description": "Patient age in years",
+      "answer": {
+        "type": "string-enum",
+        "values": ["0-18", "19-30", "31-50", "51-65", "65+"],
+        "allowMultiple": false
+      }
+    },
+    {
+      "system": "http://example.org/questions",
+      "code": "Q002",
+      "display": "Select your symptoms",
+      "description": "Common symptoms reported",
+      "answer": {
+        "type": "string-enum",
+        "values": ["Fever", "Cough", "Headache", "Fatigue", "Nausea"],
+        "allowMultiple": true,
+        "separator": ","
+      }
+    },
+    {
+      "system": "http://example.org/questions",
+      "code": "Q003",
+      "display": "Blood type",
+      "description": "Patient blood type",
+      "answer": {
+        "type": "string-enum",
+        "values": ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"],
+        "allowMultiple": false
+      }
+    },
+    {
+      "system": "http://example.org/questions",
+      "code": "Q004",
+      "display": "Medication allergies",
+      "description": "Known allergies to medications",
+      "answer": {
+        "type": "string-enum",
+        "values": ["Penicillin", "Aspirin", "Sulfa drugs", "None"],
+        "allowMultiple": true,
+        "separator": "|"
+      }
+    }
+  ]
+}
