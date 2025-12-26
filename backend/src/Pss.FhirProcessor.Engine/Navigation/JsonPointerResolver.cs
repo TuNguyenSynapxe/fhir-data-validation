@@ -19,20 +19,26 @@ public class JsonPointerResolver : IJsonPointerResolver
 {
     private readonly IPredicateEvaluator _predicateEvaluator;
     private readonly IFhirStructureHintProvider _structureHints;
+    private readonly EntryResolutionPolicy _resolutionPolicy;
     
-    public JsonPointerResolver(IFhirStructureHintProvider structureHints)
+    public JsonPointerResolver(
+        IFhirStructureHintProvider structureHints,
+        EntryResolutionPolicy resolutionPolicy = EntryResolutionPolicy.PreferExplicit)
     {
         _predicateEvaluator = new JsonPredicateEvaluator();
         _structureHints = structureHints ?? throw new ArgumentNullException(nameof(structureHints));
+        _resolutionPolicy = resolutionPolicy;
     }
     
     // Internal constructor for testing
     internal JsonPointerResolver(
         IPredicateEvaluator predicateEvaluator,
-        IFhirStructureHintProvider structureHints)
+        IFhirStructureHintProvider structureHints,
+        EntryResolutionPolicy resolutionPolicy = EntryResolutionPolicy.PreferExplicit)
     {
         _predicateEvaluator = predicateEvaluator;
         _structureHints = structureHints ?? throw new ArgumentNullException(nameof(structureHints));
+        _resolutionPolicy = resolutionPolicy;
     }
     /// <summary>
     /// DLL-SAFE: Resolves FHIRPath to JSON pointer using pure JSON navigation.
@@ -80,14 +86,40 @@ public class JsonPointerResolver : IJsonPointerResolver
                     segmentStartIndex = 0; // Process all segments
                 }
                 
-                // Find entry index by resource type (FALLBACK - requires JSON inspection)
-                if (!targetEntryIndex.HasValue && !string.IsNullOrEmpty(targetResourceType))
+                // POLICY-BASED ENTRY RESOLUTION
+                if (!targetEntryIndex.HasValue)
                 {
-                    targetEntryIndex = FindEntryIndexByResourceType(bundleJson, targetResourceType);
+                    // Policy: Strict — No fallback allowed
+                    if (_resolutionPolicy == EntryResolutionPolicy.Strict)
+                    {
+                        return null; // Explicit entryIndex required
+                    }
+                    
+                    // Policy: PreferExplicit — Allow fallback only if resourceType provided
+                    if (_resolutionPolicy == EntryResolutionPolicy.PreferExplicit)
+                    {
+                        if (string.IsNullOrEmpty(targetResourceType))
+                        {
+                            return null; // Cannot infer entry without resourceType
+                        }
+                        targetEntryIndex = FindEntryIndexByResourceType(bundleJson, targetResourceType);
+                        if (!targetEntryIndex.HasValue)
+                        {
+                            return null; // Resource type not found in bundle
+                        }
+                    }
+                    
+                    // Policy: FallbackToFirst — Always attempt fallback
+                    if (_resolutionPolicy == EntryResolutionPolicy.FallbackToFirst)
+                    {
+                        if (!string.IsNullOrEmpty(targetResourceType))
+                        {
+                            targetEntryIndex = FindEntryIndexByResourceType(bundleJson, targetResourceType);
+                        }
+                        // Last resort: default to first entry (only for FallbackToFirst)
+                        targetEntryIndex ??= 0;
+                    }
                 }
-                
-                // Default to first entry if nothing else works
-                targetEntryIndex ??= 0;
                 
                 // Navigate to entry[index].resource
                 if (currentNode.TryGetProperty("entry", out var entryArray) &&

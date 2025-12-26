@@ -56,11 +56,22 @@ try
     // Register FhirProcessor.Engine services
     builder.Services.AddFhirProcessorEngine();
 
-    // PLAYGROUND OVERRIDE: Use KnownFhirStructureHintProvider for tolerant navigation
-    // Engine default (NullFhirStructureHintProvider) is strict, but Playground needs
-    // implicit array[0] behavior for common repeating fields like performer, identifier, etc.
+    // PLAYGROUND OVERRIDES: Use KnownFhirStructureHintProvider + FallbackToFirst policy for tolerant navigation
+    // Engine defaults:
+    //   - NullFhirStructureHintProvider (strict structure assumptions)
+    //   - EntryResolutionPolicy.Strict (requires explicit entryIndex)
+    // Playground overrides:
+    //   - KnownFhirStructureHintProvider (10 resource types with known repeating fields)
+    //   - EntryResolutionPolicy.FallbackToFirst (allows implicit entry[0] fallback)
     builder.Services.AddSingleton<IFhirStructureHintProvider, KnownFhirStructureHintProvider>();
-    Log.Information("Playground configured with KnownFhirStructureHintProvider for tolerant navigation");
+    builder.Services.AddScoped<Pss.FhirProcessor.Engine.Navigation.IJsonPointerResolver>(sp =>
+    {
+        var structureHints = sp.GetRequiredService<IFhirStructureHintProvider>();
+        return new Pss.FhirProcessor.Engine.Navigation.JsonPointerResolver(
+            structureHints, 
+            Pss.FhirProcessor.Engine.Navigation.EntryResolutionPolicy.FallbackToFirst);
+    });
+    Log.Information("Playground configured with KnownFhirStructureHintProvider + FallbackToFirst policy for tolerant navigation");
 
     // Register Terminology Services (Phase 2)
     // Configure base data path for file-based storage

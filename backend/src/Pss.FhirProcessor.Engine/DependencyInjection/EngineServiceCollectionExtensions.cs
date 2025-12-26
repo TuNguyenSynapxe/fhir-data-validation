@@ -64,7 +64,14 @@ public static class EngineServiceCollectionExtensions
         // DLL-SAFE: Structural hints (default no-op for runtime safety)
         services.AddSingleton<IFhirStructureHintProvider, NullFhirStructureHintProvider>();
         
-        services.AddScoped<IJsonPointerResolver, JsonPointerResolver>(); // DLL-SAFE: Pure JSON navigation
+        // DLL-SAFE: Pure JSON navigation with STRICT entry resolution policy
+        // Engine default requires explicit entryIndex for deterministic behavior
+        services.AddScoped<IJsonPointerResolver>(sp =>
+        {
+            var structureHints = sp.GetRequiredService<IFhirStructureHintProvider>();
+            return new JsonPointerResolver(structureHints, EntryResolutionPolicy.Strict);
+        });
+        
         services.AddScoped<ISmartPathNavigationService, SmartPathNavigationService>();
         services.AddScoped<IUnifiedErrorModelBuilder, UnifiedErrorModelBuilder>();
         
