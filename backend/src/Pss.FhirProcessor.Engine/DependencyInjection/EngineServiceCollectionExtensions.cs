@@ -59,6 +59,7 @@ public static class EngineServiceCollectionExtensions
         services.AddScoped<IFhirPathRuleEngine, FhirPathRuleEngine>();
         services.AddScoped<ICodeMasterEngine, CodeMasterEngine>();
         services.AddScoped<IReferenceResolver, ReferenceResolver>();
+        services.AddScoped<IJsonPointerResolver, JsonPointerResolver>(); // DLL-SAFE: Pure JSON navigation
         services.AddScoped<ISmartPathNavigationService, SmartPathNavigationService>();
         services.AddScoped<IUnifiedErrorModelBuilder, UnifiedErrorModelBuilder>();
         
