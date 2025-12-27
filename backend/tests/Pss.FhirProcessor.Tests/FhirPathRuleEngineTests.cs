@@ -64,8 +64,7 @@ public class FhirPathRuleEngineTests
                     ResourceType = "Patient",
                     Path = "Patient.name.wrongMethod()",
                     Severity = "error",
-                    ErrorCode = "TEST_ERROR",
-                    Message = "This rule has an invalid FHIRPath"
+                    ErrorCode = "TEST_ERROR"
                 }
             }
         };
@@ -141,8 +140,7 @@ public class FhirPathRuleEngineTests
                     ResourceType = "Patient",
                     Path = "Patient.name.invalidFunction()",
                     Severity = "error",
-                    ErrorCode = "TEST_ERROR_1",
-                    Message = "Invalid rule 1"
+                    ErrorCode = "TEST_ERROR_1"
                 },
                 new RuleDefinition
                 {
@@ -151,8 +149,7 @@ public class FhirPathRuleEngineTests
                     ResourceType = "Patient",
                     Path = "Patient.gender",
                     Severity = "error",
-                    ErrorCode = "MISSING_GENDER",
-                    Message = "Gender is required"
+                    ErrorCode = "MISSING_GENDER"
                 }
             }
         };
@@ -220,8 +217,7 @@ public class FhirPathRuleEngineTests
                     ResourceType = "Patient",
                     Path = "Patient.name.family",
                     Severity = "error",
-                    ErrorCode = "MISSING_FAMILY",
-                    Message = "Family name is required"
+                    ErrorCode = "MISSING_FAMILY"
                 }
             }
         };
@@ -273,7 +269,6 @@ public class FhirPathRuleEngineTests
                     Path = "Patient.gender",
                     Severity = "error",
                     ErrorCode = "INVALID_GENDER",
-                    Message = "Gender must be fixed value",
                     Params = new Dictionary<string, object>() // Missing "value" param
                 }
             }
@@ -288,7 +283,6 @@ public class FhirPathRuleEngineTests
         Assert.Equal("RULE_CONFIGURATION_ERROR", error.ErrorCode);
         Assert.Equal("FV1", error.RuleId);
         Assert.Equal("FixedValue", error.RuleType);
-        Assert.Contains("missing required parameter 'value'", error.Message);
         Assert.NotNull(error.Details);
         Assert.True(error.Details.ContainsKey("missingParams"));
     }
@@ -333,7 +327,6 @@ public class FhirPathRuleEngineTests
                     Path = "Patient.gender",
                     Severity = "error",
                     ErrorCode = "INVALID_GENDER",
-                    Message = "Gender must be in allowed list",
                     Params = new Dictionary<string, object>() // Missing "values" param
                 }
             }
@@ -348,7 +341,6 @@ public class FhirPathRuleEngineTests
         Assert.Equal("RULE_CONFIGURATION_ERROR", error.ErrorCode);
         Assert.Equal("AV1", error.RuleId);
         Assert.Equal("AllowedValues", error.RuleType);
-        Assert.Contains("missing required parameter 'values'", error.Message);
         Assert.NotNull(error.Details);
         Assert.True(error.Details.ContainsKey("missingParams"));
     }
@@ -396,7 +388,6 @@ public class FhirPathRuleEngineTests
                     Path = "Patient.name.family",
                     Severity = "error",
                     ErrorCode = "INVALID_FAMILY_FORMAT",
-                    Message = "Family name format is invalid",
                     Params = new Dictionary<string, object>() // Missing "pattern" param
                 }
             }
@@ -411,7 +402,6 @@ public class FhirPathRuleEngineTests
         Assert.Equal("RULE_CONFIGURATION_ERROR", error.ErrorCode);
         Assert.Equal("RX1", error.RuleId);
         Assert.Equal("Regex", error.RuleType);
-        Assert.Contains("missing required parameter 'pattern'", error.Message);
         Assert.NotNull(error.Details);
         Assert.True(error.Details.ContainsKey("missingParams"));
     }
@@ -459,7 +449,6 @@ public class FhirPathRuleEngineTests
                     Path = "Patient.name.given",
                     Severity = "error",
                     ErrorCode = "INVALID_GIVEN_COUNT",
-                    Message = "Given name count is invalid",
                     Params = new Dictionary<string, object>() // Missing both "min" and "max" params
                 }
             }
@@ -474,7 +463,6 @@ public class FhirPathRuleEngineTests
         Assert.Equal("RULE_CONFIGURATION_ERROR", error.ErrorCode);
         Assert.Equal("AL1", error.RuleId);
         Assert.Equal("ArrayLength", error.RuleType);
-        Assert.Contains("missing required parameters", error.Message);
         Assert.NotNull(error.Details);
         Assert.True(error.Details.ContainsKey("missingParams"));
     }
@@ -525,7 +513,6 @@ public class FhirPathRuleEngineTests
                     Path = "Patient.maritalStatus",
                     Severity = "error",
                     ErrorCode = "INVALID_MARITAL_SYSTEM",
-                    Message = "Marital status must use correct system",
                     Params = new Dictionary<string, object>() // Missing "system" param
                 }
             }
@@ -540,7 +527,6 @@ public class FhirPathRuleEngineTests
         Assert.Equal("RULE_CONFIGURATION_ERROR", error.ErrorCode);
         Assert.Equal("CS1", error.RuleId);
         Assert.Equal("CodeSystem", error.RuleType);
-        Assert.Contains("missing required parameter 'system'", error.Message);
         Assert.NotNull(error.Details);
         Assert.True(error.Details.ContainsKey("missingParams"));
     }

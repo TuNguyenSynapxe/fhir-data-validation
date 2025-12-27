@@ -1,0 +1,30 @@
+{
+  "id": "4ea20972-52af-4057-9105-d065379b5856",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-H6B2-00000023"
+    },
+    "display": {
+      "value": "Does the participant require to refer to L2 Oral?"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": "{\u0022allowedValues\u0022:[\u0022Yes\u0022,\u0022No\u0022],\u0022allowMultiple\u0022:false,\u0022separator\u0022:\u0022,\u0022}"
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Does the participant require to refer to L2 Oral?",
+    "description": null,
+    "createdAt": "2025-12-26T16:17:56.518156+00:00",
+    "updatedAt": "2025-12-26T16:17:56.518156+00:00"
+  }
+}

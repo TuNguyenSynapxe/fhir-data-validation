@@ -209,7 +209,7 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 Path = error.Path,
                 JsonPointer = jsonPointer,
                 ErrorCode = error.ErrorCode,
-                Message = error.Message,
+                Message = string.Empty, // PHASE 4: Backend does not emit prose. Frontend uses ErrorCode.
                 Details = details,
                 Explanation = ValidationExplanationService.ForProjectRule(
                     error.ErrorCode ?? "UNKNOWN",
@@ -256,7 +256,7 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 Path = error.Path,
                 JsonPointer = jsonPointer,
                 ErrorCode = error.ErrorCode,
-                Message = error.Message,
+                Message = string.Empty, // PHASE 4: Backend does not emit prose. Frontend uses ErrorCode.
                 Details = error.Details,
                 Explanation = ValidationExplanationService.ForReference(
                     error.ErrorCode,
@@ -302,7 +302,7 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 Path = error.Path,
                 JsonPointer = jsonPointer,
                 ErrorCode = error.ErrorCode,
-                Message = error.Message,
+                Message = string.Empty, // PHASE 4: Backend does not emit prose. Frontend uses ErrorCode.
                 Details = error.Details,
                 Explanation = ValidationExplanationService.ForReference(
                     error.ErrorCode,

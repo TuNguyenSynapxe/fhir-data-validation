@@ -217,14 +217,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                     var valueNode = NavigateToPathInSourceNode(resource, fieldPath);
                     if (valueNode == null || string.IsNullOrWhiteSpace(valueNode.Text))
                     {
-                        // Resolve message tokens like {fullPath}
-                        var fullPath = $"{resourceType}.{fieldPath}";
-                        var resolvedMessage = MessageTokenResolver.ResolveTokens(
-                            rule.Message,
-                            rule,
-                            new Dictionary<string, object> { ["fullPath"] = fullPath }
-                        );
-                        
                         // Construct jsonPointer for SmartPath navigation (since we don't have a valid Bundle object)
                         var jsonPointer = $"/entry/{entryIndex}/resource/{fieldPath.Replace(".", "/")}";
                         
@@ -236,7 +228,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                             ResourceType = resourceType ?? rule.ResourceType,
                             Path = rule.Path,
                             ErrorCode = "MANDATORY_MISSING",
-                            Message = resolvedMessage,
                             Details = new Dictionary<string, object>
                             {
                                 ["source"] = "ProjectRule",
@@ -382,7 +373,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
     private void ValidateArrayLengthForNode(int count, RuleDefinition rule, string? resourceType, string? resourceId, int entryIndex, List<RuleValidationError> errors, string? arrayPath = null)
     {
         bool hasError = false;
-        string errorMessage = rule.Message;
         var details = new Dictionary<string, object>
         {
             ["source"] = "ProjectRule",
@@ -407,7 +397,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 if (count < min)
                 {
                     hasError = true;
-                    errorMessage = MessageTokenResolver.ResolveTokens(rule.Message, rule, new Dictionary<string, object> { ["actual"] = count.ToString() });
                 }
             }
             
@@ -421,7 +410,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 if (count > max)
                 {
                     hasError = true;
-                    errorMessage = MessageTokenResolver.ResolveTokens(rule.Message, rule, new Dictionary<string, object> { ["actual"] = count.ToString() });
                 }
             }
         }
@@ -447,7 +435,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 ResourceType = resourceType ?? rule.ResourceType,
                 Path = rule.Path,
                 ErrorCode = rule.ErrorCode ?? "ARRAY_LENGTH_VIOLATION",
-                Message = errorMessage,
                 Details = details,
                 EntryIndex = entryIndex,
                 ResourceId = resourceId ?? "unknown"
@@ -510,7 +497,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 ResourceType = rule.ResourceType,
                 Path = rule.Path,
                 ErrorCode = "RULE_EXECUTION_ERROR",
-                Message = $"Error executing rule {rule.Id}: {ex.Message}",
                 Details = new Dictionary<string, object>
                 {
                     ["source"] = "ProjectRule",
@@ -566,8 +552,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         
         if (!errors.Any(e => e.ErrorCode == "RULE_DEFINITION_ERROR") && (isMissing || isAllEmpty))
         {
-            var resolvedMessage = MessageTokenResolver.ResolveTokens(rule.Message, rule);
-            
             var details = new Dictionary<string, object>
             {
                 ["source"] = "ProjectRule",
@@ -589,7 +573,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 ResourceType = rule.ResourceType,
                 Path = rule.Path,
                 ErrorCode = rule.ErrorCode ?? "MANDATORY_MISSING",
-                Message = resolvedMessage,
                 Details = details,
                 EntryIndex = entryIndex,
                 ResourceId = resource.Id
@@ -613,7 +596,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 ResourceType = rule.ResourceType,
                 Path = rule.Path,
                 ErrorCode = "RULE_CONFIGURATION_ERROR",
-                Message = $"Rule '{rule.Id}' (FixedValue) is missing required parameter 'value'.",
                 Details = new Dictionary<string, object>
                 {
                     ["ruleType"] = "FixedValue",
@@ -637,14 +619,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 
                 if (actualValue != expectedValue)
                 {
-                    var runtimeContext = new Dictionary<string, object>
-                    {
-                        ["expected"] = expectedValue ?? "",
-                        ["actual"] = actualValue ?? ""
-                    };
-                    
-                    var resolvedMessage = MessageTokenResolver.ResolveTokens(rule.Message, rule, runtimeContext);
-                    
                     var details = new Dictionary<string, object>
                     {
                         ["source"] = "ProjectRule",
@@ -666,7 +640,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         ResourceType = rule.ResourceType,
                         Path = rule.Path,
                         ErrorCode = rule.ErrorCode ?? "FIXED_VALUE_MISMATCH",
-                        Message = resolvedMessage,
                         Details = details,
                         EntryIndex = entryIndex,
                         ResourceId = resource.Id
@@ -692,7 +665,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 ResourceType = rule.ResourceType,
                 Path = rule.Path,
                 ErrorCode = "RULE_CONFIGURATION_ERROR",
-                Message = $"Rule '{rule.Id}' (AllowedValues) is missing required parameter 'values'.",
                 Details = new Dictionary<string, object>
                 {
                     ["ruleType"] = "AllowedValues",
@@ -718,14 +690,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 
                 if (!string.IsNullOrEmpty(actualValue) && !allowedValues.Contains(actualValue))
                 {
-                    var runtimeContext = new Dictionary<string, object>
-                    {
-                        ["actual"] = actualValue,
-                        ["allowed"] = string.Join(", ", allowedValues.Select(v => $"\"{v}\""))
-                    };
-                    
-                    var resolvedMessage = MessageTokenResolver.ResolveTokens(rule.Message, rule, runtimeContext);
-                    
                     var details = new Dictionary<string, object>
                     {
                         ["source"] = "ProjectRule",
@@ -747,7 +711,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         ResourceType = rule.ResourceType,
                         Path = rule.Path,
                         ErrorCode = rule.ErrorCode ?? "VALUE_NOT_ALLOWED",
-                        Message = resolvedMessage,
                         Details = details,
                         EntryIndex = entryIndex,
                         ResourceId = resource.Id
@@ -773,7 +736,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 ResourceType = rule.ResourceType,
                 Path = rule.Path,
                 ErrorCode = "RULE_CONFIGURATION_ERROR",
-                Message = $"Rule '{rule.Id}' (Regex) is missing required parameter 'pattern'.",
                 Details = new Dictionary<string, object>
                 {
                     ["ruleType"] = "Regex",
@@ -804,13 +766,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 
                 if (!string.IsNullOrEmpty(actualValue) && !regex.IsMatch(actualValue))
                 {
-                    var runtimeContext = new Dictionary<string, object>
-                    {
-                        ["actual"] = actualValue
-                    };
-                    
-                    var resolvedMessage = MessageTokenResolver.ResolveTokens(rule.Message, rule, runtimeContext);
-                    
                     var details = new Dictionary<string, object>
                     {
                         ["source"] = "ProjectRule",
@@ -832,7 +787,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         ResourceType = rule.ResourceType,
                         Path = rule.Path,
                         ErrorCode = rule.ErrorCode ?? "PATTERN_MISMATCH",
-                        Message = resolvedMessage,
                         Details = details,
                         EntryIndex = entryIndex,
                         ResourceId = resource.Id
@@ -858,7 +812,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 ResourceType = rule.ResourceType,
                 Path = rule.Path,
                 ErrorCode = "RULE_CONFIGURATION_ERROR",
-                Message = $"Rule '{rule.Id}' (ArrayLength) is missing required parameters. At least one of 'min' or 'max' must be specified.",
                 Details = new Dictionary<string, object>
                 {
                     ["ruleType"] = "ArrayLength",
@@ -894,13 +847,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 
                 if (count < min)
                 {
-                    var runtimeContext = new Dictionary<string, object>
-                    {
-                        ["actual"] = count.ToString()
-                    };
-                    
-                    var resolvedMessage = MessageTokenResolver.ResolveTokens(rule.Message, rule, runtimeContext);
-                    
                     var details = new Dictionary<string, object>
                     {
                         ["source"] = "ProjectRule",
@@ -923,7 +869,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         ResourceType = rule.ResourceType,
                         Path = rule.Path,
                         ErrorCode = rule.ErrorCode ?? "ARRAY_TOO_SHORT",
-                        Message = resolvedMessage,
                         Details = details,
                         EntryIndex = entryIndex,
                         ResourceId = resource.Id
@@ -947,13 +892,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 
                 if (count > max)
                 {
-                    var runtimeContext = new Dictionary<string, object>
-                    {
-                        ["actual"] = count.ToString()
-                    };
-                    
-                    var resolvedMessage = MessageTokenResolver.ResolveTokens(rule.Message, rule, runtimeContext);
-                    
                     var details = new Dictionary<string, object>
                     {
                         ["source"] = "ProjectRule",
@@ -976,7 +914,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         ResourceType = rule.ResourceType,
                         Path = rule.Path,
                         ErrorCode = rule.ErrorCode ?? "ARRAY_TOO_LONG",
-                        Message = resolvedMessage,
                         Details = details,
                         EntryIndex = entryIndex,
                         ResourceId = resource.Id
@@ -1002,7 +939,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 ResourceType = rule.ResourceType,
                 Path = rule.Path,
                 ErrorCode = "RULE_CONFIGURATION_ERROR",
-                Message = $"Rule '{rule.Id}' (CodeSystem) is missing required parameter 'system'.",
                 Details = new Dictionary<string, object>
                 {
                     ["ruleType"] = "CodeSystem",
@@ -1032,14 +968,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 {
                     if (coding.System != expectedSystem)
                     {
-                        var runtimeContext = new Dictionary<string, object>
-                        {
-                            ["code"] = coding.Code ?? "",
-                            ["display"] = coding.Display ?? ""
-                        };
-                        
-                        var resolvedMessage = MessageTokenResolver.ResolveTokens(rule.Message, rule, runtimeContext);
-                        
                         var details = new Dictionary<string, object>
                         {
                             ["source"] = "ProjectRule",
@@ -1063,7 +991,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                             ResourceType = rule.ResourceType,
                             Path = rule.Path,
                             ErrorCode = rule.ErrorCode ?? "INVALID_SYSTEM",
-                            Message = resolvedMessage,
                             Details = details,
                             EntryIndex = entryIndex,
                             ResourceId = resource.Id
@@ -1071,14 +998,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                     }
                     else if (allowedCodes.Any() && !allowedCodes.Contains(coding.Code))
                     {
-                        var runtimeContext = new Dictionary<string, object>
-                        {
-                            ["code"] = coding.Code ?? "",
-                            ["display"] = coding.Display ?? ""
-                        };
-                        
-                        var resolvedMessage = MessageTokenResolver.ResolveTokens(rule.Message, rule, runtimeContext);
-                        
                         var details = new Dictionary<string, object>
                         {
                             ["source"] = "ProjectRule",
@@ -1103,7 +1022,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                             ResourceType = rule.ResourceType,
                             Path = rule.Path,
                             ErrorCode = rule.ErrorCode ?? "INVALID_CODE",
-                            Message = resolvedMessage,
                             Details = details,
                             EntryIndex = entryIndex,
                             ResourceId = resource.Id
@@ -1138,13 +1056,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             
             if (!isValid)
             {
-                var runtimeContext = new Dictionary<string, object>
-                {
-                    ["result"] = "false"
-                };
-                
-                var resolvedMessage = MessageTokenResolver.ResolveTokens(rule.Message, rule, runtimeContext);
-                
                 var details = new Dictionary<string, object>
                 {
                     ["source"] = "ProjectRule",
@@ -1166,7 +1077,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                     ResourceType = rule.ResourceType,
                     Path = rule.Path,
                     ErrorCode = rule.ErrorCode ?? "CUSTOM_RULE_FAILED",
-                    Message = resolvedMessage,
                     Details = details,
                     EntryIndex = entryIndex,
                     ResourceId = resource.Id
@@ -1217,7 +1127,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 ResourceType = rule.ResourceType,
                 Path = rule.Path,
                 ErrorCode = "RULE_DEFINITION_ERROR",
-                Message = $"FHIRPath evaluation failed: '{path}' - {ex.Message}",
                 Details = new Dictionary<string, object>
                 {
                     ["source"] = "ProjectRule",
@@ -1288,7 +1197,6 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             ResourceType = rule.ResourceType,
             Path = rule.Path,
             ErrorCode = "RULE_EVALUATION_ERROR",
-            Message = $"Error evaluating rule: {ex.Message}",
             EntryIndex = entryIndex,
             ResourceId = resource.Id
         };

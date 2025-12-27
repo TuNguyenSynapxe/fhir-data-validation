@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, AlertCircle } from 'lucide-react';
 import FhirPathSelectorDrawer from '../../../../rules/FhirPathSelectorDrawer';
-import { MessageEditor } from '../../../MessageEditor';
+import { ErrorCodeSelector, UserHintInput, RuleErrorPreview } from '../../common';
 import { InstanceScopeDrawer } from '../../common/InstanceScopeDrawer';
 import type { InstanceScope } from '../../common/InstanceScope.types';
 import { getInstanceScopeSummary } from '../../common/InstanceScope.utils';
 import {
   buildRequiredRule,
-  getDefaultErrorMessage,
   RESOURCE_TYPES,
   SEVERITY_LEVELS,
 } from './RequiredRuleHelpers';
@@ -18,7 +17,9 @@ interface Rule {
   resourceType: string;
   path: string;
   severity: string;
-  message: string;
+  errorCode: string;           // PHASE 3: errorCode is now primary
+  userHint?: string;            // PHASE 3: optional short hint
+  message?: string;             // DEPRECATED: backward compat only
   params?: Record<string, any>;
   origin?: string;
   enabled?: boolean;
@@ -45,10 +46,14 @@ export const RequiredRuleForm: React.FC<RequiredRuleFormProps> = ({
   const [instanceScope, setInstanceScope] = useState<InstanceScope>({ kind: 'all' });
   const [fieldPath, setFieldPath] = useState<string>('');
   const [severity, setSeverity] = useState<'error' | 'warning' | 'information'>('error');
-  const [customMessage, setCustomMessage] = useState<string>('');
+  
+  // PHASE 3: Replace customMessage with errorCode + userHint
+  const [errorCode, setErrorCode] = useState<string>('');
+  const [userHint, setUserHint] = useState<string>('');
+  
   const [isScopeDrawerOpen, setIsScopeDrawerOpen] = useState(false);
   const [isFieldDrawerOpen, setIsFieldDrawerOpen] = useState(false);
-  const [errors, setErrors] = useState<{ instanceScope?: string; fieldPath?: string }>({});
+  const [errors, setErrors] = useState<{ instanceScope?: string; fieldPath?: string; errorCode?: string }>({});
 
   // Reset instance scope when resource type changes
   useEffect(() => {
@@ -76,11 +81,15 @@ export const RequiredRuleForm: React.FC<RequiredRuleFormProps> = ({
   };
 
   const handleSave = () => {
-    // Validate required fields
-    const newErrors: { instanceScope?: string; fieldPath?: string } = {};
+    // PHASE 3: Validate required fields (errorCode is now mandatory)
+    const newErrors: { instanceScope?: string; fieldPath?: string; errorCode?: string } = {};
     
     if (!fieldPath) {
       newErrors.fieldPath = 'Please select a field';
+    }
+    
+    if (!errorCode || errorCode.trim() === '') {
+      newErrors.errorCode = 'Error code is required';
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -88,24 +97,20 @@ export const RequiredRuleForm: React.FC<RequiredRuleFormProps> = ({
       return;
     }
 
-    // Build rule
+    // PHASE 3: Build rule with errorCode + userHint (NO message)
     const rule = buildRequiredRule({
       resourceType,
       instanceScope,
       fieldPath,
       severity,
-      message: customMessage,
+      errorCode,
+      userHint: userHint || undefined,
     });
 
     // Save and close
     onSave(rule);
   };
 
-  const defaultMessage = fieldPath
-    ? getDefaultErrorMessage(resourceType, fieldPath)
-    : '';
-
-  const displayMessage = customMessage || defaultMessage;
   const scopeSummary = getInstanceScopeSummary(resourceType, instanceScope);
 
   return (
@@ -127,7 +132,7 @@ export const RequiredRuleForm: React.FC<RequiredRuleFormProps> = ({
       </div>
 
       {/* Form Body */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 overscroll-contain">
         {/* Resource Target */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -243,33 +248,34 @@ export const RequiredRuleForm: React.FC<RequiredRuleFormProps> = ({
           </div>
         </div>
 
-        {/* Error Message */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Error Message (Optional)
-          </label>
-          <MessageEditor
-            value={customMessage}
-            onChange={setCustomMessage}
-            ruleContext={{
-              resourceType,
-              path: fieldPath,
-              ruleType: 'Required',
-              severity,
-            }}
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Leave empty to use the default message. You can use tokens like {'{'}fieldName{'}'} and {'{'}resourceType{'}'}
-          </p>
-        </div>
-
-        {/* Preview */}
-        {displayMessage && (
-          <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
-            <div className="text-xs font-medium text-gray-700 mb-1">Message Preview:</div>
-            <div className="text-sm text-gray-900">{displayMessage}</div>
+        {/* PHASE 3: ErrorCode Selector (REQUIRED) */}
+        <ErrorCodeSelector
+          ruleType="Required"
+          value={errorCode}
+          onChange={setErrorCode}
+          required
+        />
+        {errors.errorCode && (
+          <div className="flex items-center gap-1 -mt-4 text-xs text-red-600">
+            <AlertCircle size={12} />
+            <span>{errors.errorCode}</span>
           </div>
         )}
+
+        {/* PHASE 3: User Hint Input (OPTIONAL) */}
+        <UserHintInput
+          value={userHint}
+          onChange={setUserHint}
+        />
+
+        {/* PHASE 3: Live Error Preview */}
+        <RuleErrorPreview
+          errorCode={errorCode}
+          userHint={userHint}
+          severity={severity}
+          resourceType={resourceType}
+          path={fieldPath || 'field.path'}
+        />
       </div>
 
       {/* Footer */}
@@ -282,7 +288,7 @@ export const RequiredRuleForm: React.FC<RequiredRuleFormProps> = ({
         </button>
         <button
           onClick={handleSave}
-          disabled={!fieldPath}
+          disabled={!fieldPath || !errorCode}
           className="px-4 py-2 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           Create Rule

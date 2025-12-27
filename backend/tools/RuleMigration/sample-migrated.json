@@ -1,0 +1,62 @@
+{
+  "projectId": "test-migration",
+  "rules": [
+    {
+      "id": "R001",
+      "type": "Required",
+      "resourceType": "Patient",
+      "path": "Patient.name",
+      "severity": "error",
+      "errorCode": "FIELD_REQUIRED",
+      "params": {}
+    },
+    {
+      "id": "R002",
+      "type": "Pattern",
+      "resourceType": "Patient",
+      "path": "Patient.telecom.where(system=\u0027email\u0027).value",
+      "severity": "error",
+      "errorCode": "PATTERN_MISMATCH",
+      "params": {
+        "pattern": "^[a-zA-Z0-9._%\u002B-]\u002B@[a-zA-Z0-9.-]\u002B\\.[a-zA-Z]{2,}$"
+      }
+    },
+    {
+      "id": "R004",
+      "type": "Required",
+      "resourceType": "Patient",
+      "path": "Patient.birthDate",
+      "severity": "error",
+      "errorCode": "PATIENT_BIRTHDATE_MISSING",
+      "userHint": "Date of birth",
+      "params": {}
+    },
+    {
+      "id": "R006",
+      "type": "FixedValue",
+      "resourceType": "Patient",
+      "path": "Patient.active",
+      "severity": "error",
+      "errorCode": "VALUE_NOT_EQUAL",
+      "params": {
+        "expectedValue": "true"
+      }
+    },
+    {
+      "id": "R008",
+      "type": "AllowedValues",
+      "resourceType": "Patient",
+      "path": "Patient.gender",
+      "severity": "error",
+      "errorCode": "VALUE_NOT_ALLOWED",
+      "params": {
+        "allowedValues": [
+          "male",
+          "female",
+          "other",
+          "unknown"
+        ]
+      }
+    }
+  ]
+}

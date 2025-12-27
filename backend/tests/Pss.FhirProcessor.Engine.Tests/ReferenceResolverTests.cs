@@ -191,7 +191,6 @@ public class ReferenceResolverTests
         var error = errors[0];
         error.ErrorCode.Should().Be("REFERENCE_NOT_FOUND");
         error.Reference.Should().Be("Patient/999");
-        error.Message.Should().Contain("not found");
     }
 
     [Fact]

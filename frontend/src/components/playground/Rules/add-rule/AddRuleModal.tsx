@@ -65,7 +65,7 @@ export const AddRuleModal: React.FC<AddRuleModalProps> = ({
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl h-full max-h-[90vh] overflow-hidden flex flex-col">
         {selectedRuleType === null ? (
           <>
             {/* Header */}

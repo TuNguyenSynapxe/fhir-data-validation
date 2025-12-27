@@ -6,6 +6,8 @@ using Microsoft.Extensions.Logging;
 using Pss.FhirProcessor.Engine.Models;
 using Pss.FhirProcessor.Engine.Models.Questions;
 using Pss.FhirProcessor.Engine.Services.Questions;
+using Pss.FhirProcessor.Engine.Validation.QuestionAnswer.Models;
+using Pss.FhirProcessor.Engine.Core.Execution;
 
 namespace Pss.FhirProcessor.Engine.Validation.QuestionAnswer;
 
@@ -16,21 +18,25 @@ namespace Pss.FhirProcessor.Engine.Validation.QuestionAnswer;
 public class QuestionAnswerValidator
 {
     private readonly IQuestionService _questionService;
+    private readonly IQuestionAnswerContextProvider _contextProvider;
     private readonly QuestionAnswerValueExtractor _valueExtractor;
     private readonly ILogger<QuestionAnswerValidator> _logger;
 
     public QuestionAnswerValidator(
         IQuestionService questionService,
+        IQuestionAnswerContextProvider contextProvider,
         QuestionAnswerValueExtractor valueExtractor,
         ILogger<QuestionAnswerValidator> logger)
     {
         _questionService = questionService;
+        _contextProvider = contextProvider;
         _valueExtractor = valueExtractor;
         _logger = logger;
     }
 
     /// <summary>
     /// Validate all QuestionAnswer rules in a bundle
+    /// PUBLIC API: Maintains backward compatibility
     /// </summary>
     public async Task<QuestionAnswerResult> ValidateAsync(
         Bundle bundle,
@@ -68,6 +74,35 @@ public class QuestionAnswerValidator
     }
 
     /// <summary>
+    /// Validate QuestionAnswer rules with pre-computed execution contexts.
+    /// INTERNAL API (Phase 3.5 optimization): Used by ValidationPipeline for performance.
+    /// Traversal context is computed once and reused, avoiding redundant bundle scanning.
+    /// </summary>
+    internal async Task<QuestionAnswerResult> ValidateAsync(
+        IReadOnlyList<RuleExecutionContext> contexts,
+        string projectId,
+        CancellationToken cancellationToken = default)
+    {
+        var result = new QuestionAnswerResult();
+
+        foreach (var context in contexts)
+        {
+            try
+            {
+                var ruleErrors = await ValidateRuleWithContextAsync(context, projectId, cancellationToken);
+                result.Errors.AddRange(ruleErrors);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error validating QuestionAnswer rule {RuleId}", context.Rule.Id);
+                result.AdvisoryNotes.Add($"Failed to validate rule {context.Rule.Id}: {ex.Message}");
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Validate a single QuestionAnswer rule
     /// </summary>
     private async Task<List<RuleValidationError>> ValidateRuleAsync(
@@ -89,75 +124,207 @@ public class QuestionAnswerValidator
         var questionSet = await LoadQuestionSetAsync(projectId, questionSetId, cancellationToken);
         if (questionSet == null)
         {
-            errors.Add(QuestionAnswerErrorFactory.MasterDataMissing(rule, "QuestionSet", questionSetId, 0));
+            errors.Add(QuestionAnswerErrorFactory.QuestionSetDataMissing(
+                ruleId: rule.Id,
+                resourceType: rule.ResourceType,
+                severity: rule.Severity,
+                questionSetId: questionSetId,
+                entryIndex: 0,
+                userHint: rule.UserHint));
             return errors;
         }
 
         // Load Questions
         var questions = await LoadQuestionsAsync(projectId, questionSet, cancellationToken);
 
-        // Evaluate rule path on bundle to get target resources
-        var targetResources = EvaluateRulePath(bundle, rule);
+        // Resolve all validation contexts via provider (no traversal in validator)
+        var contextSeeds = _contextProvider.Resolve(bundle, rule);
 
-        int entryIndex = 0;
-        foreach (var resource in targetResources)
+        foreach (var seed in contextSeeds)
         {
-            // Get iteration nodes (e.g., components)
-            var iterationNodes = GetIterationNodes(resource, rule.Path);
-
-            foreach (var iterationNode in iterationNodes)
+            var context = new QuestionAnswerContext
             {
-                var context = new QuestionAnswerContext
-                {
-                    Rule = rule,
-                    QuestionSet = questionSet,
-                    Questions = questions,
-                    Resource = resource,
-                    IterationNode = iterationNode,
-                    EntryIndex = entryIndex,
-                    CurrentPath = BuildCurrentPath(resource, rule.Path)
-                };
+                Rule = rule,
+                QuestionSet = questionSet,
+                Questions = questions,
+                Resource = seed.Resource,
+                IterationNode = seed.IterationNode,
+                EntryIndex = seed.EntryIndex,
+                CurrentPath = seed.CurrentFhirPath
+            };
 
-                // Extract question coding
-                context.QuestionCoding = _valueExtractor.ExtractQuestionCoding(iterationNode, questionPath);
-                if (context.QuestionCoding == null)
-                {
-                    continue; // Skip if no question coding found
-                }
-
-                // Match question in set
-                var questionRef = questionSet.Questions.FirstOrDefault(q =>
-                {
-                    var question = questions.GetValueOrDefault(q.QuestionId);
-                    return question != null &&
-                           question.Code.System == context.QuestionCoding.System &&
-                           question.Code.Code == context.QuestionCoding.Code;
-                });
-
-                if (questionRef == null)
-                {
-                    errors.Add(QuestionAnswerErrorFactory.QuestionNotInSet(context, context.QuestionCoding.Code));
-                    continue;
-                }
-
-                context.ResolvedQuestion = questions.GetValueOrDefault(questionRef.QuestionId);
-                context.IsRequired = questionRef.Required;
-
-                if (context.ResolvedQuestion == null)
-                {
-                    errors.Add(QuestionAnswerErrorFactory.MasterDataMissing(rule, "Question", questionRef.QuestionId, entryIndex));
-                    continue;
-                }
-
-                // Extract answer value
-                context.ExtractedAnswer = _valueExtractor.ExtractAnswerValue(iterationNode, answerPath);
-
-                // Validate answer
-                var validationErrors = ValidateAnswer(context);
-                errors.AddRange(validationErrors);
+            // Extract question coding
+            context.QuestionCoding = _valueExtractor.ExtractQuestionCoding(seed.IterationNode, questionPath);
+            if (context.QuestionCoding == null)
+            {
+                continue; // Skip if no question coding found
             }
 
-            entryIndex++;
+            // Match question in set
+            var questionRef = questionSet.Questions.FirstOrDefault(q =>
+            {
+                var question = questions.GetValueOrDefault(q.QuestionId);
+                return question != null &&
+                       question.Code.System == context.QuestionCoding.System &&
+                       question.Code.Code == context.QuestionCoding.Code;
+            });
+
+        if (questionRef == null)
+            {
+                var location = new ValidationLocation(
+                    FhirPath: context.CurrentPath,
+                    JsonPointer: null);
+                var questionRefObj = new QuestionRef(
+                    System: context.QuestionCoding.System,
+                    Code: context.QuestionCoding.Code,
+                    Display: context.QuestionCoding.Display);
+                errors.Add(QuestionAnswerErrorFactory.QuestionNotFound(
+                    ruleId: rule.Id,
+                    resourceType: rule.ResourceType,
+                    severity: "warning",
+                    system: context.QuestionCoding.System,
+                    code: context.QuestionCoding.Code,
+                    location: location,
+                    entryIndex: seed.EntryIndex));
+                continue;
+            }
+
+            context.ResolvedQuestion = questions.GetValueOrDefault(questionRef.QuestionId);
+            context.IsRequired = questionRef.Required;
+
+            if (context.ResolvedQuestion == null)
+            {
+                errors.Add(QuestionAnswerErrorFactory.QuestionSetDataMissing(
+                    ruleId: rule.Id,
+                    resourceType: rule.ResourceType,
+                    severity: "information",
+                    questionSetId: $"Question:{questionRef.QuestionId}",
+                    entryIndex: seed.EntryIndex));
+                continue;
+            }
+
+            // Extract answer value
+            context.ExtractedAnswer = _valueExtractor.ExtractAnswerValue(seed.IterationNode, answerPath);
+
+            // Validate answer
+            var validationErrors = ValidateAnswer(context);
+            errors.AddRange(validationErrors);
+        }
+
+        return errors;
+    }
+
+    /// <summary>
+    /// Validate a single QuestionAnswer rule using pre-computed execution context.
+    /// INTERNAL (Phase 3.5): Optimized path that skips redundant traversal.
+    /// </summary>
+    private async Task<List<RuleValidationError>> ValidateRuleWithContextAsync(
+        RuleExecutionContext executionContext,
+        string projectId,
+        CancellationToken cancellationToken)
+    {
+        var errors = new List<RuleValidationError>();
+        var rule = executionContext.Rule;
+
+        // Extract params
+        if (!TryExtractRuleParams(rule, out var questionSetId, out var questionPath, out var answerPath))
+        {
+            _logger.LogWarning("QuestionAnswer rule {RuleId} missing required params", rule.Id);
+            return errors;
+        }
+
+        // Load QuestionSet
+        var questionSet = await LoadQuestionSetAsync(projectId, questionSetId, cancellationToken);
+        if (questionSet == null)
+        {
+            errors.Add(QuestionAnswerErrorFactory.QuestionSetDataMissing(
+                ruleId: rule.Id,
+                resourceType: rule.ResourceType,
+                severity: rule.Severity,
+                questionSetId: questionSetId,
+                entryIndex: 0,
+                userHint: rule.UserHint));
+            return errors;
+        }
+
+        // Load Questions
+        var questions = await LoadQuestionsAsync(projectId, questionSet, cancellationToken);
+
+        // Use pre-computed seeds (NO traversal recomputation)
+        if (executionContext.QuestionAnswerSeeds == null || !executionContext.QuestionAnswerSeeds.Any())
+        {
+            return errors; // No contexts to validate
+        }
+
+        foreach (var seed in executionContext.QuestionAnswerSeeds)
+        {
+            var context = new QuestionAnswerContext
+            {
+                Rule = rule,
+                QuestionSet = questionSet,
+                Questions = questions,
+                Resource = seed.Resource,
+                IterationNode = seed.IterationNode,
+                EntryIndex = seed.EntryIndex,
+                CurrentPath = seed.CurrentFhirPath
+            };
+
+            // Extract question coding
+            context.QuestionCoding = _valueExtractor.ExtractQuestionCoding(seed.IterationNode, questionPath);
+            if (context.QuestionCoding == null)
+            {
+                continue; // Skip if no question coding found
+            }
+
+            // Match question in set
+            var questionRef = questionSet.Questions.FirstOrDefault(q =>
+            {
+                var question = questions.GetValueOrDefault(q.QuestionId);
+                return question != null &&
+                       question.Code.System == context.QuestionCoding.System &&
+                       question.Code.Code == context.QuestionCoding.Code;
+            });
+
+            if (questionRef == null)
+            {
+                var location = new ValidationLocation(
+                    FhirPath: context.CurrentPath,
+                    JsonPointer: null);
+                var questionRefObj = new QuestionRef(
+                    System: context.QuestionCoding.System,
+                    Code: context.QuestionCoding.Code,
+                    Display: context.QuestionCoding.Display);
+                errors.Add(QuestionAnswerErrorFactory.QuestionNotFound(
+                    ruleId: rule.Id,
+                    resourceType: rule.ResourceType,
+                    severity: "warning",
+                    system: context.QuestionCoding.System,
+                    code: context.QuestionCoding.Code,
+                    location: location,
+                    entryIndex: seed.EntryIndex));
+                continue;
+            }
+
+            context.ResolvedQuestion = questions.GetValueOrDefault(questionRef.QuestionId);
+            context.IsRequired = questionRef.Required;
+
+            if (context.ResolvedQuestion == null)
+            {
+                errors.Add(QuestionAnswerErrorFactory.QuestionSetDataMissing(
+                    ruleId: rule.Id,
+                    resourceType: rule.ResourceType,
+                    severity: "information",
+                    questionSetId: $"Question:{questionRef.QuestionId}",
+                    entryIndex: seed.EntryIndex));
+                continue;
+            }
+
+            // Extract answer value
+            context.ExtractedAnswer = _valueExtractor.ExtractAnswerValue(seed.IterationNode, answerPath);
+
+            // Validate answer
+            var validationErrors = ValidateAnswer(context);
+            errors.AddRange(validationErrors);
         }
 
         return errors;
@@ -178,7 +345,22 @@ public class QuestionAnswerValidator
         {
             if (context.IsRequired)
             {
-                errors.Add(QuestionAnswerErrorFactory.RequiredMissing(context));
+                var location = new ValidationLocation(
+                    FhirPath: context.CurrentPath,
+                    JsonPointer: null);
+                var questionRef = new QuestionRef(
+                    System: context.QuestionCoding?.System,
+                    Code: context.QuestionCoding?.Code ?? "unknown",
+                    Display: context.QuestionCoding?.Display);
+                errors.Add(QuestionAnswerErrorFactory.AnswerRequired(
+                    ruleId: context.Rule.Id,
+                    resourceType: context.Rule.ResourceType,
+                    severity: context.Rule.Severity,
+                    question: questionRef,
+                    expectedAnswerType: question.AnswerType.ToString().ToLower(),
+                    location: location,
+                    entryIndex: context.EntryIndex,
+                userHint: context.Rule.UserHint));
             }
             return errors;
         }
@@ -237,7 +419,29 @@ public class QuestionAnswerValidator
 
         if (answerCoding == null)
         {
-            errors.Add(QuestionAnswerErrorFactory.InvalidType(context, "Code", _valueExtractor.GetAnswerTypeName(context.ExtractedAnswer)));
+            var location = new ValidationLocation(
+                FhirPath: context.CurrentPath,
+                JsonPointer: null);
+            var questionRef = new QuestionRef(
+                System: context.QuestionCoding?.System,
+                Code: context.QuestionCoding?.Code ?? "unknown",
+                Display: context.QuestionCoding?.Display);
+            var expected = new ExpectedAnswer(
+                AnswerType: "codeableConcept",
+                Constraints: null);
+            var actual = new ActualAnswer(
+                AnswerType: _valueExtractor.GetAnswerTypeName(context.ExtractedAnswer),
+                Value: context.ExtractedAnswer);
+            errors.Add(QuestionAnswerErrorFactory.InvalidAnswerValue(
+                ruleId: context.Rule.Id,
+                resourceType: context.Rule.ResourceType,
+                severity: context.Rule.Severity,
+                question: questionRef,
+                expected: expected,
+                actual: actual,
+                location: location,
+                entryIndex: context.EntryIndex,
+                userHint: context.Rule.UserHint));
             return errors;
         }
 
@@ -248,12 +452,31 @@ public class QuestionAnswerValidator
             // For now, just check that a code is present
             if (string.IsNullOrEmpty(answerCoding.Code))
             {
+                var location = new ValidationLocation(
+                    FhirPath: context.CurrentPath,
+                    JsonPointer: null);
+                var questionRef = new QuestionRef(
+                    System: context.QuestionCoding?.System,
+                    Code: context.QuestionCoding?.Code ?? "unknown",
+                    Display: context.QuestionCoding?.Display);
                 var bindingStrength = question.ValueSet.BindingStrength ?? "required";
-                errors.Add(QuestionAnswerErrorFactory.InvalidCode(context,
-                    answerCoding.Code ?? "",
-                    answerCoding.System ?? "",
-                    question.ValueSet.Url,
-                    bindingStrength));
+                var severity = bindingStrength.ToLowerInvariant() switch
+                {
+                    "required" => "error",
+                    "extensible" => "warning",
+                    _ => "information"
+                };
+                errors.Add(QuestionAnswerErrorFactory.AnswerNotInValueSet(
+                    ruleId: context.Rule.Id,
+                    resourceType: context.Rule.ResourceType,
+                    severity: severity,
+                    question: questionRef,
+                    valueSetUrl: question.ValueSet.Url,
+                    actualCode: answerCoding.Code ?? "",
+                    actualSystem: answerCoding.System,
+                    location: location,
+                    entryIndex: context.EntryIndex,
+                userHint: context.Rule.UserHint));
             }
         }
 
@@ -269,7 +492,29 @@ public class QuestionAnswerValidator
 
         if (context.ExtractedAnswer is not Quantity quantity)
         {
-            errors.Add(QuestionAnswerErrorFactory.InvalidType(context, "Quantity", _valueExtractor.GetAnswerTypeName(context.ExtractedAnswer)));
+            var location = new ValidationLocation(
+                FhirPath: context.CurrentPath,
+                JsonPointer: null);
+            var questionRef = new QuestionRef(
+                System: context.QuestionCoding?.System,
+                Code: context.QuestionCoding?.Code ?? "unknown",
+                Display: context.QuestionCoding?.Display);
+            var expected = new ExpectedAnswer(
+                AnswerType: "quantity",
+                Constraints: null);
+            var actual = new ActualAnswer(
+                AnswerType: _valueExtractor.GetAnswerTypeName(context.ExtractedAnswer),
+                Value: context.ExtractedAnswer);
+            errors.Add(QuestionAnswerErrorFactory.InvalidAnswerValue(
+                ruleId: context.Rule.Id,
+                resourceType: context.Rule.ResourceType,
+                severity: context.Rule.Severity,
+                question: questionRef,
+                expected: expected,
+                actual: actual,
+                location: location,
+                entryIndex: context.EntryIndex,
+                userHint: context.Rule.UserHint));
             return errors;
         }
 
@@ -277,7 +522,22 @@ public class QuestionAnswerValidator
         {
             if (context.IsRequired)
             {
-                errors.Add(QuestionAnswerErrorFactory.RequiredMissing(context));
+                var location = new ValidationLocation(
+                    FhirPath: context.CurrentPath,
+                    JsonPointer: null);
+                var questionRef = new QuestionRef(
+                    System: context.QuestionCoding?.System,
+                    Code: context.QuestionCoding?.Code ?? "unknown",
+                    Display: context.QuestionCoding?.Display);
+                errors.Add(QuestionAnswerErrorFactory.AnswerRequired(
+                    ruleId: context.Rule.Id,
+                    resourceType: context.Rule.ResourceType,
+                    severity: context.Rule.Severity,
+                    question: questionRef,
+                    expectedAnswerType: "quantity",
+                    location: location,
+                    entryIndex: context.EntryIndex,
+                userHint: context.Rule.UserHint));
             }
             return errors;
         }
@@ -287,7 +547,29 @@ public class QuestionAnswerValidator
         {
             if (quantity.Unit != question.Unit.Code && quantity.Code != question.Unit.Code)
             {
-                errors.Add(QuestionAnswerErrorFactory.InvalidUnit(context, question.Unit.Code, quantity.Unit ?? quantity.Code ?? "none"));
+                var location = new ValidationLocation(
+                    FhirPath: context.CurrentPath,
+                    JsonPointer: null);
+                var questionRef = new QuestionRef(
+                    System: context.QuestionCoding?.System,
+                    Code: context.QuestionCoding?.Code ?? "unknown",
+                    Display: context.QuestionCoding?.Display);
+                var expected = new ExpectedAnswer(
+                    AnswerType: "quantity",
+                    Constraints: new Dictionary<string, object> { ["unit"] = question.Unit.Code });
+                var actual = new ActualAnswer(
+                    AnswerType: "quantity",
+                    Value: new { value = quantity.Value, unit = quantity.Unit ?? quantity.Code ?? "none" });
+                errors.Add(QuestionAnswerErrorFactory.InvalidAnswerValue(
+                    ruleId: context.Rule.Id,
+                    resourceType: context.Rule.ResourceType,
+                    severity: context.Rule.Severity,
+                    question: questionRef,
+                    expected: expected,
+                    actual: actual,
+                    location: location,
+                    entryIndex: context.EntryIndex,
+                userHint: context.Rule.UserHint));
             }
         }
 
@@ -296,13 +578,41 @@ public class QuestionAnswerValidator
         var constraints = question.Constraints;
         if (constraints != null)
         {
+            var location = new ValidationLocation(
+                FhirPath: context.CurrentPath,
+                JsonPointer: null);
+            var questionRef = new QuestionRef(
+                System: context.QuestionCoding?.System,
+                Code: context.QuestionCoding?.Code ?? "unknown",
+                Display: context.QuestionCoding?.Display);
+            
             if (constraints.Min.HasValue && value < constraints.Min.Value)
             {
-                errors.Add(QuestionAnswerErrorFactory.ValueOutOfRange(context, constraints.Min, constraints.Max, value));
+                errors.Add(QuestionAnswerErrorFactory.AnswerOutOfRange(
+                    ruleId: context.Rule.Id,
+                    resourceType: context.Rule.ResourceType,
+                    severity: context.Rule.Severity,
+                    question: questionRef,
+                    min: constraints.Min,
+                    max: constraints.Max,
+                    actualValue: value,
+                    location: location,
+                    entryIndex: context.EntryIndex,
+                userHint: context.Rule.UserHint));
             }
             else if (constraints.Max.HasValue && value > constraints.Max.Value)
             {
-                errors.Add(QuestionAnswerErrorFactory.ValueOutOfRange(context, constraints.Min, constraints.Max, value));
+                errors.Add(QuestionAnswerErrorFactory.AnswerOutOfRange(
+                    ruleId: context.Rule.Id,
+                    resourceType: context.Rule.ResourceType,
+                    severity: context.Rule.Severity,
+                    question: questionRef,
+                    min: constraints.Min,
+                    max: constraints.Max,
+                    actualValue: value,
+                    location: location,
+                    entryIndex: context.EntryIndex,
+                userHint: context.Rule.UserHint));
             }
         }
 
@@ -325,7 +635,29 @@ public class QuestionAnswerValidator
             }
             else
             {
-                errors.Add(QuestionAnswerErrorFactory.InvalidType(context, "Integer", _valueExtractor.GetAnswerTypeName(context.ExtractedAnswer)));
+                var location = new ValidationLocation(
+                    FhirPath: context.CurrentPath,
+                    JsonPointer: null);
+                var questionRef = new QuestionRef(
+                    System: context.QuestionCoding?.System,
+                    Code: context.QuestionCoding?.Code ?? "unknown",
+                    Display: context.QuestionCoding?.Display);
+                var expected = new ExpectedAnswer(
+                    AnswerType: "integer",
+                    Constraints: null);
+                var actual = new ActualAnswer(
+                    AnswerType: _valueExtractor.GetAnswerTypeName(context.ExtractedAnswer),
+                    Value: context.ExtractedAnswer);
+                errors.Add(QuestionAnswerErrorFactory.InvalidAnswerValue(
+                    ruleId: context.Rule.Id,
+                    resourceType: context.Rule.ResourceType,
+                    severity: context.Rule.Severity,
+                    question: questionRef,
+                    expected: expected,
+                    actual: actual,
+                    location: location,
+                    entryIndex: context.EntryIndex,
+                userHint: context.Rule.UserHint));
                 return errors;
             }
         }
@@ -334,13 +666,41 @@ public class QuestionAnswerValidator
         var constraints = question.Constraints;
         if (constraints != null)
         {
+            var location = new ValidationLocation(
+                FhirPath: context.CurrentPath,
+                JsonPointer: null);
+            var questionRef = new QuestionRef(
+                System: context.QuestionCoding?.System,
+                Code: context.QuestionCoding?.Code ?? "unknown",
+                Display: context.QuestionCoding?.Display);
+            
             if (constraints.Min.HasValue && intValue < constraints.Min.Value)
             {
-                errors.Add(QuestionAnswerErrorFactory.ValueOutOfRange(context, constraints.Min, constraints.Max, intValue));
+                errors.Add(QuestionAnswerErrorFactory.AnswerOutOfRange(
+                    ruleId: context.Rule.Id,
+                    resourceType: context.Rule.ResourceType,
+                    severity: context.Rule.Severity,
+                    question: questionRef,
+                    min: constraints.Min,
+                    max: constraints.Max,
+                    actualValue: intValue,
+                    location: location,
+                    entryIndex: context.EntryIndex,
+                userHint: context.Rule.UserHint));
             }
             else if (constraints.Max.HasValue && intValue > constraints.Max.Value)
             {
-                errors.Add(QuestionAnswerErrorFactory.ValueOutOfRange(context, constraints.Min, constraints.Max, intValue));
+                errors.Add(QuestionAnswerErrorFactory.AnswerOutOfRange(
+                    ruleId: context.Rule.Id,
+                    resourceType: context.Rule.ResourceType,
+                    severity: context.Rule.Severity,
+                    question: questionRef,
+                    min: constraints.Min,
+                    max: constraints.Max,
+                    actualValue: intValue,
+                    location: location,
+                    entryIndex: context.EntryIndex,
+                userHint: context.Rule.UserHint));
             }
         }
 
@@ -363,7 +723,29 @@ public class QuestionAnswerValidator
             }
             else
             {
-                errors.Add(QuestionAnswerErrorFactory.InvalidType(context, "Decimal", _valueExtractor.GetAnswerTypeName(context.ExtractedAnswer)));
+                var location = new ValidationLocation(
+                    FhirPath: context.CurrentPath,
+                    JsonPointer: null);
+                var questionRef = new QuestionRef(
+                    System: context.QuestionCoding?.System,
+                    Code: context.QuestionCoding?.Code ?? "unknown",
+                    Display: context.QuestionCoding?.Display);
+                var expected = new ExpectedAnswer(
+                    AnswerType: "decimal",
+                    Constraints: null);
+                var actual = new ActualAnswer(
+                    AnswerType: _valueExtractor.GetAnswerTypeName(context.ExtractedAnswer),
+                    Value: context.ExtractedAnswer);
+                errors.Add(QuestionAnswerErrorFactory.InvalidAnswerValue(
+                    ruleId: context.Rule.Id,
+                    resourceType: context.Rule.ResourceType,
+                    severity: context.Rule.Severity,
+                    question: questionRef,
+                    expected: expected,
+                    actual: actual,
+                    location: location,
+                    entryIndex: context.EntryIndex,
+                userHint: context.Rule.UserHint));
                 return errors;
             }
         }
@@ -372,13 +754,41 @@ public class QuestionAnswerValidator
         var constraints = question.Constraints;
         if (constraints != null)
         {
+            var location = new ValidationLocation(
+                FhirPath: context.CurrentPath,
+                JsonPointer: null);
+            var questionRef = new QuestionRef(
+                System: context.QuestionCoding?.System,
+                Code: context.QuestionCoding?.Code ?? "unknown",
+                Display: context.QuestionCoding?.Display);
+            
             if (constraints.Min.HasValue && decValue < constraints.Min.Value)
             {
-                errors.Add(QuestionAnswerErrorFactory.ValueOutOfRange(context, constraints.Min, constraints.Max, decValue));
+                errors.Add(QuestionAnswerErrorFactory.AnswerOutOfRange(
+                    ruleId: context.Rule.Id,
+                    resourceType: context.Rule.ResourceType,
+                    severity: context.Rule.Severity,
+                    question: questionRef,
+                    min: constraints.Min,
+                    max: constraints.Max,
+                    actualValue: decValue,
+                    location: location,
+                    entryIndex: context.EntryIndex,
+                userHint: context.Rule.UserHint));
             }
             else if (constraints.Max.HasValue && decValue > constraints.Max.Value)
             {
-                errors.Add(QuestionAnswerErrorFactory.ValueOutOfRange(context, constraints.Min, constraints.Max, decValue));
+                errors.Add(QuestionAnswerErrorFactory.AnswerOutOfRange(
+                    ruleId: context.Rule.Id,
+                    resourceType: context.Rule.ResourceType,
+                    severity: context.Rule.Severity,
+                    question: questionRef,
+                    min: constraints.Min,
+                    max: constraints.Max,
+                    actualValue: decValue,
+                    location: location,
+                    entryIndex: context.EntryIndex,
+                userHint: context.Rule.UserHint));
             }
         }
 
@@ -394,17 +804,62 @@ public class QuestionAnswerValidator
 
         if (context.ExtractedAnswer is not string strValue)
         {
-            errors.Add(QuestionAnswerErrorFactory.InvalidType(context, "String", _valueExtractor.GetAnswerTypeName(context.ExtractedAnswer)));
+            var location = new ValidationLocation(
+                FhirPath: context.CurrentPath,
+                JsonPointer: null);
+            var questionRef = new QuestionRef(
+                System: context.QuestionCoding?.System,
+                Code: context.QuestionCoding?.Code ?? "unknown",
+                Display: context.QuestionCoding?.Display);
+            var expected = new ExpectedAnswer(
+                AnswerType: "string",
+                Constraints: null);
+            var actual = new ActualAnswer(
+                AnswerType: _valueExtractor.GetAnswerTypeName(context.ExtractedAnswer),
+                Value: context.ExtractedAnswer);
+            errors.Add(QuestionAnswerErrorFactory.InvalidAnswerValue(
+                ruleId: context.Rule.Id,
+                resourceType: context.Rule.ResourceType,
+                severity: context.Rule.Severity,
+                question: questionRef,
+                expected: expected,
+                actual: actual,
+                location: location,
+                entryIndex: context.EntryIndex,
+                userHint: context.Rule.UserHint));
             return errors;
         }
 
         var constraints = question.Constraints;
         if (constraints != null)
         {
+            var location = new ValidationLocation(
+                FhirPath: context.CurrentPath,
+                JsonPointer: null);
+            var questionRef = new QuestionRef(
+                System: context.QuestionCoding?.System,
+                Code: context.QuestionCoding?.Code ?? "unknown",
+                Display: context.QuestionCoding?.Display);
+            
             // Check max length
             if (constraints.MaxLength.HasValue && strValue.Length > constraints.MaxLength.Value)
             {
-                errors.Add(QuestionAnswerErrorFactory.MaxLengthExceeded(context, constraints.MaxLength.Value, strValue.Length));
+                var expected = new ExpectedAnswer(
+                    AnswerType: "string",
+                    Constraints: new Dictionary<string, object> { ["maxLength"] = constraints.MaxLength.Value });
+                var actual = new ActualAnswer(
+                    AnswerType: "string",
+                    Value: new { value = strValue, length = strValue.Length });
+                errors.Add(QuestionAnswerErrorFactory.InvalidAnswerValue(
+                    ruleId: context.Rule.Id,
+                    resourceType: context.Rule.ResourceType,
+                    severity: context.Rule.Severity,
+                    question: questionRef,
+                    expected: expected,
+                    actual: actual,
+                    location: location,
+                    entryIndex: context.EntryIndex,
+                userHint: context.Rule.UserHint));
             }
 
             // Check regex
@@ -414,7 +869,22 @@ public class QuestionAnswerValidator
                 {
                     if (!System.Text.RegularExpressions.Regex.IsMatch(strValue, constraints.Regex))
                     {
-                        errors.Add(QuestionAnswerErrorFactory.RegexMismatch(context, constraints.Regex, strValue));
+                        var expected = new ExpectedAnswer(
+                            AnswerType: "string",
+                            Constraints: new Dictionary<string, object> { ["pattern"] = constraints.Regex });
+                        var actual = new ActualAnswer(
+                            AnswerType: "string",
+                            Value: strValue);
+                        errors.Add(QuestionAnswerErrorFactory.InvalidAnswerValue(
+                            ruleId: context.Rule.Id,
+                            resourceType: context.Rule.ResourceType,
+                            severity: context.Rule.Severity,
+                            question: questionRef,
+                            expected: expected,
+                            actual: actual,
+                            location: location,
+                            entryIndex: context.EntryIndex,
+                userHint: context.Rule.UserHint));
                     }
                 }
                 catch (Exception ex)
@@ -436,7 +906,29 @@ public class QuestionAnswerValidator
 
         if (context.ExtractedAnswer is not bool)
         {
-            errors.Add(QuestionAnswerErrorFactory.InvalidType(context, "Boolean", _valueExtractor.GetAnswerTypeName(context.ExtractedAnswer)));
+            var location = new ValidationLocation(
+                FhirPath: context.CurrentPath,
+                JsonPointer: null);
+            var questionRef = new QuestionRef(
+                System: context.QuestionCoding?.System,
+                Code: context.QuestionCoding?.Code ?? "unknown",
+                Display: context.QuestionCoding?.Display);
+            var expected = new ExpectedAnswer(
+                AnswerType: "boolean",
+                Constraints: null);
+            var actual = new ActualAnswer(
+                AnswerType: _valueExtractor.GetAnswerTypeName(context.ExtractedAnswer),
+                Value: context.ExtractedAnswer);
+            errors.Add(QuestionAnswerErrorFactory.InvalidAnswerValue(
+                ruleId: context.Rule.Id,
+                resourceType: context.Rule.ResourceType,
+                severity: context.Rule.Severity,
+                question: questionRef,
+                expected: expected,
+                actual: actual,
+                location: location,
+                entryIndex: context.EntryIndex,
+                userHint: context.Rule.UserHint));
         }
 
         // No constraints for boolean
@@ -471,7 +963,7 @@ public class QuestionAnswerValidator
             return false;
         }
 
-        // QuestionPath and AnswerPath might be in Params or as top-level properties
+        // QuestionPath and AnswerPath MUST be in Params (contract hardening)
         if (rule.Params.TryGetValue("questionPath", out var qpObj))
         {
             questionPath = qpObj?.ToString() ?? string.Empty;
@@ -482,22 +974,13 @@ public class QuestionAnswerValidator
             answerPath = apObj?.ToString() ?? string.Empty;
         }
 
-        // Check if they're stored as dedicated properties (from frontend)
-        // The frontend stores questionPath and answerPath directly on the rule
-        var ruleJson = JsonSerializer.Serialize(rule);
-        var ruleDict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(ruleJson);
-        
-        if (ruleDict != null)
+        // Warn if paths are missing (frontend must write them into Params)
+        if (string.IsNullOrEmpty(questionPath) || string.IsNullOrEmpty(answerPath))
         {
-            if (string.IsNullOrEmpty(questionPath) && ruleDict.TryGetValue("questionPath", out var qpElem))
-            {
-                questionPath = qpElem.GetString() ?? string.Empty;
-            }
-            
-            if (string.IsNullOrEmpty(answerPath) && ruleDict.TryGetValue("answerPath", out var apElem))
-            {
-                answerPath = apElem.GetString() ?? string.Empty;
-            }
+            _logger.LogWarning(
+                "QuestionAnswer rule {RuleId} missing questionPath/answerPath in Params. " +
+                "Ensure authoring writes them into rule.Params.",
+                rule.Id);
         }
 
         return !string.IsNullOrEmpty(questionSetId) && 
@@ -507,14 +990,15 @@ public class QuestionAnswerValidator
 
     /// <summary>
     /// Load QuestionSet from storage
+    /// NOTE: Stub implementation until QuestionSet service exists.
+    /// Returns null to trigger QuestionSetDataMissing error (returned ONCE per rule, not per resource).
     /// </summary>
     private async Task<QuestionSet?> LoadQuestionSetAsync(string projectId, string questionSetId, CancellationToken cancellationToken)
     {
         try
         {
-            // Note: This assumes a QuestionSet service exists
+            // TODO: Implement QuestionSet service integration
             // For now, return null to trigger advisory error
-            // TODO: Implement QuestionSet service
             return null;
         }
         catch (Exception ex)
@@ -550,74 +1034,15 @@ public class QuestionAnswerValidator
         return questions;
     }
 
-    /// <summary>
-    /// Evaluate rule path to get target resources
-    /// </summary>
-    private List<Resource> EvaluateRulePath(Bundle bundle, RuleDefinition rule)
-    {
-        var resources = new List<Resource>();
+    #endregion
 
-        try
-        {
-            // Get resources of the specified type
-            var targetResources = bundle.Entry
-                .Where(e => e.Resource != null && e.Resource.TypeName == rule.ResourceType)
-                .Select(e => e.Resource)
-                .ToList();
+    #region REMOVED: Traversal methods (now in IQuestionAnswerContextProvider)
 
-            resources.AddRange(targetResources);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error evaluating rule path: {Path}", rule.Path);
-        }
-
-        return resources;
-    }
-
-    /// <summary>
-    /// Get iteration nodes from resource
-    /// For example, if path is "Observation[*].component[*]", return all components
-    /// </summary>
-    private List<Base> GetIterationNodes(Resource resource, string rulePath)
-    {
-        var nodes = new List<Base>();
-
-        try
-        {
-            // Extract the iteration part (e.g., "component[*]")
-            // For now, assume the iteration is directly on the resource
-            // This is a simplified implementation
-            
-            // If path contains ".component", iterate over components
-            if (rulePath.Contains(".component", StringComparison.OrdinalIgnoreCase))
-            {
-                if (resource is Observation obs && obs.Component.Any())
-                {
-                    nodes.AddRange(obs.Component);
-                }
-            }
-            else
-            {
-                // Default: treat the resource itself as the iteration node
-                nodes.Add(resource);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting iteration nodes from path: {Path}", rulePath);
-        }
-
-        return nodes;
-    }
-
-    /// <summary>
-    /// Build current FHIRPath for error reporting
-    /// </summary>
-    private string BuildCurrentPath(Resource resource, string rulePath)
-    {
-        return $"Bundle.entry[?(@.resource.resourceType=='{resource.TypeName}')].resource";
-    }
+    // TRAVERSAL METHODS REMOVED:
+    // - EvaluateRulePath: Now handled by IQuestionAnswerContextProvider
+    // - GetIterationNodes: Now handled by IQuestionAnswerContextProvider  
+    // - BuildCurrentPath: Now handled by IQuestionAnswerContextProvider
+    // All FHIR structure traversal is encapsulated in the provider.
 
     #endregion
 }

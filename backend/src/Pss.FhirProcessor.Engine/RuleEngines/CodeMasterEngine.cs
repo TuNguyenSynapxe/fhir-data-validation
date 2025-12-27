@@ -45,7 +45,6 @@ public class CodeMasterEngine : ICodeMasterEngine
                     ResourceType = "Observation",
                     Path = "Observation.code",
                     ErrorCode = "UNKNOWN_SCREENING_TYPE",
-                    Message = $"Screening type '{screeningType}' not found in CodeMaster",
                     Details = new Dictionary<string, object>
                     {
                         ["screeningType"] = screeningType
@@ -107,7 +106,6 @@ public class CodeMasterEngine : ICodeMasterEngine
                 ResourceType = "Observation",
                 Path = $"Observation.component[{componentIndex}].code",
                 ErrorCode = "MISSING_QUESTION_CODE",
-                Message = "Component question code is missing",
                 EntryIndex = entryIndex,
                 ResourceId = resourceId
             });
@@ -126,7 +124,6 @@ public class CodeMasterEngine : ICodeMasterEngine
                 ResourceType = "Observation",
                 Path = $"Observation.component[{componentIndex}].code",
                 ErrorCode = "INVALID_QUESTION_CODE",
-                Message = $"Question code '{questionCode}' not allowed for screening type '{screeningDef.Code}'",
                 Details = new Dictionary<string, object>
                 {
                     ["questionCode"] = questionCode,
@@ -196,7 +193,6 @@ public class CodeMasterEngine : ICodeMasterEngine
                 ResourceType = "Observation",
                 Path = $"Observation.component[{componentIndex}].value",
                 ErrorCode = "MULTIPLE_VALUES_NOT_ALLOWED",
-                Message = $"Question '{questionDef.Code}' does not allow multiple values",
                 Details = new Dictionary<string, object>
                 {
                     ["questionCode"] = questionDef.Code,
@@ -223,7 +219,6 @@ public class CodeMasterEngine : ICodeMasterEngine
                     ResourceType = "Observation",
                     Path = $"Observation.component[{componentIndex}].value",
                     ErrorCode = "INVALID_ANSWER_VALUE",
-                    Message = $"Answer '{answerValue}' not allowed for question '{questionDef.Code}'",
                     Details = new Dictionary<string, object>
                     {
                         ["actualValue"] = answerValue,

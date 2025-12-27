@@ -425,7 +425,7 @@ public class ValidationPipelineTests
                     ResourceType = "Patient",
                     Path = "name[invalid syntax here",
                     Type = "Required",
-                    Message = "Invalid FHIRPath syntax"
+                    ErrorCode = "TEST_ERROR_CODE"
                 }
             }
         };

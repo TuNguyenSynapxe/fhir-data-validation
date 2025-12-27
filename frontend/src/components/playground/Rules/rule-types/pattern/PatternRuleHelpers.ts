@@ -5,17 +5,23 @@
  * - Default rule construction
  * - Absolute FHIRPath composition
  * - Pattern validation
+ * - ErrorCode-first architecture (Phase 3)
  */
+
+import type { InstanceScope } from '../../common/InstanceScope.types';
+import { composeInstanceScopedPath } from '../../common/InstanceScope.utils';
 
 interface PatternRuleData {
   resourceType: string;
-  instanceScope: 'all' | 'first';
+  instanceScope: InstanceScope;
   fieldPath: string;
   pattern: string;
   negate: boolean;
   caseSensitive: boolean;
   severity: 'error' | 'warning' | 'information';
-  message?: string;
+  errorCode: string;            // PHASE 3: errorCode is now primary
+  userHint?: string;            // PHASE 3: optional short hint
+  message?: string;             // DEPRECATED: backward compat only
 }
 
 interface Rule {
@@ -24,7 +30,9 @@ interface Rule {
   resourceType: string;
   path: string;
   severity: string;
-  message: string;
+  errorCode: string;            // PHASE 3: errorCode is now primary
+  userHint?: string;            // PHASE 3: optional short hint
+  message?: string;             // DEPRECATED: backward compat only
   params?: Record<string, any>;
   origin?: string;
   enabled?: boolean;
@@ -33,6 +41,7 @@ interface Rule {
 
 /**
  * Build a complete Pattern rule from form data
+ * PHASE 3: Uses errorCode + userHint instead of message
  */
 export function buildPatternRule(data: PatternRuleData): Rule {
   const {
@@ -43,11 +52,13 @@ export function buildPatternRule(data: PatternRuleData): Rule {
     negate,
     caseSensitive,
     severity,
+    errorCode,
+    userHint,
     message,
   } = data;
 
-  // Compose absolute FHIRPath with scope
-  const absolutePath = composeFhirPath(resourceType, instanceScope, fieldPath);
+  // Compose FHIRPath: instanceScope + fieldPath
+  const absolutePath = composeInstanceScopedPath(resourceType, instanceScope) + '.' + fieldPath;
 
   return {
     id: `rule-${Date.now()}`,
@@ -55,7 +66,9 @@ export function buildPatternRule(data: PatternRuleData): Rule {
     resourceType,
     path: absolutePath,
     severity,
-    message: message || getDefaultErrorMessage(negate),
+    errorCode,                    // PHASE 3: errorCode is primary
+    userHint: userHint || undefined, // PHASE 3: optional short hint
+    message: message || undefined,   // DEPRECATED: backward compat only
     params: {
       pattern,
       negate,
@@ -63,7 +76,7 @@ export function buildPatternRule(data: PatternRuleData): Rule {
     },
     origin: 'manual',
     enabled: true,
-    isMessageCustomized: !!message,
+    isMessageCustomized: false,      // No longer applicable with errorCode-first
   };
 }
 

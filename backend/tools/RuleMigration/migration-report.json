@@ -1,0 +1,77 @@
+{
+  "summary": {
+    "totalRules": 8,
+    "unchanged": 1,
+    "autoMigrated": 4,
+    "manualReviewRequired": 3
+  },
+  "rules": [
+    {
+      "ruleId": "R001",
+      "ruleType": "Required",
+      "status": "AUTO_MIGRATED_BY_TYPE",
+      "reason": "Assigned default errorCode for rule type \u0027Required\u0027",
+      "assignedErrorCode": "FIELD_REQUIRED",
+      "originalMessage": "Patient must have a name"
+    },
+    {
+      "ruleId": "R002",
+      "ruleType": "Pattern",
+      "status": "AUTO_MIGRATED_BY_TYPE",
+      "reason": "Assigned default errorCode for rule type \u0027Pattern\u0027",
+      "assignedErrorCode": "PATTERN_MISMATCH",
+      "originalMessage": "Email must be valid"
+    },
+    {
+      "ruleId": "R003",
+      "ruleType": "QuestionAnswer",
+      "status": "REQUIRES_MANUAL_REVIEW",
+      "reason": "Rule type \u0027QuestionAnswer\u0027 requires explicit errorCode selection. Multiple error codes are possible.",
+      "assignedErrorCode": null,
+      "originalMessage": "Invalid smoking status"
+    },
+    {
+      "ruleId": "R004",
+      "ruleType": "Required",
+      "status": "UNCHANGED",
+      "reason": "Rule already has errorCode",
+      "assignedErrorCode": "PATIENT_BIRTHDATE_MISSING",
+      "originalMessage": null
+    },
+    {
+      "ruleId": "R005",
+      "ruleType": "CustomFHIRPath",
+      "status": "REQUIRES_MANUAL_REVIEW",
+      "reason": "Rule type \u0027CustomFHIRPath\u0027 requires explicit errorCode selection. Multiple error codes are possible.",
+      "assignedErrorCode": null,
+      "originalMessage": "Custom validation failed"
+    },
+    {
+      "ruleId": "R006",
+      "ruleType": "FixedValue",
+      "status": "AUTO_MIGRATED_BY_TYPE",
+      "reason": "Assigned default errorCode for rule type \u0027FixedValue\u0027",
+      "assignedErrorCode": "VALUE_NOT_EQUAL",
+      "originalMessage": "Patient status must be active"
+    },
+    {
+      "ruleId": "R007",
+      "ruleType": "CodeMaster",
+      "status": "REQUIRES_MANUAL_REVIEW",
+      "reason": "Rule type \u0027CodeMaster\u0027 requires explicit errorCode selection. Multiple error codes are possible.",
+      "assignedErrorCode": null,
+      "originalMessage": "Invalid diagnosis code"
+    },
+    {
+      "ruleId": "R008",
+      "ruleType": "AllowedValues",
+      "status": "AUTO_MIGRATED_BY_TYPE",
+      "reason": "Assigned default errorCode for rule type \u0027AllowedValues\u0027",
+      "assignedErrorCode": "VALUE_NOT_ALLOWED",
+      "originalMessage": "Gender must be male, female, or other"
+    }
+  ],
+  "timestamp": "2025-12-27T12:26:09.972516Z",
+  "inputFile": "/Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tools/RuleMigration/sample-legacy-rules.json",
+  "outputFile": "/Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tools/RuleMigration/sample-migrated.json"
+}

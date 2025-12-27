@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { AlertCircle, HelpCircle } from 'lucide-react';
+import { HelpCircle, Code } from 'lucide-react';
 import { validateRelativePath } from './QuestionAnswerRuleHelpers';
+import { QuestionFieldBuilder } from './QuestionFieldBuilder';
+import { AnswerFieldBuilder } from './AnswerFieldBuilder';
 
 interface RelativePathFieldsProps {
   questionPath: string;
@@ -11,15 +13,25 @@ interface RelativePathFieldsProps {
     questionPath?: string;
     answerPath?: string;
   };
+  iterationScope?: string; // Used for the relative scope badge
 }
 
+/**
+ * UI-ONLY REFACTOR
+ * Provides both assisted and advanced modes for editing question/answer paths.
+ * Backend contracts, validation logic, and rule schemas remain unchanged.
+ */
 export const RelativePathFields: React.FC<RelativePathFieldsProps> = ({
   questionPath,
   answerPath,
   onQuestionPathChange,
   onAnswerPathChange,
   errors = {},
+  iterationScope,
 }) => {
+  // UI-ONLY: Mode toggle state
+  const [isAdvancedMode, setIsAdvancedMode] = useState(false);
+  
   const [questionPathError, setQuestionPathError] = useState<string | null>(null);
   const [answerPathError, setAnswerPathError] = useState<string | null>(null);
 
@@ -43,83 +55,135 @@ export const RelativePathFields: React.FC<RelativePathFieldsProps> = ({
     }
   }, [answerPath]);
 
+  // UI-ONLY: Auto-switch to advanced mode if path looks custom
+  useEffect(() => {
+    const standardPaths = [
+      'code.coding',
+      'code.coding[0]',
+      'identifier',
+      'linkId',
+      'valueQuantity',
+      'valueCodeableConcept',
+      'valueBoolean',
+      'valueString',
+      'valueInteger',
+      'valueDecimal',
+      'value[x]',
+    ];
+
+    const isQuestionStandard = !questionPath || standardPaths.some(p => 
+      questionPath.toLowerCase() === p.toLowerCase()
+    );
+    const isAnswerStandard = !answerPath || standardPaths.some(p => 
+      answerPath.toLowerCase() === p.toLowerCase()
+    );
+
+    // If either path is non-standard and we're not already in advanced mode, switch
+    if ((!isQuestionStandard || !isAnswerStandard) && !isAdvancedMode) {
+      setIsAdvancedMode(true);
+    }
+  }, [questionPath, answerPath, isAdvancedMode]);
+
   const displayQuestionError = errors.questionPath || questionPathError;
   const displayAnswerError = errors.answerPath || answerPathError;
 
   return (
     <div className="space-y-4">
-      {/* Info banner */}
-      <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-        <div className="flex items-start gap-2">
-          <HelpCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-          <div className="text-xs text-blue-800">
-            <p className="font-medium mb-1">Relative paths required</p>
-            <p>
-              These paths are evaluated <strong>relative to each iterated element</strong>.
-              Do not include the resource type or absolute paths.
-            </p>
+      {/* Mode Toggle */}
+      <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-md">
+        <div className="flex items-center gap-2">
+          <Code className="w-4 h-4 text-gray-600" />
+          <span className="text-sm font-medium text-gray-700">
+            {isAdvancedMode ? 'Advanced Mode' : 'Assisted Mode'}
+          </span>
+        </div>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <span className="text-xs text-gray-600">Edit as FHIRPath</span>
+          <input
+            type="checkbox"
+            checked={isAdvancedMode}
+            onChange={(e) => setIsAdvancedMode(e.target.checked)}
+            className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+          />
+        </label>
+      </div>
+
+      {/* Relative Scope Badge */}
+      {iterationScope && (
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-full">
+          <span className="text-xs font-medium text-blue-900">
+            Relative to:
+          </span>
+          <code className="text-xs font-mono text-blue-700 bg-white px-2 py-0.5 rounded border border-blue-300">
+            {iterationScope}
+          </code>
+          <div className="group relative">
+            <HelpCircle className="w-3 h-3 text-blue-600 cursor-help" />
+            <div className="absolute left-0 top-full mt-1 hidden group-hover:block w-64 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-10">
+              Paths below are evaluated relative to each repeated element
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Question Path */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Question Field (relative) <span className="text-red-500">*</span>
+          Question Field <span className="text-red-500">*</span>
         </label>
-        <input
-          type="text"
+        <QuestionFieldBuilder
           value={questionPath}
-          onChange={(e) => onQuestionPathChange(e.target.value)}
-          placeholder="e.g., code.coding"
-          className={`w-full px-3 py-2 border rounded-md font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            displayQuestionError ? 'border-red-300 bg-red-50' : 'border-gray-300'
-          }`}
+          onChange={onQuestionPathChange}
+          isAdvancedMode={isAdvancedMode}
+          error={displayQuestionError || undefined}
         />
-        {displayQuestionError && (
-          <div className="flex items-center gap-1 mt-1 text-xs text-red-600">
-            <AlertCircle size={12} />
-            <span>{displayQuestionError}</span>
-          </div>
+        {!isAdvancedMode && (
+          <p className="text-xs text-gray-500 mt-2">
+            Path to the field containing the question identifier
+          </p>
         )}
-        <p className="text-xs text-gray-500 mt-1">
-          Path to the field containing the question identifier (relative to iteration scope)
-        </p>
-        <div className="mt-1 text-xs text-gray-500">
-          Examples: <code className="bg-gray-100 px-1 rounded">code.coding</code>,{' '}
-          <code className="bg-gray-100 px-1 rounded">linkId</code>,{' '}
-          <code className="bg-gray-100 px-1 rounded">code.coding[0].code</code>
-        </div>
+        {isAdvancedMode && (
+          <>
+            <p className="text-xs text-gray-500 mt-2">
+              Path to the field containing the question identifier (relative to iteration scope)
+            </p>
+            <div className="mt-1 text-xs text-gray-500">
+              Examples: <code className="bg-gray-100 px-1 rounded">code.coding</code>,{' '}
+              <code className="bg-gray-100 px-1 rounded">linkId</code>,{' '}
+              <code className="bg-gray-100 px-1 rounded">code.coding[0].code</code>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Answer Path */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Answer Field (relative) <span className="text-red-500">*</span>
+          Answer Field <span className="text-red-500">*</span>
         </label>
-        <input
-          type="text"
+        <AnswerFieldBuilder
           value={answerPath}
-          onChange={(e) => onAnswerPathChange(e.target.value)}
-          placeholder="e.g., value[x]"
-          className={`w-full px-3 py-2 border rounded-md font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            displayAnswerError ? 'border-red-300 bg-red-50' : 'border-gray-300'
-          }`}
+          onChange={onAnswerPathChange}
+          isAdvancedMode={isAdvancedMode}
+          error={displayAnswerError || undefined}
         />
-        {displayAnswerError && (
-          <div className="flex items-center gap-1 mt-1 text-xs text-red-600">
-            <AlertCircle size={12} />
-            <span>{displayAnswerError}</span>
-          </div>
+        {!isAdvancedMode && (
+          <p className="text-xs text-gray-500 mt-2">
+            The FHIR data type that contains the answer value
+          </p>
         )}
-        <p className="text-xs text-gray-500 mt-1">
-          Path to the field containing the answer value (relative to iteration scope)
-        </p>
-        <div className="mt-1 text-xs text-gray-500">
-          Examples: <code className="bg-gray-100 px-1 rounded">value[x]</code>,{' '}
-          <code className="bg-gray-100 px-1 rounded">answer[0].value[x]</code>,{' '}
-          <code className="bg-gray-100 px-1 rounded">valueCodeableConcept</code>
-        </div>
+        {isAdvancedMode && (
+          <>
+            <p className="text-xs text-gray-500 mt-2">
+              Path to the field containing the answer value (relative to iteration scope)
+            </p>
+            <div className="mt-1 text-xs text-gray-500">
+              Examples: <code className="bg-gray-100 px-1 rounded">value[x]</code>,{' '}
+              <code className="bg-gray-100 px-1 rounded">answer[0].value[x]</code>,{' '}
+              <code className="bg-gray-100 px-1 rounded">valueCodeableConcept</code>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

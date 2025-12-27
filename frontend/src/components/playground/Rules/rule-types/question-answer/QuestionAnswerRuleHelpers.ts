@@ -5,6 +5,7 @@
  * - Default rule construction
  * - FHIRPath composition with relative paths
  * - Resource-specific defaults
+ * - ErrorCode-first architecture (Phase 3)
  */
 
 interface QuestionAnswerRuleData {
@@ -15,7 +16,9 @@ interface QuestionAnswerRuleData {
   answerPath: string;
   questionSetId: string;
   severity: 'error' | 'warning' | 'information';
-  message?: string;
+  errorCode: string;            // PHASE 3: errorCode is now primary
+  userHint?: string;            // PHASE 3: optional short hint
+  message?: string;             // DEPRECATED: backward compat only
 }
 
 interface Rule {
@@ -24,7 +27,9 @@ interface Rule {
   resourceType: string;
   path: string;
   severity: string;
-  message: string;
+  errorCode: string;            // PHASE 3: errorCode is now primary
+  userHint?: string;            // PHASE 3: optional short hint
+  message?: string;             // DEPRECATED: backward compat only
   params?: Record<string, any>;
   origin?: string;
   enabled?: boolean;
@@ -35,6 +40,12 @@ interface Rule {
 
 /**
  * Build a complete Question & Answer rule from form data
+ * 
+ * CRITICAL CONTRACT (Phase 3):
+ * - questionPath and answerPath MUST be in rule.params
+ * - Backend no longer infers or guesses paths
+ * - Missing params = validation skipped
+ * - errorCode is now primary (PHASE 3)
  */
 export function buildQuestionAnswerRule(data: QuestionAnswerRuleData): Rule {
   const {
@@ -45,6 +56,8 @@ export function buildQuestionAnswerRule(data: QuestionAnswerRuleData): Rule {
     answerPath,
     questionSetId,
     severity,
+    errorCode,
+    userHint,
     message,
   } = data;
 
@@ -56,16 +69,19 @@ export function buildQuestionAnswerRule(data: QuestionAnswerRuleData): Rule {
     type: 'QuestionAnswer',
     resourceType,
     path: scopedPath,
-    questionPath,
-    answerPath,
     severity,
-    message: message || getDefaultErrorMessage(),
+    errorCode,                    // PHASE 3: errorCode is primary
+    userHint: userHint || undefined, // PHASE 3: optional short hint
+    message: message || undefined,   // DEPRECATED: backward compat only
+    // CRITICAL: questionPath and answerPath MUST be in params (backend contract)
     params: {
       questionSetId,
+      questionPath,   // ← Backend reads from here (not top-level)
+      answerPath,     // ← Backend reads from here (not top-level)
     },
     origin: 'manual',
     enabled: true,
-    isMessageCustomized: !!message,
+    isMessageCustomized: false,      // No longer applicable with errorCode-first
   };
 }
 
@@ -166,6 +182,63 @@ export function validateRelativePath(path: string): string | null {
   }
   
   return null;
+}
+
+/**
+ * Validate that paths align with iteration scope (Phase 3.x requirement)
+ * Returns warning message if paths may not align with backend traversal
+ */
+export function validatePathAlignment(
+  iterationScope: string,
+  questionPath: string,
+  answerPath: string
+): string | null {
+  if (!iterationScope || (!questionPath && !answerPath)) return null;
+  
+  // Extract iteration root (e.g., "component[*]" -> "component")
+  const iterationRoot = iterationScope.replace(/\[[^\]]*\]/g, '').split('.')[0];
+  
+  // Check if paths incorrectly reference the iteration scope itself
+  const questionStartsWithRoot = questionPath.startsWith(iterationRoot + '.');
+  const answerStartsWithRoot = answerPath.startsWith(iterationRoot + '.');
+  
+  if (questionStartsWithRoot || answerStartsWithRoot) {
+    return `Paths should be relative to ${iterationRoot}, not include it. Remove "${iterationRoot}." prefix.`;
+  }
+  
+  return null;
+}
+
+/**
+ * Auto-derive question path from resource type and iteration context
+ */
+export function deriveQuestionPath(resourceType: string, _iterationScope: string): string {
+  // Default patterns based on resource type
+  const defaults: Record<string, string> = {
+    Observation: 'code.coding',
+    QuestionnaireResponse: 'linkId',
+    Condition: 'code.coding',
+    Procedure: 'code.coding',
+    MedicationStatement: 'medication.coding',
+  };
+  
+  return defaults[resourceType] || 'code.coding';
+}
+
+/**
+ * Auto-derive answer path from resource type and iteration context
+ */
+export function deriveAnswerPath(resourceType: string, _iterationScope: string): string {
+  // Default patterns based on resource type
+  const defaults: Record<string, string> = {
+    Observation: 'value[x]',
+    QuestionnaireResponse: 'answer[0].value[x]',
+    Condition: 'severity.coding',
+    Procedure: 'outcome.coding',
+    MedicationStatement: 'dosage[0].route.coding',
+  };
+  
+  return defaults[resourceType] || 'value[x]';
 }
 
 /**

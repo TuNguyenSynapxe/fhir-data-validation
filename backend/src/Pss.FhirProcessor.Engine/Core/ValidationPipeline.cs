@@ -9,6 +9,7 @@ using Pss.FhirProcessor.Engine.Firely;
 using Pss.FhirProcessor.Engine.Authoring;
 using Hl7.Fhir.Utility;
 using Pss.FhirProcessor.Engine.Validation.QuestionAnswer;
+using Pss.FhirProcessor.Engine.Core.Execution;
 
 namespace Pss.FhirProcessor.Engine.Core;
 
@@ -31,6 +32,7 @@ public class ValidationPipeline : IValidationPipeline
     private readonly IUnifiedErrorModelBuilder _errorBuilder;
     private readonly ISystemRuleSuggestionService _suggestionService;
     private readonly QuestionAnswerValidator? _questionAnswerValidator;
+    private readonly IQuestionAnswerContextProvider? _contextProvider;
     private readonly ILogger<ValidationPipeline> _logger;
     
     public ValidationPipeline(
@@ -43,7 +45,8 @@ public class ValidationPipeline : IValidationPipeline
         IUnifiedErrorModelBuilder errorBuilder,
         ISystemRuleSuggestionService suggestionService,
         ILogger<ValidationPipeline> logger,
-        QuestionAnswerValidator? questionAnswerValidator = null)
+        QuestionAnswerValidator? questionAnswerValidator = null,
+        IQuestionAnswerContextProvider? contextProvider = null)
     {
         _lintService = lintService;
         _specHintService = specHintService;
@@ -54,6 +57,7 @@ public class ValidationPipeline : IValidationPipeline
         _errorBuilder = errorBuilder;
         _suggestionService = suggestionService;
         _questionAnswerValidator = questionAnswerValidator;
+        _contextProvider = contextProvider;
         _logger = logger;
     }
     
@@ -227,21 +231,50 @@ public class ValidationPipeline : IValidationPipeline
             
             // Step 4.5: QuestionAnswer Validation (Phase 3D)
             // Validates Question/Answer constraints based on QuestionAnswer rules
-            if (_questionAnswerValidator != null && bundle != null && ruleSet?.Rules != null && ruleSet.Rules.Any())
+            // OPTIMIZATION (Phase 3.5): Compute traversal context once per rule and reuse
+            if (_questionAnswerValidator != null && _contextProvider != null && bundle != null && ruleSet?.Rules != null && ruleSet.Rules.Any())
             {
                 try
                 {
                     // Extract projectId from request if available
                     var projectId = request.ProjectId ?? "default";
                     
-                    var questionAnswerResult = await _questionAnswerValidator.ValidateAsync(bundle, ruleSet, projectId, cancellationToken);
-                    var qaErrors = await _errorBuilder.FromRuleErrorsAsync(questionAnswerResult.Errors, request.BundleJson, bundle, cancellationToken);
-                    response.Errors.AddRange(qaErrors);
+                    // Build execution contexts once per rule (Phase 3.5 optimization)
+                    var questionAnswerRules = ruleSet.Rules
+                        .Where(r => r.Type.Equals("QuestionAnswer", StringComparison.OrdinalIgnoreCase))
+                        .ToList();
                     
-                    // Log advisory notes
-                    foreach (var note in questionAnswerResult.AdvisoryNotes)
+                    if (questionAnswerRules.Any())
                     {
-                        _logger.LogInformation("QuestionAnswer advisory: {Note}", note);
+                        _logger.LogDebug("Building execution contexts for {RuleCount} QuestionAnswer rules", questionAnswerRules.Count);
+                        
+                        var contexts = questionAnswerRules.Select(rule =>
+                        {
+                            // Resolve traversal seeds ONCE per rule
+                            var seeds = _contextProvider.Resolve(bundle, rule).ToList();
+                            
+                            _logger.LogDebug("Rule {RuleId}: Resolved {SeedCount} validation contexts", rule.Id, seeds.Count);
+                            
+                            return new RuleExecutionContext
+                            {
+                                Rule = rule,
+                                Bundle = bundle,
+                                QuestionAnswerSeeds = seeds,
+                                EntryIndex = null // Not used for QuestionAnswer (uses seeds instead)
+                            };
+                        }).ToList();
+                        
+                        _logger.LogDebug("Executing QuestionAnswer validation with pre-computed contexts");
+                        
+                        var questionAnswerResult = await _questionAnswerValidator.ValidateAsync(contexts, projectId, cancellationToken);
+                        var qaErrors = await _errorBuilder.FromRuleErrorsAsync(questionAnswerResult.Errors, request.BundleJson, bundle, cancellationToken);
+                        response.Errors.AddRange(qaErrors);
+                        
+                        // Log advisory notes
+                        foreach (var note in questionAnswerResult.AdvisoryNotes)
+                        {
+                            _logger.LogInformation("QuestionAnswer advisory: {Note}", note);
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -521,10 +554,32 @@ public class ValidationPipeline : IValidationPipeline
             if (string.IsNullOrWhiteSpace(rulesJson))
                 return null;
             
-            return JsonSerializer.Deserialize<RuleSet>(rulesJson, new JsonSerializerOptions
+            var ruleSet = JsonSerializer.Deserialize<RuleSet>(rulesJson, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
             });
+            
+            // PHASE 4: Enforce ErrorCode presence on all rules
+            if (ruleSet?.Rules != null)
+            {
+                foreach (var rule in ruleSet.Rules)
+                {
+                    if (string.IsNullOrWhiteSpace(rule.ErrorCode))
+                    {
+                        throw new InvalidOperationException(
+                            $"Rule '{rule.Id}' is invalid: errorCode is required. " +
+                            "Legacy message-based rules are no longer supported."
+                        );
+                    }
+                }
+            }
+            
+            return ruleSet;
+        }
+        catch (InvalidOperationException)
+        {
+            // Re-throw validation exceptions
+            throw;
         }
         catch
         {

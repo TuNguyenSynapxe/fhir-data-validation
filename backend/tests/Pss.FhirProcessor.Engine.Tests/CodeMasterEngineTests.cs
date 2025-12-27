@@ -1041,6 +1041,5 @@ public class CodeMasterEngineTests
             error.Path.Should().Be(expectedPath);
         }
         error.Path.Should().NotBeNullOrEmpty();
-        error.Message.Should().NotBeNullOrEmpty();
     }
 }

@@ -2,6 +2,7 @@ namespace Pss.FhirProcessor.Engine.Models;
 
 /// <summary>
 /// Validation error from business rule evaluation
+/// STRUCTURED DATA ONLY - Frontend renders all messages
 /// </summary>
 public class RuleValidationError
 {
@@ -10,8 +11,18 @@ public class RuleValidationError
     public required string Severity { get; set; }
     public required string ResourceType { get; set; }
     public required string Path { get; set; }
-    public string? ErrorCode { get; set; }
-    public required string Message { get; set; }
+    
+    /// <summary>
+    /// REQUIRED: Error code for frontend message mapping
+    /// </summary>
+    public required string ErrorCode { get; set; }
+    
+    /// <summary>
+    /// OPTIONAL: Short contextual hint (max 60 chars, NOT a sentence)
+    /// Passthrough from rule definition
+    /// </summary>
+    public string? UserHint { get; set; }
+    
     public Dictionary<string, object>? Details { get; set; }
     public int? EntryIndex { get; set; }
     public string? ResourceId { get; set; }

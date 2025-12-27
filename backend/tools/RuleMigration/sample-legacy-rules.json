@@ -1,0 +1,78 @@
+{
+  "projectId": "test-migration",
+  "rules": [
+    {
+      "id": "R001",
+      "type": "Required",
+      "resourceType": "Patient",
+      "path": "Patient.name",
+      "severity": "error",
+      "message": "Patient must have a name",
+      "params": {}
+    },
+    {
+      "id": "R002",
+      "type": "Pattern",
+      "resourceType": "Patient",
+      "path": "Patient.telecom.where(system='email').value",
+      "severity": "error",
+      "message": "Email must be valid",
+      "params": { "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$" }
+    },
+    {
+      "id": "R003",
+      "type": "QuestionAnswer",
+      "resourceType": "Observation",
+      "path": "Observation.where(code.coding.code='smoking-status')",
+      "severity": "warning",
+      "message": "Invalid smoking status",
+      "params": {}
+    },
+    {
+      "id": "R004",
+      "type": "Required",
+      "resourceType": "Patient",
+      "path": "Patient.birthDate",
+      "severity": "error",
+      "errorCode": "PATIENT_BIRTHDATE_MISSING",
+      "userHint": "Date of birth",
+      "params": {}
+    },
+    {
+      "id": "R005",
+      "type": "CustomFHIRPath",
+      "resourceType": "Patient",
+      "path": "Patient.where(gender='male' and birthDate < today()).exists()",
+      "severity": "error",
+      "message": "Custom validation failed",
+      "params": {}
+    },
+    {
+      "id": "R006",
+      "type": "FixedValue",
+      "resourceType": "Patient",
+      "path": "Patient.active",
+      "severity": "error",
+      "message": "Patient status must be active",
+      "params": { "expectedValue": "true" }
+    },
+    {
+      "id": "R007",
+      "type": "CodeMaster",
+      "resourceType": "Condition",
+      "path": "Condition.code.coding.code",
+      "severity": "error",
+      "message": "Invalid diagnosis code",
+      "params": { "codeSystem": "ICD-10" }
+    },
+    {
+      "id": "R008",
+      "type": "AllowedValues",
+      "resourceType": "Patient",
+      "path": "Patient.gender",
+      "severity": "error",
+      "message": "Gender must be male, female, or other",
+      "params": { "allowedValues": ["male", "female", "other", "unknown"] }
+    }
+  ]
+}

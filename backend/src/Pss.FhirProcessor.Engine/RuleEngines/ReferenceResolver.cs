@@ -130,7 +130,6 @@ public class ReferenceResolver : IReferenceResolver
                     ResourceType = resource.TypeName,
                     Path = refPath,
                     ErrorCode = "REFERENCE_NOT_FOUND",
-                    Message = message,
                     Details = new Dictionary<string, object>
                     {
                         ["reference"] = reference.Reference
@@ -156,7 +155,6 @@ public class ReferenceResolver : IReferenceResolver
                         ResourceType = resource.TypeName,
                         Path = refPath,
                         ErrorCode = "REFERENCE_TYPE_MISMATCH",
-                        Message = $"Reference type mismatch. Expected: {string.Join(", ", expectedTypes)}, Found: {targetResource.ResourceType}",
                         Details = new Dictionary<string, object>
                         {
                             ["reference"] = reference.Reference,

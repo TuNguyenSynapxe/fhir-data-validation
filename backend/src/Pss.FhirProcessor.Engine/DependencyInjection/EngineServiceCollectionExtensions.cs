@@ -117,6 +117,7 @@ public static class EngineServiceCollectionExtensions
         });
 
         // Register QuestionAnswer validation services (Phase 3D)
+        services.AddScoped<IQuestionAnswerContextProvider, DefaultQuestionAnswerContextProvider>();
         services.AddScoped<QuestionAnswerValueExtractor>();
         services.AddScoped<QuestionAnswerValidator>();
 

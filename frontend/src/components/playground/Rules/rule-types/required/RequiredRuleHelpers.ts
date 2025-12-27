@@ -4,7 +4,7 @@
  * Responsibilities:
  * - Default rule construction
  * - FHIRPath composition
- * - Human-readable defaults
+ * - ErrorCode-first architecture (Phase 3)
  * 
  * Phase 4: Instance scope uses structured drawer-based selection
  */
@@ -17,7 +17,9 @@ interface RequiredRuleData {
   instanceScope: InstanceScope; // Structured instance scope (first/all/filter)
   fieldPath: string;
   severity: 'error' | 'warning' | 'information';
-  message?: string;
+  errorCode: string;            // PHASE 3: errorCode is now primary
+  userHint?: string;            // PHASE 3: optional short hint
+  message?: string;             // DEPRECATED: backward compat only
 }
 
 interface Rule {
@@ -26,7 +28,9 @@ interface Rule {
   resourceType: string;
   path: string;
   severity: string;
-  message: string;
+  errorCode: string;            // PHASE 3: errorCode is now primary
+  userHint?: string;            // PHASE 3: optional short hint
+  message?: string;             // DEPRECATED: backward compat only
   params?: Record<string, any>;
   origin?: string;
   enabled?: boolean;
@@ -35,10 +39,10 @@ interface Rule {
 
 /**
  * Build a complete Required rule from form data
- * Phase 4: Uses InstanceScope model for structured scoping
+ * PHASE 3: Uses errorCode + userHint instead of message
  */
 export function buildRequiredRule(data: RequiredRuleData): Rule {
-  const { resourceType, instanceScope, fieldPath, severity, message } = data;
+  const { resourceType, instanceScope, fieldPath, severity, errorCode, userHint, message } = data;
   
   // Compose FHIRPath: instanceScope + fieldPath
   const fullPath = composeFhirPath(resourceType, instanceScope, fieldPath);
@@ -49,10 +53,12 @@ export function buildRequiredRule(data: RequiredRuleData): Rule {
     resourceType,
     path: fullPath,
     severity,
-    message: message || getDefaultErrorMessage(resourceType, fieldPath),
+    errorCode,                    // PHASE 3: errorCode is primary
+    userHint: userHint || undefined, // PHASE 3: optional short hint
+    message: message || undefined,   // DEPRECATED: backward compat only
     origin: 'manual',
     enabled: true,
-    isMessageCustomized: !!message,
+    isMessageCustomized: false,      // No longer applicable with errorCode-first
   };
 }
 

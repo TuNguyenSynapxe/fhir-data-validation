@@ -36,7 +36,7 @@ public class RuleEvaluationFallbackTests
             Type = "Required",
             ResourceType = "Patient",
             Path = "gender",
-            Message = "Gender is required"
+            ErrorCode = "TEST_ERROR_CODE"
         };
         var patient = new Patient { Gender = AdministrativeGender.Male };
         var json = @"{""resourceType"": ""Patient"", ""gender"": ""male""}";
@@ -60,7 +60,7 @@ public class RuleEvaluationFallbackTests
             Type = "Required",
             ResourceType = "Patient",
             Path = "gender",
-            Message = "Gender is required"
+            ErrorCode = "TEST_ERROR_CODE"
         };
         
         // Act
@@ -82,7 +82,7 @@ public class RuleEvaluationFallbackTests
             Type = "CustomFHIRPath",
             ResourceType = "Patient",
             Path = "name.exists()",
-            Message = "Name must exist"
+            ErrorCode = "TEST_ERROR_CODE"
         };
         var patient = new Patient();
         var json = "{}";
@@ -106,7 +106,7 @@ public class RuleEvaluationFallbackTests
             Type = "Required",
             ResourceType = "Patient",
             Path = "extension.where(url='http://example.com').value",
-            Message = "Extension value required"
+            ErrorCode = "TEST_ERROR_CODE"
         };
         var patient = new Patient();
         var json = "{}";
@@ -130,7 +130,7 @@ public class RuleEvaluationFallbackTests
             Type = "Required",
             ResourceType = "Patient",
             Path = "name[0].given",
-            Message = "First name is required"
+            ErrorCode = "TEST_ERROR_CODE"
         };
         var patient = new Patient();
         var json = @"{
@@ -159,7 +159,7 @@ public class RuleEvaluationFallbackTests
             Type = "Required",
             ResourceType = "Patient",
             Path = "contact.name",
-            Message = "Contact name required"
+            ErrorCode = "TEST_ERROR_CODE"
         };
         var patient = new Patient();
         var json = @"{

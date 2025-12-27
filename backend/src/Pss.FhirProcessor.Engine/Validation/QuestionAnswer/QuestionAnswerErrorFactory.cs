@@ -1,250 +1,330 @@
 using Pss.FhirProcessor.Engine.Models;
+using Pss.FhirProcessor.Engine.Validation.QuestionAnswer.Models;
 
 namespace Pss.FhirProcessor.Engine.Validation.QuestionAnswer;
 
 /// <summary>
-/// Generates structured validation errors for Question/Answer validation
+/// REFACTORED: Generates STRUCTURED validation errors (NO PROSE)
+/// Frontend owns all message wording
+/// Backend returns machine-readable facts only
 /// </summary>
-public class QuestionAnswerErrorFactory
+public static class QuestionAnswerErrorFactory
 {
     /// <summary>
-    /// Create error for missing required answer
+    /// Guard: Ensure no prose is emitted from backend
+    /// Allows short labels only (max 60 chars, no sentence punctuation)
     /// </summary>
-    public static RuleValidationError RequiredMissing(QuestionAnswerContext context)
+    private static void EnsureNoProse(string? value, string paramName)
     {
-        return new RuleValidationError
-        {
-            RuleId = context.Rule.Id,
-            RuleType = "QuestionAnswer",
-            Severity = context.Rule.Severity,
-            ResourceType = context.Rule.ResourceType,
-            Path = context.CurrentPath,
-            ErrorCode = "REQUIRED_MISSING",
-            Message = $"Required question '{context.QuestionCoding?.Code}' has no answer",
-            EntryIndex = context.EntryIndex,
-            Details = new Dictionary<string, object>
-            {
-                ["source"] = "QuestionAnswer",
-                ["questionCode"] = context.QuestionCoding?.Code ?? "unknown",
-                ["questionSystem"] = context.QuestionCoding?.System ?? "",
-                ["isRequired"] = context.IsRequired
-            }
-        };
+        if (string.IsNullOrWhiteSpace(value)) return;
+
+        if (value.Length > 60)
+            throw new InvalidOperationException(
+                $"Backend must not emit prose in {paramName}. Max 60 chars. Use ErrorCode instead.");
+
+        if (value.Contains('.') && !value.EndsWith("..."))
+            throw new InvalidOperationException(
+                $"Backend must not emit sentences in {paramName}. Use ErrorCode instead.");
     }
 
     /// <summary>
-    /// Create error for invalid answer type
+    /// Create structured error for invalid answer value/type
     /// </summary>
-    public static RuleValidationError InvalidType(QuestionAnswerContext context, string expectedType, string actualType)
+    public static RuleValidationError InvalidAnswerValue(
+        string ruleId,
+        string resourceType,
+        string severity,
+        QuestionRef question,
+        ExpectedAnswer expected,
+        ActualAnswer actual,
+        ValidationLocation location,
+        int? entryIndex = null,
+        string? userHint = null)
     {
-        return new RuleValidationError
-        {
-            RuleId = context.Rule.Id,
-            RuleType = "QuestionAnswer",
-            Severity = context.Rule.Severity,
-            ResourceType = context.Rule.ResourceType,
-            Path = context.CurrentPath,
-            ErrorCode = "INVALID_TYPE",
-            Message = $"Question '{context.QuestionCoding?.Code}' expects {expectedType} but got {actualType}",
-            EntryIndex = context.EntryIndex,
-            Details = new Dictionary<string, object>
-            {
-                ["source"] = "QuestionAnswer",
-                ["questionCode"] = context.QuestionCoding?.Code ?? "unknown",
-                ["expectedType"] = expectedType,
-                ["actualType"] = actualType
-            }
-        };
-    }
-
-    /// <summary>
-    /// Create error for value out of range
-    /// </summary>
-    public static RuleValidationError ValueOutOfRange(QuestionAnswerContext context, decimal? min, decimal? max, decimal actual)
-    {
-        var rangeText = (min.HasValue, max.HasValue) switch
-        {
-            (true, true) => $"{min} to {max}",
-            (true, false) => $"at least {min}",
-            (false, true) => $"at most {max}",
-            _ => "valid range"
-        };
+        EnsureNoProse(userHint, nameof(userHint));
 
         return new RuleValidationError
         {
-            RuleId = context.Rule.Id,
-            RuleType = "QuestionAnswer",
-            Severity = context.Rule.Severity,
-            ResourceType = context.Rule.ResourceType,
-            Path = context.CurrentPath,
-            ErrorCode = "VALUE_OUT_OF_RANGE",
-            Message = $"Question '{context.QuestionCoding?.Code}' value {actual} is outside {rangeText}",
-            EntryIndex = context.EntryIndex,
-            Details = new Dictionary<string, object>
-            {
-                ["source"] = "QuestionAnswer",
-                ["questionCode"] = context.QuestionCoding?.Code ?? "unknown",
-                ["value"] = actual,
-                ["min"] = min ?? (object)"none",
-                ["max"] = max ?? (object)"none"
-            }
-        };
-    }
-
-    /// <summary>
-    /// Create error for invalid code
-    /// </summary>
-    public static RuleValidationError InvalidCode(QuestionAnswerContext context, string code, string system, string valueSetUrl, string bindingStrength)
-    {
-        var severity = bindingStrength.ToLowerInvariant() switch
-        {
-            "required" => "error",
-            "extensible" => "warning",
-            _ => "information"
-        };
-
-        return new RuleValidationError
-        {
-            RuleId = context.Rule.Id,
+            RuleId = ruleId,
             RuleType = "QuestionAnswer",
             Severity = severity,
-            ResourceType = context.Rule.ResourceType,
-            Path = context.CurrentPath,
-            ErrorCode = "INVALID_CODE",
-            Message = $"Code '{system}|{code}' is not in ValueSet '{valueSetUrl}' (binding: {bindingStrength})",
-            EntryIndex = context.EntryIndex,
-            Details = new Dictionary<string, object>
-            {
-                ["source"] = "QuestionAnswer",
-                ["questionCode"] = context.QuestionCoding?.Code ?? "unknown",
-                ["codeSystem"] = system,
-                ["code"] = code,
-                ["valueSet"] = valueSetUrl,
-                ["bindingStrength"] = bindingStrength
-            }
-        };
-    }
-
-    /// <summary>
-    /// Create error for invalid unit
-    /// </summary>
-    public static RuleValidationError InvalidUnit(QuestionAnswerContext context, string expectedUnit, string actualUnit)
-    {
-        return new RuleValidationError
-        {
-            RuleId = context.Rule.Id,
-            RuleType = "QuestionAnswer",
-            Severity = context.Rule.Severity,
-            ResourceType = context.Rule.ResourceType,
-            Path = context.CurrentPath,
-            ErrorCode = "INVALID_UNIT",
-            Message = $"Question '{context.QuestionCoding?.Code}' expects unit '{expectedUnit}' but got '{actualUnit}'",
-            EntryIndex = context.EntryIndex,
-            Details = new Dictionary<string, object>
-            {
-                ["source"] = "QuestionAnswer",
-                ["questionCode"] = context.QuestionCoding?.Code ?? "unknown",
-                ["expectedUnit"] = expectedUnit,
-                ["actualUnit"] = actualUnit
-            }
-        };
-    }
-
-    /// <summary>
-    /// Create error for regex mismatch
-    /// </summary>
-    public static RuleValidationError RegexMismatch(QuestionAnswerContext context, string pattern, string value)
-    {
-        return new RuleValidationError
-        {
-            RuleId = context.Rule.Id,
-            RuleType = "QuestionAnswer",
-            Severity = context.Rule.Severity,
-            ResourceType = context.Rule.ResourceType,
-            Path = context.CurrentPath,
-            ErrorCode = "REGEX_MISMATCH",
-            Message = $"Answer '{value}' does not match required pattern '{pattern}'",
-            EntryIndex = context.EntryIndex,
-            Details = new Dictionary<string, object>
-            {
-                ["source"] = "QuestionAnswer",
-                ["questionCode"] = context.QuestionCoding?.Code ?? "unknown",
-                ["pattern"] = pattern,
-                ["value"] = value
-            }
-        };
-    }
-
-    /// <summary>
-    /// Create error for max length exceeded
-    /// </summary>
-    public static RuleValidationError MaxLengthExceeded(QuestionAnswerContext context, int maxLength, int actualLength)
-    {
-        return new RuleValidationError
-        {
-            RuleId = context.Rule.Id,
-            RuleType = "QuestionAnswer",
-            Severity = context.Rule.Severity,
-            ResourceType = context.Rule.ResourceType,
-            Path = context.CurrentPath,
-            ErrorCode = "MAX_LENGTH_EXCEEDED",
-            Message = $"Answer length {actualLength} exceeds maximum {maxLength}",
-            EntryIndex = context.EntryIndex,
-            Details = new Dictionary<string, object>
-            {
-                ["source"] = "QuestionAnswer",
-                ["questionCode"] = context.QuestionCoding?.Code ?? "unknown",
-                ["maxLength"] = maxLength,
-                ["actualLength"] = actualLength
-            }
-        };
-    }
-
-    /// <summary>
-    /// Create error for question not in set
-    /// </summary>
-    public static RuleValidationError QuestionNotInSet(QuestionAnswerContext context, string questionCode)
-    {
-        return new RuleValidationError
-        {
-            RuleId = context.Rule.Id,
-            RuleType = "QuestionAnswer",
-            Severity = "warning",
-            ResourceType = context.Rule.ResourceType,
-            Path = context.CurrentPath,
-            ErrorCode = "QUESTION_NOT_IN_SET",
-            Message = $"Question '{questionCode}' is not defined in QuestionSet '{context.QuestionSet?.Id}'",
-            EntryIndex = context.EntryIndex,
-            Details = new Dictionary<string, object>
-            {
-                ["source"] = "QuestionAnswer",
-                ["questionCode"] = questionCode,
-                ["questionSetId"] = context.QuestionSet?.Id ?? "unknown"
-            }
-        };
-    }
-
-    /// <summary>
-    /// Create advisory error for missing master data
-    /// </summary>
-    public static RuleValidationError MasterDataMissing(RuleDefinition rule, string dataType, string identifier, int entryIndex)
-    {
-        return new RuleValidationError
-        {
-            RuleId = rule.Id,
-            RuleType = "QuestionAnswer",
-            Severity = "information",
-            ResourceType = rule.ResourceType,
-            Path = rule.Path,
-            ErrorCode = "MASTER_DATA_MISSING",
-            Message = $"{dataType} '{identifier}' not found. Cannot validate Question/Answer constraints.",
+            ResourceType = resourceType,
+            Path = location.FhirPath,
+            ErrorCode = ValidationErrorCodes.INVALID_ANSWER_VALUE,
+            UserHint = userHint,
             EntryIndex = entryIndex,
             Details = new Dictionary<string, object>
             {
-                ["source"] = "QuestionAnswer",
-                ["dataType"] = dataType,
-                ["identifier"] = identifier,
-                ["remediation"] = $"Create the missing {dataType} in the Terminology section"
+                ["source"] = "Business",
+                ["question"] = new Dictionary<string, object?>
+                {
+                    ["system"] = question.System,
+                    ["code"] = question.Code,
+                    ["display"] = question.Display
+                },
+                ["expected"] = new Dictionary<string, object?>
+                {
+                    ["answerType"] = expected.AnswerType,
+                    ["constraints"] = expected.Constraints
+                },
+                ["actual"] = new Dictionary<string, object?>
+                {
+                    ["answerType"] = actual.AnswerType,
+                    ["value"] = actual.Value
+                },
+                ["location"] = new Dictionary<string, object?>
+                {
+                    ["path"] = location.FhirPath,
+                    ["jsonPointer"] = location.JsonPointer
+                }
+            }
+        };
+    }
+
+    /// <summary>
+    /// Create structured error for out-of-range numeric answer
+    /// </summary>
+    public static RuleValidationError AnswerOutOfRange(
+        string ruleId,
+        string resourceType,
+        string severity,
+        QuestionRef question,
+        decimal? min,
+        decimal? max,
+        decimal actualValue,
+        ValidationLocation location,
+        int? entryIndex = null,
+        string? userHint = null)
+    {
+        EnsureNoProse(userHint, nameof(userHint));
+
+        return new RuleValidationError
+        {
+            RuleId = ruleId,
+            RuleType = "QuestionAnswer",
+            Severity = severity,
+            ResourceType = resourceType,
+            Path = location.FhirPath,
+            ErrorCode = ValidationErrorCodes.ANSWER_OUT_OF_RANGE,
+            UserHint = userHint,
+            EntryIndex = entryIndex,
+            Details = new Dictionary<string, object>
+            {
+                ["source"] = "Business",
+                ["question"] = new Dictionary<string, object?>
+                {
+                    ["system"] = question.System,
+                    ["code"] = question.Code,
+                    ["display"] = question.Display
+                },
+                ["expected"] = new Dictionary<string, object?>
+                {
+                    ["answerType"] = "quantity",
+                    ["constraints"] = new Dictionary<string, object?>
+                    {
+                        ["min"] = min,
+                        ["max"] = max
+                    }
+                },
+                ["actual"] = new Dictionary<string, object?>
+                {
+                    ["answerType"] = "quantity",
+                    ["value"] = actualValue
+                },
+                ["location"] = new Dictionary<string, object?>
+                {
+                    ["path"] = location.FhirPath,
+                    ["jsonPointer"] = location.JsonPointer
+                }
+            }
+        };
+    }
+
+    /// <summary>
+    /// Create structured error for code not in ValueSet
+    /// </summary>
+    public static RuleValidationError AnswerNotInValueSet(
+        string ruleId,
+        string resourceType,
+        string severity,
+        QuestionRef question,
+        string valueSetUrl,
+        string actualCode,
+        string? actualSystem,
+        ValidationLocation location,
+        int? entryIndex = null,
+        string? userHint = null)
+    {
+        EnsureNoProse(userHint, nameof(userHint));
+
+        return new RuleValidationError
+        {
+            RuleId = ruleId,
+            RuleType = "QuestionAnswer",
+            Severity = severity,
+            ResourceType = resourceType,
+            Path = location.FhirPath,
+            ErrorCode = ValidationErrorCodes.ANSWER_NOT_IN_VALUESET,
+            UserHint = userHint,
+            EntryIndex = entryIndex,
+            Details = new Dictionary<string, object>
+            {
+                ["source"] = "Business",
+                ["question"] = new Dictionary<string, object?>
+                {
+                    ["system"] = question.System,
+                    ["code"] = question.Code,
+                    ["display"] = question.Display
+                },
+                ["expected"] = new Dictionary<string, object?>
+                {
+                    ["answerType"] = "codeableConcept",
+                    ["constraints"] = new Dictionary<string, object>
+                    {
+                        ["valueSetUrl"] = valueSetUrl
+                    }
+                },
+                ["actual"] = new Dictionary<string, object?>
+                {
+                    ["answerType"] = "codeableConcept",
+                    ["value"] = new Dictionary<string, object?>
+                    {
+                        ["code"] = actualCode,
+                        ["system"] = actualSystem
+                    }
+                },
+                ["location"] = new Dictionary<string, object?>
+                {
+                    ["path"] = location.FhirPath,
+                    ["jsonPointer"] = location.JsonPointer
+                }
+            }
+        };
+    }
+
+    /// <summary>
+    /// Create structured error for missing required answer
+    /// </summary>
+    public static RuleValidationError AnswerRequired(
+        string ruleId,
+        string resourceType,
+        string severity,
+        QuestionRef question,
+        string expectedAnswerType,
+        ValidationLocation location,
+        int? entryIndex = null,
+        string? userHint = null)
+    {
+        EnsureNoProse(userHint, nameof(userHint));
+
+        return new RuleValidationError
+        {
+            RuleId = ruleId,
+            RuleType = "QuestionAnswer",
+            Severity = severity,
+            ResourceType = resourceType,
+            Path = location.FhirPath,
+            ErrorCode = ValidationErrorCodes.ANSWER_REQUIRED,
+            UserHint = userHint,
+            EntryIndex = entryIndex,
+            Details = new Dictionary<string, object>
+            {
+                ["source"] = "Business",
+                ["question"] = new Dictionary<string, object?>
+                {
+                    ["system"] = question.System,
+                    ["code"] = question.Code,
+                    ["display"] = question.Display
+                },
+                ["expected"] = new Dictionary<string, object?>
+                {
+                    ["answerType"] = expectedAnswerType,
+                    ["constraints"] = null
+                },
+                ["actual"] = new Dictionary<string, object?>
+                {
+                    ["answerType"] = "missing",
+                    ["value"] = null
+                },
+                ["location"] = new Dictionary<string, object?>
+                {
+                    ["path"] = location.FhirPath,
+                    ["jsonPointer"] = location.JsonPointer
+                }
+            }
+        };
+    }
+
+    /// <summary>
+    /// Create structured error for QuestionSet data missing
+    /// </summary>
+    public static RuleValidationError QuestionSetDataMissing(
+        string ruleId,
+        string resourceType,
+        string severity,
+        string questionSetId,
+        int? entryIndex = null,
+        string? userHint = null)
+    {
+        EnsureNoProse(userHint, nameof(userHint));
+
+        return new RuleValidationError
+        {
+            RuleId = ruleId,
+            RuleType = "QuestionAnswer",
+            Severity = severity,
+            ResourceType = resourceType,
+            Path = resourceType,
+            ErrorCode = ValidationErrorCodes.QUESTIONSET_DATA_MISSING,
+            UserHint = userHint,
+            EntryIndex = entryIndex,
+            Details = new Dictionary<string, object>
+            {
+                ["source"] = "Business",
+                ["questionSetId"] = questionSetId
+            }
+        };
+    }
+
+    /// <summary>
+    /// Create structured error for question not found in QuestionSet
+    /// </summary>
+    public static RuleValidationError QuestionNotFound(
+        string ruleId,
+        string resourceType,
+        string severity,
+        string? system,
+        string code,
+        ValidationLocation location,
+        int? entryIndex = null,
+        string? userHint = null)
+    {
+        EnsureNoProse(userHint, nameof(userHint));
+
+        return new RuleValidationError
+        {
+            RuleId = ruleId,
+            RuleType = "QuestionAnswer",
+            Severity = severity,
+            ResourceType = resourceType,
+            Path = location.FhirPath,
+            ErrorCode = ValidationErrorCodes.QUESTION_NOT_FOUND,
+            UserHint = userHint,
+            EntryIndex = entryIndex,
+            Details = new Dictionary<string, object>
+            {
+                ["source"] = "Business",
+                ["question"] = new Dictionary<string, object?>
+                {
+                    ["system"] = system,
+                    ["code"] = code,
+                    ["display"] = null
+                },
+                ["location"] = new Dictionary<string, object?>
+                {
+                    ["path"] = location.FhirPath,
+                    ["jsonPointer"] = location.JsonPointer
+                }
             }
         };
     }

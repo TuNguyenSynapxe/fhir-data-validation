@@ -1,0 +1,30 @@
+{
+  "id": "00f00593-c0c8-4055-a566-a03db8a80dfb",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-Z2W8-00000030"
+    },
+    "display": {
+      "value": "Pinhole Test (Left Eye)"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": "{\u0022allowedValues\u0022:[\u00226/6\u0022,\u00226/9\u0022,\u00226/12\u0022,\u00226/18\u0022,\u00226/24\u0022,\u00226/36\u0022,\u00226/60\u0022,\u0022Worse than 6/60\u0022],\u0022allowMultiple\u0022:false,\u0022separator\u0022:\u0022,\u0022}"
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Pinhole Test (Left Eye)",
+    "description": null,
+    "createdAt": "2025-12-26T16:17:56.531771+00:00",
+    "updatedAt": "2025-12-26T16:17:56.531771+00:00"
+  }
+}

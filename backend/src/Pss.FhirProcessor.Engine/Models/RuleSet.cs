@@ -56,16 +56,19 @@ public class RuleDefinition
     public string Severity { get; set; } = "error";
     
     /// <summary>
-    /// Error code for this rule
+    /// REQUIRED: Error code for frontend message mapping
+    /// Frontend uses this to render user-facing messages
     /// </summary>
     [JsonPropertyName("errorCode")]
-    public string? ErrorCode { get; set; }
+    public required string ErrorCode { get; set; }
     
     /// <summary>
-    /// Human-readable error message
+    /// OPTIONAL: Short contextual hint (max 60 chars, NOT a sentence)
+    /// Examples: "Vitals observation", "Medication code"
+    /// Displayed as subtitle in UI, not used for prose generation
     /// </summary>
-    [JsonPropertyName("message")]
-    public required string Message { get; set; }
+    [JsonPropertyName("userHint")]
+    public string? UserHint { get; set; }
     
     /// <summary>
     /// Rule-specific parameters
