@@ -472,4 +472,59 @@ public class RuleReviewEngineTests
         Assert.Contains(result.Issues, i => i.Code == "PATTERN_ERROR_CODE_MISMATCH");
         var issue = result.Issues.First(i => i.Code == "PATTERN_ERROR_CODE_MISMATCH");
         Assert.Equal("PATTERN_MISMATCH", issue.Facts["requiredErrorCode"]);
-    }}
+    }
+
+    [Fact]
+    public void AllowedValuesRule_WithCorrectErrorCode_IsAllowed()
+    {
+        // Test: AllowedValues rule with VALUE_NOT_ALLOWED → ALLOWED
+        // Arrange
+        var rule = new RuleDefinition
+        {
+            Id = "av-correct-code",
+            Type = "AllowedValues",
+            ResourceType = "Patient",
+            Path = "Patient.gender",
+            ErrorCode = "VALUE_NOT_ALLOWED",
+            Params = new Dictionary<string, object>
+            {
+                ["values"] = new List<string> { "male", "female", "other" }
+            }
+        };
+
+        // Act
+        var result = _engine.Review(rule);
+
+        // Assert
+        Assert.NotEqual(RuleReviewStatus.BLOCKED, result.Status);
+        Assert.DoesNotContain(result.Issues, i => i.Code == "ALLOWEDVALUES_ERROR_CODE_MISMATCH");
+    }
+
+    [Fact]
+    public void AllowedValuesRule_WithIncorrectErrorCode_IsBlocked()
+    {
+        // Test: AllowedValues rule with any other errorCode → BLOCKED
+        // Arrange
+        var rule = new RuleDefinition
+        {
+            Id = "av-wrong-code",
+            Type = "AllowedValues",
+            ResourceType = "Patient",
+            Path = "Patient.gender",
+            ErrorCode = "ENUM_VIOLATION", // Not allowed
+            Params = new Dictionary<string, object>
+            {
+                ["values"] = new List<string> { "male", "female", "other" }
+            }
+        };
+
+        // Act
+        var result = _engine.Review(rule);
+
+        // Assert
+        Assert.Equal(RuleReviewStatus.BLOCKED, result.Status);
+        Assert.Contains(result.Issues, i => i.Code == "ALLOWEDVALUES_ERROR_CODE_MISMATCH");
+        var issue = result.Issues.First(i => i.Code == "ALLOWEDVALUES_ERROR_CODE_MISMATCH");
+        Assert.Equal("VALUE_NOT_ALLOWED", issue.Facts["requiredErrorCode"]);
+    }
+}

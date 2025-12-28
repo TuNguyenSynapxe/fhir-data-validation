@@ -355,7 +355,7 @@ public class FhirPathRuleEngineTests
                     Id = "AV-MISSING-PARAM",
                     Type = "AllowedValues",
                     ResourceType = "Patient",
-                    Path = "gender",
+                    Path = "Patient.gender",
                     ErrorCode = "TEST_ERROR_CODE",
                     Params = new Dictionary<string, object>() // Missing "values" key
                 }
@@ -369,6 +369,78 @@ public class FhirPathRuleEngineTests
         Assert.Single(errors);
         Assert.Equal("RULE_CONFIGURATION_ERROR", errors[0].ErrorCode);
         Assert.Equal("AV-MISSING-PARAM", errors[0].RuleId);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_AllowedValues_InvalidValue_EmitsVALUE_NOT_ALLOWED()
+    {
+        // Test: AllowedValues rule with invalid value always emits VALUE_NOT_ALLOWED
+        // Arrange
+        var bundle = TestHelper.CreateSimplePatientBundle(gender: "unknown");
+        var ruleSet = new RuleSet
+        {
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "AV-GENDER",
+                    Type = "AllowedValues",
+                    ResourceType = "Patient",
+                    Path = "Patient.gender",
+                    ErrorCode = "VALUE_NOT_ALLOWED",
+                    Params = new Dictionary<string, object>
+                    {
+                        ["values"] = new List<string> { "male", "female", "other" }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _engine.ValidateAsync(bundle, ruleSet);
+
+        // Assert
+        Assert.Single(errors);
+        Assert.Equal(Pss.FhirProcessor.Engine.Validation.ValidationErrorCodes.VALUE_NOT_ALLOWED, errors[0].ErrorCode);
+        Assert.Equal("AV-GENDER", errors[0].RuleId);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_AllowedValues_ValidValue_NoErrors()
+    {
+        // Test: AllowedValues rule with valid value produces no errors
+        // Arrange
+        var bundle = TestHelper.CreateSimplePatientBundle(gender: "female");
+        var ruleSet = new RuleSet
+        {
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "AV-GENDER-VALID",
+                    Type = "AllowedValues",
+                    ResourceType = "Patient",
+                    Path = "Patient.gender",
+                    ErrorCode = "VALUE_NOT_ALLOWED",
+                    Params = new Dictionary<string, object>
+                    {
+                        ["values"] = new List<string> { "male", "female", "other" }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _engine.ValidateAsync(bundle, ruleSet);
+
+        // Assert
+        if (errors.Any())
+        {
+            var error = errors[0];
+            var actualValue = error.Details.ContainsKey("actual") ? error.Details["actual"]?.ToString() : "N/A";
+            Assert.True(false, $"Expected no errors but got: {error.ErrorCode} with actual value '{actualValue}'");
+        }
+        Assert.Empty(errors);
     }
 
     [Fact]

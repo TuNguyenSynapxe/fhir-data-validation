@@ -53,6 +53,7 @@ public class RuleReviewEngine : IRuleReviewEngine
         CheckEmptyOrRootPath(rule, issues);
         CheckQuestionAnswerWithoutQuestionSetId(rule, issues);
         CheckPatternErrorCode(rule, issues);
+        CheckAllowedValuesErrorCode(rule, issues);
         CheckPatternOnNonString(rule, issues);
         CheckArrayLengthOnNonArray(rule, issues);
         
@@ -268,6 +269,43 @@ public class RuleReviewEngine : IRuleReviewEngine
                     ["currentErrorCode"] = rule.ErrorCode,
                     ["requiredErrorCode"] = "PATTERN_MISMATCH",
                     ["reason"] = "Pattern rules must use errorCode PATTERN_MISMATCH"
+                }
+            ));
+        }
+    }
+    
+    /// <summary>
+    /// Enforces that AllowedValues rules use errorCode = "VALUE_NOT_ALLOWED".
+    /// 
+    /// GOVERNANCE CONTRACT:
+    /// - Blocks AllowedValues rules with errorCode != "VALUE_NOT_ALLOWED"
+    /// - Returns BLOCKED status with ALLOWEDVALUES_ERROR_CODE_MISMATCH code
+    /// 
+    /// UX CONTRACT (Future Implementation):
+    /// - Frontend should prevent user from setting invalid errorCode
+    /// - Rule authoring UI should hide errorCode dropdown for AllowedValues
+    /// - Display static "Error Code: VALUE_NOT_ALLOWED" label
+    /// - If governance error occurs, show clear message:
+    ///   "AllowedValues rules must use VALUE_NOT_ALLOWED error code. 
+    ///    Current: {currentErrorCode}. Please remove or change errorCode."
+    /// </summary>
+    private void CheckAllowedValuesErrorCode(RuleDefinition rule, List<RuleReviewIssue> issues)
+    {
+        if (rule.Type != "AllowedValues")
+            return;
+        
+        if (!string.IsNullOrWhiteSpace(rule.ErrorCode) && rule.ErrorCode != "VALUE_NOT_ALLOWED")
+        {
+            issues.Add(new RuleReviewIssue(
+                Code: "ALLOWEDVALUES_ERROR_CODE_MISMATCH",
+                Severity: RuleReviewStatus.BLOCKED,
+                RuleId: rule.Id,
+                Facts: new Dictionary<string, object>
+                {
+                    ["ruleType"] = rule.Type,
+                    ["currentErrorCode"] = rule.ErrorCode,
+                    ["requiredErrorCode"] = "VALUE_NOT_ALLOWED",
+                    ["reason"] = "AllowedValues rules must use errorCode VALUE_NOT_ALLOWED"
                 }
             ));
         }

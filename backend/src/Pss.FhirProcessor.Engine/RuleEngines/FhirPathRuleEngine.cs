@@ -652,6 +652,21 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         return errors;
     }
     
+    /// <summary>
+    /// Validates that a field value is in the allowed list of values.
+    /// 
+    /// SEMANTIC CONTRACT:
+    /// - Always emits ValidationErrorCodes.VALUE_NOT_ALLOWED (ignores rule.ErrorCode)
+    /// - Governance layer blocks AllowedValues rules with incorrect errorCode
+    /// 
+    /// UX CONTRACT (Future Implementation):
+    /// - Rule authoring UI should:
+    ///   * Hide errorCode dropdown for AllowedValues rules
+    ///   * Display static label "Error Code: VALUE_NOT_ALLOWED" (read-only)
+    ///   * Show explanation: "This rule type always uses VALUE_NOT_ALLOWED"
+    /// - Governance will prevent save if user tries to override errorCode
+    /// - UI should provide multi-select dropdown for "values" parameter
+    /// </summary>
     private List<RuleValidationError> ValidateAllowedValues(Resource resource, RuleDefinition rule, int entryIndex)
     {
         var errors = new List<RuleValidationError>();
@@ -702,7 +717,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         ["allowed"] = allowedValues
                     };
                     
-                    details["explanation"] = GetExplanation(rule.Type, rule.ErrorCode ?? "VALUE_NOT_ALLOWED", details);
+                    details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.VALUE_NOT_ALLOWED, details);
                     
                     errors.Add(new RuleValidationError
                     {
@@ -711,7 +726,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         Severity = rule.Severity,
                         ResourceType = rule.ResourceType,
                         Path = rule.Path,
-                        ErrorCode = rule.ErrorCode ?? "VALUE_NOT_ALLOWED",
+                        ErrorCode = ValidationErrorCodes.VALUE_NOT_ALLOWED,
                         Details = details,
                         EntryIndex = entryIndex,
                         ResourceId = resource.Id
@@ -1180,7 +1195,12 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 .ToList();
         }
         
-        if (values is List<object> list)
+        if (values is IEnumerable<string> stringList)
+        {
+            return stringList.ToList();
+        }
+        
+        if (values is IEnumerable<object> list)
         {
             return list.Select(v => v.ToString() ?? "").ToList();
         }

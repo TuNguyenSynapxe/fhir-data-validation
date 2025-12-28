@@ -108,14 +108,33 @@ public static class TestHelper
 
         var patient = new Patient
         {
-            Id = "patient-001",
-            Gender = gender switch
-            {
-                "male" => AdministrativeGender.Male,
-                "female" => AdministrativeGender.Female,
-                _ => null
-            }
+            Id = "patient-001"
         };
+
+        // Set gender - use enum for standard values, GenderElement.ObjectValue for truly custom values
+        if (gender != null)
+        {
+            switch (gender.ToLower())
+            {
+                case "male":
+                    patient.Gender = AdministrativeGender.Male;
+                    break;
+                case "female":
+                    patient.Gender = AdministrativeGender.Female;
+                    break;
+                case "other":
+                    patient.Gender = AdministrativeGender.Other;
+                    break;
+                case "unknown":
+                    patient.Gender = AdministrativeGender.Unknown;
+                    break;
+                default:
+                    // For custom values not in the enum, use ObjectValue on GenderElement
+                    patient.GenderElement = new Code<AdministrativeGender>();
+                    patient.GenderElement.ObjectValue = gender;
+                    break;
+            }
+        }
 
         if (familyName != null)
         {
