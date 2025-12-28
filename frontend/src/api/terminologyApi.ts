@@ -6,17 +6,11 @@
  */
 
 import httpClient from './httpClient';
+import type { CodeSystem, CodeSystemConcept } from '../types/terminology';
 
-export interface CodeSetDto {
-  url: string;
-  name?: string;
-  concepts: CodeSetConceptDto[];
-}
-
-export interface CodeSetConceptDto {
-  code: string;
-  display?: string;
-}
+// Export types from terminology module for consistency
+export type CodeSetDto = CodeSystem;
+export type CodeSetConceptDto = CodeSystemConcept;
 
 /**
  * List all CodeSystems for a project

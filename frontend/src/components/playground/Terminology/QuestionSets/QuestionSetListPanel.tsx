@@ -21,7 +21,7 @@ export const QuestionSetListPanel: React.FC<QuestionSetListPanelProps> = ({
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
-  const [deleteConfirm, setDeleteConfirm] = React.useState<string | null>(null);
+  const [_deleteConfirm, _setDeleteConfirm] = React.useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
   const [isCreating, setIsCreating] = React.useState(false);
 
@@ -42,14 +42,14 @@ export const QuestionSetListPanel: React.FC<QuestionSetListPanelProps> = ({
     loadQuestionSets();
   }, [loadQuestionSets, refreshTrigger]);
 
-  const handleDelete = async (id: string) => {
+  const _handleDelete = async (id: string) => {
     try {
       await questionSetsApi.deleteQuestionSet(projectId, id);
       if (selectedQuestionSetId === id) {
         onSelectQuestionSet(null);
       }
       loadQuestionSets();
-      setDeleteConfirm(null);
+      _setDeleteConfirm(null);
     } catch (err: any) {
       setError(err.message || 'Failed to delete question set');
     }

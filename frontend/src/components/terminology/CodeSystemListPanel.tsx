@@ -7,7 +7,6 @@ import { useState, useEffect } from 'react';
 import { Plus, Upload, Loader2, AlertCircle, Database, Download, ChevronDown, Trash2 } from 'lucide-react';
 import type { CodeSystem, CodeSystemConcept } from '../../types/terminology';
 import { listCodeSystems, deleteCodeSystem } from '../../api/terminologyApi';
-import { getResultData, logTerminologyError } from '../../utils/terminologyErrors';
 import { CreateCodeSystemDialog } from './CreateCodeSystemDialog';
 import { ImportCodeSystemDialog } from './ImportCodeSystemDialog';
 import { exportCodeSystemAsJson, exportCodeSystemAsCsv } from '../../utils/exportCodeSystem';
@@ -71,15 +70,7 @@ export function CodeSystemListPanel({
     setError(null);
 
     try {
-      const result = await deleteCodeSystem(projectId, deleteConfirm.url);
-
-      if (!result.success) {
-        logTerminologyError(result.error);
-        setError(result.error.message || 'Failed to delete CodeSystem');
-        setIsDeleting(false);
-        return;
-      }
-
+      await deleteCodeSystem(projectId, deleteConfirm.url);
       // Remove from list
       setCodeSystems((prev) => prev.filter((cs) => cs.url !== deleteConfirm.url));
       setDeleteConfirm(null);
@@ -99,21 +90,8 @@ export function CodeSystemListPanel({
     setError(null);
 
     try {
-      const result = await listCodeSystems(projectId);
-      const data = getResultData(result);
-
-      if (!data) {
-        if (!result.success) {
-          logTerminologyError(result.error);
-          setError(result.error.message || 'Failed to load CodeSystems');
-        } else {
-          setError('Failed to load CodeSystems');
-        }
-        return;
-      }
-
+      const data = await listCodeSystems(projectId);
       setCodeSystems(data);
-
       // Don't auto-navigate - let users see and interact with the list
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -328,7 +306,7 @@ function CodeSystemCard({ codeSystem, conceptCount, onClick, onExportJson, onExp
         <div className="flex-1 min-w-0 cursor-pointer" onClick={onClick}>
           <div className="flex items-center gap-3 mb-2">
             <h3 className="text-base font-medium text-gray-900 truncate">{codeSystem.title || codeSystem.name || 'Untitled'}</h3>
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(codeSystem.status)}`}>{codeSystem.status}</span>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(codeSystem.status || 'draft')}`}>{codeSystem.status || 'draft'}</span>
           </div>
           <p className="text-xs text-gray-600 mb-2 font-mono truncate">{codeSystem.url}</p>
           {codeSystem.description && <p className="text-xs text-gray-600 mb-2 line-clamp-2">{codeSystem.description}</p>}

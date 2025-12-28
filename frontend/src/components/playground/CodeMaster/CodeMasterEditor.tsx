@@ -116,6 +116,7 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
       const newCodeSet: CodeSetDto = {
         url,
         name,
+        concept: [],
         concepts: [],
       };
       
@@ -248,13 +249,16 @@ export const CodeMasterEditor: React.FC<CodeMasterEditorProps> = ({ projectId })
             conceptsLength: concepts.length
           });
           
+          const mappedConcepts = concepts.map(c => ({
+            code: c.code || '',
+            display: c.display || c.code || '',
+          }));
+          
           const dto: CodeSetDto = {
             url: codeSet.url,
             name: codeSet.name || codeSet.url.split('/').pop() || 'Imported CodeSystem',
-            concepts: concepts.map(c => ({
-              code: c.code || '',
-              display: c.display || c.code || '',
-            })),
+            concept: mappedConcepts,
+            concepts: mappedConcepts,
           };
           
           console.log('Sending DTO:', dto);

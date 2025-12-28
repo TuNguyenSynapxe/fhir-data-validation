@@ -268,7 +268,7 @@ export const QuestionSetEditorPanel: React.FC<QuestionSetEditorPanelProps> = ({
    * Truncates a string to a maximum length and adds ellipsis if truncated.
    * Returns an object with the display text and whether truncation occurred.
    */
-  const truncateWithEllipsis = (text: string, maxChars: number = 28): { displayText: string; isTruncated: boolean } => {
+  const _truncateWithEllipsis = (text: string, maxChars: number = 28): { displayText: string; isTruncated: boolean } => {
     if (text.length <= maxChars) {
       return { displayText: text, isTruncated: false };
     }

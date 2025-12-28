@@ -10,7 +10,7 @@
  */
 
 /**
- * CodeSystem model (Phase 1: minimal fields)
+ * CodeSystem model (Phase 1: minimal fields + FHIR R4 compatibility)
  * Identity: url (canonical URL)
  */
 export interface CodeSystem {
@@ -20,12 +20,36 @@ export interface CodeSystem {
   /** Human-friendly name */
   name?: string;
   
+  /** Human-readable title */
+  title?: string;
+  
+  /** Publication status */
+  status?: 'draft' | 'active' | 'retired' | 'unknown';
+  
+  /** Description of the code system */
+  description?: string;
+  
+  /** Version of the code system */
+  version?: string;
+  
+  /** Publisher name */
+  publisher?: string;
+  
+  /** Content mode */
+  content?: 'not-present' | 'example' | 'fragment' | 'complete' | 'supplement';
+  
+  /** Total number of concepts */
+  count?: number;
+  
   /** Concepts defined in this CodeSystem */
   concept: CodeSystemConcept[];
+  
+  /** Alias for concept (backward compatibility with some FHIR tooling) - always kept in sync with concept */
+  concepts: CodeSystemConcept[];
 }
 
 /**
- * Concept within a CodeSystem (Phase 1: code + display ONLY)
+ * Concept within a CodeSystem (Phase 1: code + display + FHIR R4 fields)
  * Identity: code (unique within parent CodeSystem)
  */
 export interface CodeSystemConcept {
@@ -34,6 +58,12 @@ export interface CodeSystemConcept {
   
   /** Human-readable display text */
   display?: string;
+  
+  /** Formal definition */
+  definition?: string;
+  
+  /** Child concepts (nested hierarchy) */
+  concept?: CodeSystemConcept[];
 }
 
 // Legacy types below - kept for backward compatibility but not used in Phase 1

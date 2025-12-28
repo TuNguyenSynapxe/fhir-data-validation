@@ -77,7 +77,7 @@ export const ExplanationPanel: React.FC<ExplanationPanelProps> = ({ error, class
 
   // Generate "How do I fix this?" content - Context-aware and actionable
   const getHowToFix = (): ReactNode | null => {
-    const { path, errorCode, source, jsonPointer, resourceType, details } = error;
+    const { path, errorCode, source, jsonPointer, resourceType, details: _details } = error;
     const field = getLastSegment(path);
     
     // 1️⃣ LINT — UNKNOWN_ELEMENT

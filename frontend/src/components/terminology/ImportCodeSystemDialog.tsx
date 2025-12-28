@@ -252,6 +252,7 @@ export function ImportCodeSystemDialog({
       }
 
       // Build complete CodeSystem
+      const conceptArray = codeSystem.concept || [];
       const completeCodeSystem: CodeSystem = {
         url: codeSystem.url,
         version: codeSystem.version,
@@ -261,29 +262,30 @@ export function ImportCodeSystemDialog({
         description: codeSystem.description,
         publisher: codeSystem.publisher,
         content: codeSystem.content || 'complete',
-        count: codeSystem.count || countConcepts(codeSystem.concept || []),
-        concept: codeSystem.concept || [],
+        count: codeSystem.count || countConcepts(conceptArray),
+        concept: conceptArray,
+        concepts: conceptArray,
       };
 
       // Save via API
-      const result = await saveCodeSystem(projectId, completeCodeSystem);
-
-      if (!result.success) {
-        setImportError(result.error.message || 'Failed to import CodeSystem');
+      try {
+        await saveCodeSystem(projectId, completeCodeSystem);
+        // Success
+        setStep('success');
+        setTimeout(() => {
+          onSuccess(completeCodeSystem);
+          onClose();
+          resetDialog();
+        }, 1500);
+      } catch (error) {
+        setImportError(
+          error instanceof Error ? error.message : 'Failed to import'
+        );
         setStep('preview');
-        return;
       }
-
-      // Success
-      setStep('success');
-      setTimeout(() => {
-        onSuccess(completeCodeSystem);
-        onClose();
-        resetDialog();
-      }, 1500);
     } catch (error) {
       setImportError(
-        error instanceof Error ? error.message : 'Failed to import'
+        error instanceof Error ? error.message : 'Import preparation failed'
       );
       setStep('preview');
     }
@@ -305,6 +307,7 @@ export function ImportCodeSystemDialog({
 
       try {
         // Build complete CodeSystem from partial
+        const conceptArray = item.codeSystem.concept || [];
         const completeCodeSystem: CodeSystem = {
           url: item.codeSystem.url!,
           version: item.codeSystem.version,
@@ -314,21 +317,21 @@ export function ImportCodeSystemDialog({
           description: item.codeSystem.description,
           publisher: item.codeSystem.publisher,
           content: item.codeSystem.content || 'complete',
-          count: item.codeSystem.count || countConcepts(item.codeSystem.concept || []),
-          concept: item.codeSystem.concept || [],
+          count: item.codeSystem.count || countConcepts(conceptArray),
+          concept: conceptArray,
+          concepts: conceptArray,
         };
 
         // Save via API
-        const result = await saveCodeSystem(projectId, completeCodeSystem);
-
-        if (!result.success) {
-          results.push({ 
-            success: false, 
-            item, 
-            error: result.error.message || 'Failed to import' 
-          });
-        } else {
+        try {
+          await saveCodeSystem(projectId, completeCodeSystem);
           results.push({ success: true, item });
+        } catch (error) {
+          results.push({
+            success: false,
+            item,
+            error: error instanceof Error ? error.message : 'Failed to import',
+          });
         }
       } catch (error) {
         results.push({

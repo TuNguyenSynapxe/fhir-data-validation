@@ -25,7 +25,7 @@ export const ImportQuestionsDrawer: React.FC<ImportQuestionsDrawerProps> = ({
   onClose,
   onImport,
   projectId,
-  terminologyUrl,
+  terminologyUrl: _terminologyUrl,
 }) => {
   const [file, setFile] = React.useState<File | null>(null);
   const [isDragging, setIsDragging] = React.useState(false);
@@ -153,14 +153,13 @@ export const ImportQuestionsDrawer: React.FC<ImportQuestionsDrawerProps> = ({
         }
       }
 
-      const questions: ParsedQuestion[] = questionsArray.map((item: any, idx: number) => {
+      const questions: ParsedQuestion[] = questionsArray.map((item: any, _idx: number) => {
         const errors: string[] = [];
         
         // Support both simple format and PSS format
         const system = item.system || '';
         const conceptCode = item.conceptCode || item.code || '';
         const questionText = item.questionText || item.display || '';
-        const description = item.description;
         
         // Handle answer field (PSS format) or direct fields (simple format)
         let allowedValues: string[] = [];

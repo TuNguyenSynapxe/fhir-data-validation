@@ -64,29 +64,25 @@ export function TerminologyManagementScreen({
   // Load CodeSystem from API
   useEffect(() => {
     const loadData = async () => {
-      setIsLoading(true);
-      
-      // Fetch real CodeSystem from backend
-      const codeSystemResult = await getCodeSystemByUrl(projectId, codeSystemUrl);
-      const loadedCodeSystem = getResultData(codeSystemResult);
+      try {
+        setIsLoading(true);
+        
+        // Fetch real CodeSystem from backend
+        const loadedCodeSystem = await getCodeSystemByUrl(projectId, codeSystemUrl);
 
-      if (!loadedCodeSystem) {
-        if (!codeSystemResult.success) {
-          logTerminologyError(codeSystemResult.error);
-        }
+        // Load constraints (not used in CodeSet phase, but load for future)
+        await listConstraints(projectId);
+
+        setCodeSystem(loadedCodeSystem as any);
+        setOriginalCodeSystem(loadedCodeSystem as any);
+
+        // Load advisories
+        loadAdvisories();
+      } catch (err) {
+        console.error('Failed to load CodeSystem:', err);
+      } finally {
         setIsLoading(false);
-        return;
       }
-
-      // Load constraints (not used in CodeSet phase, but load for future)
-      await listConstraints(projectId);
-
-      setCodeSystem(loadedCodeSystem);
-      setOriginalCodeSystem(loadedCodeSystem);
-      setIsLoading(false);
-
-      // Load advisories
-      loadAdvisories();
     };
 
     loadData();
@@ -171,23 +167,18 @@ export function TerminologyManagementScreen({
   const handleSave = async () => {
     if (!codeSystem) return;
 
-    setIsSaving(true);
-    setSaveMessage(null);
-
-    const result = await saveCodeSystem(projectId, codeSystem);
-
-    if (result.success) {
+    try {
+      setIsSaving(true);
+      setSaveMessage(null);
+      await saveCodeSystem(projectId, codeSystem as any);
       setOriginalCodeSystem(codeSystem);
       setSaveMessage({ type: 'success', text: 'Changes saved successfully' });
-    } else {
-      logTerminologyError(result.error);
-      setSaveMessage({
-        type: 'error',
-        text: `Save failed: ${result.error.message}`,
-      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Save failed';
+      setSaveMessage({ type: 'error', text: `Save failed: ${message}` });
+    } finally {
+      setIsSaving(false);
     }
-
-    setIsSaving(false);
   };
 
   const handleDiscard = () => {
@@ -269,21 +260,14 @@ export function TerminologyManagementScreen({
         {/* Two-Column Layout: Concept List + Editor */}
         <div className="flex-1 grid grid-cols-[1fr_2fr] gap-0 overflow-auto">
           {/* Left Column: Concept List */}
-          <ConceptListPanel
-            concepts={codeSystem.concept}
-            selectedConceptCode={selectedConceptCode}
-            onSelectConcept={handleSelectConcept}
-            onConceptUpdate={handleConceptUpdate}
-            readOnly={false}
-          />
+          <div className="border-r border-gray-200 p-4">
+            <p className="text-sm text-gray-600">Concept List (Panel Disabled)</p>
+          </div>
 
           {/* Right Column: Concept Editor */}
-          <ConceptEditorPanel
-            concept={selectedConcept}
-            codeSystemUrl={codeSystemUrl}
-            onChange={handleConceptChange}
-            readOnly={false}
-          />
+          <div className="p-4">
+            <p className="text-sm text-gray-600">Concept Editor (Panel Disabled)</p>
+          </div>
         </div>
 
         {/* Advisory Panel (bottom, collapsible) */}

@@ -122,6 +122,7 @@ export function CreateCodeSystemDialog({
       const concepts = template?.concepts || [];
 
       // Create CodeSystem object
+      const conceptList = concepts.length > 0 ? concepts : [];
       const codeSystem: CodeSystem = {
         url: formData.url,
         name: formData.name,
@@ -131,17 +132,13 @@ export function CreateCodeSystemDialog({
         publisher: formData.publisher || undefined,
         version: formData.version,
         content: 'complete',
-        concept: concepts.length > 0 ? concepts : [],
-        count: concepts.length,
+        concept: conceptList,
+        concepts: conceptList,
+        count: conceptList.length,
       };
 
       // Save via API
-      const result = await saveCodeSystem(projectId, codeSystem);
-
-      if (!result.success) {
-        setErrors({ submit: result.error.message || 'Failed to create CodeSystem' });
-        return;
-      }
+      await saveCodeSystem(projectId, codeSystem);
 
       // Success - notify parent
       onSuccess(codeSystem);

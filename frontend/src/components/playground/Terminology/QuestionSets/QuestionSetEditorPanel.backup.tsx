@@ -20,7 +20,7 @@ export const QuestionSetEditorPanel: React.FC<QuestionSetEditorPanelProps> = ({
   projectId,
   selectedQuestionSet,
   onSave,
-  onCancel,
+  onCancel: _onCancel,
 }) => {
   const [formState, setFormState] = React.useState<QuestionSetFormState>({
     id: '',
