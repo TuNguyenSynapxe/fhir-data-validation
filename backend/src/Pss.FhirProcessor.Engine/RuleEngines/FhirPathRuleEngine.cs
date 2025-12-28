@@ -990,6 +990,15 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         return errors;
     }
     
+    /// <summary>
+    /// Validates CodeSystem rules.
+    /// 
+    /// UX CONTRACT:
+    /// - ErrorCode is FIXED at CODESYSTEM_VIOLATION (runtime ignores rule.ErrorCode)
+    /// - Details["violation"] distinguishes "system" vs "code" failure
+    /// - Frontend UI must treat CodeSystem errorCode as read-only
+    /// - Rule authoring UI should display: "Error Code: CODESYSTEM_VIOLATION (fixed)"
+    /// </summary>
     private List<RuleValidationError> ValidateCodeSystem(Resource resource, RuleDefinition rule, int entryIndex)
     {
         var errors = new List<RuleValidationError>();
@@ -1040,13 +1049,14 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                             ["path"] = rule.Path,
                             ["ruleType"] = rule.Type,
                             ["ruleId"] = rule.Id,
+                            ["violation"] = "system",
                             ["expectedSystem"] = expectedSystem ?? "",
                             ["actualSystem"] = coding.System ?? "",
                             ["actualCode"] = coding.Code ?? "",
                             ["actualDisplay"] = coding.Display ?? ""
                         };
                         
-                        details["explanation"] = GetExplanation(rule.Type, rule.ErrorCode ?? "INVALID_SYSTEM", details);
+                        details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.CODESYSTEM_VIOLATION, details);
                         
                         errors.Add(new RuleValidationError
                         {
@@ -1055,7 +1065,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                             Severity = rule.Severity,
                             ResourceType = rule.ResourceType,
                             Path = rule.Path,
-                            ErrorCode = rule.ErrorCode ?? "INVALID_SYSTEM",
+                            ErrorCode = ValidationErrorCodes.CODESYSTEM_VIOLATION,
                             Details = details,
                             EntryIndex = entryIndex,
                             ResourceId = resource.Id
@@ -1070,6 +1080,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                             ["path"] = rule.Path,
                             ["ruleType"] = rule.Type,
                             ["ruleId"] = rule.Id,
+                            ["violation"] = "code",
                             ["expectedSystem"] = expectedSystem ?? "",
                             ["actualSystem"] = coding.System ?? "",
                             ["actualCode"] = coding.Code ?? "",
@@ -1077,7 +1088,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                             ["allowedCodes"] = allowedCodes
                         };
                         
-                        details["explanation"] = GetExplanation(rule.Type, rule.ErrorCode ?? "INVALID_CODE", details);
+                        details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.CODESYSTEM_VIOLATION, details);
                         
                         errors.Add(new RuleValidationError
                         {
@@ -1086,7 +1097,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                             Severity = rule.Severity,
                             ResourceType = rule.ResourceType,
                             Path = rule.Path,
-                            ErrorCode = rule.ErrorCode ?? "INVALID_CODE",
+                            ErrorCode = ValidationErrorCodes.CODESYSTEM_VIOLATION,
                             Details = details,
                             EntryIndex = entryIndex,
                             ResourceId = resource.Id
@@ -1315,13 +1326,16 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 $"The referenced resource type does not match the expected type. " +
                 "Type mismatches prevent downstream systems from correctly processing resource relationships and may cause integration failures.",
             
-            "CODESYSTEM" when errorCode == "INVALID_CODE" =>
+            "CODESYSTEM" when errorCode == "CODESYSTEM_VIOLATION" && details?.GetValueOrDefault("violation")?.ToString() == "system" =>
+                $"The code system '{details?.GetValueOrDefault("actualSystem")}' does not match the required system '{details?.GetValueOrDefault("expectedSystem")}'. " +
+                "Correct code system URIs ensure terminology can be validated and interpreted consistently across all integrated systems.",
+            
+            "CODESYSTEM" when errorCode == "CODESYSTEM_VIOLATION" && details?.GetValueOrDefault("violation")?.ToString() == "code" =>
                 $"The code '{details?.GetValueOrDefault("actualCode")}' is not valid within the required code system '{details?.GetValueOrDefault("expectedSystem")}'. " +
                 "Using valid codes from the specified terminology system is essential for semantic interoperability, correct clinical interpretation, and integration with terminology services.",
             
-            "CODESYSTEM" when errorCode == "INVALID_SYSTEM" =>
-                $"The code system '{details?.GetValueOrDefault("actualSystem")}' does not match the required system '{details?.GetValueOrDefault("expectedSystem")}'. " +
-                "Correct code system URIs ensure terminology can be validated and interpreted consistently across all integrated systems.",
+            "CODESYSTEM" when errorCode == "CODESYSTEM_VIOLATION" =>
+                "CodeSystem validation failed. Check that the code system and code value match the requirements.",
             
             "CUSTOMFHIRPATH" =>
                 $"This field failed a custom business logic check defined by the FHIRPath expression: '{details?.GetValueOrDefault("expression")}'. " +

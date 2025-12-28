@@ -530,4 +530,205 @@ public class FhirPathRuleEngineTests
         Assert.NotNull(error.Details);
         Assert.True(error.Details.ContainsKey("missingParams"));
     }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_CodeSystem_SystemMismatch_Emits_CODESYSTEM_VIOLATION()
+    {
+        // Arrange
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
+        var modelResolver = new FhirR4ModelResolverService(logger);
+        var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger);
+
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    FullUrl = "urn:uuid:patient-001",
+                    Resource = new Patient
+                    {
+                        Id = "patient-001",
+                        MaritalStatus = new CodeableConcept
+                        {
+                            Coding = new List<Coding>
+                            {
+                                new Coding("http://wrong-system.org/MaritalStatus", "M")
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        var ruleSet = new RuleSet
+        {
+            Version = "1.0",
+            FhirVersion = "4.0.1",
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "CS1",
+                    Type = "CodeSystem",
+                    ResourceType = "Patient",
+                    Path = "Patient.maritalStatus.coding",
+                    Severity = "error",
+                    ErrorCode = "CODESYSTEM_VIOLATION",
+                    Params = new Dictionary<string, object>
+                    {
+                        ["system"] = "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus"
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await engine.ValidateAsync(bundle, ruleSet, CancellationToken.None);
+
+        // Assert
+        Assert.Single(errors);
+        var error = errors[0];
+        Assert.Equal("CODESYSTEM_VIOLATION", error.ErrorCode);
+        Assert.Equal("CS1", error.RuleId);
+        Assert.Equal("CodeSystem", error.RuleType);
+        Assert.NotNull(error.Details);
+        Assert.Equal("system", error.Details["violation"]);
+        Assert.Equal("http://terminology.hl7.org/CodeSystem/v3-MaritalStatus", error.Details["expectedSystem"]);
+        Assert.Equal("http://wrong-system.org/MaritalStatus", error.Details["actualSystem"]);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_CodeSystem_CodeNotAllowed_Emits_CODESYSTEM_VIOLATION()
+    {
+        // Arrange
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
+        var modelResolver = new FhirR4ModelResolverService(logger);
+        var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger);
+
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    FullUrl = "urn:uuid:patient-001",
+                    Resource = new Patient
+                    {
+                        Id = "patient-001",
+                        MaritalStatus = new CodeableConcept
+                        {
+                            Coding = new List<Coding>
+                            {
+                                new Coding("http://terminology.hl7.org/CodeSystem/v3-MaritalStatus", "INVALID_CODE")
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        var ruleSet = new RuleSet
+        {
+            Version = "1.0",
+            FhirVersion = "4.0.1",
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "CS2",
+                    Type = "CodeSystem",
+                    ResourceType = "Patient",
+                    Path = "Patient.maritalStatus.coding",
+                    Severity = "error",
+                    ErrorCode = "CODESYSTEM_VIOLATION",
+                    Params = new Dictionary<string, object>
+                    {
+                        ["system"] = "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+                        ["codes"] = new List<string> { "M", "S", "D", "W" }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await engine.ValidateAsync(bundle, ruleSet, CancellationToken.None);
+
+        // Assert
+        Assert.Single(errors);
+        var error = errors[0];
+        Assert.Equal("CODESYSTEM_VIOLATION", error.ErrorCode);
+        Assert.Equal("CS2", error.RuleId);
+        Assert.Equal("CodeSystem", error.RuleType);
+        Assert.NotNull(error.Details);
+        Assert.Equal("code", error.Details["violation"]);
+        Assert.Equal("INVALID_CODE", error.Details["actualCode"]);
+        Assert.True(error.Details.ContainsKey("allowedCodes"));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_CodeSystem_ValidSystemAndCode_NoErrors()
+    {
+        // Arrange
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
+        var modelResolver = new FhirR4ModelResolverService(logger);
+        var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger);
+
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    FullUrl = "urn:uuid:patient-001",
+                    Resource = new Patient
+                    {
+                        Id = "patient-001",
+                        MaritalStatus = new CodeableConcept
+                        {
+                            Coding = new List<Coding>
+                            {
+                                new Coding("http://terminology.hl7.org/CodeSystem/v3-MaritalStatus", "M")
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        var ruleSet = new RuleSet
+        {
+            Version = "1.0",
+            FhirVersion = "4.0.1",
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "CS3",
+                    Type = "CodeSystem",
+                    ResourceType = "Patient",
+                    Path = "Patient.maritalStatus.coding",
+                    Severity = "error",
+                    ErrorCode = "CODESYSTEM_VIOLATION",
+                    Params = new Dictionary<string, object>
+                    {
+                        ["system"] = "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+                        ["codes"] = new List<string> { "M", "S", "D", "W" }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await engine.ValidateAsync(bundle, ruleSet, CancellationToken.None);
+
+        // Assert
+        Assert.Empty(errors);
+    }
 }

@@ -56,6 +56,7 @@ public class RuleReviewEngine : IRuleReviewEngine
         CheckAllowedValuesErrorCode(rule, issues);
         CheckArrayLengthErrorCode(rule, issues);
         CheckFixedValueErrorCode(rule, issues);
+        CheckCodeSystemErrorCode(rule, issues);
         CheckReferenceRuleNotSupported(rule, issues);
         CheckPatternOnNonString(rule, issues);
         CheckArrayLengthOnNonArray(rule, issues);
@@ -346,6 +347,45 @@ public class RuleReviewEngine : IRuleReviewEngine
                     ["currentErrorCode"] = rule.ErrorCode,
                     ["requiredErrorCode"] = "ARRAY_LENGTH_VIOLATION",
                     ["reason"] = "ArrayLength rules must use errorCode ARRAY_LENGTH_VIOLATION"
+                }
+            ));
+        }
+    }
+    
+    /// <summary>
+    /// Enforces that CodeSystem rules use errorCode = "CODESYSTEM_VIOLATION".
+    /// 
+    /// GOVERNANCE CONTRACT:
+    /// - Blocks CodeSystem rules with errorCode != "CODESYSTEM_VIOLATION"
+    /// - Returns BLOCKED status with CODESYSTEM_ERROR_CODE_MISMATCH code
+    /// 
+    /// UX CONTRACT (Implementation Required):
+    /// - Frontend should treat CodeSystem errorCode as read-only
+    /// - Rule authoring UI should display static label: "Error Code: CODESYSTEM_VIOLATION (fixed)"
+    /// - ErrorCodeSelector should not show dropdown for CodeSystem rules
+    /// - If governance error occurs, show clear message:
+    ///   "CodeSystem rules have a fixed error code: CODESYSTEM_VIOLATION. 
+    ///    Current: {currentErrorCode}. Please update the rule."
+    /// </summary>
+    private void CheckCodeSystemErrorCode(RuleDefinition rule, List<RuleReviewIssue> issues)
+    {
+        if (rule.Type != "CodeSystem")
+            return;
+        
+        if (string.IsNullOrWhiteSpace(rule.ErrorCode) || rule.ErrorCode != "CODESYSTEM_VIOLATION")
+        {
+            issues.Add(new RuleReviewIssue(
+                Code: "CODESYSTEM_ERROR_CODE_MISMATCH",
+                Severity: RuleReviewStatus.BLOCKED,
+                RuleId: rule.Id,
+                Facts: new Dictionary<string, object>
+                {
+                    ["ruleType"] = rule.Type,
+                    ["currentErrorCode"] = rule.ErrorCode ?? "(missing)",
+                    ["requiredErrorCode"] = "CODESYSTEM_VIOLATION",
+                    ["reason"] = "CodeSystem rules have a fixed semantic errorCode and must use CODESYSTEM_VIOLATION.",
+                    ["explanation"] = "CodeSystem validation has one fixed meaning: system or code validation failed. " +
+                                    "Use Details['violation'] to distinguish 'system' vs 'code' failure, not custom errorCodes."
                 }
             ));
         }

@@ -75,6 +75,13 @@ public static class ValidationErrorCodes
     public const string CODE_NOT_ALLOWED = "CODE_NOT_ALLOWED";
 
     // =========================================================================
+    // CODESYSTEM (Rule Type)
+    // =========================================================================
+    
+    /// <summary>CodeSystem rule violation (system mismatch or code not allowed)</summary>
+    public const string CODESYSTEM_VIOLATION = "CODESYSTEM_VIOLATION";
+
+    // =========================================================================
     // TERMINOLOGY / VALUESET
     // =========================================================================
     

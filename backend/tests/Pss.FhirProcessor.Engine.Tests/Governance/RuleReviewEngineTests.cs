@@ -689,4 +689,57 @@ public class RuleReviewEngineTests
         Assert.True(issue.Facts.ContainsKey("explanation"));
         Assert.Contains("handled globally", issue.Facts["reason"]?.ToString() ?? "");
     }
+
+    [Fact]
+    public void CodeSystemRule_WithCorrectErrorCode_IsAllowed()
+    {
+        // Arrange
+        var rule = new RuleDefinition
+        {
+            Id = "test-codesystem",
+            Type = "CodeSystem",
+            ResourceType = "Patient",
+            Path = "Patient.maritalStatus.coding",
+            ErrorCode = "CODESYSTEM_VIOLATION",
+            Params = new Dictionary<string, object>
+            {
+                ["system"] = "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus"
+            }
+        };
+
+        // Act
+        var result = _engine.Review(rule);
+
+        // Assert
+        Assert.NotEqual(RuleReviewStatus.BLOCKED, result.Status);
+        Assert.DoesNotContain(result.Issues, i => i.Code == "CODESYSTEM_ERROR_CODE_MISMATCH");
+    }
+
+    [Fact]
+    public void CodeSystemRule_WithIncorrectErrorCode_IsBlocked()
+    {
+        // Arrange
+        var rule = new RuleDefinition
+        {
+            Id = "test-codesystem",
+            Type = "CodeSystem",
+            ResourceType = "Patient",
+            Path = "Patient.maritalStatus.coding",
+            ErrorCode = "INVALID_SYSTEM", // Wrong errorCode
+            Params = new Dictionary<string, object>
+            {
+                ["system"] = "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus"
+            }
+        };
+
+        // Act
+        var result = _engine.Review(rule);
+
+        // Assert
+        Assert.Equal(RuleReviewStatus.BLOCKED, result.Status);
+        var issue = result.Issues.First(i => i.Code == "CODESYSTEM_ERROR_CODE_MISMATCH");
+        Assert.Equal("CodeSystem", issue.Facts["ruleType"]);
+        Assert.Equal("INVALID_SYSTEM", issue.Facts["currentErrorCode"]);
+        Assert.Equal("CODESYSTEM_VIOLATION", issue.Facts["requiredErrorCode"]);
+    }
 }
