@@ -958,4 +958,84 @@ public class FhirPathRuleEngineTests
     }
 
     #endregion
+    
+    #region CustomFHIRPath Rule Tests
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_CustomFHIRPath_WhenExpressionTrue_NoErrors()
+    {
+        // Arrange: Patient with gender field present
+        var bundle = TestHelper.CreateSimplePatientBundle(familyName: "Smith");
+        var patient = bundle.Entry[0].Resource as Patient;
+        patient!.Gender = AdministrativeGender.Male;
+        
+        var ruleSet = new RuleSet
+        {
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "CUSTOM_01",
+                    Type = "CustomFHIRPath",
+                    ResourceType = "Patient",
+                    Path = "gender.exists()",
+                    ErrorCode = ValidationErrorCodes.CUSTOMFHIRPATH_CONDITION_FAILED
+                }
+            }
+        };
+
+        // Act
+        var errors = await _engine.ValidateAsync(bundle, ruleSet);
+
+        // Assert
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_CustomFHIRPath_WhenExpressionFalse_EmitsProvidedErrorCode()
+    {
+        // Arrange: Patient without name (name.empty() will be true, which violates the rule)
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    FullUrl = "urn:uuid:patient-1",
+                    Resource = new Patient
+                    {
+                        Id = "patient-1"
+                        // No name field at all - name.empty() evaluates to true
+                    }
+                }
+            }
+        };
+        
+        var ruleSet = new RuleSet
+        {
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "CUSTOM_02",
+                    Type = "CustomFHIRPath",
+                    ResourceType = "Patient",
+                    Path = "name.empty() = false",  // Expression evaluates to false when name is empty
+                    ErrorCode = ValidationErrorCodes.CUSTOMFHIRPATH_CONDITION_FAILED
+                }
+            }
+        };
+
+        // Act
+        var errors = await _engine.ValidateAsync(bundle, ruleSet);
+
+        // Assert
+        Assert.Single(errors);
+        Assert.Equal(ValidationErrorCodes.CUSTOMFHIRPATH_CONDITION_FAILED, errors[0].ErrorCode);
+        Assert.Equal("CUSTOM_02", errors[0].RuleId);
+        Assert.Equal("Patient", errors[0].ResourceType);
+    }
+
+    #endregion
 }

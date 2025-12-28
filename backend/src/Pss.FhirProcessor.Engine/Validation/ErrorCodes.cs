@@ -163,6 +163,9 @@ public static class ValidationErrorCodes
     
     /// <summary>FHIRPath expression returned unexpected type</summary>
     public const string FHIRPATH_RETURN_TYPE_INVALID = "FHIRPATH_RETURN_TYPE_INVALID";
+    
+    /// <summary>CustomFHIRPath rule condition not met</summary>
+    public const string CUSTOMFHIRPATH_CONDITION_FAILED = "CUSTOMFHIRPATH_CONDITION_FAILED";
 
     // =========================================================================
     // STRUCTURAL / BUNDLE

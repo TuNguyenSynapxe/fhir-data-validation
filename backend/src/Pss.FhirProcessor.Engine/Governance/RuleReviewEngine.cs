@@ -57,7 +57,9 @@ public class RuleReviewEngine : IRuleReviewEngine
         CheckArrayLengthErrorCode(rule, issues);
         CheckFixedValueErrorCode(rule, issues);
         CheckCodeSystemErrorCode(rule, issues);
+        CheckCustomFhirPathErrorCodeIsKnown(rule, issues);
         CheckReferenceRuleNotSupported(rule, issues);
+        CheckFullUrlIdMatchRuleNotSupported(rule, issues);
         CheckPatternOnNonString(rule, issues);
         CheckArrayLengthOnNonArray(rule, issues);
         
@@ -392,6 +394,88 @@ public class RuleReviewEngine : IRuleReviewEngine
     }
     
     /// <summary>
+    /// Enforces that CustomFHIRPath rules use known errorCodes from ValidationErrorCodes.
+    /// 
+    /// GOVERNANCE CONTRACT:
+    /// - Blocks CustomFHIRPath rules with missing errorCode
+    /// - Blocks CustomFHIRPath rules with unknown errorCode (not in ValidationErrorCodes)
+    /// - Allows any known errorCode (user-defined semantic selection)
+    /// 
+    /// RATIONALE:
+    /// - CustomFHIRPath is flexible by design (arbitrary boolean expressions)
+    /// - But errorCode must be stable and known to prevent drift
+    /// - User selects appropriate errorCode based on expression semantics
+    /// - Governance ensures no typos or invented codes
+    /// </summary>
+    private void CheckCustomFhirPathErrorCodeIsKnown(RuleDefinition rule, List<RuleReviewIssue> issues)
+    {
+        if (!rule.Type.Equals("CustomFHIRPath", StringComparison.OrdinalIgnoreCase))
+            return;
+        
+        // BLOCKED: Missing or empty errorCode
+        if (string.IsNullOrWhiteSpace(rule.ErrorCode))
+        {
+            issues.Add(new RuleReviewIssue(
+                Code: "CUSTOMFHIRPATH_ERROR_CODE_MISSING",
+                Severity: RuleReviewStatus.BLOCKED,
+                RuleId: rule.Id,
+                Facts: new Dictionary<string, object>
+                {
+                    ["ruleType"] = rule.Type,
+                    ["reason"] = "CustomFHIRPath rules require explicit errorCode"
+                }
+            ));
+            return;
+        }
+        
+        // BLOCKED: Unknown errorCode (not in ValidationErrorCodes)
+        if (!KnownErrorCodes.Value.Contains(rule.ErrorCode))
+        {
+            issues.Add(new RuleReviewIssue(
+                Code: "CUSTOMFHIRPATH_ERROR_CODE_UNKNOWN",
+                Severity: RuleReviewStatus.BLOCKED,
+                RuleId: rule.Id,
+                Facts: new Dictionary<string, object>
+                {
+                    ["ruleType"] = rule.Type,
+                    ["currentErrorCode"] = rule.ErrorCode,
+                    ["reason"] = "errorCode must be a known ValidationErrorCode constant",
+                    ["hint"] = "Check Pss.FhirProcessor.Engine.Validation.ValidationErrorCodes for valid codes"
+                }
+            ));
+        }
+    }
+    
+    /// <summary>
+    /// Cached set of all known errorCode constants from ValidationErrorCodes.
+    /// Built via reflection once and reused.
+    /// </summary>
+    private static readonly Lazy<HashSet<string>> KnownErrorCodes = new(() =>
+    {
+        var errorCodesType = typeof(Pss.FhirProcessor.Engine.Validation.ValidationErrorCodes);
+        var fields = errorCodesType.GetFields(
+            System.Reflection.BindingFlags.Public | 
+            System.Reflection.BindingFlags.Static | 
+            System.Reflection.BindingFlags.FlattenHierarchy
+        );
+        
+        var codes = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var field in fields)
+        {
+            if (field.IsLiteral && !field.IsInitOnly && field.FieldType == typeof(string))
+            {
+                var value = field.GetValue(null) as string;
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    codes.Add(value);
+                }
+            }
+        }
+        
+        return codes;
+    });
+    
+    /// <summary>
     /// BLOCKED: Reference rules are not supported as user-defined business rules.
     /// Reference validation is handled globally by ReferenceResolver in the validation pipeline.
     /// 
@@ -417,6 +501,37 @@ public class RuleReviewEngine : IRuleReviewEngine
                 ["explanation"] = "References are automatically validated by the ReferenceResolver service. " +
                                 "All resource references in the bundle are checked for existence and type correctness. " +
                                 "User-defined Reference rules are not supported to avoid semantic ambiguity and ensure consistent error handling."
+            }
+        ));
+    }
+    
+    /// <summary>
+    /// BLOCKED: FullUrlIdMatch rules are not supported.
+    /// FullUrl-to-resource.id consistency is NOT enforced via business rules.
+    /// 
+    /// RATIONALE:
+    /// - FullUrlIdMatch is documented but has zero runtime implementation
+    /// - FhirPathRuleEngine explicitly skips this rule type with a comment
+    /// - No bundle-level validator exists for fullUrl/id matching
+    /// - Allowing this rule type creates phantom rules that silently fail
+    /// - fullUrl/id consistency must be handled by system-level validation or migration logic
+    /// </summary>
+    private void CheckFullUrlIdMatchRuleNotSupported(RuleDefinition rule, List<RuleReviewIssue> issues)
+    {
+        if (!rule.Type.Equals("FullUrlIdMatch", StringComparison.OrdinalIgnoreCase))
+            return;
+        
+        issues.Add(new RuleReviewIssue(
+            Code: "FULLURLIDMATCH_RULE_NOT_SUPPORTED",
+            Severity: RuleReviewStatus.BLOCKED,
+            RuleId: rule.Id,
+            Facts: new Dictionary<string, object>
+            {
+                ["ruleType"] = rule.Type,
+                ["reason"] = "FullUrlIdMatch is not implemented and cannot be used as a business rule.",
+                ["explanation"] = "FullUrlIdMatch validation is not supported. fullUrl-to-resource.id consistency " +
+                                "is not enforced via business rules. This rule type is intentionally blocked to " +
+                                "prevent silent failures. Use system-level validation or migration logic instead."
             }
         ));
     }

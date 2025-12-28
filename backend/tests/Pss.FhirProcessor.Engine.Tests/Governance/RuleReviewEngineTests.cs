@@ -742,4 +742,134 @@ public class RuleReviewEngineTests
         Assert.Equal("INVALID_SYSTEM", issue.Facts["currentErrorCode"]);
         Assert.Equal("CODESYSTEM_VIOLATION", issue.Facts["requiredErrorCode"]);
     }
+    
+    // ═══════════════════════════════════════════════════════════
+    // CUSTOMFHIRPATH GOVERNANCE TESTS
+    // ═══════════════════════════════════════════════════════════
+    
+    [Fact]
+    public void CustomFHIRPathRule_WithMissingErrorCode_IsBlocked()
+    {
+        // Arrange
+        var rule = new RuleDefinition
+        {
+            Id = "custom-missing-errorcode",
+            Type = "CustomFHIRPath",
+            ResourceType = "Patient",
+            Path = "gender.exists()",
+            ErrorCode = "" // Missing errorCode
+        };
+
+        // Act
+        var result = _engine.Review(rule);
+
+        // Assert
+        Assert.Equal(RuleReviewStatus.BLOCKED, result.Status);
+        var issue = result.Issues.First(i => i.Code == "CUSTOMFHIRPATH_ERROR_CODE_MISSING");
+        Assert.Equal("CustomFHIRPath", issue.Facts["ruleType"]);
+        Assert.Equal("CustomFHIRPath rules require explicit errorCode", issue.Facts["reason"]);
+    }
+    
+    [Fact]
+    public void CustomFHIRPathRule_WithUnknownErrorCode_IsBlocked()
+    {
+        // Arrange
+        var rule = new RuleDefinition
+        {
+            Id = "custom-unknown-errorcode",
+            Type = "CustomFHIRPath",
+            ResourceType = "Patient",
+            Path = "gender.exists()",
+            ErrorCode = "TOTALLY_MADE_UP_CODE_123" // Unknown errorCode
+        };
+
+        // Act
+        var result = _engine.Review(rule);
+
+        // Assert
+        Assert.Equal(RuleReviewStatus.BLOCKED, result.Status);
+        var issue = result.Issues.First(i => i.Code == "CUSTOMFHIRPATH_ERROR_CODE_UNKNOWN");
+        Assert.Equal("CustomFHIRPath", issue.Facts["ruleType"]);
+        Assert.Equal("TOTALLY_MADE_UP_CODE_123", issue.Facts["currentErrorCode"]);
+        Assert.Equal("errorCode must be a known ValidationErrorCode constant", issue.Facts["reason"]);
+    }
+    
+    [Fact]
+    public void CustomFHIRPathRule_WithKnownErrorCode_IsWarning_NotBlocked()
+    {
+        // Arrange
+        var rule = new RuleDefinition
+        {
+            Id = "custom-known-errorcode",
+            Type = "CustomFHIRPath",
+            ResourceType = "Patient",
+            Path = "gender.exists()",
+            ErrorCode = Pss.FhirProcessor.Engine.Validation.ValidationErrorCodes.CUSTOMFHIRPATH_CONDITION_FAILED // Known errorCode
+        };
+
+        // Act
+        var result = _engine.Review(rule);
+
+        // Assert
+        // CustomFHIRPath with known errorCode should emit WARNING (semantic stability advisory), not BLOCKED
+        Assert.NotEqual(RuleReviewStatus.BLOCKED, result.Status);
+        
+        // Verify no blocking issues
+        Assert.DoesNotContain(result.Issues, i => i.Severity == RuleReviewStatus.BLOCKED);
+        
+        // Should have semantic stability advisory (WARNING)
+        var warningIssue = result.Issues.FirstOrDefault(i => 
+            i.Code == "RULE_SEMANTIC_STABILITY_INFO" && 
+            i.Severity == RuleReviewStatus.WARNING);
+        Assert.NotNull(warningIssue);
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // FULLURLIDMATCH BLOCKING TESTS
+    // ═══════════════════════════════════════════════════════════
+    
+    [Fact]
+    public void FullUrlIdMatchRule_IsBlocked()
+    {
+        // Arrange
+        var rule = new RuleDefinition
+        {
+            Id = "fullurl-test",
+            Type = "FullUrlIdMatch",
+            ResourceType = "Patient",
+            Path = "Patient.id",
+            ErrorCode = "FULLURL_ID_MISMATCH"
+        };
+
+        // Act
+        var result = _engine.Review(rule);
+
+        // Assert
+        Assert.Equal(RuleReviewStatus.BLOCKED, result.Status);
+        var issue = result.Issues.First(i => i.Code == "FULLURLIDMATCH_RULE_NOT_SUPPORTED");
+        Assert.Equal("FullUrlIdMatch", issue.Facts["ruleType"]);
+        Assert.Contains("not implemented", issue.Facts["reason"].ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+    
+    [Fact]
+    public void FullUrlIdMatchRule_IsBlocked_CaseInsensitive()
+    {
+        // Arrange
+        var rule = new RuleDefinition
+        {
+            Id = "fullurl-test-lower",
+            Type = "fullurlidmatch",
+            ResourceType = "Patient",
+            Path = "Patient.id",
+            ErrorCode = "FULLURL_ID_MISMATCH"
+        };
+
+        // Act
+        var result = _engine.Review(rule);
+
+        // Assert
+        Assert.Equal(RuleReviewStatus.BLOCKED, result.Status);
+        var issue = result.Issues.First(i => i.Code == "FULLURLIDMATCH_RULE_NOT_SUPPORTED");
+        Assert.Equal("fullurlidmatch", issue.Facts["ruleType"]);
+    }
 }

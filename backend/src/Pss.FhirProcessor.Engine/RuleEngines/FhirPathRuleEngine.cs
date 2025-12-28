@@ -1110,9 +1110,47 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         return errors;
     }
     
+    /// <summary>
+    /// Validates CustomFHIRPath rules.
+    /// 
+    /// GOVERNANCE CONTRACT:
+    /// - errorCode is REQUIRED and user-defined (no default fallback)
+    /// - Runtime never invents or chooses errorCode
+    /// - Governance enforces errorCode exists and is a known ValidationErrorCode
+    /// - CustomFHIRPath emits advisory WARNING due to semantic complexity
+    /// 
+    /// UX CONTRACT:
+    /// - Frontend must provide errorCode selector for CustomFHIRPath
+    /// - Only known errorCodes from ValidationErrorCodes can be used
+    /// - User is responsible for selecting appropriate semantic errorCode
+    /// </summary>
     private List<RuleValidationError> ValidateCustomFhirPath(Resource resource, RuleDefinition rule, int entryIndex)
     {
         var errors = new List<RuleValidationError>();
+        
+        // Defensive guard: errorCode must be present (governance + ParseRuleSet should prevent this)
+        if (string.IsNullOrWhiteSpace(rule.ErrorCode))
+        {
+            errors.Add(new RuleValidationError
+            {
+                RuleId = rule.Id,
+                RuleType = rule.Type,
+                Severity = "error",
+                ResourceType = rule.ResourceType,
+                Path = rule.Path,
+                ErrorCode = "RULE_DEFINITION_ERROR",
+                Details = new Dictionary<string, object>
+                {
+                    ["source"] = "ProjectRule",
+                    ["ruleType"] = rule.Type,
+                    ["ruleId"] = rule.Id,
+                    ["reason"] = "CustomFHIRPath rules require explicit errorCode"
+                },
+                EntryIndex = entryIndex,
+                ResourceId = resource.Id
+            });
+            return errors;
+        }
         
         // Extract field path, removing instance scope prefix
         var fieldPath = ExtractFieldPathFromRulePath(rule.Path, rule.ResourceType);
@@ -1143,7 +1181,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                     ["evaluationResult"] = "false"
                 };
                 
-                details["explanation"] = GetExplanation(rule.Type, rule.ErrorCode ?? "CUSTOM_RULE_FAILED", details);
+                details["explanation"] = GetExplanation(rule.Type, rule.ErrorCode!, details);
                 
                 errors.Add(new RuleValidationError
                 {
@@ -1152,7 +1190,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                     Severity = rule.Severity,
                     ResourceType = rule.ResourceType,
                     Path = rule.Path,
-                    ErrorCode = rule.ErrorCode ?? "CUSTOM_RULE_FAILED",
+                    ErrorCode = rule.ErrorCode!,
                     Details = details,
                     EntryIndex = entryIndex,
                     ResourceId = resource.Id
