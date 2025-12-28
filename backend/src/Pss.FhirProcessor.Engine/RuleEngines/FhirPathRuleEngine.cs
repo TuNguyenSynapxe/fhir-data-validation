@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Pss.FhirProcessor.Engine.Models;
 using Pss.FhirProcessor.Engine.Firely;
 using Pss.FhirProcessor.Engine.Services;
+using Pss.FhirProcessor.Engine.Validation;
 
 namespace Pss.FhirProcessor.Engine.RuleEngines;
 
@@ -563,7 +564,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 ["isAllEmpty"] = isAllEmpty
             };
             
-            details["explanation"] = GetExplanation(rule.Type, rule.ErrorCode ?? "MANDATORY_MISSING", details);
+            details["explanation"] = GetExplanation(rule.Type, rule.ErrorCode ?? ValidationErrorCodes.FIELD_REQUIRED, details);
             
             errors.Add(new RuleValidationError
             {
@@ -572,7 +573,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 Severity = rule.Severity,
                 ResourceType = rule.ResourceType,
                 Path = rule.Path,
-                ErrorCode = rule.ErrorCode ?? "MANDATORY_MISSING",
+                ErrorCode = rule.ErrorCode ?? ValidationErrorCodes.FIELD_REQUIRED,
                 Details = details,
                 EntryIndex = entryIndex,
                 ResourceId = resource.Id
@@ -777,7 +778,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         ["pattern"] = pattern
                     };
                     
-                    details["explanation"] = GetExplanation(rule.Type, rule.ErrorCode ?? "PATTERN_MISMATCH", details);
+                    details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.PATTERN_MISMATCH, details);
                     
                     errors.Add(new RuleValidationError
                     {
@@ -786,7 +787,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         Severity = rule.Severity,
                         ResourceType = rule.ResourceType,
                         Path = rule.Path,
-                        ErrorCode = rule.ErrorCode ?? "PATTERN_MISMATCH",
+                        ErrorCode = ValidationErrorCodes.PATTERN_MISMATCH,
                         Details = details,
                         EntryIndex = entryIndex,
                         ResourceId = resource.Id

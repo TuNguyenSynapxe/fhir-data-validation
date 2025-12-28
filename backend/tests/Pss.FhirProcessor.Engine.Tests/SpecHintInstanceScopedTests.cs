@@ -3,6 +3,7 @@ using Pss.FhirProcessor.Engine.Services;
 using Pss.FhirProcessor.Engine.Core;
 using Pss.FhirProcessor.Engine.RuleEngines;
 using Pss.FhirProcessor.Engine.Navigation;
+using Pss.FhirProcessor.Engine.Navigation.Structure;
 using Pss.FhirProcessor.Engine.Firely;
 using Pss.FhirProcessor.Engine.Authoring;
 using Pss.FhirProcessor.Engine.Models;
@@ -25,7 +26,9 @@ public class SpecHintInstanceScopedTests
 
     public SpecHintInstanceScopedTests()
     {
-        _navigationService = new SmartPathNavigationService();
+        var jsonResolver = new JsonPointerResolver(new NullFhirStructureHintProvider());
+        var navLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<SmartPathNavigationService>.Instance;
+        _navigationService = new SmartPathNavigationService(jsonResolver, navLogger);
         var mockLogger = new Mock<ILogger<UnifiedErrorModelBuilder>>();
         _errorBuilder = new UnifiedErrorModelBuilder(_navigationService, mockLogger.Object);
         _specHintService = new SpecHintService();

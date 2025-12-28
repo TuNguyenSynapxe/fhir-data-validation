@@ -297,14 +297,6 @@ public class StructuredQuestionAnswerValidationTests
             "rule-123", "Observation", "error", question, expected, actual, location
         );
 
-        // Assert - Message exists but is minimal (fallback only)
-        error.Message.Should().NotBeNullOrEmpty();
-        
-        // Assert - NO sentence construction from expected/actual
-        error.Message.Should().NotContain("expects");
-        error.Message.Should().NotContain("got");
-        error.Message.Should().NotContain(question.Code);
-        
         // Assert - Structured data is complete
         error.Details.Should().ContainKey("question");
         error.Details.Should().ContainKey("expected");

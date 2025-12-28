@@ -3,6 +3,7 @@ using Pss.FhirProcessor.Engine.Services;
 using Pss.FhirProcessor.Engine.Core;
 using Pss.FhirProcessor.Engine.RuleEngines;
 using Pss.FhirProcessor.Engine.Navigation;
+using Pss.FhirProcessor.Engine.Navigation.Structure;
 using Pss.FhirProcessor.Engine.Firely;
 using Pss.FhirProcessor.Engine.Authoring;
 using Xunit;
@@ -20,7 +21,9 @@ public class SmartPathNavigationService_ResourceLevelWhereTests
 
     public SmartPathNavigationService_ResourceLevelWhereTests()
     {
-        _service = new SmartPathNavigationService();
+        var jsonResolver = new JsonPointerResolver(new NullFhirStructureHintProvider());
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<SmartPathNavigationService>.Instance;
+        _service = new SmartPathNavigationService(jsonResolver, logger);
     }
 
     [Fact]

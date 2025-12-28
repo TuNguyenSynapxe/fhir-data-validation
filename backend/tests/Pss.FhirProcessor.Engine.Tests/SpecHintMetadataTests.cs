@@ -3,6 +3,7 @@ using Pss.FhirProcessor.Engine.Services;
 using Pss.FhirProcessor.Engine.Core;
 using Pss.FhirProcessor.Engine.RuleEngines;
 using Pss.FhirProcessor.Engine.Navigation;
+using Pss.FhirProcessor.Engine.Navigation.Structure;
 using Pss.FhirProcessor.Engine.Firely;
 using Pss.FhirProcessor.Engine.Authoring;
 using Hl7.Fhir.Model;
@@ -23,7 +24,11 @@ public class SpecHintMetadataTests
     public SpecHintMetadataTests()
     {
         _specHintService = new SpecHintService();
-        _errorBuilder = new UnifiedErrorModelBuilder(new SmartPathNavigationService());
+        var jsonResolver = new JsonPointerResolver(new NullFhirStructureHintProvider());
+        var navLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<SmartPathNavigationService>.Instance;
+        var navService = new SmartPathNavigationService(jsonResolver, navLogger);
+        var builderLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<UnifiedErrorModelBuilder>.Instance;
+        _errorBuilder = new UnifiedErrorModelBuilder(navService, builderLogger);
         _parser = new FhirJsonParser();
     }
 
@@ -53,7 +58,7 @@ public class SpecHintMetadataTests
 
         // Act
         var issues = await _specHintService.CheckAsync(bundle, "R4");
-        var errors = await _errorBuilder.FromSpecHintIssuesAsync(issues, bundle);
+        var errors = await _errorBuilder.FromSpecHintIssuesAsync(issues, json, null);
 
         // Assert
         var conditionalError = errors.FirstOrDefault(e => e.Path.Contains("communication") && e.Path.Contains("language"));
@@ -96,7 +101,7 @@ public class SpecHintMetadataTests
 
         // Act
         var issues = await _specHintService.CheckAsync(bundle, "R4");
-        var errors = await _errorBuilder.FromSpecHintIssuesAsync(issues, bundle);
+        var errors = await _errorBuilder.FromSpecHintIssuesAsync(issues, json, null);
 
         // Assert
         var simpleError = errors.FirstOrDefault(e => e.Path.Contains("identifier"));

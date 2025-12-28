@@ -5,6 +5,7 @@ using Pss.FhirProcessor.Engine.Interfaces;
 using Pss.FhirProcessor.Engine.Core;
 using Pss.FhirProcessor.Engine.RuleEngines;
 using Pss.FhirProcessor.Engine.Navigation;
+using Pss.FhirProcessor.Engine.Navigation.Structure;
 using Pss.FhirProcessor.Engine.Firely;
 using Pss.FhirProcessor.Engine.Authoring;
 using Pss.FhirProcessor.Engine.Models;
@@ -12,6 +13,7 @@ using Pss.FhirProcessor.Engine.Services;
 using Pss.FhirProcessor.Engine.Core;
 using Pss.FhirProcessor.Engine.RuleEngines;
 using Pss.FhirProcessor.Engine.Navigation;
+using Pss.FhirProcessor.Engine.Navigation.Structure;
 using Pss.FhirProcessor.Engine.Firely;
 using Pss.FhirProcessor.Engine.Authoring;
 
@@ -215,7 +217,9 @@ public static class TestHelper
 
     public static ISmartPathNavigationService CreateNavigationService()
     {
-        return new SmartPathNavigationService();
+        var jsonResolver = new JsonPointerResolver(new NullFhirStructureHintProvider());
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<SmartPathNavigationService>.Instance;
+        return new SmartPathNavigationService(jsonResolver, logger);
     }
 
     public static IFirelyValidationService CreateFirelyValidationService()
@@ -234,7 +238,8 @@ public static class TestHelper
     public static IUnifiedErrorModelBuilder CreateErrorModelBuilder()
     {
         var navigationService = CreateNavigationService();
-        return new UnifiedErrorModelBuilder(navigationService);
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<UnifiedErrorModelBuilder>.Instance;
+        return new UnifiedErrorModelBuilder(navigationService, logger);
     }
 
     public static ILintValidationService CreateLintValidationService()

@@ -1,6 +1,8 @@
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
 using Pss.FhirProcessor.Engine.Services;
+using Pss.FhirProcessor.Engine.Navigation;
+using Pss.FhirProcessor.Engine.Navigation.Structure;
 using System.Text.Json;
 using Xunit;
 
@@ -13,7 +15,7 @@ namespace Pss.FhirProcessor.Engine.Tests;
 /// </summary>
 public class SmartPathNavigationService_TolerantObjectTests
 {
-    private readonly SmartPathNavigationService _service = new();
+    private readonly SmartPathNavigationService _service = new(new JsonPointerResolver(new NullFhirStructureHintProvider()), Microsoft.Extensions.Logging.Abstractions.NullLogger<SmartPathNavigationService>.Instance);
 
     [Fact]
     public async System.Threading.Tasks.Task PerformerAsObject_NotArray_NavigatesToDisplay()

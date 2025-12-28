@@ -378,4 +378,98 @@ public class RuleReviewEngineTests
         // If this rule were passed to validation pipeline, it would still execute
         // (governance is orthogonal to validation)
     }
-}
+
+    // ═══════════════════════════════════════════════════════════
+    // PATTERN RULE ERRORCODE HARDENING TESTS
+    // ═══════════════════════════════════════════════════════════
+
+    [Fact]
+    public void PatternRule_WithCorrectErrorCode_IsAllowed()
+    {
+        // Test: Pattern rule with PATTERN_MISMATCH → ALLOWED
+        // Arrange
+        var rule = new RuleDefinition
+        {
+            Id = "pattern-correct",
+            Type = "Pattern",
+            ResourceType = "Patient",
+            Path = "Patient.identifier.value",
+            ErrorCode = "PATTERN_MISMATCH"
+        };
+
+        // Act
+        var result = _engine.Review(rule);
+
+        // Assert
+        // Should not be BLOCKED (may have warnings, but not blocked for errorCode)
+        Assert.NotEqual(RuleReviewStatus.BLOCKED, result.Status);
+        Assert.DoesNotContain(result.Issues, i => i.Code == "PATTERN_ERROR_CODE_MISMATCH");
+    }
+
+    [Fact]
+    public void PatternRule_WithIncorrectErrorCode_IsBlocked()
+    {
+        // Test: Pattern rule with any other errorCode → BLOCKED
+        // Arrange
+        var rule = new RuleDefinition
+        {
+            Id = "pattern-wrong-code",
+            Type = "Pattern",
+            ResourceType = "Patient",
+            Path = "Patient.identifier.value",
+            ErrorCode = "INVALID_FORMAT" // Not allowed
+        };
+
+        // Act
+        var result = _engine.Review(rule);
+
+        // Assert
+        Assert.Equal(RuleReviewStatus.BLOCKED, result.Status);
+        Assert.Contains(result.Issues, i => i.Code == "PATTERN_ERROR_CODE_MISMATCH");
+    }
+
+    [Fact]
+    public void RegexRule_WithCorrectErrorCode_IsAllowed()
+    {
+        // Test: Regex rule with PATTERN_MISMATCH → ALLOWED
+        // Arrange
+        var rule = new RuleDefinition
+        {
+            Id = "regex-correct",
+            Type = "Regex",
+            ResourceType = "Patient",
+            Path = "Patient.identifier.value",
+            ErrorCode = "PATTERN_MISMATCH"
+        };
+
+        // Act
+        var result = _engine.Review(rule);
+
+        // Assert
+        Assert.NotEqual(RuleReviewStatus.BLOCKED, result.Status);
+        Assert.DoesNotContain(result.Issues, i => i.Code == "PATTERN_ERROR_CODE_MISMATCH");
+    }
+
+    [Fact]
+    public void RegexRule_WithIncorrectErrorCode_IsBlocked()
+    {
+        // Test: Regex rule with any other errorCode → BLOCKED
+        // Arrange
+        var rule = new RuleDefinition
+        {
+            Id = "regex-wrong-code",
+            Type = "Regex",
+            ResourceType = "Patient",
+            Path = "Patient.identifier.value",
+            ErrorCode = "REGEX_NO_MATCH" // Not allowed
+        };
+
+        // Act
+        var result = _engine.Review(rule);
+
+        // Assert
+        Assert.Equal(RuleReviewStatus.BLOCKED, result.Status);
+        Assert.Contains(result.Issues, i => i.Code == "PATTERN_ERROR_CODE_MISMATCH");
+        var issue = result.Issues.First(i => i.Code == "PATTERN_ERROR_CODE_MISMATCH");
+        Assert.Equal("PATTERN_MISMATCH", issue.Facts["requiredErrorCode"]);
+    }}

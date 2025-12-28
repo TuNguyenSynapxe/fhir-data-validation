@@ -61,8 +61,7 @@ public class FhirPathRuleEngineTests
                     Type = "Required",
                     ResourceType = "Patient",
                     Path = "name.family",
-                    ErrorCode = "MANDATORY_MISSING",
-                    Message = "Family name is required"
+                    ErrorCode = "MANDATORY_MISSING"
                 }
             }
         };
@@ -121,7 +120,6 @@ public class FhirPathRuleEngineTests
                     ResourceType = "Patient",
                     Path = "Patient.gender",
                     ErrorCode = "FIXED_VALUE_MISMATCH",
-                    Message = "Gender must be female",
                     Params = new Dictionary<string, object> { { "value", "female" } }
                 }
             }
@@ -180,7 +178,6 @@ public class FhirPathRuleEngineTests
                     ResourceType = "Patient",
                     Path = "identifier.where(system='http://example.org/nric').value",
                     ErrorCode = "REGEX_INVALID",
-                    Message = "Invalid NRIC format",
                     Params = new Dictionary<string, object> { { "pattern", @"^[STFG]\d{7}[A-Z]$" } }
                 }
             }
@@ -191,7 +188,8 @@ public class FhirPathRuleEngineTests
 
         // Assert
         Assert.Single(errors);
-        Assert.Equal("REGEX_INVALID", errors[0].ErrorCode);
+        // Pattern/Regex rules always emit PATTERN_MISMATCH regardless of rule.ErrorCode
+        Assert.Equal(Pss.FhirProcessor.Engine.Validation.ValidationErrorCodes.PATTERN_MISMATCH, errors[0].ErrorCode);
         Assert.Equal("R3", errors[0].RuleId);
     }
 
@@ -240,8 +238,7 @@ public class FhirPathRuleEngineTests
                     Type = "Required",
                     ResourceType = "Patient",
                     Path = "name.family",
-                    ErrorCode = "MANDATORY_MISSING",
-                    Message = "Family name required"
+                    ErrorCode = "MANDATORY_MISSING"
                 },
                 new RuleDefinition
                 {
@@ -250,7 +247,6 @@ public class FhirPathRuleEngineTests
                     ResourceType = "Patient",
                     Path = "gender",
                     ErrorCode = "FIXED_VALUE_MISMATCH",
-                    Message = "Gender must be female",
                     Params = new Dictionary<string, object> { { "value", "female" } }
                 }
             }
@@ -597,6 +593,120 @@ public class FhirPathRuleEngineTests
         Assert.True(error.Details.ContainsKey("ruleType"));
         Assert.True(error.Details.ContainsKey("missingParams"));
         Assert.Equal("FixedValue", error.Details["ruleType"]);
+    }
+
+    #endregion
+
+    #region Pattern Rule Hardening Tests
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_PatternRule_WithCorrectErrorCode_EmitsPATTERN_MISMATCH()
+    {
+        // Test: Pattern rule with PATTERN_MISMATCH emits PATTERN_MISMATCH
+        // Arrange
+        var bundle = TestHelper.CreateSimplePatientBundle(nric: "INVALID");
+        var ruleSet = new RuleSet
+        {
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "PATTERN-DEFAULT",
+                    Type = "Regex",
+                    ResourceType = "Patient",
+                    Path = "identifier.where(system='http://example.org/nric').value",
+                    ErrorCode = "PATTERN_MISMATCH",
+                    Params = new Dictionary<string, object> { { "pattern", @"^\d+$" } }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _engine.ValidateAsync(bundle, ruleSet);
+
+        // Assert
+        Assert.Single(errors);
+        Assert.Equal(Pss.FhirProcessor.Engine.Validation.ValidationErrorCodes.PATTERN_MISMATCH, errors[0].ErrorCode);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_RegexRule_WithCustomErrorCode_IgnoresAndEmitsPATTERN_MISMATCH()
+    {
+        // Test: Pattern rules ignore rule.ErrorCode override and always emit PATTERN_MISMATCH
+        // Arrange
+        var bundle = TestHelper.CreateSimplePatientBundle(nric: "INVALID");
+        var ruleSet = new RuleSet
+        {
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "REGEX-CUSTOM-CODE",
+                    Type = "Regex",
+                    ResourceType = "Patient",
+                    Path = "identifier.where(system='http://example.org/nric').value",
+                    ErrorCode = "CUSTOM_CODE", // Should be ignored
+                    Params = new Dictionary<string, object> { { "pattern", @"^\d+$" } }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _engine.ValidateAsync(bundle, ruleSet);
+
+        // Assert
+        Assert.Single(errors);
+        // Must emit PATTERN_MISMATCH, not CUSTOM_CODE
+        Assert.Equal(Pss.FhirProcessor.Engine.Validation.ValidationErrorCodes.PATTERN_MISMATCH, errors[0].ErrorCode);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_PatternAndRegex_BehaveSame()
+    {
+        // Test: Pattern and Regex rule types behave identically
+        // Arrange
+        var bundle = TestHelper.CreateSimplePatientBundle(nric: "INVALID");
+        var ruleSetPattern = new RuleSet
+        {
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "PATTERN-TEST",
+                    Type = "Regex",
+                    ResourceType = "Patient",
+                    Path = "identifier.where(system='http://example.org/nric').value",
+                    ErrorCode = "PATTERN_MISMATCH",
+                    Params = new Dictionary<string, object> { { "pattern", @"^\d+$" } }
+                }
+            }
+        };
+        
+        var ruleSetRegex = new RuleSet
+        {
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "REGEX-TEST",
+                    Type = "Regex",
+                    ResourceType = "Patient",
+                    Path = "identifier.where(system='http://example.org/nric').value",
+                    ErrorCode = "PATTERN_MISMATCH",
+                    Params = new Dictionary<string, object> { { "pattern", @"^\d+$" } }
+                }
+            }
+        };
+
+        // Act
+        var errorsPattern = await _engine.ValidateAsync(bundle, ruleSetPattern);
+        var errorsRegex = await _engine.ValidateAsync(bundle, ruleSetRegex);
+
+        // Assert
+        Assert.Single(errorsPattern);
+        Assert.Single(errorsRegex);
+        Assert.Equal(errorsPattern[0].ErrorCode, errorsRegex[0].ErrorCode);
+        Assert.Equal(Pss.FhirProcessor.Engine.Validation.ValidationErrorCodes.PATTERN_MISMATCH, errorsPattern[0].ErrorCode);
     }
 
     #endregion

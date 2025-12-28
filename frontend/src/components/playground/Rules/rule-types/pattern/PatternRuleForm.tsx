@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, AlertCircle, HelpCircle, Lightbulb } from 'lucide-react';
 import FhirPathSelectorDrawer from '../../../../rules/FhirPathSelectorDrawer';
-import { ErrorCodeSelector, UserHintInput, RuleErrorPreview } from '../../common';
+import { UserHintInput, RuleErrorPreview } from '../../common';
 import { InstanceScopeDrawer } from '../../common/InstanceScopeDrawer';
 import type { InstanceScope } from '../../common/InstanceScope.types';
 import { getInstanceScopeSummary } from '../../common/InstanceScope.utils';
@@ -38,14 +38,14 @@ export const PatternRuleForm: React.FC<PatternRuleFormProps> = ({
   const [negate, setNegate] = useState<boolean>(false);
   const [caseSensitive, setCaseSensitive] = useState<boolean>(true);
   const [severity, setSeverity] = useState<'error' | 'warning' | 'information'>('error');
-  // PHASE 3: Replace customMessage with errorCode + userHint
-  const [errorCode, setErrorCode] = useState<string>('');
+  // PHASE 3: Pattern rules have fixed errorCode (PATTERN_MISMATCH)
+  const errorCode = 'PATTERN_MISMATCH';
   const [userHint, setUserHint] = useState<string>('');
   const [isFieldDrawerOpen, setIsFieldDrawerOpen] = useState(false);
   const [isScopeDrawerOpen, setIsScopeDrawerOpen] = useState(false);
   const [showPatternHelp, setShowPatternHelp] = useState(false);
   const [testValue, setTestValue] = useState<string>('');
-  const [errors, setErrors] = useState<{ fieldPath?: string; pattern?: string; errorCode?: string }>({});
+  const [errors, setErrors] = useState<{ fieldPath?: string; pattern?: string }>({});
 
   // Reset instance scope when resource type changes
   useEffect(() => {
@@ -87,8 +87,8 @@ export const PatternRuleForm: React.FC<PatternRuleFormProps> = ({
   };
 
   const handleSave = () => {
-    // PHASE 3: Validate required fields (errorCode is now mandatory)
-    const newErrors: { fieldPath?: string; pattern?: string; errorCode?: string } = {};
+    // PHASE 3: Validate required fields (errorCode is now fixed to PATTERN_MISMATCH)
+    const newErrors: { fieldPath?: string; pattern?: string } = {};
 
     if (!fieldPath) {
       newErrors.fieldPath = 'Please select a field';
@@ -103,16 +103,12 @@ export const PatternRuleForm: React.FC<PatternRuleFormProps> = ({
       }
     }
 
-    if (!errorCode || errorCode.trim() === '') {
-      newErrors.errorCode = 'Error code is required';
-    }
-
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
 
-    // PHASE 3: Build rule with errorCode + userHint (NO message)
+    // PHASE 3: Build rule with fixed errorCode PATTERN_MISMATCH + userHint (NO message)
     const rule = buildPatternRule({
       resourceType,
       instanceScope,
@@ -121,7 +117,7 @@ export const PatternRuleForm: React.FC<PatternRuleFormProps> = ({
       negate,
       caseSensitive,
       severity,
-      errorCode,
+      errorCode: 'PATTERN_MISMATCH',
       userHint: userHint || undefined,
     });
 
@@ -390,19 +386,20 @@ export const PatternRuleForm: React.FC<PatternRuleFormProps> = ({
           </div>
         </div>
 
-        {/* PHASE 3: ErrorCode Selector (REQUIRED) */}
-        <ErrorCodeSelector
-          ruleType="Pattern"
-          value={errorCode}
-          onChange={setErrorCode}
-          required
-        />
-        {errors.errorCode && (
-          <div className="flex items-center gap-1 -mt-4 text-xs text-red-600">
-            <AlertCircle size={12} />
-            <span>{errors.errorCode}</span>
+        {/* PHASE 3: Fixed ErrorCode Display (READ-ONLY) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Error Code
+          </label>
+          <div className="px-4 py-3 bg-gray-50 border border-gray-300 rounded-md">
+            <div className="font-mono text-sm font-semibold text-gray-900">
+              PATTERN_MISMATCH
+            </div>
+            <p className="text-xs text-gray-600 mt-1">
+              Pattern rules have a fixed failure meaning
+            </p>
           </div>
-        )}
+        </div>
 
         {/* PHASE 3: User Hint Input (OPTIONAL) */}
         <UserHintInput
@@ -434,7 +431,7 @@ export const PatternRuleForm: React.FC<PatternRuleFormProps> = ({
         </button>
         <button
           onClick={handleSave}
-          disabled={!fieldPath || !pattern || !errorCode || !!errors.pattern}
+          disabled={!fieldPath || !pattern || !!errors.pattern}
           className="px-4 py-2 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           Create Rule

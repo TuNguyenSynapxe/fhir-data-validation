@@ -52,6 +52,7 @@ public class RuleReviewEngine : IRuleReviewEngine
         CheckSemanticStability(rule, issues);
         CheckEmptyOrRootPath(rule, issues);
         CheckQuestionAnswerWithoutQuestionSetId(rule, issues);
+        CheckPatternErrorCode(rule, issues);
         CheckPatternOnNonString(rule, issues);
         CheckArrayLengthOnNonArray(rule, issues);
         
@@ -242,6 +243,31 @@ public class RuleReviewEngine : IRuleReviewEngine
                 {
                     ["ruleType"] = rule.Type,
                     ["path"] = rule.Path
+                }
+            ));
+        }
+    }
+    
+    /// <summary>
+    /// BLOCKED: Pattern/Regex rule with incorrect errorCode (must be PATTERN_MISMATCH)
+    /// </summary>
+    private void CheckPatternErrorCode(RuleDefinition rule, List<RuleReviewIssue> issues)
+    {
+        if (rule.Type != "Regex" && rule.Type != "Pattern")
+            return;
+        
+        if (!string.IsNullOrWhiteSpace(rule.ErrorCode) && rule.ErrorCode != "PATTERN_MISMATCH")
+        {
+            issues.Add(new RuleReviewIssue(
+                Code: "PATTERN_ERROR_CODE_MISMATCH",
+                Severity: RuleReviewStatus.BLOCKED,
+                RuleId: rule.Id,
+                Facts: new Dictionary<string, object>
+                {
+                    ["ruleType"] = rule.Type,
+                    ["currentErrorCode"] = rule.ErrorCode,
+                    ["requiredErrorCode"] = "PATTERN_MISMATCH",
+                    ["reason"] = "Pattern rules must use errorCode PATTERN_MISMATCH"
                 }
             ));
         }

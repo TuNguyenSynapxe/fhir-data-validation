@@ -27,7 +27,8 @@ public class UnifiedErrorModelBuilderTests
     public UnifiedErrorModelBuilderTests()
     {
         _navigationServiceMock = new Mock<ISmartPathNavigationService>();
-        _builder = new UnifiedErrorModelBuilder(_navigationServiceMock.Object);
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<UnifiedErrorModelBuilder>.Instance;
+        _builder = new UnifiedErrorModelBuilder(_navigationServiceMock.Object, logger);
         _testBundle = CreateTestBundle();
         
         SetupDefaultNavigationMock();
@@ -104,7 +105,7 @@ public class UnifiedErrorModelBuilderTests
             .ReturnsAsync("/entry/0/resource/name");
 
         // Act
-        var result = await _builder.FromFirelyIssuesAsync(outcome, _testBundle);
+        var result = await _builder.FromFirelyIssuesAsync(outcome, "{}", _testBundle);
 
         // Assert
         result.Should().HaveCount(1);
@@ -133,7 +134,6 @@ public class UnifiedErrorModelBuilderTests
                 ResourceType = "Observation",
                 Path = "Observation.value",
                 ErrorCode = "RULE_REQUIRED",
-                Message = "Field 'value' is required by business rule",
                 Details = new Dictionary<string, object>
                 {
                     ["ruleId"] = "RULE_001",
@@ -147,7 +147,7 @@ public class UnifiedErrorModelBuilderTests
             .ReturnsAsync("/entry/1/resource/value");
 
         // Act
-        var result = await _builder.FromRuleErrorsAsync(ruleErrors, _testBundle);
+        var result = await _builder.FromRuleErrorsAsync(ruleErrors, "{}", _testBundle);
 
         // Assert
         result.Should().HaveCount(1);
@@ -177,7 +177,6 @@ public class UnifiedErrorModelBuilderTests
                 ResourceType = "Observation",
                 Path = "Observation.status",
                 ErrorCode = "FIXED_VALUE_MISMATCH",
-                Message = "Expected fixed value 'final' but got 'preliminary'",
                 Details = new Dictionary<string, object>
                 {
                     ["expected"] = "final",
@@ -188,7 +187,7 @@ public class UnifiedErrorModelBuilderTests
         };
 
         // Act
-        var result = await _builder.FromRuleErrorsAsync(ruleErrors, _testBundle);
+        var result = await _builder.FromRuleErrorsAsync(ruleErrors, "{}", _testBundle);
 
         // Assert
         result.Should().HaveCount(1);
@@ -216,7 +215,6 @@ public class UnifiedErrorModelBuilderTests
                 ResourceType = "Patient",
                 Path = "Patient.identifier.value",
                 ErrorCode = "REGEX_PATTERN_MISMATCH",
-                Message = "Value does not match expected pattern",
                 Details = new Dictionary<string, object>
                 {
                     ["pattern"] = "^[A-Z]{2}\\d{6}$",
@@ -227,7 +225,7 @@ public class UnifiedErrorModelBuilderTests
         };
 
         // Act
-        var result = await _builder.FromRuleErrorsAsync(ruleErrors, _testBundle);
+        var result = await _builder.FromRuleErrorsAsync(ruleErrors, "{}", _testBundle);
 
         // Assert
         result.Should().HaveCount(1);
@@ -256,7 +254,6 @@ public class UnifiedErrorModelBuilderTests
                 ResourceType = "Patient",
                 Path = "Patient.name",
                 ErrorCode = "ARRAY_LENGTH_VIOLATION",
-                Message = "Array must contain between 1 and 5 elements",
                 Details = new Dictionary<string, object>
                 {
                     ["min"] = 1,
@@ -268,7 +265,7 @@ public class UnifiedErrorModelBuilderTests
         };
 
         // Act
-        var result = await _builder.FromRuleErrorsAsync(ruleErrors, _testBundle);
+        var result = await _builder.FromRuleErrorsAsync(ruleErrors, "{}", _testBundle);
 
         // Assert
         result.Should().HaveCount(1);
@@ -296,7 +293,6 @@ public class UnifiedErrorModelBuilderTests
                 ResourceType = "Observation",
                 Path = "Observation.component[0].valueString",
                 ErrorCode = "INVALID_ANSWER_VALUE",
-                Message = "Answer 'UNKNOWN' is not in allowed values",
                 Details = new Dictionary<string, object>
                 {
                     ["questionCode"] = "Q001",
@@ -307,7 +303,7 @@ public class UnifiedErrorModelBuilderTests
         };
 
         // Act
-        var result = await _builder.FromCodeMasterErrorsAsync(codeMasterErrors, _testBundle);
+        var result = await _builder.FromCodeMasterErrorsAsync(codeMasterErrors, "{}", _testBundle);
 
         // Assert
         result.Should().HaveCount(1);
@@ -336,7 +332,6 @@ public class UnifiedErrorModelBuilderTests
                 ResourceType = "Observation",
                 Path = "Observation.component",
                 ErrorCode = "MANDATORY_MISSING_QA",
-                Message = "Mandatory question Q002 is missing",
                 Details = new Dictionary<string, object>
                 {
                     ["questionCode"] = "Q002",
@@ -346,7 +341,7 @@ public class UnifiedErrorModelBuilderTests
         };
 
         // Act
-        var result = await _builder.FromCodeMasterErrorsAsync(codeMasterErrors, _testBundle);
+        var result = await _builder.FromCodeMasterErrorsAsync(codeMasterErrors, "{}", _testBundle);
 
         // Assert
         result.Should().HaveCount(1);
@@ -370,7 +365,6 @@ public class UnifiedErrorModelBuilderTests
                 ResourceType = "Observation",
                 Path = "Observation.subject",
                 ErrorCode = "REFERENCE_NOT_FOUND",
-                Message = "Referenced resource not found: Patient/999",
                 Details = new Dictionary<string, object>
                 {
                     ["reference"] = "Patient/999",
@@ -381,7 +375,7 @@ public class UnifiedErrorModelBuilderTests
         };
 
         // Act
-        var result = await _builder.FromReferenceErrorsAsync(referenceErrors, _testBundle);
+        var result = await _builder.FromReferenceErrorsAsync(referenceErrors, "{}", _testBundle);
 
         // Assert
         result.Should().HaveCount(1);
@@ -410,7 +404,6 @@ public class UnifiedErrorModelBuilderTests
                 ResourceType = "Observation",
                 Path = "Observation.subject",
                 ErrorCode = "REFERENCE_TYPE_MISMATCH",
-                Message = "Reference type mismatch: expected Patient but found Practitioner",
                 Details = new Dictionary<string, object>
                 {
                     ["reference"] = "Practitioner/001",
@@ -422,7 +415,7 @@ public class UnifiedErrorModelBuilderTests
         };
 
         // Act
-        var result = await _builder.FromReferenceErrorsAsync(referenceErrors, _testBundle);
+        var result = await _builder.FromReferenceErrorsAsync(referenceErrors, "{}", _testBundle);
 
         // Assert
         result.Should().HaveCount(1);
@@ -446,8 +439,7 @@ public class UnifiedErrorModelBuilderTests
                 Severity = "error",
                 ResourceType = "Patient",
                 Path = "Patient.birthDate",
-                ErrorCode = "RULE_REQUIRED",
-                Message = "Birth date is required"
+                ErrorCode = "RULE_REQUIRED"
             }
         };
 
@@ -456,7 +448,7 @@ public class UnifiedErrorModelBuilderTests
             .ReturnsAsync("/entry/0/resource/birthDate");
 
         // Act
-        var result = await _builder.FromRuleErrorsAsync(ruleErrors, _testBundle);
+        var result = await _builder.FromRuleErrorsAsync(ruleErrors, "{}", _testBundle);
 
         // Assert
         result.Should().HaveCount(1);
@@ -487,7 +479,7 @@ public class UnifiedErrorModelBuilderTests
         };
 
         // Act
-        var result = await _builder.FromFirelyIssuesAsync(outcome, _testBundle);
+        var result = await _builder.FromFirelyIssuesAsync(outcome, "{}", _testBundle);
 
         // Assert
         result.Should().HaveCount(1);
@@ -514,8 +506,7 @@ public class UnifiedErrorModelBuilderTests
                 Severity = "error",
                 ResourceType = "Patient",
                 Path = "Patient.name",
-                ErrorCode = "RULE_REQUIRED",
-                Message = "Name required"
+                ErrorCode = "RULE_REQUIRED"
             },
             new RuleValidationError
             {
@@ -524,8 +515,7 @@ public class UnifiedErrorModelBuilderTests
                 Severity = "error",
                 ResourceType = "Patient",
                 Path = "Patient.address",
-                ErrorCode = "RULE_REQUIRED",
-                Message = "Address required"
+                ErrorCode = "RULE_REQUIRED"
             },
             new RuleValidationError
             {
@@ -534,8 +524,7 @@ public class UnifiedErrorModelBuilderTests
                 Severity = "error",
                 ResourceType = "Patient",
                 Path = "Patient.birthDate",
-                ErrorCode = "RULE_REQUIRED",
-                Message = "BirthDate required"
+                ErrorCode = "RULE_REQUIRED"
             }
         };
 
@@ -545,7 +534,7 @@ public class UnifiedErrorModelBuilderTests
                 $"/entry/0/resource/{path.Split('.').Last()}");
 
         // Act
-        var result = await _builder.FromRuleErrorsAsync(ruleErrors, _testBundle);
+        var result = await _builder.FromRuleErrorsAsync(ruleErrors, "{}", _testBundle);
 
         // Assert
         result.Should().HaveCount(3);
@@ -574,7 +563,7 @@ public class UnifiedErrorModelBuilderTests
         };
 
         // Act
-        var result = await _builder.FromFirelyIssuesAsync(outcome, _testBundle);
+        var result = await _builder.FromFirelyIssuesAsync(outcome, "{}", _testBundle);
 
         // Assert
         result.Should().HaveCount(1);
@@ -616,7 +605,7 @@ public class UnifiedErrorModelBuilderTests
         };
 
         // Act
-        var result = await _builder.FromFirelyIssuesAsync(outcome, _testBundle);
+        var result = await _builder.FromFirelyIssuesAsync(outcome, "{}", _testBundle);
 
         // Assert
         result.Should().HaveCount(3);
@@ -657,8 +646,7 @@ public class UnifiedErrorModelBuilderTests
                 Severity = "error",
                 ResourceType = "Observation",
                 Path = "Observation.value",
-                ErrorCode = "RULE_REQUIRED",
-                Message = "Rule error"
+                ErrorCode = "RULE_REQUIRED"
             }
         };
 
@@ -670,8 +658,7 @@ public class UnifiedErrorModelBuilderTests
                 Severity = "error",
                 ResourceType = "Observation",
                 Path = "Observation.component[0].valueString",
-                ErrorCode = "INVALID_ANSWER_VALUE",
-                Message = "CodeMaster error"
+                ErrorCode = "INVALID_ANSWER_VALUE"
             }
         };
 
@@ -684,16 +671,15 @@ public class UnifiedErrorModelBuilderTests
                 ResourceType = "Observation",
                 Path = "Observation.subject",
                 ErrorCode = "REFERENCE_NOT_FOUND",
-                Message = "Reference error",
                 Reference = "Patient/999"
             }
         };
 
         // Act
-        var firelyResult = await _builder.FromFirelyIssuesAsync(firelyOutcome, _testBundle);
-        var ruleResult = await _builder.FromRuleErrorsAsync(ruleErrors, _testBundle);
-        var codeMasterResult = await _builder.FromCodeMasterErrorsAsync(codeMasterErrors, _testBundle);
-        var referenceResult = await _builder.FromReferenceErrorsAsync(referenceErrors, _testBundle);
+        var firelyResult = await _builder.FromFirelyIssuesAsync(firelyOutcome, "{}", _testBundle);
+        var ruleResult = await _builder.FromRuleErrorsAsync(ruleErrors, "{}", _testBundle);
+        var codeMasterResult = await _builder.FromCodeMasterErrorsAsync(codeMasterErrors, "{}", _testBundle);
+        var referenceResult = await _builder.FromReferenceErrorsAsync(referenceErrors, "{}", _testBundle);
 
         // Assert
         firelyResult.Should().HaveCount(1);
@@ -717,7 +703,7 @@ public class UnifiedErrorModelBuilderTests
         var ruleErrors = new List<RuleValidationError>();
 
         // Act
-        var result = await _builder.FromRuleErrorsAsync(ruleErrors, _testBundle);
+        var result = await _builder.FromRuleErrorsAsync(ruleErrors, "{}", _testBundle);
 
         // Assert
         result.Should().BeEmpty();
@@ -731,7 +717,7 @@ public class UnifiedErrorModelBuilderTests
         var codeMasterErrors = new List<CodeMasterValidationError>();
 
         // Act
-        var result = await _builder.FromCodeMasterErrorsAsync(codeMasterErrors, _testBundle);
+        var result = await _builder.FromCodeMasterErrorsAsync(codeMasterErrors, "{}", _testBundle);
 
         // Assert
         result.Should().BeEmpty();
@@ -751,13 +737,12 @@ public class UnifiedErrorModelBuilderTests
                 Severity = "error",
                 ResourceType = "Patient",
                 Path = "Patient.name",
-                ErrorCode = "RULE_REQUIRED",
-                Message = "Field is required" // Message is required
+                ErrorCode = "RULE_REQUIRED" // Message is required
             }
         };
 
         // Act
-        var result = await _builder.FromRuleErrorsAsync(ruleErrors, _testBundle);
+        var result = await _builder.FromRuleErrorsAsync(ruleErrors, "{}", _testBundle);
 
         // Assert
         result.Should().HaveCount(1);
@@ -780,7 +765,6 @@ public class UnifiedErrorModelBuilderTests
                 ResourceType = "Observation",
                 Path = "Observation.status",
                 ErrorCode = "FIXED_VALUE_MISMATCH",
-                Message = "Complete error with all fields",
                 Details = new Dictionary<string, object>
                 {
                     ["expected"] = "final",
@@ -795,7 +779,7 @@ public class UnifiedErrorModelBuilderTests
         };
 
         // Act
-        var result = await _builder.FromRuleErrorsAsync(ruleErrors, _testBundle);
+        var result = await _builder.FromRuleErrorsAsync(ruleErrors, "{}", _testBundle);
 
         // Assert
         result.Should().HaveCount(1);
@@ -833,7 +817,6 @@ public class UnifiedErrorModelBuilderTests
                 ResourceType = "Observation",
                 Path = "Observation.performer[0].reference",
                 ErrorCode = "REFERENCE_NOT_FOUND",
-                Message = "Performer reference not found",
                 Reference = "Practitioner/999"
             }
         };
@@ -848,7 +831,7 @@ public class UnifiedErrorModelBuilderTests
             .ReturnsAsync("/entry/1/resource/performer/0/reference");
 
         // Act
-        var result = await _builder.FromReferenceErrorsAsync(referenceErrors, _testBundle);
+        var result = await _builder.FromReferenceErrorsAsync(referenceErrors, "{}", _testBundle);
 
         // Assert
         result.Should().HaveCount(1);
@@ -884,7 +867,7 @@ public class UnifiedErrorModelBuilderTests
         };
 
         // Act
-        var result = await _builder.FromFirelyIssuesAsync(outcome, _testBundle);
+        var result = await _builder.FromFirelyIssuesAsync(outcome, "{}", _testBundle);
 
         // Assert
         result.Should().HaveCount(1);
@@ -896,7 +879,7 @@ public class UnifiedErrorModelBuilderTests
     public async Task FromFirelyIssuesAsync_NullOutcome_ReturnsEmpty()
     {
         // Act
-        var result = await _builder.FromFirelyIssuesAsync(null!, _testBundle);
+        var result = await _builder.FromFirelyIssuesAsync(null!, "{}", _testBundle);
 
         // Assert
         result.Should().BeEmpty();
