@@ -1,53 +1,314 @@
 # FHIR Processor V2 - Project Structure
 
-## Overview
-FHIR Processor V2 is a validation and rule management system for FHIR R4 resources with an IDE-style UI.
+> **Last Updated**: December 28, 2025  
+> **Status**: Active Development
 
-## Repository Structure
+---
+
+## 📋 Overview
+
+FHIR Processor V2 is a modern validation and rule management system for FHIR R4 resources featuring:
+- Firely SDK integration for structural validation
+- Custom business rule engine with FHIRPath
+- IDE-style UI with smart navigation
+- Terminology and CodeSystem management
+- Real-time validation feedback
+
+---
+
+## 🗂️ Repository Structure
 
 ```
 fhir_processor_v2/
-├── README.md                    # Main project documentation
-├── backend/                     # .NET backend services
-│   ├── README.md               # Backend setup and usage
-│   ├── QUICK_START.md          # Quick start guide
-│   ├── FhirProcessorV2.sln     # Solution file
-│   ├── src/                    # Source code
-│   │   ├── Pss.FhirProcessor.Api/
-│   │   ├── Pss.FhirProcessor.Engine/
-│   │   └── Pss.FhirProcessor.Playground.Api/
-│   └── tests/                  # Test projects
+├── 📄 README.md                         # Main documentation (START HERE)
+├── 📄 CHANGELOG.md                      # Version history and changes
+├── 📄 PROJECT_STRUCTURE.md              # This file
+├── 📄 .github/copilot-instructions.md   # AI assistant guidelines
 │
-├── frontend/                    # React + TypeScript UI
-│   ├── src/
-│   │   ├── components/         # Reusable UI components
-│   │   ├── pages/             # Page components
-│   │   ├── hooks/             # Custom React hooks
-│   │   ├── types/             # TypeScript type definitions
-│   │   ├── api/               # API client functions
-│   │   └── utils/             # Utility functions
-│   └── package.json
+├── 📁 backend/                          # .NET 8 Backend Services
+│   ├── 📄 README.md                    # Backend documentation
+│   ├── 📄 QUICK_START.md               # Quick setup guide
+│   ├── 📄 FhirProcessorV2.sln          # Solution file
+│   ├── 📁 src/
+│   │   ├── Pss.FhirProcessor.Playground.Api/     # REST API for playground
+│   │   │   ├── Controllers/            # API endpoints
+│   │   │   ├── Services/               # Business logic
+│   │   │   └── data/                   # File-based storage
+│   │   │
+│   │   └── Pss.FhirProcessor.Engine/   # Core validation engine
+│   │       ├── Validation/             # Validation pipeline
+│   │       ├── Rules/                  # Rule processors
+│   │       ├── Navigation/             # Smart path resolution
+│   │       └── Models/                 # Domain models
+│   │
+│   └── 📁 tests/                       # Unit and integration tests
+│       ├── Pss.FhirProcessor.Engine.Tests/
+│       └── Pss.FhirProcessor.Playground.Api.Tests/
 │
-├── docs/                        # Core specification documents
-│   ├── README.md               # Documentation index
-│   ├── 01_architecture_spec.md
-│   ├── 02_migration_map.md
-│   ├── 03_rule_dsl_spec.md
-│   ├── 04_data_inputs_spec.md
-│   ├── 05_validation_pipeline.md
-│   ├── 06_frontend_requirements.md
-│   ├── 07_smart_path_navigation.md
-│   ├── 08_unified_error_model.md
-│   ├── 09_ai_assisted_ruleset_generation.md
-│   ├── 10_do_not_do.md
-│   └── 11_firely_exception_handling.md
+├── 📁 frontend/                         # React + TypeScript UI
+│   ├── 📄 README.md                    # Frontend documentation
+│   ├── 📄 package.json                 # Dependencies
+│   ├── 📁 src/
+│   │   ├── 📁 components/              # Reusable UI components
+│   │   │   ├── playground/            # Playground-specific components
+│   │   │   │   ├── Rules/             # Rule authoring UI
+│   │   │   │   ├── Terminology/       # Terminology management
+│   │   │   │   └── Validation/        # Validation results
+│   │   │   ├── rules/                 # Rule tree & pickers
+│   │   │   ├── validation/            # Error rendering
+│   │   │   ├── terminology/           # CodeSystem UI
+│   │   │   └── common/                # Shared components
+│   │   │
+│   │   ├── 📁 pages/                   # Page components
+│   │   │   ├── PlaygroundPage.tsx     # Main IDE interface
+│   │   │   ├── ProjectsPage.tsx       # Project management
+│   │   │   └── TerminologyPage.tsx    # Terminology management
+│   │   │
+│   │   ├── 📁 api/                     # API client functions
+│   │   │   ├── httpClient.ts          # Axios configuration
+│   │   │   ├── projectsApi.ts         # Project endpoints
+│   │   │   ├── rulesApi.ts            # Rule endpoints
+│   │   │   ├── terminologyApi.ts      # Terminology endpoints
+│   │   │   └── validationApi.ts       # Validation endpoints
+│   │   │
+│   │   ├── 📁 types/                   # TypeScript definitions
+│   │   │   ├── rightPanelProps.ts     # Rule types
+│   │   │   ├── terminology.ts         # CodeSystem types
+│   │   │   ├── validation.ts          # Error types
+│   │   │   └── ruleIntent.ts          # Rule authoring types
+│   │   │
+│   │   ├── 📁 hooks/                   # Custom React hooks
+│   │   ├── 📁 utils/                   # Utility functions
+│   │   ├── 📁 constants/               # Constants and enums
+│   │   └── 📁 layouts/                 # Layout components
+│   │
+│   └── 📁 public/                      # Static assets
 │
-├── examples/                    # Sample data files
-│   ├── sample-bundle.json
-│   ├── corrected-sample-bundle.json
-│   ├── sample-rules.json
-│   └── sample-rules-correct.json
+├── 📁 docs/                             # Core Documentation
+│   ├── 📄 README.md                    # Documentation index
+│   ├── 📄 01_architecture_spec.md      # System architecture
+│   ├── 📄 02_migration_map.md          # CPS1 → V2 migration
+│   ├── 📄 03_rule_dsl_spec.md          # Rule DSL specification
+│   ├── 📄 04_data_inputs_spec.md       # Input data formats
+│   ├── 📄 05_validation_pipeline.md    # Validation flow
+│   ├── 📄 06_frontend_requirements.md  # UI requirements
+│   ├── 📄 07_smart_path_navigation.md  # Path resolution
+│   ├── 📄 08_unified_error_model.md    # Error structure
+│   ├── 📄 09_ai_assisted_ruleset_generation.md  # AI features
+│   ├── 📄 10_do_not_do.md              # Anti-patterns
+│   ├── 📄 11_firely_exception_handling.md  # Error handling
+│   │
+│   └── 📁 archive/                     # Historical documents
+│       └── phase-reports/              # Phase completion reports
+│           ├── PHASE_0_COMPLETE.md
+│           ├── PHASE_1_*.md
+│           ├── ERROR_HANDLING_*.md
+│           └── ... (42 archived files)
 │
+├── 📁 examples/                         # Sample Data Files
+│   ├── 📄 sample-bundle.json           # FHIR Bundle example
+│   ├── 📄 corrected-sample-bundle.json # Corrected version
+│   ├── 📄 sample-rules.json            # Rule definitions
+│   ├── 📄 sample-rules-correct.json    # Corrected rules
+│   └── 📄 IMPORT_EXAMPLES_README.md    # Example documentation
+│
+├── 📁 specs/                            # Additional Specifications
+│   └── (Future: detailed specs)
+│
+└── 📁 archive/                          # Project Archives
+    ├── 📄 README.md                    # Archive index
+    └── (Deprecated implementations)
+```
+
+---
+
+## 🏗️ Architecture Overview
+
+### Backend Architecture (.NET 8)
+
+```
+┌─────────────────────────────────────────────┐
+│         Playground API (ASP.NET)           │
+│  ┌─────────────────────────────────────┐   │
+│  │  ProjectsController                 │   │
+│  │  RulesController                    │   │
+│  │  TerminologyController              │   │
+│  │  ValidationController               │   │
+│  └─────────────────────────────────────┘   │
+│                    │                        │
+│  ┌─────────────────────────────────────┐   │
+│  │  ProjectService                     │   │
+│  │  RuleService                        │   │
+│  │  TerminologyService                 │   │
+│  │  ValidationService                  │   │
+│  └─────────────────────────────────────┘   │
+└─────────────────────────────────────────────┘
+                    │
+┌─────────────────────────────────────────────┐
+│      Validation Engine (Core Logic)        │
+│  ┌─────────────────────────────────────┐   │
+│  │  ValidationPipeline                 │   │
+│  │   ├─ FirelyValidationService        │   │
+│  │   ├─ FhirPathRuleEngine             │   │
+│  │   ├─ CodeMasterEngine               │   │
+│  │   └─ ReferenceResolver              │   │
+│  └─────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────┐   │
+│  │  SmartPathNavigationService         │   │
+│  │  UnifiedErrorModelBuilder           │   │
+│  └─────────────────────────────────────┘   │
+└─────────────────────────────────────────────┘
+```
+
+### Frontend Architecture (React + TypeScript)
+
+```
+┌──────────────────────────────────────────────┐
+│              PlaygroundLayout                │
+│  ┌────────────┬────────────┬──────────────┐  │
+│  │            │            │              │  │
+│  │   Tree     │   JSON     │  Validation  │  │
+│  │  Explorer  │  Editor    │    Panel     │  │
+│  │            │            │              │  │
+│  │  ├─Rules   │  Monaco    │  ├─Errors    │  │
+│  │  ├─Bundle  │  Editor    │  ├─Warnings  │  │
+│  │  └─Terms   │            │  └─Info      │  │
+│  │            │            │              │  │
+│  └────────────┴────────────┴──────────────┘  │
+│  ┌──────────────────────────────────────┐    │
+│  │       Context Badge Bar              │    │
+│  │  [Project] [Bundle] [Stage] [Count] │    │
+│  └──────────────────────────────────────┘    │
+└──────────────────────────────────────────────┘
+```
+
+---
+
+## 🔑 Key Components
+
+### Backend Components
+
+| Component | Responsibility | Location |
+|-----------|---------------|----------|
+| **ValidationPipeline** | Orchestrates validation flow | Engine/Validation/ |
+| **FirelyValidationService** | FHIR structural validation | Engine/Validation/ |
+| **FhirPathRuleEngine** | Business rule evaluation | Engine/Rules/ |
+| **CodeMasterEngine** | Terminology validation | Engine/Terminology/ |
+| **SmartPathNavigationService** | Error path resolution | Engine/Navigation/ |
+| **UnifiedErrorModelBuilder** | Error response builder | Engine/Models/ |
+
+### Frontend Components
+
+| Component | Purpose | Location |
+|-----------|---------|----------|
+| **PlaygroundLayout** | Main IDE interface | layouts/ |
+| **RuleTree** | Rule navigation | components/rules/ |
+| **MonacoEditor** | JSON editing | components/playground/ |
+| **ValidationPanel** | Error display | components/playground/Validation/ |
+| **RuleErrorRenderer** | Error formatting | components/validation/ |
+| **TerminologyBrowser** | CodeSystem management | components/playground/Terminology/ |
+| **RequiredRuleForm** | Required rule authoring | components/playground/Rules/rule-types/required/ |
+
+---
+
+## 📊 Data Flow
+
+### Validation Request Flow
+
+```
+1. User uploads Bundle → Frontend
+2. Frontend → POST /api/validation/validate-project
+3. API → ValidationPipeline.ValidateAsync()
+4. Pipeline:
+   ├─ FirelyValidationService (structure)
+   ├─ FhirPathRuleEngine (business rules)
+   ├─ CodeMasterEngine (terminology)
+   └─ UnifiedErrorModelBuilder (results)
+5. API → Returns ValidationResult (JSON)
+6. Frontend → RuleErrorRenderer displays errors
+7. User clicks error → SmartPathNavigation resolves
+```
+
+### Rule Authoring Flow
+
+```
+1. User creates rule → RequiredRuleForm
+2. Form validates inputs (client-side)
+3. Frontend → POST /api/rules
+4. API → RuleService.SaveRule()
+5. Rule stored in rules.json
+6. Frontend updates RuleTree
+7. Auto-validation triggered
+8. Results displayed in ValidationPanel
+```
+
+---
+
+## 🧪 Testing Strategy
+
+### Backend Tests
+- **Unit Tests**: Individual service/engine tests
+- **Integration Tests**: Full pipeline validation
+- **Test Data**: Located in `tests/TestData/`
+
+### Frontend Tests
+- **Component Tests**: React Testing Library
+- **Type Safety**: TypeScript strict mode
+- **Linting**: ESLint + Prettier
+
+---
+
+## 📝 File Naming Conventions
+
+### Backend (.NET)
+- **Services**: `*Service.cs` (e.g., `ValidationService.cs`)
+- **Controllers**: `*Controller.cs` (e.g., `ProjectsController.cs`)
+- **Models**: `*Model.cs` or `*Dto.cs`
+- **Tests**: `*Tests.cs` (e.g., `ValidationPipelineTests.cs`)
+
+### Frontend (TypeScript)
+- **Components**: `PascalCase.tsx` (e.g., `RequiredRuleForm.tsx`)
+- **Hooks**: `use*.ts` (e.g., `useValidation.ts`)
+- **Types**: `*.types.ts` (e.g., `validation.types.ts`)
+- **Utils**: `camelCase.ts` (e.g., `errorMessages.ts`)
+- **API**: `*Api.ts` (e.g., `projectsApi.ts`)
+
+---
+
+## 🔧 Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `backend/appsettings.json` | Backend configuration |
+| `frontend/vite.config.ts` | Vite build configuration |
+| `frontend/tsconfig.json` | TypeScript configuration |
+| `frontend/package.json` | Node dependencies |
+| `.github/copilot-instructions.md` | AI coding guidelines |
+
+---
+
+## 🚀 Getting Started
+
+1. **Read**: [README.md](README.md) for quick start
+2. **Setup**: Follow backend and frontend README files
+3. **Explore**: Check `examples/` for sample data
+4. **Learn**: Read core specs in `docs/`
+5. **Develop**: See component structure above
+
+---
+
+## 📚 Related Documentation
+
+- [Main README](README.md) - Project overview and quick start
+- [CHANGELOG](CHANGELOG.md) - Version history
+- [Architecture Spec](docs/01_architecture_spec.md) - System design
+- [Rule DSL Spec](docs/03_rule_dsl_spec.md) - Rule syntax
+- [Phase Reports Archive](docs/archive/phase-reports/) - Historical changes
+
+---
+
+**Last Review**: December 28, 2025  
+**Maintained By**: Development Team
 └── specs/                       # Additional specifications
 ```
 
