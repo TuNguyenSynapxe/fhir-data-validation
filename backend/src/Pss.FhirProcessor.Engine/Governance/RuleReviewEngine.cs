@@ -64,6 +64,7 @@ public class RuleReviewEngine : IRuleReviewEngine
         CheckArrayLengthOnNonArray(rule, issues);
         
         // WARNING checks (allowed but flagged)
+        CheckQuestionAnswerProvidedErrorCode(rule, issues);
         CheckPathEndsAtResourceRoot(rule, issues);
         CheckGenericWildcardPaths(rule, issues);
         CheckFixedValueWithoutConstraints(rule, issues);
@@ -100,9 +101,14 @@ public class RuleReviewEngine : IRuleReviewEngine
     
     /// <summary>
     /// BLOCKED: Missing or empty errorCode (defensive check, even if already enforced)
+    /// EXCEPTION: QuestionAnswer rule type allows missing errorCode (constraint-driven, runtime determines code)
     /// </summary>
     private void CheckMissingErrorCode(RuleDefinition rule, List<RuleReviewIssue> issues)
     {
+        // QuestionAnswer is constraint-driven: errorCode is determined at runtime based on validation outcome
+        if (rule.Type == "QuestionAnswer")
+            return;
+        
         if (string.IsNullOrWhiteSpace(rule.ErrorCode))
         {
             issues.Add(new RuleReviewIssue(
@@ -121,13 +127,14 @@ public class RuleReviewEngine : IRuleReviewEngine
     /// BLOCKED: RULE_SEMANTIC_STABILITY - Prevent semantic ambiguity
     /// Enforces that every rule declares exactly one semantic meaning via errorCode,
     /// and that runtime data never determines semantic classification.
+    /// EXCEPTION: QuestionAnswer is exempt (constraint-driven, runtime emits appropriate errorCode)
     /// </summary>
     private void CheckSemanticStability(RuleDefinition rule, List<RuleReviewIssue> issues)
     {
-        // Rule types in scope for this check
+        // Rule types in scope for this check (QuestionAnswer removed - see CheckQuestionAnswerProvidedErrorCode)
         var scopedTypes = new HashSet<string>
         {
-            "QuestionAnswer", "Reference", "CustomFHIRPath",
+            "Reference", "CustomFHIRPath",
             "CodeMaster", "AllowedValues", "FixedValue", "ArrayLength"
         };
         
@@ -173,21 +180,6 @@ public class RuleReviewEngine : IRuleReviewEngine
                     ));
                 }
             }
-        }
-        
-        // WARNING: Informational reminder for QuestionAnswer and CustomFHIRPath
-        if (rule.Type == "QuestionAnswer" || rule.Type == "CustomFHIRPath")
-        {
-            issues.Add(new RuleReviewIssue(
-                Code: "RULE_SEMANTIC_STABILITY_INFO",
-                Severity: RuleReviewStatus.WARNING,
-                RuleId: rule.Id,
-                Facts: new Dictionary<string, object>
-                {
-                    ["ruleType"] = rule.Type,
-                    ["reason"] = "informational: complex rule type requires careful errorCode selection"
-                }
-            ));
         }
     }
     
@@ -250,6 +242,34 @@ public class RuleReviewEngine : IRuleReviewEngine
                 {
                     ["ruleType"] = rule.Type,
                     ["path"] = rule.Path
+                }
+            ));
+        }
+    }
+    
+    /// <summary>
+    /// WARNING: QuestionAnswer rule with provided errorCode (should be omitted, runtime determines errorCode)
+    /// </summary>
+    private void CheckQuestionAnswerProvidedErrorCode(RuleDefinition rule, List<RuleReviewIssue> issues)
+    {
+        if (rule.Type != "QuestionAnswer")
+            return;
+        
+        if (!string.IsNullOrWhiteSpace(rule.ErrorCode))
+        {
+            issues.Add(new RuleReviewIssue(
+                Code: "QUESTIONANSWER_ERROR_CODE_IGNORED",
+                Severity: RuleReviewStatus.WARNING,
+                RuleId: rule.Id,
+                Facts: new Dictionary<string, object>
+                {
+                    ["ruleType"] = rule.Type,
+                    ["providedErrorCode"] = rule.ErrorCode,
+                    ["reason"] = "QuestionAnswer is constraint-driven. The errorCode field is ignored at runtime. " +
+                                "Runtime validator emits appropriate errorCode based on validation outcome: " +
+                                "ANSWER_REQUIRED, INVALID_ANSWER_VALUE, ANSWER_OUT_OF_RANGE, ANSWER_NOT_IN_VALUESET, " +
+                                "QUESTION_NOT_FOUND, or QUESTIONSET_DATA_MISSING. " +
+                                "Authors should omit errorCode or leave it empty."
                 }
             ));
         }

@@ -417,21 +417,24 @@ export const QuestionAnswerRuleForm: React.FC<QuestionAnswerRuleFormProps> = ({
           error={errors.constraint}
         />
 
-        {/* Runtime Behavior Preview - Constraint Model */}
+        {/* Runtime Error Code (Automatic) - Contract v1 */}
         {constraint && (
           <div className="rounded-md bg-blue-50 border border-blue-200 p-3 text-xs text-blue-900 mb-4">
-            <div className="font-semibold mb-2">Runtime Behavior</div>
+            <div className="font-semibold mb-2 flex items-center gap-2">
+              <HelpCircle className="w-4 h-4" />
+              Runtime Error Code (Automatic)
+            </div>
             <div className="space-y-1 text-blue-800">
               <div>
-                This rule will automatically detect which question failed and emit the appropriate validation error at runtime.
+                The error code is determined automatically at runtime based on the validation outcome. Possible error codes:
               </div>
-              <div className="mt-2 pt-2 border-t border-blue-300">
-                <strong>Example runtime outcomes:</strong>
-              </div>
-              <ul className="list-disc ml-4 space-y-0.5">
-                <li>Missing answer → <code className="bg-white px-1 py-0.5 rounded text-xs">ANSWER_REQUIRED</code></li>
-                <li>Invalid code → <code className="bg-white px-1 py-0.5 rounded text-xs">ANSWER_NOT_IN_VALUESET</code></li>
-                <li>Out of range → <code className="bg-white px-1 py-0.5 rounded text-xs">ANSWER_OUT_OF_RANGE</code></li>
+              <ul className="list-disc ml-4 mt-2 space-y-0.5">
+                <li><code className="bg-white px-1 py-0.5 rounded text-xs">ANSWER_REQUIRED</code> — Required answer missing</li>
+                <li><code className="bg-white px-1 py-0.5 rounded text-xs">INVALID_ANSWER_VALUE</code> — Answer type/format mismatch</li>
+                <li><code className="bg-white px-1 py-0.5 rounded text-xs">ANSWER_OUT_OF_RANGE</code> — Numeric value outside range</li>
+                <li><code className="bg-white px-1 py-0.5 rounded text-xs">ANSWER_NOT_IN_VALUESET</code> — Code not in allowed ValueSet</li>
+                <li><code className="bg-white px-1 py-0.5 rounded text-xs">QUESTION_NOT_FOUND</code> — Question not in QuestionSet</li>
+                <li><code className="bg-white px-1 py-0.5 rounded text-xs">QUESTIONSET_DATA_MISSING</code> — QuestionSet data unavailable</li>
               </ul>
             </div>
           </div>

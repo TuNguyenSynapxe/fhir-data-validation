@@ -277,6 +277,60 @@ public class RuleReviewEngineTests
         Assert.Empty(result.Issues);
     }
 
+    [Fact]
+    public void QuestionAnswerRule_WithMissingErrorCode_IsAllowed()
+    {
+        // Arrange - QuestionAnswer without errorCode (constraint-driven model)
+        var rule = new RuleDefinition
+        {
+            Id = "test-rule",
+            Type = "QuestionAnswer",
+            ResourceType = "Observation",
+            Path = "Observation.component.where(code.coding.system='http://loinc.org')",
+            ErrorCode = "", // Empty/missing errorCode allowed for QuestionAnswer
+            Params = new Dictionary<string, object>
+            {
+                ["questionSetId"] = "smoking-status"
+            }
+        };
+
+        // Act
+        var result = _engine.Review(rule);
+
+        // Assert - Should be OK (no BLOCKED issues, no warnings for missing errorCode)
+        Assert.Equal(RuleReviewStatus.OK, result.Status);
+        Assert.DoesNotContain(result.Issues, i => i.Severity == RuleReviewStatus.BLOCKED);
+        Assert.Empty(result.Issues); // No issues at all for missing errorCode on QuestionAnswer
+    }
+
+    [Fact]
+    public void QuestionAnswerRule_WithProvidedErrorCode_IsWarning_NotBlocked()
+    {
+        // Arrange - QuestionAnswer with errorCode (should warn but not block)
+        var rule = new RuleDefinition
+        {
+            Id = "test-rule",
+            Type = "QuestionAnswer",
+            ResourceType = "Observation",
+            Path = "Observation.component.where(code.coding.system='http://loinc.org')",
+            ErrorCode = "ANSWER_REQUIRED", // Provided errorCode
+            Params = new Dictionary<string, object>
+            {
+                ["questionSetId"] = "smoking-status"
+            }
+        };
+
+        // Act
+        var result = _engine.Review(rule);
+
+        // Assert - Should be WARNING (not BLOCKED)
+        Assert.Equal(RuleReviewStatus.WARNING, result.Status);
+        Assert.Contains(result.Issues, i => i.Code == "QUESTIONANSWER_ERROR_CODE_IGNORED");
+        var warning = result.Issues.First(i => i.Code == "QUESTIONANSWER_ERROR_CODE_IGNORED");
+        Assert.Equal(RuleReviewStatus.WARNING, warning.Severity);
+        Assert.DoesNotContain(result.Issues, i => i.Severity == RuleReviewStatus.BLOCKED);
+    }
+
     // ═══════════════════════════════════════════════════════════
     // DETERMINISM & NO RUNTIME CHANGES
     // ═══════════════════════════════════════════════════════════

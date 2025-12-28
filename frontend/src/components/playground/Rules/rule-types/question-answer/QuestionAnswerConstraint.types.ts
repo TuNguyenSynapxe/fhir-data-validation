@@ -11,8 +11,7 @@ export type QuestionAnswerConstraint =
   | 'REQUIRED'
   | 'TYPE'
   | 'RANGE'
-  | 'VALUESET'
-  | 'CARDINALITY';
+  | 'VALUESET';
 
 /**
  * Constraint to runtime errorCode mapping
@@ -20,10 +19,9 @@ export type QuestionAnswerConstraint =
  */
 export const CONSTRAINT_TO_ERROR_CODE: Record<QuestionAnswerConstraint, string> = {
   REQUIRED: 'ANSWER_REQUIRED',
-  TYPE: 'INVALID_ANSWER_TYPE',
+  TYPE: 'INVALID_ANSWER_VALUE', // Backend emits INVALID_ANSWER_VALUE (not INVALID_ANSWER_TYPE)
   RANGE: 'ANSWER_OUT_OF_RANGE',
   VALUESET: 'ANSWER_NOT_IN_VALUESET',
-  CARDINALITY: 'ANSWER_MULTIPLE_NOT_ALLOWED',
 };
 
 /**
@@ -31,10 +29,9 @@ export const CONSTRAINT_TO_ERROR_CODE: Record<QuestionAnswerConstraint, string> 
  */
 export const ERROR_CODE_TO_CONSTRAINT: Record<string, QuestionAnswerConstraint> = {
   ANSWER_REQUIRED: 'REQUIRED',
-  INVALID_ANSWER_TYPE: 'TYPE',
+  INVALID_ANSWER_VALUE: 'TYPE', // Align with backend: INVALID_ANSWER_VALUE → TYPE constraint
   ANSWER_OUT_OF_RANGE: 'RANGE',
   ANSWER_NOT_IN_VALUESET: 'VALUESET',
-  ANSWER_MULTIPLE_NOT_ALLOWED: 'CARDINALITY',
 };
 
 /**
@@ -75,12 +72,5 @@ export const CONSTRAINT_METADATA: ConstraintMetadata[] = [
     description: 'Answer must be from allowed values',
     requiresParams: true,
     paramFields: ['valueSetUrl'],
-  },
-  {
-    value: 'CARDINALITY',
-    label: 'Cardinality',
-    description: 'Only one answer allowed',
-    requiresParams: true,
-    paramFields: ['maxAnswers'],
   },
 ];
