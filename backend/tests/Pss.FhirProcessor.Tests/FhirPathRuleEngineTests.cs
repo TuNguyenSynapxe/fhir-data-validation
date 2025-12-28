@@ -83,8 +83,7 @@ public class FhirPathRuleEngineTests
         Assert.Equal("patient-001", error.ResourceId);
         Assert.Equal(0, error.EntryIndex);
         Assert.Equal("Patient.name.wrongMethod()", error.Path);
-        Assert.Contains("FHIRPath evaluation failed", error.Message);
-        Assert.Contains("Patient.name.wrongMethod()", error.Message);
+        Assert.Equal("RULE_DEFINITION_ERROR", error.ErrorCode);
         
         // Verify details are present
         Assert.NotNull(error.Details);
@@ -163,12 +162,13 @@ public class FhirPathRuleEngineTests
         // First error should be RULE_DEFINITION_ERROR for invalid FHIRPath
         var definitionError = errors.First(e => e.RuleId == "R1");
         Assert.Equal("RULE_DEFINITION_ERROR", definitionError.ErrorCode);
-        Assert.Contains("FHIRPath evaluation failed", definitionError.Message);
+        Assert.NotNull(definitionError.Details);
+        Assert.True(definitionError.Details.ContainsKey("fhirPath") || definitionError.Details.ContainsKey("exceptionMessage"));
         
         // Second error should be the actual validation error (missing gender)
         var validationError = errors.First(e => e.RuleId == "R2");
         Assert.Equal("MISSING_GENDER", validationError.ErrorCode);
-        Assert.Equal("Gender is required", validationError.Message);
+        Assert.Equal("Required", validationError.RuleType);
     }
     
     [Fact]

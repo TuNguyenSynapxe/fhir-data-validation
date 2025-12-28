@@ -527,4 +527,111 @@ public class RuleReviewEngineTests
         var issue = result.Issues.First(i => i.Code == "ALLOWEDVALUES_ERROR_CODE_MISMATCH");
         Assert.Equal("VALUE_NOT_ALLOWED", issue.Facts["requiredErrorCode"]);
     }
+
+    [Fact]
+    public void ArrayLengthRule_WithCorrectErrorCode_IsAllowed()
+    {
+        // Test: ArrayLength rule with ARRAY_LENGTH_VIOLATION → ALLOWED
+        // Arrange
+        var rule = new RuleDefinition
+        {
+            Id = "al-correct-code",
+            Type = "ArrayLength",
+            ResourceType = "Patient",
+            Path = "Patient.name",
+            ErrorCode = "ARRAY_LENGTH_VIOLATION",
+            Params = new Dictionary<string, object>
+            {
+                ["min"] = 1,
+                ["max"] = 5
+            }
+        };
+
+        // Act
+        var result = _engine.Review(rule);
+
+        // Assert
+        Assert.NotEqual(RuleReviewStatus.BLOCKED, result.Status);
+        Assert.DoesNotContain(result.Issues, i => i.Code == "ARRAYLENGTH_ERROR_CODE_MISMATCH");
+    }
+
+    [Fact]
+    public void ArrayLengthRule_WithIncorrectErrorCode_IsBlocked()
+    {
+        // Test: ArrayLength rule with any other errorCode → BLOCKED
+        // Arrange
+        var rule = new RuleDefinition
+        {
+            Id = "al-wrong-code",
+            Type = "ArrayLength",
+            ResourceType = "Patient",
+            Path = "Patient.name",
+            ErrorCode = "ARRAY_TOO_SHORT", // Not allowed
+            Params = new Dictionary<string, object>
+            {
+                ["min"] = 1
+            }
+        };
+
+        // Act
+        var result = _engine.Review(rule);
+
+        // Assert
+        Assert.Equal(RuleReviewStatus.BLOCKED, result.Status);
+        Assert.Contains(result.Issues, i => i.Code == "ARRAYLENGTH_ERROR_CODE_MISMATCH");
+        var issue = result.Issues.First(i => i.Code == "ARRAYLENGTH_ERROR_CODE_MISMATCH");
+        Assert.Equal("ARRAY_LENGTH_VIOLATION", issue.Facts["requiredErrorCode"]);
+    }
+
+    [Fact]
+    public void ReferenceRule_IsBlocked_ByGovernance()
+    {
+        // Test: Reference rule type is always blocked (not supported as business rule)
+        // Arrange
+        var rule = new RuleDefinition
+        {
+            Id = "ref-rule-001",
+            Type = "Reference",
+            ResourceType = "Observation",
+            Path = "Observation.subject",
+            ErrorCode = "REFERENCE_NOT_FOUND",
+            Params = new Dictionary<string, object>
+            {
+                ["allowedTypes"] = new[] { "Patient" }
+            }
+        };
+
+        // Act
+        var result = _engine.Review(rule);
+
+        // Assert
+        Assert.Equal(RuleReviewStatus.BLOCKED, result.Status);
+        Assert.Contains(result.Issues, i => i.Code == "REFERENCE_RULE_NOT_SUPPORTED");
+    }
+
+    [Fact]
+    public void ReferenceRule_Returns_REFERENCE_RULE_NOT_SUPPORTED_Code()
+    {
+        // Test: Verify specific governance error code and explanation for Reference rules
+        // Arrange
+        var rule = new RuleDefinition
+        {
+            Id = "ref-rule-002",
+            Type = "Reference",
+            ResourceType = "Patient",
+            Path = "Patient.managingOrganization",
+            ErrorCode = "CUSTOM_REF_ERROR"
+        };
+
+        // Act
+        var result = _engine.Review(rule);
+
+        // Assert
+        Assert.Equal(RuleReviewStatus.BLOCKED, result.Status);
+        var issue = result.Issues.First(i => i.Code == "REFERENCE_RULE_NOT_SUPPORTED");
+        Assert.Equal("Reference", issue.Facts["ruleType"]);
+        Assert.True(issue.Facts.ContainsKey("reason"));
+        Assert.True(issue.Facts.ContainsKey("explanation"));
+        Assert.Contains("handled globally", issue.Facts["reason"]?.ToString() ?? "");
+    }
 }

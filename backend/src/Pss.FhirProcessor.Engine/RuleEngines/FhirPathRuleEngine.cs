@@ -814,6 +814,35 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         return errors;
     }
     
+    /// <summary>
+    /// ValidateArrayLength - ErrorCode-First Implementation (Phase D: UX Contract)
+    /// 
+    /// RUNTIME BEHAVIOR:
+    /// - Always emits: ErrorCode = "ARRAY_LENGTH_VIOLATION"
+    /// - Ignores: rule.ErrorCode override (governance blocks invalid values)
+    /// - Details Structure:
+    ///   • violation: "min" | "max" (which constraint failed)
+    ///   • min: integer (minimum allowed count)
+    ///   • max: integer (maximum allowed count, if defined)
+    ///   • actual: integer (actual element count)
+    ///
+    /// GOVERNANCE ENFORCEMENT:
+    /// - CheckArrayLengthErrorCode blocks any errorCode != "ARRAY_LENGTH_VIOLATION"
+    /// - Rejected codes: "ARRAY_TOO_SHORT", "ARRAY_TOO_LONG", custom codes
+    ///
+    /// UI EXPOSURE (Future Phase - NOT IMPLEMENTED):
+    /// - Single error code ensures consistent frontend grouping/filtering
+    /// - UI can differentiate min vs. max via details.violation field
+    /// - Semantic stability: no UI code changes when new array rules added
+    /// - Message template: "{actual} elements found, expected {min} to {max}"
+    ///
+    /// ACCEPTANCE CRITERIA:
+    /// ✅ Runtime emits only ARRAY_LENGTH_VIOLATION
+    /// ✅ Governance blocks any other errorCode
+    /// ✅ Details include violation type (min/max)
+    /// ✅ 5 critical tests pass (3 runtime + 2 governance)
+    /// ✅ No UI exposure (backend-only hardening)
+    /// </summary>
     private List<RuleValidationError> ValidateArrayLength(Resource resource, RuleDefinition rule, int entryIndex)
     {
         var errors = new List<RuleValidationError>();
@@ -872,10 +901,11 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         ["ruleId"] = rule.Id,
                         ["count"] = count,
                         ["actual"] = count,
-                        ["min"] = min
+                        ["min"] = min,
+                        ["violation"] = "min"
                     };
                     
-                    details["explanation"] = GetExplanation(rule.Type, rule.ErrorCode ?? "ARRAY_TOO_SHORT", details);
+                    details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.ARRAY_LENGTH_VIOLATION, details);
                     
                     errors.Add(new RuleValidationError
                     {
@@ -884,7 +914,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         Severity = rule.Severity,
                         ResourceType = rule.ResourceType,
                         Path = rule.Path,
-                        ErrorCode = rule.ErrorCode ?? "ARRAY_TOO_SHORT",
+                        ErrorCode = ValidationErrorCodes.ARRAY_LENGTH_VIOLATION,
                         Details = details,
                         EntryIndex = entryIndex,
                         ResourceId = resource.Id
@@ -917,10 +947,11 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         ["ruleId"] = rule.Id,
                         ["count"] = count,
                         ["actual"] = count,
-                        ["max"] = max
+                        ["max"] = max,
+                        ["violation"] = "max"
                     };
                     
-                    details["explanation"] = GetExplanation(rule.Type, rule.ErrorCode ?? "ARRAY_TOO_LONG", details);
+                    details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.ARRAY_LENGTH_VIOLATION, details);
                     
                     errors.Add(new RuleValidationError
                     {
@@ -929,7 +960,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         Severity = rule.Severity,
                         ResourceType = rule.ResourceType,
                         Path = rule.Path,
-                        ErrorCode = rule.ErrorCode ?? "ARRAY_TOO_LONG",
+                        ErrorCode = ValidationErrorCodes.ARRAY_LENGTH_VIOLATION,
                         Details = details,
                         EntryIndex = entryIndex,
                         ResourceId = resource.Id

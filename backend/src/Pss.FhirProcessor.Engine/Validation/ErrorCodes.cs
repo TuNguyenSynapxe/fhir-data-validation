@@ -119,6 +119,9 @@ public static class ValidationErrorCodes
     /// <summary>Array has more elements than allowed maximum</summary>
     public const string ARRAY_TOO_LONG = "ARRAY_TOO_LONG";
     
+    /// <summary>Array length constraint violated (min or max)</summary>
+    public const string ARRAY_LENGTH_VIOLATION = "ARRAY_LENGTH_VIOLATION";
+    
     /// <summary>Array length is invalid</summary>
     public const string ARRAY_LENGTH_INVALID = "ARRAY_LENGTH_INVALID";
     

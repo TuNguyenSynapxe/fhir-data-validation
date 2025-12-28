@@ -533,6 +533,176 @@ public class FhirPathRuleEngineTests
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_ArrayLength_CountBelowMin_Emits_ARRAY_LENGTH_VIOLATION()
+    {
+        // Test: ArrayLength rule with count < min always emits ARRAY_LENGTH_VIOLATION
+        // Arrange
+        var patient = new Patient
+        {
+            Id = "patient-001",
+            Name = new List<HumanName>() // Empty array, count = 0
+        };
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    FullUrl = "urn:uuid:patient-001",
+                    Resource = patient
+                }
+            }
+        };
+        
+        var ruleSet = new RuleSet
+        {
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "AL-MIN-VIOLATION",
+                    Type = "ArrayLength",
+                    ResourceType = "Patient",
+                    Path = "Patient.name",
+                    ErrorCode = "ARRAY_LENGTH_VIOLATION",
+                    Params = new Dictionary<string, object>
+                    {
+                        ["min"] = 1
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _engine.ValidateAsync(bundle, ruleSet);
+
+        // Assert
+        Assert.Single(errors);
+        Assert.Equal(Pss.FhirProcessor.Engine.Validation.ValidationErrorCodes.ARRAY_LENGTH_VIOLATION, errors[0].ErrorCode);
+        Assert.Equal("AL-MIN-VIOLATION", errors[0].RuleId);
+        Assert.True(errors[0].Details.ContainsKey("min"));
+        Assert.True(errors[0].Details.ContainsKey("actual"));
+        Assert.True(errors[0].Details.ContainsKey("violation"));
+        Assert.Equal("min", errors[0].Details["violation"]);
+        Assert.Equal(0, errors[0].Details["actual"]);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_ArrayLength_CountAboveMax_Emits_ARRAY_LENGTH_VIOLATION()
+    {
+        // Test: ArrayLength rule with count > max always emits ARRAY_LENGTH_VIOLATION
+        // Arrange
+        var patient = new Patient
+        {
+            Id = "patient-001",
+            Name = new List<HumanName>
+            {
+                new HumanName { Family = "Doe", Given = new[] { "John" } },
+                new HumanName { Family = "Smith", Given = new[] { "Jane" } },
+                new HumanName { Family = "Brown", Given = new[] { "Bob" } }
+            }
+        };
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    FullUrl = "urn:uuid:patient-001",
+                    Resource = patient
+                }
+            }
+        };
+        
+        var ruleSet = new RuleSet
+        {
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "AL-MAX-VIOLATION",
+                    Type = "ArrayLength",
+                    ResourceType = "Patient",
+                    Path = "Patient.name",
+                    ErrorCode = "ARRAY_LENGTH_VIOLATION",
+                    Params = new Dictionary<string, object>
+                    {
+                        ["max"] = 2
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _engine.ValidateAsync(bundle, ruleSet);
+
+        // Assert
+        Assert.Single(errors);
+        Assert.Equal(Pss.FhirProcessor.Engine.Validation.ValidationErrorCodes.ARRAY_LENGTH_VIOLATION, errors[0].ErrorCode);
+        Assert.Equal("AL-MAX-VIOLATION", errors[0].RuleId);
+        Assert.True(errors[0].Details.ContainsKey("max"));
+        Assert.True(errors[0].Details.ContainsKey("actual"));
+        Assert.True(errors[0].Details.ContainsKey("violation"));
+        Assert.Equal("max", errors[0].Details["violation"]);
+        Assert.Equal(3, errors[0].Details["actual"]);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_ArrayLength_CountWithinRange_NoErrors()
+    {
+        // Test: ArrayLength rule with count within range produces no errors
+        // Arrange
+        var patient = new Patient
+        {
+            Id = "patient-001",
+            Name = new List<HumanName>
+            {
+                new HumanName { Family = "Doe", Given = new[] { "John" } }
+            }
+        };
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection,
+            Entry = new List<Bundle.EntryComponent>
+            {
+                new Bundle.EntryComponent
+                {
+                    FullUrl = "urn:uuid:patient-001",
+                    Resource = patient
+                }
+            }
+        };
+        
+        var ruleSet = new RuleSet
+        {
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "AL-VALID-RANGE",
+                    Type = "ArrayLength",
+                    ResourceType = "Patient",
+                    Path = "Patient.name",
+                    ErrorCode = "ARRAY_LENGTH_VIOLATION",
+                    Params = new Dictionary<string, object>
+                    {
+                        ["min"] = 1,
+                        ["max"] = 2
+                    }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _engine.ValidateAsync(bundle, ruleSet);
+
+        // Assert
+        Assert.Empty(errors);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task ValidateAsync_CodeSystem_MissingSystemParam_ReturnsConfigurationError()
     {
         // Arrange

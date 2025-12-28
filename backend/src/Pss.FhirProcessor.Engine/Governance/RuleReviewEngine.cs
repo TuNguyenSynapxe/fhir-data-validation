@@ -54,6 +54,8 @@ public class RuleReviewEngine : IRuleReviewEngine
         CheckQuestionAnswerWithoutQuestionSetId(rule, issues);
         CheckPatternErrorCode(rule, issues);
         CheckAllowedValuesErrorCode(rule, issues);
+        CheckArrayLengthErrorCode(rule, issues);
+        CheckReferenceRuleNotSupported(rule, issues);
         CheckPatternOnNonString(rule, issues);
         CheckArrayLengthOnNonArray(rule, issues);
         
@@ -309,6 +311,73 @@ public class RuleReviewEngine : IRuleReviewEngine
                 }
             ));
         }
+    }
+    
+    /// <summary>
+    /// Enforces that ArrayLength rules use errorCode = "ARRAY_LENGTH_VIOLATION".
+    /// 
+    /// GOVERNANCE CONTRACT:
+    /// - Blocks ArrayLength rules with errorCode != "ARRAY_LENGTH_VIOLATION"
+    /// - Returns BLOCKED status with ARRAYLENGTH_ERROR_CODE_MISMATCH code
+    /// 
+    /// UX CONTRACT (Future Implementation):
+    /// - Frontend should prevent user from setting invalid errorCode
+    /// - Rule authoring UI should hide errorCode dropdown for ArrayLength
+    /// - Display static "Error Code: ARRAY_LENGTH_VIOLATION" label
+    /// - If governance error occurs, show clear message:
+    ///   "ArrayLength rules must use ARRAY_LENGTH_VIOLATION error code. 
+    ///    Current: {currentErrorCode}. Please remove or change errorCode."
+    /// </summary>
+    private void CheckArrayLengthErrorCode(RuleDefinition rule, List<RuleReviewIssue> issues)
+    {
+        if (rule.Type != "ArrayLength")
+            return;
+        
+        if (!string.IsNullOrWhiteSpace(rule.ErrorCode) && rule.ErrorCode != "ARRAY_LENGTH_VIOLATION")
+        {
+            issues.Add(new RuleReviewIssue(
+                Code: "ARRAYLENGTH_ERROR_CODE_MISMATCH",
+                Severity: RuleReviewStatus.BLOCKED,
+                RuleId: rule.Id,
+                Facts: new Dictionary<string, object>
+                {
+                    ["ruleType"] = rule.Type,
+                    ["currentErrorCode"] = rule.ErrorCode,
+                    ["requiredErrorCode"] = "ARRAY_LENGTH_VIOLATION",
+                    ["reason"] = "ArrayLength rules must use errorCode ARRAY_LENGTH_VIOLATION"
+                }
+            ));
+        }
+    }
+    
+    /// <summary>
+    /// BLOCKED: Reference rules are not supported as user-defined business rules.
+    /// Reference validation is handled globally by ReferenceResolver in the validation pipeline.
+    /// 
+    /// RATIONALE:
+    /// - Reference validation already exists as a system-level service
+    /// - Allowing rule-based Reference validation would create semantic ambiguity
+    /// - ErrorCode source confusion (is REFERENCE_NOT_FOUND from ReferenceResolver or a rule?)
+    /// - Prevents phantom rules that silently fail at runtime
+    /// </summary>
+    private void CheckReferenceRuleNotSupported(RuleDefinition rule, List<RuleReviewIssue> issues)
+    {
+        if (rule.Type != "Reference")
+            return;
+        
+        issues.Add(new RuleReviewIssue(
+            Code: "REFERENCE_RULE_NOT_SUPPORTED",
+            Severity: RuleReviewStatus.BLOCKED,
+            RuleId: rule.Id,
+            Facts: new Dictionary<string, object>
+            {
+                ["ruleType"] = rule.Type,
+                ["reason"] = "Reference validation is handled globally by the system and cannot be authored as a rule.",
+                ["explanation"] = "References are automatically validated by the ReferenceResolver service. " +
+                                "All resource references in the bundle are checked for existence and type correctness. " +
+                                "User-defined Reference rules are not supported to avoid semantic ambiguity and ensure consistent error handling."
+            }
+        ));
     }
     
     /// <summary>
