@@ -1,0 +1,30 @@
+{
+  "id": "c8f999fe-0f04-4c33-a3ac-8de235117902",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-L9J4-00000029"
+    },
+    "display": {
+      "value": "Pinhole Test (Right Eye)\n(If Snellen is worse than 6/12, please continue with Pinhole and test the right eye first)"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": "{\u0022allowedValues\u0022:[\u00226/6\u0022,\u00226/9\u0022,\u00226/12\u0022,\u00226/18\u0022,\u00226/24\u0022,\u00226/36\u0022,\u00226/60\u0022,\u0022Worse than 6/60\u0022],\u0022allowMultiple\u0022:false,\u0022separator\u0022:\u0022,\u0022}"
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Pinhole Test (Right Eye)\n(If Snellen is worse than 6/12, please continue with Pinhole and test the right eye first)",
+    "description": null,
+    "createdAt": "2025-12-26T13:18:32.715013+00:00",
+    "updatedAt": "2025-12-26T13:18:32.715013+00:00"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "url": "http://example.org/fhir/CodeSystem/terminology-1766470394504",
+  "version": null,
+  "name": "New Terminology",
+  "title": null,
+  "status": "draft",
+  "description": null,
+  "publisher": null,
+  "content": "complete",
+  "count": null,
+  "concept": [],
+  "meta": null
+}

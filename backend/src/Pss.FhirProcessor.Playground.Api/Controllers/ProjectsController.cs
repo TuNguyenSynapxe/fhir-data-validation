@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
+using Pss.FhirProcessor.Engine.Governance;
 using Pss.FhirProcessor.Engine.Interfaces;
+using Pss.FhirProcessor.Engine.Models;
 using Pss.FhirProcessor.Playground.Api.Models;
 using Pss.FhirProcessor.Playground.Api.Services;
+using System.Text.Json;
 
 namespace Pss.FhirProcessor.Playground.Api.Controllers;
 
@@ -12,16 +15,19 @@ public class ProjectsController : ControllerBase
     private readonly IProjectService _projectService;
     private readonly IRuleService _ruleService;
     private readonly IRuleAdvisoryService? _ruleAdvisoryService;
+    private readonly IRuleReviewEngine _ruleReviewEngine;
     private readonly ILogger<ProjectsController> _logger;
 
     public ProjectsController(
         IProjectService projectService,
         IRuleService ruleService,
+        IRuleReviewEngine ruleReviewEngine,
         ILogger<ProjectsController> logger,
         IRuleAdvisoryService? ruleAdvisoryService = null)
     {
         _projectService = projectService;
         _ruleService = ruleService;
+        _ruleReviewEngine = ruleReviewEngine;
         _ruleAdvisoryService = ruleAdvisoryService;
         _logger = logger;
     }
@@ -112,14 +118,70 @@ public class ProjectsController : ControllerBase
 
     /// <summary>
     /// Update rules for a project
+    /// Phase 8: Enforces governance - BLOCKED rules cannot be saved
     /// </summary>
     [HttpPost("{id}/rules")]
-    public async Task<ActionResult<Project>> UpdateRules(Guid id, [FromBody] SaveRuleRequest request)
+    public async Task<ActionResult> UpdateRules(Guid id, [FromBody] SaveRuleRequest request)
     {
         try
         {
+            // Parse rules from JSON
+            RuleSet? ruleSet;
+            try
+            {
+                ruleSet = JsonSerializer.Deserialize<RuleSet>(request.RulesJson, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+                
+                if (ruleSet == null || ruleSet.Rules == null)
+                {
+                    return BadRequest(new { error = "Invalid rules JSON format" });
+                }
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "Failed to parse rules JSON");
+                return BadRequest(new { error = "Invalid JSON format", message = ex.Message });
+            }
+            
+            // PHASE 8: Enforce governance
+            var reviewResults = _ruleReviewEngine.ReviewRuleSet(ruleSet.Rules);
+            var allFindings = reviewResults.SelectMany(r => r.Issues)
+                .Select(i => new RuleReviewFinding
+                {
+                    Code = $"GOV_{i.Code}",
+                    Severity = i.Severity.ToString().ToUpperInvariant(),
+                    RuleId = i.RuleId,
+                    Details = i.Facts
+                })
+                .ToList();
+            
+            // Determine overall status
+            var hasBlocked = reviewResults.Any(r => r.Status == RuleReviewStatus.BLOCKED);
+            var hasWarnings = reviewResults.Any(r => r.Status == RuleReviewStatus.WARNING);
+            var overallStatus = hasBlocked ? "BLOCKED" : (hasWarnings ? "WARNING" : "OK");
+            
+            // BLOCKED rules cannot be saved
+            if (hasBlocked)
+            {
+                return BadRequest(new RuleReviewResponse
+                {
+                    Status = overallStatus,
+                    Findings = allFindings,
+                    Project = null
+                });
+            }
+            
+            // WARNING or OK → save allowed
             var project = await _projectService.UpdateRulesAsync(id, request.RulesJson);
-            return Ok(project);
+            
+            return Ok(new RuleReviewResponse
+            {
+                Status = overallStatus,
+                Findings = allFindings,
+                Project = project
+            });
         }
         catch (InvalidOperationException ex)
         {

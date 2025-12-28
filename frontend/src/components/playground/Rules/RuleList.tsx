@@ -1,20 +1,7 @@
 import React from 'react';
 import { RuleGroup } from './RuleGroup';
 import type { RuleReviewIssue } from '../../../playground/rule-review';
-
-interface Rule {
-  id: string;
-  type: string;
-  resourceType: string;
-  path: string;
-  severity: string;
-  message: string;
-  params?: Record<string, any>;
-  origin?: string; // Compatible with AddRuleModal and RulesPanel
-  explainability?: any;
-  enabled?: boolean;
-  isMessageCustomized?: boolean;
-}
+import type { Rule } from '../../../types/rightPanelProps';
 
 interface RuleListProps {
   rules: Rule[];

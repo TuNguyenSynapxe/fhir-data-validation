@@ -1,0 +1,30 @@
+{
+  "id": "f3a1af2e-01cb-4fad-91e0-659deeadc8e7",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-Q1P1-00000002"
+    },
+    "display": {
+      "value": "Do participant need to change your hearing aid(s)?"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": "{\u0022allowedValues\u0022:[\u0022Yes (To skip hearing screening and refer to L2 Hearing)\u0022,\u0022No (To skip hearing screening and advise to continue follow up with audiologist)\u0022],\u0022allowMultiple\u0022:false,\u0022separator\u0022:\u0022,\u0022}"
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Do participant need to change your hearing aid(s)?",
+    "description": null,
+    "createdAt": "2025-12-26T04:45:46.12919+00:00",
+    "updatedAt": "2025-12-26T04:45:46.12919+00:00"
+  }
+}

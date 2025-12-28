@@ -1,15 +1,6 @@
 import React from 'react';
 import { Edit, Trash2, AlertCircle, AlertTriangle, Info } from 'lucide-react';
-
-interface Rule {
-  id: string;
-  type: string;
-  resourceType: string;
-  path: string;
-  severity: string;
-  message: string;
-  params?: Record<string, any>;
-}
+import type { Rule } from '../../../types/rightPanelProps';
 
 interface RuleCardProps {
   rule: Rule;

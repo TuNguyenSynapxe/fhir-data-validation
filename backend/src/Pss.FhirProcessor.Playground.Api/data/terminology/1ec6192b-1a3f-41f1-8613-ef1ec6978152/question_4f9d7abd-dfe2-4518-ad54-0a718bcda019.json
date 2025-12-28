@@ -1,0 +1,30 @@
+{
+  "id": "4f9d7abd-dfe2-4518-ad54-0a718bcda019",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-J6Q3-00000019"
+    },
+    "display": {
+      "value": "Within the past 12 months, have you had any trouble speaking because of problems with your teeth, mouth or dentures?"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": "{\u0022allowedValues\u0022:[\u0022Yes\u0022,\u0022No\u0022],\u0022allowMultiple\u0022:false,\u0022separator\u0022:\u0022,\u0022}"
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Within the past 12 months, have you had any trouble speaking because of problems with your teeth, mouth or dentures?",
+    "description": null,
+    "createdAt": "2025-12-26T04:45:46.165051+00:00",
+    "updatedAt": "2025-12-26T04:45:46.165051+00:00"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "c18d6c26-d776-4cf8-9dea-ee004516f80a",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-X4H3-00000022"
+    },
+    "display": {
+      "value": "Does participant have any upcoming appointment with any dentist?"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": "{\u0022allowedValues\u0022:[\u0022Yes (To continue follow up with dentist)\u0022,\u0022No (Refer to L2 Oral Follow Up)\u0022],\u0022allowMultiple\u0022:false,\u0022separator\u0022:\u0022,\u0022}"
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Does participant have any upcoming appointment with any dentist?",
+    "description": null,
+    "createdAt": "2025-12-26T13:18:32.701732+00:00",
+    "updatedAt": "2025-12-26T13:18:32.701732+00:00"
+  }
+}

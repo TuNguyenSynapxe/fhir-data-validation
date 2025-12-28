@@ -1,0 +1,30 @@
+{
+  "id": "53fce944-1e67-424e-86d9-16c044b2145c",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-R1R7-00000027"
+    },
+    "display": {
+      "value": "Snellen Test (Right Eye)\n(Please test the right eye first)"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": "{\u0022allowedValues\u0022:[\u00226/6\u0022,\u00226/9\u0022,\u00226/12\u0022,\u00226/18\u0022,\u00226/24\u0022,\u00226/36\u0022,\u00226/60\u0022,\u0022Worse than 6/60\u0022],\u0022allowMultiple\u0022:false,\u0022separator\u0022:\u0022,\u0022}"
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Snellen Test (Right Eye)\n(Please test the right eye first)",
+    "description": null,
+    "createdAt": "2025-12-26T04:45:46.178455+00:00",
+    "updatedAt": "2025-12-26T04:45:46.178455+00:00"
+  }
+}

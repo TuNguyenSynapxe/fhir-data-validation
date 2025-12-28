@@ -8,21 +8,7 @@ import { ValidationIcon } from '../../../ui/icons/ValidationIcons';
 import { RuleCardExpanded } from './RuleCardExpanded';
 import type { RuleReviewIssue } from '../../../playground/rule-review';
 import { isInternalRule } from './ruleHelpers';
-
-interface Rule {
-  id: string;
-  type: string;
-  resourceType: string;
-  path: string;
-  severity: string;
-  message: string;
-  params?: Record<string, any>;
-  origin?: string; // Compatible with AddRuleModal and RulesPanel
-  explainability?: any;
-  enabled?: boolean;
-  saveState?: 'idle' | 'saving' | 'saved' | 'error';
-  isMessageCustomized?: boolean;
-}
+import type { Rule } from '../../../types/rightPanelProps';
 
 interface RuleRowProps {
   rule: Rule;

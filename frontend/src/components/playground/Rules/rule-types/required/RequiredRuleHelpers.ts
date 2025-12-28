@@ -11,6 +11,7 @@
 
 import type { InstanceScope } from '../../common/InstanceScope.types';
 import { composeInstanceScopedPath } from '../../common/InstanceScope.utils';
+import type { Rule } from '../../../../../types/rightPanelProps';
 
 interface RequiredRuleData {
   resourceType: string;
@@ -20,21 +21,6 @@ interface RequiredRuleData {
   errorCode: string;            // PHASE 3: errorCode is now primary
   userHint?: string;            // PHASE 3: optional short hint
   message?: string;             // DEPRECATED: backward compat only
-}
-
-interface Rule {
-  id: string;
-  type: string;
-  resourceType: string;
-  path: string;
-  severity: string;
-  errorCode: string;            // PHASE 3: errorCode is now primary
-  userHint?: string;            // PHASE 3: optional short hint
-  message?: string;             // DEPRECATED: backward compat only
-  params?: Record<string, any>;
-  origin?: string;
-  enabled?: boolean;
-  isMessageCustomized?: boolean;
 }
 
 /**

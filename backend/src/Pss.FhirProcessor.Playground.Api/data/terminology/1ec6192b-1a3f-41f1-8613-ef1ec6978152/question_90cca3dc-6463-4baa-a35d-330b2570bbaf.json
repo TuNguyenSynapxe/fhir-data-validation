@@ -1,0 +1,30 @@
+{
+  "id": "90cca3dc-6463-4baa-a35d-330b2570bbaf",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-F1T3-00000036"
+    },
+    "display": {
+      "value": "Does the participant agree to proceed with L2 Vision?"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": null
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Does the participant agree to proceed with L2 Vision?",
+    "description": "Screening Type: VS",
+    "createdAt": "2025-12-26T01:19:43.192388+00:00",
+    "updatedAt": "2025-12-26T01:19:43.192388+00:00"
+  }
+}

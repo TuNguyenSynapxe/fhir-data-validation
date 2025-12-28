@@ -1,0 +1,30 @@
+{
+  "id": "0479de8c-550c-4d1f-bc6a-26c9792a4c1a",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-F6X7-00000028"
+    },
+    "display": {
+      "value": "Snellen Test (Left Eye)"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": "{\u0022allowedValues\u0022:[\u00226/6\u0022,\u00226/9\u0022,\u00226/12\u0022,\u00226/18\u0022,\u00226/24\u0022,\u00226/36\u0022,\u00226/60\u0022,\u0022Worse than 6/60\u0022],\u0022allowMultiple\u0022:false,\u0022separator\u0022:\u0022,\u0022}"
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Snellen Test (Left Eye)",
+    "description": null,
+    "createdAt": "2025-12-26T13:18:32.713054+00:00",
+    "updatedAt": "2025-12-26T13:18:32.713054+00:00"
+  }
+}

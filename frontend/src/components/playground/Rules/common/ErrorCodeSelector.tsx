@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Info } from 'lucide-react';
 
 /**
  * ERROR CODE SELECTOR
@@ -27,6 +27,8 @@ interface ErrorCodeSelectorProps {
   onChange: (code: string) => void;
   required?: boolean;
   className?: string;
+  labelOverride?: string;
+  showTooltip?: boolean;
 }
 
 /**
@@ -46,10 +48,11 @@ const ERROR_CODE_REGISTRY: Record<string, ErrorCodeOption[]> = {
     { code: 'REGEX_NO_MATCH', label: 'Regex No Match', category: 'Format/Pattern' },
   ],
   QuestionAnswer: [
+    { code: 'ANSWER_REQUIRED', label: 'Answer Required', category: 'Question/Answer' },
     { code: 'INVALID_ANSWER_VALUE', label: 'Invalid Answer Value', category: 'Question/Answer' },
     { code: 'ANSWER_OUT_OF_RANGE', label: 'Answer Out of Range', category: 'Question/Answer' },
     { code: 'ANSWER_NOT_IN_VALUESET', label: 'Answer Not in ValueSet', category: 'Question/Answer' },
-    { code: 'ANSWER_REQUIRED', label: 'Answer Required', category: 'Question/Answer' },
+    { code: 'ANSWER_MULTIPLE_NOT_ALLOWED', label: 'Answer Multiple Not Allowed', category: 'Question/Answer' },
     { code: 'INVALID_ANSWER_TYPE', label: 'Invalid Answer Type', category: 'Question/Answer' },
     { code: 'QUESTION_NOT_FOUND', label: 'Question Not Found', category: 'Question/Answer' },
     { code: 'QUESTIONSET_DATA_MISSING', label: 'QuestionSet Data Missing', category: 'Question/Answer' },
@@ -84,7 +87,9 @@ export const ErrorCodeSelector: React.FC<ErrorCodeSelectorProps> = ({
   value,
   onChange,
   required = true,
-  className = ''
+  className = '',
+  labelOverride,
+  showTooltip = false
 }) => {
   const options = useMemo(() => {
     return ERROR_CODE_REGISTRY[ruleType] || [];
@@ -107,9 +112,30 @@ export const ErrorCodeSelector: React.FC<ErrorCodeSelectorProps> = ({
 
   return (
     <div className={className}>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        Error Code {required && <span className="text-red-500">*</span>}
-      </label>
+      <div className="flex items-center gap-2 mb-1">
+        <label className="block text-sm font-medium text-gray-700">
+          {labelOverride || 'Error Code'} {required && <span className="text-red-500">*</span>}
+        </label>
+        {showTooltip && (
+          <div className="group relative">
+            <Info className="w-4 h-4 text-gray-400 cursor-help" />
+            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-80 p-3 bg-gray-900 text-white text-xs rounded shadow-lg z-10">
+              <div className="font-semibold mb-1">Why can't this be automatic?</div>
+              <div className="space-y-1">
+                <div>Error codes are chosen at rule design time to ensure:</div>
+                <ul className="list-disc ml-4 mt-1">
+                  <li>consistent validation meaning</li>
+                  <li>predictable API behavior</li>
+                  <li>stable integrations</li>
+                </ul>
+                <div className="mt-2 pt-2 border-t border-gray-700">
+                  Runtime data determines <strong>where</strong> the error occurs, not <strong>what</strong> it means.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
       
       <select
         value={value}

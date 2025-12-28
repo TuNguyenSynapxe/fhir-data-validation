@@ -15,18 +15,7 @@ import { useProjectValidationContext } from '../../../contexts/project-validatio
 import { useRuleReview } from '../../../playground/rule-review/hooks/useRuleReview';
 import { getIssueCounts, formatRuleReviewMessage } from '../../../playground/rule-review';
 import { buildValidationUICounters, getValidationStatusText } from '../../../utils/validationUICounters';
-
-interface Rule {
-  id: string;
-  type: string;
-  resourceType: string;
-  path: string;
-  severity: string;
-  message: string;
-  origin?: 'manual' | 'system-suggested' | 'ai-suggested';
-  enabled?: boolean;
-  isMessageCustomized?: boolean;
-}
+import type { Rule } from '../../../types/rightPanelProps';
 
 interface OverviewPanelProps {
   validationState?: string;

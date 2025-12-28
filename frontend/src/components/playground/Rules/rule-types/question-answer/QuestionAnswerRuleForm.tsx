@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { X, HelpCircle, Check, AlertCircle } from 'lucide-react';
-import { ErrorCodeSelector, UserHintInput, RuleErrorPreview } from '../../common';
+import { UserHintInput } from '../../common';
 import { QuestionSetSelector } from './QuestionSetSelector';
 import { RelativePathFields } from './RelativePathFields';
 import { FhirPathPreview } from './FhirPathPreview';
 import { InstanceScopeDrawer } from '../../common/InstanceScopeDrawer';
+import { QuestionAnswerConstraintSelector } from './QuestionAnswerConstraintSelector';
+import type { QuestionAnswerConstraint } from './QuestionAnswerConstraint.types';
+import { CONSTRAINT_TO_ERROR_CODE } from './QuestionAnswerConstraint.types';
 import type { InstanceScope } from '../../common/InstanceScope.types';
 import { getInstanceScopeSummary } from '../../common/InstanceScope.utils';
+import type { Rule } from '../../../../../types/rightPanelProps';
 import {
   buildQuestionAnswerRule,
   deriveQuestionPath,
@@ -16,23 +20,6 @@ import {
   QA_RESOURCE_TYPES,
   SEVERITY_LEVELS,
 } from './QuestionAnswerRuleHelpers';
-
-interface Rule {
-  id: string;
-  type: string;
-  resourceType: string;
-  path: string;
-  severity: string;
-  errorCode: string;           // PHASE 3: errorCode is now primary
-  userHint?: string;            // PHASE 3: optional short hint
-  message?: string;             // DEPRECATED: backward compat only
-  params?: Record<string, any>;
-  origin?: string;
-  enabled?: boolean;
-  isMessageCustomized?: boolean;
-  questionPath?: string;
-  answerPath?: string;
-}
 
 interface QuestionAnswerRuleFormProps {
   projectId: string;
@@ -57,8 +44,8 @@ export const QuestionAnswerRuleForm: React.FC<QuestionAnswerRuleFormProps> = ({
   const [answerPath, setAnswerPath] = useState<string>('');
   const [questionSetId, setQuestionSetId] = useState<string>('');
   const [severity, setSeverity] = useState<'error' | 'warning' | 'information'>('error');
-  // PHASE 3: Replace customMessage with errorCode + userHint
-  const [errorCode, setErrorCode] = useState<string>('');
+  // CONSTRAINT-DRIVEN: Authors select constraint, system determines errorCode
+  const [constraint, setConstraint] = useState<QuestionAnswerConstraint | ''>('');
   const [userHint, setUserHint] = useState<string>('');
   const [isScopeDrawerOpen, setIsScopeDrawerOpen] = useState(false);
   const [isAdvancedMode, setIsAdvancedMode] = useState(false); // Advanced path editing toggle
@@ -67,7 +54,7 @@ export const QuestionAnswerRuleForm: React.FC<QuestionAnswerRuleFormProps> = ({
     iterationScope?: string;
     questionPath?: string;
     answerPath?: string;
-    errorCode?: string;
+    constraint?: string;
   }>({});
 
   // Initialize defaults when resource type changes
@@ -97,7 +84,7 @@ export const QuestionAnswerRuleForm: React.FC<QuestionAnswerRuleFormProps> = ({
   };
 
   const handleSave = () => {
-    // PHASE 3: Validate required fields (errorCode is now mandatory)
+    // CONSTRAINT-DRIVEN: Validate required fields (constraint is mandatory)
     const newErrors: typeof errors = {};
 
     if (!questionSetId) {
@@ -116,8 +103,8 @@ export const QuestionAnswerRuleForm: React.FC<QuestionAnswerRuleFormProps> = ({
       newErrors.answerPath = 'Answer path is required';
     }
 
-    if (!errorCode || errorCode.trim() === '') {
-      newErrors.errorCode = 'Error code is required';
+    if (!constraint) {
+      newErrors.constraint = 'Constraint is required';
     }
 
     // Validate path alignment (non-blocking warning shown inline)
@@ -132,7 +119,8 @@ export const QuestionAnswerRuleForm: React.FC<QuestionAnswerRuleFormProps> = ({
       return;
     }
 
-    // PHASE 3: Build rule with errorCode + userHint (NO message)
+    // CONSTRAINT-DRIVEN: Build rule with constraint, errorCode derived automatically
+    const errorCode = CONSTRAINT_TO_ERROR_CODE[constraint as QuestionAnswerConstraint];
     const rule = buildQuestionAnswerRule({
       resourceType,
       instanceScope: instanceScope.kind === 'all' ? 'all' : 'first',
@@ -141,7 +129,8 @@ export const QuestionAnswerRuleForm: React.FC<QuestionAnswerRuleFormProps> = ({
       answerPath,
       questionSetId,
       severity,
-      errorCode,
+      constraint: constraint as QuestionAnswerConstraint,
+      errorCode, // Derived from constraint
       userHint: userHint || undefined,
     });
 
@@ -421,38 +410,37 @@ export const QuestionAnswerRuleForm: React.FC<QuestionAnswerRuleFormProps> = ({
           </div>
         </div>
 
-        {/* PHASE 3: ErrorCode Selector (REQUIRED) */}
-        <ErrorCodeSelector
-          ruleType="QuestionAnswer"
-          value={errorCode}
-          onChange={setErrorCode}
-          required
+        {/* CONSTRAINT-DRIVEN: Constraint Selector (REQUIRED) */}
+        <QuestionAnswerConstraintSelector
+          value={constraint}
+          onChange={setConstraint}
+          error={errors.constraint}
         />
-        {errors.errorCode && (
-          <div className="flex items-center gap-1 -mt-4 text-xs text-red-600">
-            <AlertCircle size={12} />
-            <span>{errors.errorCode}</span>
+
+        {/* Runtime Behavior Preview - Constraint Model */}
+        {constraint && (
+          <div className="rounded-md bg-blue-50 border border-blue-200 p-3 text-xs text-blue-900 mb-4">
+            <div className="font-semibold mb-2">Runtime Behavior</div>
+            <div className="space-y-1 text-blue-800">
+              <div>
+                This rule will automatically detect which question failed and emit the appropriate validation error at runtime.
+              </div>
+              <div className="mt-2 pt-2 border-t border-blue-300">
+                <strong>Example runtime outcomes:</strong>
+              </div>
+              <ul className="list-disc ml-4 space-y-0.5">
+                <li>Missing answer → <code className="bg-white px-1 py-0.5 rounded text-xs">ANSWER_REQUIRED</code></li>
+                <li>Invalid code → <code className="bg-white px-1 py-0.5 rounded text-xs">ANSWER_NOT_IN_VALUESET</code></li>
+                <li>Out of range → <code className="bg-white px-1 py-0.5 rounded text-xs">ANSWER_OUT_OF_RANGE</code></li>
+              </ul>
+            </div>
           </div>
         )}
 
-        {/* PHASE 3: User Hint Input (OPTIONAL) */}
+        {/* User Hint Input (OPTIONAL) */}
         <UserHintInput
           value={userHint}
           onChange={setUserHint}
-        />
-
-        {/* PHASE 3: Live Error Preview */}
-        <RuleErrorPreview
-          errorCode={errorCode}
-          userHint={userHint}
-          severity={severity}
-          resourceType={resourceType}
-          path={iterationScope || 'component'}
-          details={{
-            question: { system: '<system>', code: '<code>' },
-            expected: { answerType: 'string' },
-            actual: { value: '<sample>' }
-          }}
         />
       </div>
 
@@ -466,7 +454,7 @@ export const QuestionAnswerRuleForm: React.FC<QuestionAnswerRuleFormProps> = ({
         </button>
         <button
           onClick={handleSave}
-          disabled={!questionSetId || !iterationScope || !questionPath || !answerPath || !errorCode}
+          disabled={!questionSetId || !iterationScope || !questionPath || !answerPath || !constraint}
           className="px-4 py-2 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           Create Rule

@@ -1,0 +1,30 @@
+{
+  "id": "83c91d65-b523-48fe-91df-9c849c67886f",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-K8L7-00000031"
+    },
+    "display": {
+      "value": "Does participant have any upcoming appointment with any eye specialist or eye review at polyclinic or CHAS GP clinics?"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": null
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Does participant have any upcoming appointment with any eye specialist or eye review at polyclinic or CHAS GP clinics?",
+    "description": "Screening Type: VS",
+    "createdAt": "2025-12-26T01:19:43.182857+00:00",
+    "updatedAt": "2025-12-26T01:19:43.182857+00:00"
+  }
+}

@@ -5,8 +5,12 @@
  * - Default rule construction
  * - FHIRPath composition with relative paths
  * - Resource-specific defaults
- * - ErrorCode-first architecture (Phase 3)
+ * - Constraint-driven architecture (authors define constraints, system emits errorCode)
  */
+
+import type { Rule } from '../../../../../types/rightPanelProps';
+import type { QuestionAnswerConstraint } from './QuestionAnswerConstraint.types';
+import { ERROR_CODE_TO_CONSTRAINT } from './QuestionAnswerConstraint.types';
 
 interface QuestionAnswerRuleData {
   resourceType: string;
@@ -16,36 +20,20 @@ interface QuestionAnswerRuleData {
   answerPath: string;
   questionSetId: string;
   severity: 'error' | 'warning' | 'information';
-  errorCode: string;            // PHASE 3: errorCode is now primary
-  userHint?: string;            // PHASE 3: optional short hint
-  message?: string;             // DEPRECATED: backward compat only
-}
-
-interface Rule {
-  id: string;
-  type: string;
-  resourceType: string;
-  path: string;
-  severity: string;
-  errorCode: string;            // PHASE 3: errorCode is now primary
-  userHint?: string;            // PHASE 3: optional short hint
-  message?: string;             // DEPRECATED: backward compat only
-  params?: Record<string, any>;
-  origin?: string;
-  enabled?: boolean;
-  isMessageCustomized?: boolean;
-  questionPath?: string;
-  answerPath?: string;
+  constraint: QuestionAnswerConstraint;  // CONSTRAINT-DRIVEN: Authors select constraint
+  errorCode: string;                     // Derived from constraint for backend
+  userHint?: string;                     // Optional short hint
+  message?: string;                      // DEPRECATED: backward compat only
 }
 
 /**
  * Build a complete Question & Answer rule from form data
  * 
- * CRITICAL CONTRACT (Phase 3):
+ * CRITICAL CONTRACT (Constraint-Driven):
  * - questionPath and answerPath MUST be in rule.params
  * - Backend no longer infers or guesses paths
  * - Missing params = validation skipped
- * - errorCode is now primary (PHASE 3)
+ * - constraint drives errorCode (authors never select errorCode directly)
  */
 export function buildQuestionAnswerRule(data: QuestionAnswerRuleData): Rule {
   const {
@@ -56,6 +44,7 @@ export function buildQuestionAnswerRule(data: QuestionAnswerRuleData): Rule {
     answerPath,
     questionSetId,
     severity,
+    constraint,
     errorCode,
     userHint,
     message,
@@ -70,18 +59,19 @@ export function buildQuestionAnswerRule(data: QuestionAnswerRuleData): Rule {
     resourceType,
     path: scopedPath,
     severity,
-    errorCode,                    // PHASE 3: errorCode is primary
-    userHint: userHint || undefined, // PHASE 3: optional short hint
+    errorCode,                    // Derived from constraint
+    userHint: userHint || undefined,
     message: message || undefined,   // DEPRECATED: backward compat only
     // CRITICAL: questionPath and answerPath MUST be in params (backend contract)
     params: {
       questionSetId,
       questionPath,   // ← Backend reads from here (not top-level)
       answerPath,     // ← Backend reads from here (not top-level)
+      constraint,     // ← CONSTRAINT-DRIVEN: Store constraint in params
     },
     origin: 'manual',
     enabled: true,
-    isMessageCustomized: false,      // No longer applicable with errorCode-first
+    isMessageCustomized: false,
   };
 }
 
@@ -258,6 +248,33 @@ export const QA_RESOURCE_TYPES = [
  */
 export const SEVERITY_LEVELS = [
   { value: 'error', label: 'Error', description: 'Validation must pass' },
-  { value: 'warning', label: 'Warning', description: 'Should be fixed' },
-  { value: 'information', label: 'Information', description: 'Advisory only' },
+  { value: 'warning', label: 'Warning', description: 'Validation should pass' },
+  { value: 'information', label: 'Information', description: 'Informational only' },
 ] as const;
+
+/**
+ * BACKWARD COMPATIBILITY: Infer constraint from legacy errorCode
+ * 
+ * When loading existing rules that have errorCode but no constraint,
+ * this function infers the constraint type.
+ * 
+ * @param rule - Existing rule that may contain legacy errorCode
+ * @returns Inferred constraint or empty string if cannot infer
+ */
+export function inferConstraintFromRule(rule: Rule): QuestionAnswerConstraint | '' {
+  // If rule already has constraint in params, use it
+  if (rule.params && typeof rule.params === 'object' && 'constraint' in rule.params) {
+    return (rule.params as any).constraint as QuestionAnswerConstraint;
+  }
+  
+  // Otherwise, infer from errorCode
+  if (rule.errorCode) {
+    const constraint = ERROR_CODE_TO_CONSTRAINT[rule.errorCode];
+    if (constraint) {
+      return constraint;
+    }
+  }
+  
+  // Default to empty (user must select)
+  return '';
+}

@@ -15,8 +15,15 @@ export interface Rule {
   resourceType: string;
   path: string;
   severity: string;
-  message: string;
+  message?: string;
+  errorCode?: string;            // PHASE 3: errorCode is primary for new rules
+  userHint?: string;            // PHASE 3: optional short hint
   params?: Record<string, any>;
+  origin?: 'manual' | 'system-suggested' | 'ai-suggested';
+  explainability?: any;
+  enabled?: boolean;
+  saveState?: 'idle' | 'saving' | 'saved' | 'error';
+  isMessageCustomized?: boolean;
 }
 
 /**

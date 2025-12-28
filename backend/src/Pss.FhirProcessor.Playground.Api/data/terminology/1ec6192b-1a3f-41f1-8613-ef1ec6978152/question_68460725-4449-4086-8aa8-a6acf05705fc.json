@@ -1,0 +1,24 @@
+{
+  "id": "68460725-4449-4086-8aa8-a6acf05705fc",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-L2H9-00000001"
+    },
+    "display": {
+      "value": "Is the participant currently wearing hearing aid(s)?"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": null,
+  "valueSet": null,
+  "metadata": {
+    "text": "Is the participant currently wearing hearing aid(s)?",
+    "description": null,
+    "createdAt": "2025-12-26T04:00:34.094749+00:00",
+    "updatedAt": "2025-12-26T04:00:34.094749+00:00"
+  }
+}

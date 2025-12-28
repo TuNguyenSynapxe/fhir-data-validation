@@ -1,6 +1,7 @@
 import httpClient from './httpClient';
 import type { ProjectMetadata, ProjectDetail } from '../types/project';
 import type { ValidationResult } from '../types/validation';
+import type { RuleReviewResponse } from '../types/governance';
 
 export async function getProjects(): Promise<ProjectMetadata[]> {
   const response = await httpClient.get<ProjectMetadata[]>('/api/projects');
@@ -27,10 +28,23 @@ export async function deleteProject(id: string): Promise<void> {
   await httpClient.delete(`/api/projects/${id}`);
 }
 
-export async function saveRules(id: string, json: string): Promise<void> {
-  await httpClient.post(`/api/projects/${id}/rules`, {
-    rulesJson: json,
-  });
+/**
+ * Phase 8: Save rules with governance enforcement
+ * Returns governance review results
+ * BLOCKED rules will return 400 error with findings
+ * WARNING/OK rules will save successfully with findings
+ */
+export async function saveRules(
+  id: string,
+  json: string
+): Promise<RuleReviewResponse> {
+  const response = await httpClient.post<RuleReviewResponse>(
+    `/api/projects/${id}/rules`,
+    {
+      rulesJson: json,
+    }
+  );
+  return response.data;
 }
 
 export async function saveCodeMaster(id: string, json: string): Promise<void> {

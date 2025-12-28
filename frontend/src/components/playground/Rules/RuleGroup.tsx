@@ -2,19 +2,7 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { RuleRow } from './RuleRow';
 import type { RuleReviewIssue } from '../../../playground/rule-review';
-
-interface Rule {
-  id: string;
-  type: string;
-  resourceType: string;
-  path: string;
-  severity: string;
-  message: string;
-  params?: Record<string, any>;
-  origin?: string; // Compatible with AddRuleModal and RulesPanel
-  explainability?: any;
-  isMessageCustomized?: boolean;
-}
+import type { Rule } from '../../../types/rightPanelProps';
 
 interface RuleGroupProps {
   groupTitle: string;

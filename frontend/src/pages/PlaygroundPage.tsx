@@ -17,28 +17,14 @@ import { BundleTabs } from '../components/playground/Bundle/BundleTabs';
 import { RightPanelContainer } from '../components/common/RightPanelContainer';
 import { RightPanelMode } from '../types/rightPanel';
 import { useValidationState } from '../hooks/useValidationState';
-import { ValidationState } from '../types/validationState';
 import { useProjectValidation } from '../contexts/project-validation/useProjectValidation';
 import { ProjectValidationProvider } from '../contexts/project-validation/ProjectValidationContext';
-import { findNearestValidPath } from '../utils/pathNavigation';
-import { detectMissingChild } from '../utils/missingNodeAssist'; // Phase 7.1: Missing Node Assist
-import { resolveNavigationTarget, jsonPointerToPathArray } from '../utils/navigationFallback'; // Phase 8: Navigation Fallback
+import { resolveNavigationTarget } from '../utils/navigationFallback'; // Phase 8: Navigation Fallback
+import { GovernanceModal } from '../components/governance';
+import type { RuleReviewFinding, RuleReviewStatus } from '../types/governance';
+import type { Rule } from '../types/rightPanelProps';
 
 import type { FhirSampleMetadata } from '../types/fhirSample';
-
-interface Rule {
-  id: string;
-  type: string;
-  resourceType: string;
-  path: string;
-  severity: string;
-  message: string;
-  params?: Record<string, any>;
-  origin?: 'manual' | 'system-suggested' | 'ai-suggested';
-  enabled?: boolean;
-  saveState?: 'idle' | 'saving' | 'saved' | 'error';
-  isMessageCustomized?: boolean; // Tracks if user manually edited the message
-}
 
 export default function PlaygroundPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -78,6 +64,11 @@ export default function PlaygroundPage() {
   const [originalCodeMasterJson, setOriginalCodeMasterJson] = useState('');
   const [originalValidationSettings, setOriginalValidationSettings] = useState<ValidationSettings>(DEFAULT_VALIDATION_SETTINGS);
   const [originalRulesJson, setOriginalRulesJson] = useState('');
+  
+  // Phase 8: Governance modal state
+  const [governanceModalOpen, setGovernanceModalOpen] = useState(false);
+  const [governanceStatus, setGovernanceStatus] = useState<RuleReviewStatus>('OK');
+  const [governanceFindings, setGovernanceFindings] = useState<RuleReviewFinding[]>([]);
   
   // Track if we're syncing from URL to prevent circular updates
   const isSyncingFromURL = useRef(false);
@@ -334,9 +325,16 @@ export default function PlaygroundPage() {
       try {
         const parsed = JSON.parse(project.rulesJson || '{}');
         const loadedRules = parsed.rules || [];
-        console.log('[PlaygroundPage:Init] Loaded rules from project:', loadedRules.length, 'rules');
-        console.log('[PlaygroundPage:Init] Rules:', loadedRules.map((r: any) => ({ id: r.id, path: r.path, type: r.type })));
-        setRules(loadedRules);
+        
+        // MIGRATION: Add default errorCode to rules that don't have one (backward compatibility)
+        const migratedRules = loadedRules.map((rule: Rule) => ({
+          ...rule,
+          errorCode: rule.errorCode || rule.message || 'LEGACY_RULE', // Use message or generic code
+        }));
+        
+        console.log('[PlaygroundPage:Init] Loaded rules from project:', migratedRules.length, 'rules');
+        console.log('[PlaygroundPage:Init] Rules:', migratedRules.map((r: any) => ({ id: r.id, path: r.path, type: r.type })));
+        setRules(migratedRules);
         setOriginalRulesJson(project.rulesJson || '{}');
       } catch (error) {
         console.error('[PlaygroundPage:Init] Failed to parse rules JSON:', error);
@@ -373,17 +371,47 @@ export default function PlaygroundPage() {
 
   const handleSaveRules = async () => {
     try {
+      // MIGRATION: Ensure all rules have errorCode before saving
+      const migratedRules = rules.map(rule => ({
+        ...rule,
+        errorCode: rule.errorCode || rule.message || 'LEGACY_RULE',
+      }));
+      
       // Reconstruct the full rules JSON with metadata
       const rulesObject = {
         version: '1.0',
         fhirVersion: 'R4',
-        rules: rules,
+        rules: migratedRules,
       };
       const rulesJsonString = JSON.stringify(rulesObject, null, 2);
-      await saveRulesMutation.mutateAsync(rulesJsonString);
+      
+      // Phase 8: Call backend with governance enforcement
+      const response = await saveRulesMutation.mutateAsync(rulesJsonString);
+      
+      // Handle governance response
+      if (response.status === 'BLOCKED') {
+        // BLOCKED: Cannot save, show modal with no confirmation option
+        setGovernanceStatus('BLOCKED');
+        setGovernanceFindings(response.findings);
+        setGovernanceModalOpen(true);
+        return; // Do not update originalRulesJson
+      } else if (response.status === 'WARNING') {
+        // WARNING: Saved successfully, show modal with findings
+        setGovernanceStatus('WARNING');
+        setGovernanceFindings(response.findings);
+        setGovernanceModalOpen(true);
+      }
+      // OK or WARNING: Save succeeded
       setOriginalRulesJson(rulesJsonString);
-    } catch (error) {
-      console.error('Failed to save rules:', error);
+    } catch (error: any) {
+      // Handle BLOCKED error from backend (400 response)
+      if (error.response?.status === 400 && error.response?.data?.status === 'BLOCKED') {
+        setGovernanceStatus('BLOCKED');
+        setGovernanceFindings(error.response.data.findings || []);
+        setGovernanceModalOpen(true);
+      } else {
+        console.error('Failed to save rules:', error);
+      }
     }
   };
   const handleSaveCodeMaster = async () => {
@@ -731,6 +759,14 @@ export default function PlaygroundPage() {
               />
             </ProjectValidationProvider>
           }
+        />
+        
+        {/* Phase 8: Governance enforcement modal */}
+        <GovernanceModal
+          isOpen={governanceModalOpen}
+          status={governanceStatus}
+          findings={governanceFindings}
+          onClose={() => setGovernanceModalOpen(false)}
         />
       </div>
     </div>

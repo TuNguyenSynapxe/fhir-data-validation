@@ -1,0 +1,30 @@
+{
+  "id": "e8c44ee3-e592-4877-9551-17ef4431bbaa",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-L2H9-00000001"
+    },
+    "display": {
+      "value": "Is the participant currently wearing hearing aid(s)?"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": "{\u0022allowedValues\u0022:[\u0022aasd as\u0022,\u0022b das das\u0022,\u0022c asda sd\u0022],\u0022allowMultiple\u0022:false,\u0022separator\u0022:\u0022,\u0022}"
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Is the participant currently wearing hearing aid(s)?",
+    "description": "Screening Type: HS",
+    "createdAt": "2025-12-26T01:19:43.07861+00:00",
+    "updatedAt": "2025-12-26T04:39:26.369357+00:00"
+  }
+}

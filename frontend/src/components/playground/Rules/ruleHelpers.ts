@@ -3,20 +3,9 @@
  * Frontend-only heuristics for rule classification and display
  */
 
-export type AdvisoryIconType = 'info' | 'warning' | 'internal';
+import type { Rule } from '../../../types/rightPanelProps';
 
-interface Rule {
-  id: string;
-  type: string;
-  resourceType: string;
-  path: string;
-  severity: string;
-  message: string;
-  params?: Record<string, any>;
-  origin?: string; // Compatible with AddRuleModal and RulesPanel
-  explainability?: any;
-  enabled?: boolean;
-}
+export type AdvisoryIconType = 'info' | 'warning' | 'internal';
 
 /**
  * Detect if a rule is "internal" (schema plumbing vs business logic)

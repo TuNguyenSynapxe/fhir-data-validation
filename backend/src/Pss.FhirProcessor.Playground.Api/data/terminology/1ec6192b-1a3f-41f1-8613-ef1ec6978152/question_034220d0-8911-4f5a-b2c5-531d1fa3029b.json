@@ -1,0 +1,30 @@
+{
+  "id": "034220d0-8911-4f5a-b2c5-531d1fa3029b",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-B7P7-00000008"
+    },
+    "display": {
+      "value": "Pure Tone Screening at 25dBHL (Right)"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": null
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Pure Tone Screening at 25dBHL (Right)",
+    "description": "Screening Type: HS",
+    "createdAt": "2025-12-26T01:19:43.131576+00:00",
+    "updatedAt": "2025-12-26T01:19:43.131577+00:00"
+  }
+}

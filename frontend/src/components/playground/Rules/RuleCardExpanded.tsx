@@ -5,18 +5,7 @@ import RuleExplainabilityPanel from '../../rules/RuleExplainabilityPanel';
 import type { RuleReviewIssue } from '../../../playground/rule-review';
 import { formatRuleReviewMessage, formatRuleReviewTitle, formatRuleReviewSuggestion } from '../../../playground/rule-review';
 import { isInternalRule } from './ruleHelpers';
-
-interface Rule {
-  id: string;
-  type: string;
-  resourceType: string;
-  path: string;
-  severity: string;
-  message: string;
-  params?: Record<string, any>;
-  origin?: string; // Compatible with AddRuleModal and RulesPanel
-  explainability?: any;
-}
+import type { Rule } from '../../../types/rightPanelProps';
 
 interface RuleCardExpandedProps {
   rule: Rule;

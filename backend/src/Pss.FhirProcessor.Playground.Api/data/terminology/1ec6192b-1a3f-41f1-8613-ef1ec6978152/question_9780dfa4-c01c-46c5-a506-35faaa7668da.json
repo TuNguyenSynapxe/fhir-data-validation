@@ -1,0 +1,30 @@
+{
+  "id": "9780dfa4-c01c-46c5-a506-35faaa7668da",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-S3K2-00000021"
+    },
+    "display": {
+      "value": "OHAT Status"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": "{\u0022allowedValues\u0022:[\u0022Healthy\u0022,\u0022Require Self Care\u0022,\u0022Unhealthy (Require L2 Oral Follow Up)\u0022],\u0022allowMultiple\u0022:false,\u0022separator\u0022:\u0022,\u0022}"
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "OHAT Status",
+    "description": null,
+    "createdAt": "2025-12-26T13:18:32.699977+00:00",
+    "updatedAt": "2025-12-26T13:18:32.699978+00:00"
+  }
+}

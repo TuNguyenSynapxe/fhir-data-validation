@@ -118,6 +118,7 @@ export const QuestionSetEditorPanel: React.FC<QuestionSetEditorPanelProps> = ({
         name: selectedQuestionSet.name,
         description: selectedQuestionSet.description,
         questions: updatedQuestions,
+        terminologyUrl: '',
       });
       setSuccessMessage('Question removed');
       onSave();
@@ -218,6 +219,7 @@ export const QuestionSetEditorPanel: React.FC<QuestionSetEditorPanelProps> = ({
         name: selectedQuestionSet.name,
         description: selectedQuestionSet.description,
         questions: updatedQuestions,
+        terminologyUrl: '',
       });
       
       setSuccessMessage(`Imported ${questionIds.length} question${questionIds.length !== 1 ? 's' : ''}`);
@@ -573,7 +575,6 @@ export const QuestionSetEditorPanel: React.FC<QuestionSetEditorPanelProps> = ({
                             {isLocked && (
                               <Lock
                                 className="w-3.5 h-3.5 text-gray-400 flex-shrink-0 mt-0.5"
-                                title="This question is referenced by rules and cannot be modified"
                               />
                             )}
                           </div>

@@ -4,19 +4,7 @@ import { RuleTypeSelector, type RuleTypeOption } from './RuleTypeSelector';
 import { RequiredRuleForm } from '../rule-types/required';
 import { QuestionAnswerRuleForm } from '../rule-types/question-answer';
 import { PatternRuleForm } from '../rule-types/pattern';
-
-interface Rule {
-  id: string;
-  type: string;
-  resourceType: string;
-  path: string;
-  severity: string;
-  message: string;
-  params?: Record<string, any>;
-  origin?: string;
-  enabled?: boolean;
-  isMessageCustomized?: boolean;
-}
+import type { Rule } from '../../../../types/rightPanelProps';
 
 interface AddRuleModalProps {
   isOpen: boolean;
@@ -108,7 +96,6 @@ export const AddRuleModal: React.FC<AddRuleModalProps> = ({
             onCancel={handleCancel}
             onSave={handleSave}
             projectBundle={projectBundle}
-            hl7Samples={hl7Samples}
             initialResourceType={selectedResourceType}
           />
         ) : selectedRuleType === 'pattern' ? (

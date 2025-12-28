@@ -1,0 +1,13 @@
+{
+  "url": "https://fhir.synapxe.sg/CodeSystem/abc",
+  "version": null,
+  "name": "xyz",
+  "title": null,
+  "status": "active",
+  "description": null,
+  "publisher": null,
+  "content": "complete",
+  "count": null,
+  "concept": [],
+  "meta": null
+}

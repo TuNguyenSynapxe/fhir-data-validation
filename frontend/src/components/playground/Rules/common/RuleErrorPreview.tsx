@@ -1,7 +1,7 @@
 import React from 'react';
 import { Eye } from 'lucide-react';
-import { RuleErrorRenderer } from '../../../../validation/RuleErrorRenderer/RuleErrorRenderer';
-import type { ValidationIssue } from '../../../../../constants/errorMessages';
+import { RuleErrorRenderer } from '../../../validation/RuleErrorRenderer/RuleErrorRenderer';
+import type { ValidationIssue } from '../../../../constants/errorMessages';
 
 /**
  * RULE ERROR PREVIEW

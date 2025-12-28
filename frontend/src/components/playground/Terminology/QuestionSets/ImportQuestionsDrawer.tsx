@@ -153,7 +153,7 @@ export const ImportQuestionsDrawer: React.FC<ImportQuestionsDrawerProps> = ({
         }
       }
 
-      const questions: ParsedQuestion[] = questionsArray.map((item, idx) => {
+      const questions: ParsedQuestion[] = questionsArray.map((item: any, idx: number) => {
         const errors: string[] = [];
         
         // Support both simple format and PSS format

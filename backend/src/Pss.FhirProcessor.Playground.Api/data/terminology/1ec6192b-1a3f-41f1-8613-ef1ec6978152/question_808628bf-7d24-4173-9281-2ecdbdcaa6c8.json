@@ -1,0 +1,30 @@
+{
+  "id": "808628bf-7d24-4173-9281-2ecdbdcaa6c8",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-M8Z2-00000011"
+    },
+    "display": {
+      "value": "Does participant have any upcoming appointment with ear specialist?"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": null
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Does participant have any upcoming appointment with ear specialist?",
+    "description": "Screening Type: HS",
+    "createdAt": "2025-12-26T01:19:43.136718+00:00",
+    "updatedAt": "2025-12-26T01:19:43.136718+00:00"
+  }
+}

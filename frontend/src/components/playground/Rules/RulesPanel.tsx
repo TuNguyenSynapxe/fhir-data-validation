@@ -15,22 +15,9 @@ import { ValidationState } from '../../../types/validationState';
 import { analyzeFhirBundle, isRulePathObserved } from '../../../services/bundleAnalysisService';
 import { useRuleReview } from '../../../playground/rule-review/hooks/useRuleReview';
 import { getIssueCounts } from '../../../playground/rule-review';
+import type { Rule } from '../../../types/rightPanelProps';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
-
-interface Rule {
-  id: string;
-  type: string;
-  resourceType: string;
-  path: string;
-  severity: string;
-  message: string;
-  params?: Record<string, any>;
-  origin?: string; // Compatible with AddRuleModal
-  explainability?: any;
-  enabled?: boolean;
-  saveState?: SaveState;
-}
 
 interface RulesPanelProps {
   rules: Rule[];
@@ -715,7 +702,7 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
             id: r.id,
             type: r.type,
             path: r.path,
-            message: r.message,
+            message: r.message || '',
             severity: r.severity,
           }))}
           onRulesCreated={handleTreeRulesCreated}

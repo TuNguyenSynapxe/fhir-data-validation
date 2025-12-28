@@ -212,7 +212,7 @@ export const IssueGroupCard: React.FC<IssueGroupCardProps> = ({
                           fullPath={item.location}
                           onNavigate={
                             canNavigate
-                              ? () => onNavigateToPath?.({ jsonPointer: item.jsonPointer, path: item.location })
+                              ? () => onNavigateToPath?.(item.jsonPointer || item.location || '')
                               : undefined
                           }
                           bundleJson={bundleJson}

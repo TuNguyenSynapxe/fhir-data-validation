@@ -1,0 +1,30 @@
+{
+  "id": "1114233b-4383-46e9-bb86-a3a9b268d7ed",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-X1V3-00000025"
+    },
+    "display": {
+      "value": "Is the participant currently wearing spectacles?"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": "{\u0022allowedValues\u0022:[\u0022Yes (To carry out vision test with participant\u0027s spectacles)\u0022,\u0022No\u0022],\u0022allowMultiple\u0022:false,\u0022separator\u0022:\u0022,\u0022}"
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Is the participant currently wearing spectacles?",
+    "description": null,
+    "createdAt": "2025-12-26T04:45:46.175054+00:00",
+    "updatedAt": "2025-12-26T04:45:46.175054+00:00"
+  }
+}

@@ -5,26 +5,12 @@ import { ErrorCodeSelector, UserHintInput, RuleErrorPreview } from '../../common
 import { InstanceScopeDrawer } from '../../common/InstanceScopeDrawer';
 import type { InstanceScope } from '../../common/InstanceScope.types';
 import { getInstanceScopeSummary } from '../../common/InstanceScope.utils';
+import type { Rule } from '../../../../../types/rightPanelProps';
 import {
   buildRequiredRule,
   RESOURCE_TYPES,
   SEVERITY_LEVELS,
 } from './RequiredRuleHelpers';
-
-interface Rule {
-  id: string;
-  type: string;
-  resourceType: string;
-  path: string;
-  severity: string;
-  errorCode: string;           // PHASE 3: errorCode is now primary
-  userHint?: string;            // PHASE 3: optional short hint
-  message?: string;             // DEPRECATED: backward compat only
-  params?: Record<string, any>;
-  origin?: string;
-  enabled?: boolean;
-  isMessageCustomized?: boolean;
-}
 
 interface RequiredRuleFormProps {
   onCancel: () => void;

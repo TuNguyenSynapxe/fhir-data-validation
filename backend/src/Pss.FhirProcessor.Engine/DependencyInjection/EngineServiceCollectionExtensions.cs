@@ -61,6 +61,9 @@ public static class EngineServiceCollectionExtensions
         services.AddScoped<ICodeMasterEngine, CodeMasterEngine>();
         services.AddScoped<IReferenceResolver, ReferenceResolver>();
         
+        // PHASE 7: Rule governance and quality enforcement
+        services.AddScoped<Governance.IRuleReviewEngine, Governance.RuleReviewEngine>();
+        
         // DLL-SAFE: Structural hints (default no-op for runtime safety)
         services.AddSingleton<IFhirStructureHintProvider, NullFhirStructureHintProvider>();
         

@@ -123,11 +123,13 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
    */
   const handleRunValidation = async () => {
     // Reset filters to show all sources
-    const allFilters = {
+    const allFilters: SourceFilterState = {
       firely: true,
       business: true,
       codeMaster: true,
       specHint: true,
+      lint: true,
+      reference: true,
     };
     setSourceFilters(allFilters);
     localStorage.setItem(`validation-filters-${projectId}`, JSON.stringify(allFilters));

@@ -1,0 +1,30 @@
+{
+  "id": "85591de9-432c-4736-9bfc-204e703cc1f3",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-H4N6-00000033"
+    },
+    "display": {
+      "value": "Is the participant eligible for SMF (Spectacles)?"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": "{\u0022allowedValues\u0022:[\u0022Yes\u0022,\u0022No\u0022],\u0022allowMultiple\u0022:false,\u0022separator\u0022:\u0022,\u0022}"
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Is the participant eligible for SMF (Spectacles)?",
+    "description": null,
+    "createdAt": "2025-12-26T13:18:32.721383+00:00",
+    "updatedAt": "2025-12-26T13:18:32.721383+00:00"
+  }
+}

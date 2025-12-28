@@ -1,0 +1,30 @@
+{
+  "id": "515c0c4b-4f4f-4180-a6c9-05c8df413c25",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-D7V0-00000017"
+    },
+    "display": {
+      "value": "Did participant proceed with Oral Screening?"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": "{\u0022allowedValues\u0022:[\u0022Yes\u0022,\u0022No\u0022],\u0022allowMultiple\u0022:false,\u0022separator\u0022:\u0022,\u0022}"
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Did participant proceed with Oral Screening?",
+    "description": null,
+    "createdAt": "2025-12-26T04:45:46.161764+00:00",
+    "updatedAt": "2025-12-26T04:45:46.161764+00:00"
+  }
+}

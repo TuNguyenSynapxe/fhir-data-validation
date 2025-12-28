@@ -5,20 +5,11 @@ import { RuleEditorModal } from './RuleEditorModal';
 import { AddRuleModal } from './add-rule/AddRuleModal';
 import RuleCoveragePanel from '../../rules/RuleCoveragePanel';
 import type { SchemaNode, ValidationRule } from '../../../types/ruleCoverage';
+import type { Rule } from '../../../types/rightPanelProps';
 
 // ⚠️ LEGACY: Do not extend.
 // New rules must be created via rule-type-first flow.
 // See: src/components/playground/Rules/rule-types/
-
-interface Rule {
-  id: string;
-  type: string;
-  resourceType: string;
-  path: string;
-  severity: string;
-  message: string;
-  params?: Record<string, any>;
-}
 
 interface RuleBuilderProps {
   rules: Rule[];

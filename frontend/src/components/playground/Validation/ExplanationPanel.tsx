@@ -1,4 +1,5 @@
-import React, { useState, ReactNode } from 'react';
+import React, { useState } from 'react';
+import type { ReactNode } from 'react';
 import { ChevronDown, ChevronRight, HelpCircle, Wrench, AlertTriangle, XCircle, CheckCircle } from 'lucide-react';
 
 interface ExplanationPanelProps {

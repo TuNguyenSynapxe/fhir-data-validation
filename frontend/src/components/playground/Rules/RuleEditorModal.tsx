@@ -6,21 +6,11 @@ import {
   generateDefaultMessage, 
   type RuleContext 
 } from '../../../utils/ruleMessageTemplates';
+import type { Rule } from '../../../types/rightPanelProps';
 
 // ⚠️ LEGACY: Used only for editing existing rules.
 // New rule creation is handled by rule-type-specific forms.
 // See: src/components/playground/Rules/rule-types/
-
-interface Rule {
-  id: string;
-  type: string;
-  resourceType: string;
-  path: string;
-  severity: string;
-  message: string;
-  params?: Record<string, any>;
-  isMessageCustomized?: boolean;
-}
 
 interface RuleEditorModalProps {
   rule: Rule | null;
@@ -601,7 +591,7 @@ export const RuleEditorModal: React.FC<RuleEditorModalProps> = ({
                 Error Message (Optional)
               </label>
               <MessageEditor
-                value={formData.message}
+                value={formData.message || ''}
                 onChange={(newMessage) => {
                   setFormData(prev => ({ 
                     ...prev, 
