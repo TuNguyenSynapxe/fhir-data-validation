@@ -55,6 +55,7 @@ public class RuleReviewEngine : IRuleReviewEngine
         CheckPatternErrorCode(rule, issues);
         CheckAllowedValuesErrorCode(rule, issues);
         CheckArrayLengthErrorCode(rule, issues);
+        CheckFixedValueErrorCode(rule, issues);
         CheckReferenceRuleNotSupported(rule, issues);
         CheckPatternOnNonString(rule, issues);
         CheckArrayLengthOnNonArray(rule, issues);
@@ -486,6 +487,38 @@ public class RuleReviewEngine : IRuleReviewEngine
                 {
                     ["path"] = rule.Path,
                     ["reason"] = "Wildcard [*] without where() filter may match too broadly"
+                }
+            ));
+        }
+    }
+    
+    /// <summary>
+    /// BLOCKED: FixedValue rules must use the fixed error code FIXED_VALUE_MISMATCH.
+    /// 
+    /// RATIONALE:
+    /// - FixedValue has one semantic meaning: "value must equal fixed value"
+    /// - Custom errorCodes create semantic drift and UI confusion
+    /// - Granularity belongs in Details (expected/actual), not ErrorCode
+    /// </summary>
+    private void CheckFixedValueErrorCode(RuleDefinition rule, List<RuleReviewIssue> issues)
+    {
+        if (rule.Type != "FixedValue")
+            return;
+        
+        if (string.IsNullOrWhiteSpace(rule.ErrorCode) || rule.ErrorCode != "FIXED_VALUE_MISMATCH")
+        {
+            issues.Add(new RuleReviewIssue(
+                Code: "FIXEDVALUE_ERROR_CODE_MISMATCH",
+                Severity: RuleReviewStatus.BLOCKED,
+                RuleId: rule.Id,
+                Facts: new Dictionary<string, object>
+                {
+                    ["ruleType"] = "FixedValue",
+                    ["currentErrorCode"] = rule.ErrorCode ?? "(missing)",
+                    ["requiredErrorCode"] = "FIXED_VALUE_MISMATCH",
+                    ["reason"] = "FixedValue rules have a fixed error meaning and must use FIXED_VALUE_MISMATCH.",
+                    ["explanation"] = "The errorCode field is semantically fixed for FixedValue rules. " +
+                                    "Use the Details payload (expected/actual) for granular context, not custom errorCodes."
                 }
             ));
         }

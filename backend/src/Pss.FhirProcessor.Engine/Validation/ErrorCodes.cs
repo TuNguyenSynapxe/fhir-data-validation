@@ -125,6 +125,9 @@ public static class ValidationErrorCodes
     /// <summary>Array length is invalid</summary>
     public const string ARRAY_LENGTH_INVALID = "ARRAY_LENGTH_INVALID";
     
+    /// <summary>Field value does not match the required fixed value</summary>
+    public const string FIXED_VALUE_MISMATCH = "FIXED_VALUE_MISMATCH";
+    
     /// <summary>Array contains duplicate values when uniqueness required</summary>
     public const string ARRAY_DUPLICATES_NOT_ALLOWED = "ARRAY_DUPLICATES_NOT_ALLOWED";
 

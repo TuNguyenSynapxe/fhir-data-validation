@@ -6,6 +6,7 @@ using Pss.FhirProcessor.Engine.Navigation;
 using Pss.FhirProcessor.Engine.Firely;
 using Pss.FhirProcessor.Engine.Authoring;
 using Pss.FhirProcessor.Engine.Models;
+using Pss.FhirProcessor.Engine.Validation;
 using Xunit;
 
 namespace Pss.FhirProcessor.Engine.Tests;
@@ -77,36 +78,9 @@ public class FhirPathRuleEngineTests
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task ValidateAsync_FixedValueRule_MatchingValue_NoErrors()
+    public async System.Threading.Tasks.Task ValidateAsync_FixedValue_ValueMismatch_Emits_FIXED_VALUE_MISMATCH()
     {
-        // Arrange
-        var bundle = TestHelper.CreateSimplePatientBundle(gender: "female");
-        var ruleSet = new RuleSet
-        {
-            Rules = new List<RuleDefinition>
-            {
-                new RuleDefinition
-                {
-                    Id = "R2",
-                    Type = "FixedValue",
-                    ResourceType = "Patient",
-                    Path = "gender",
-                    ErrorCode = "TEST_ERROR_CODE",
-                    Params = new Dictionary<string, object> { { "value", "female" } }
-                }
-            }
-        };
-
-        // Act
-        var errors = await _engine.ValidateAsync(bundle, ruleSet);
-
-        // Assert
-        Assert.Empty(errors);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task ValidateAsync_FixedValueRule_DifferentValue_ReturnsError()
-    {
+        // Test: FixedValue always emits FIXED_VALUE_MISMATCH on value mismatch
         // Arrange
         var bundle = TestHelper.CreateSimplePatientBundle(gender: "male");
         var ruleSet = new RuleSet
@@ -115,7 +89,7 @@ public class FhirPathRuleEngineTests
             {
                 new RuleDefinition
                 {
-                    Id = "R2",
+                    Id = "FV-001",
                     Type = "FixedValue",
                     ResourceType = "Patient",
                     Path = "Patient.gender",
@@ -130,8 +104,70 @@ public class FhirPathRuleEngineTests
 
         // Assert
         Assert.Single(errors);
-        Assert.Equal("FIXED_VALUE_MISMATCH", errors[0].ErrorCode);
-        Assert.Equal("R2", errors[0].RuleId);
+        Assert.Equal(ValidationErrorCodes.FIXED_VALUE_MISMATCH, errors[0].ErrorCode);
+        Assert.Equal("FV-001", errors[0].RuleId);
+        Assert.Equal("female", errors[0].Details["expected"]);
+        Assert.Equal("male", errors[0].Details["actual"]);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_FixedValue_MatchingValue_NoErrors()
+    {
+        // Test: FixedValue produces no errors when value matches
+        // Arrange
+        var bundle = TestHelper.CreateSimplePatientBundle(gender: "female");
+        var ruleSet = new RuleSet
+        {
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "FV-002",
+                    Type = "FixedValue",
+                    ResourceType = "Patient",
+                    Path = "gender",
+                    ErrorCode = "FIXED_VALUE_MISMATCH",
+                    Params = new Dictionary<string, object> { { "value", "female" } }
+                }
+            }
+        };
+
+        // Act
+        var errors = await _engine.ValidateAsync(bundle, ruleSet);
+
+        // Assert
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ValidateAsync_FixedValue_MissingValueParam_ReturnsConfigurationError()
+    {
+        // Test: FixedValue with missing params.value emits RULE_CONFIGURATION_ERROR
+        // Arrange
+        var bundle = TestHelper.CreateSimplePatientBundle(gender: "male");
+        var ruleSet = new RuleSet
+        {
+            Rules = new List<RuleDefinition>
+            {
+                new RuleDefinition
+                {
+                    Id = "FV-003",
+                    Type = "FixedValue",
+                    ResourceType = "Patient",
+                    Path = "gender",
+                    ErrorCode = "FIXED_VALUE_MISMATCH",
+                    Params = new Dictionary<string, object>() // Missing "value" key
+                }
+            }
+        };
+
+        // Act
+        var errors = await _engine.ValidateAsync(bundle, ruleSet);
+
+        // Assert
+        Assert.Single(errors);
+        Assert.Equal("RULE_CONFIGURATION_ERROR", errors[0].ErrorCode);
+        Assert.Equal("FV-003", errors[0].RuleId);
     }
 
     [Fact]
@@ -310,36 +346,6 @@ public class FhirPathRuleEngineTests
     }
 
     #region Parameter Validation Tests
-
-    [Fact]
-    public async System.Threading.Tasks.Task ValidateAsync_FixedValue_MissingValueParam_ReturnsConfigurationError()
-    {
-        // Arrange
-        var bundle = TestHelper.CreateSimplePatientBundle(gender: "male");
-        var ruleSet = new RuleSet
-        {
-            Rules = new List<RuleDefinition>
-            {
-                new RuleDefinition
-                {
-                    Id = "FV-MISSING-PARAM",
-                    Type = "FixedValue",
-                    ResourceType = "Patient",
-                    Path = "gender",
-                    ErrorCode = "TEST_ERROR_CODE",
-                    Params = new Dictionary<string, object>() // Missing "value" key
-                }
-            }
-        };
-
-        // Act
-        var errors = await _engine.ValidateAsync(bundle, ruleSet);
-
-        // Assert
-        Assert.Single(errors);
-        Assert.Equal("RULE_CONFIGURATION_ERROR", errors[0].ErrorCode);
-        Assert.Equal("FV-MISSING-PARAM", errors[0].RuleId);
-    }
 
     [Fact]
     public async System.Threading.Tasks.Task ValidateAsync_AllowedValues_MissingValuesParam_ReturnsConfigurationError()

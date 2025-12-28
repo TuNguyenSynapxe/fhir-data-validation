@@ -183,7 +183,7 @@ public class RuleReviewEngineTests
             Type = "FixedValue",
             ResourceType = "Observation",
             Path = "Observation.code.coding.code", // Code without system filter
-            ErrorCode = "VALUE_NOT_EQUAL"
+            ErrorCode = "FIXED_VALUE_MISMATCH" // Must use correct ErrorCode to reach system check
         };
 
         // Act
@@ -581,6 +581,61 @@ public class RuleReviewEngineTests
         Assert.Contains(result.Issues, i => i.Code == "ARRAYLENGTH_ERROR_CODE_MISMATCH");
         var issue = result.Issues.First(i => i.Code == "ARRAYLENGTH_ERROR_CODE_MISMATCH");
         Assert.Equal("ARRAY_LENGTH_VIOLATION", issue.Facts["requiredErrorCode"]);
+    }
+
+    [Fact]
+    public void FixedValueRule_WithCorrectErrorCode_IsAllowed()
+    {
+        // Test: FixedValue rule with errorCode = FIXED_VALUE_MISMATCH is allowed
+        // Arrange
+        var rule = new RuleDefinition
+        {
+            Id = "fv-correct-001",
+            Type = "FixedValue",
+            ResourceType = "Patient",
+            Path = "Patient.gender",
+            ErrorCode = "FIXED_VALUE_MISMATCH",
+            Params = new Dictionary<string, object>
+            {
+                ["value"] = "female"
+            }
+        };
+
+        // Act
+        var result = _engine.Review(rule);
+
+        // Assert
+        Assert.NotEqual(RuleReviewStatus.BLOCKED, result.Status);
+        Assert.DoesNotContain(result.Issues, i => i.Code == "FIXEDVALUE_ERROR_CODE_MISMATCH");
+    }
+
+    [Fact]
+    public void FixedValueRule_WithIncorrectErrorCode_IsBlocked()
+    {
+        // Test: FixedValue rule with custom errorCode is BLOCKED
+        // Arrange
+        var rule = new RuleDefinition
+        {
+            Id = "fv-wrong-001",
+            Type = "FixedValue",
+            ResourceType = "Patient",
+            Path = "Patient.gender",
+            ErrorCode = "VALUE_NOT_EQUAL", // Frontend-suggested code, but wrong
+            Params = new Dictionary<string, object>
+            {
+                ["value"] = "female"
+            }
+        };
+
+        // Act
+        var result = _engine.Review(rule);
+
+        // Assert
+        Assert.Equal(RuleReviewStatus.BLOCKED, result.Status);
+        Assert.Contains(result.Issues, i => i.Code == "FIXEDVALUE_ERROR_CODE_MISMATCH");
+        var issue = result.Issues.First(i => i.Code == "FIXEDVALUE_ERROR_CODE_MISMATCH");
+        Assert.Equal("FIXED_VALUE_MISMATCH", issue.Facts["requiredErrorCode"]);
+        Assert.Equal("VALUE_NOT_EQUAL", issue.Facts["currentErrorCode"]);
     }
 
     [Fact]

@@ -583,6 +583,24 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         return errors;
     }
     
+    /// <summary>
+    /// Validates that a field value matches a required fixed value.
+    /// 
+    /// ERROR CODE CONTRACT (FIXED - DO NOT OVERRIDE):
+    /// - FIXED_VALUE_MISMATCH: Value does not match expected fixed value
+    /// - RULE_CONFIGURATION_ERROR: Missing required params.value parameter
+    /// 
+    /// UX CONTRACT:
+    /// - ErrorCode is semantically fixed and not author-selectable
+    /// - UI must display FIXED_VALUE_MISMATCH as read-only (no dropdown)
+    /// - Granular context (expected/actual values) belongs in Details, not ErrorCode
+    /// - Governance enforces errorCode = "FIXED_VALUE_MISMATCH" at authoring time
+    /// 
+    /// RATIONALE:
+    /// - FixedValue has one semantic meaning: "value must equal X"
+    /// - Allowing custom errorCodes creates semantic drift and UI confusion
+    /// - Stability ensures consistent error handling across all projects
+    /// </summary>
     private List<RuleValidationError> ValidateFixedValue(Resource resource, RuleDefinition rule, int entryIndex)
     {
         var errors = new List<RuleValidationError>();
@@ -631,7 +649,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         ["actual"] = actualValue ?? ""
                     };
                     
-                    details["explanation"] = GetExplanation(rule.Type, rule.ErrorCode ?? "FIXED_VALUE_MISMATCH", details);
+                    details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.FIXED_VALUE_MISMATCH, details);
                     
                     errors.Add(new RuleValidationError
                     {
@@ -640,7 +658,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         Severity = rule.Severity,
                         ResourceType = rule.ResourceType,
                         Path = rule.Path,
-                        ErrorCode = rule.ErrorCode ?? "FIXED_VALUE_MISMATCH",
+                        ErrorCode = ValidationErrorCodes.FIXED_VALUE_MISMATCH,
                         Details = details,
                         EntryIndex = entryIndex,
                         ResourceId = resource.Id
