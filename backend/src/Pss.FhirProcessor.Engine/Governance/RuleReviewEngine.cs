@@ -57,6 +57,7 @@ public class RuleReviewEngine : IRuleReviewEngine
         CheckArrayLengthErrorCode(rule, issues);
         CheckFixedValueErrorCode(rule, issues);
         CheckCodeSystemErrorCode(rule, issues);
+        CheckCodeSystemParams(rule, issues);
         CheckRequiredResourcesErrorCode(rule, issues);
         CheckRequiredResourcesConfiguration(rule, issues);
         CheckCustomFhirPathErrorCodeIsKnown(rule, issues);
@@ -413,6 +414,100 @@ public class RuleReviewEngine : IRuleReviewEngine
                     ["reason"] = "CodeSystem rules have a fixed semantic errorCode and must use CODESYSTEM_VIOLATION.",
                     ["explanation"] = "CodeSystem validation has one fixed meaning: system or code validation failed. " +
                                     "Use Details['violation'] to distinguish 'system' vs 'code' failure, not custom errorCodes."
+                }
+            ));
+        }
+    }
+    
+    /// <summary>
+    /// BLOCKED: CodeSystem rules must have codeSetId and system params (Tier-1 Validation).
+    /// 
+    /// CONTRACT:
+    /// - params.codeSetId: Required - identifies CodeSet in Terminology module
+    /// - params.system: Required - must match CodeSet canonical URL
+    /// - params.mode: Should be "codeset" for closed-world validation
+    /// - params.codes: Optional - ONLY for future "restrict further" scenarios
+    /// 
+    /// RATIONALE:
+    /// - CodeSystem validation requires CodeSet reference for closed-world validation
+    /// - System-only validation is insufficient and allows invalid codes
+    /// - Enforces CodeSet-driven terminology governance
+    /// </summary>
+    private void CheckCodeSystemParams(RuleDefinition rule, List<RuleReviewIssue> issues)
+    {
+        if (rule.Type != "CodeSystem")
+            return;
+        
+        // Check for missing params
+        if (rule.Params == null || rule.Params.Count == 0)
+        {
+            issues.Add(new RuleReviewIssue(
+                Code: "CODESYSTEM_MISSING_PARAMS",
+                Severity: RuleReviewStatus.BLOCKED,
+                RuleId: rule.Id,
+                Facts: new Dictionary<string, object>
+                {
+                    ["ruleType"] = rule.Type,
+                    ["requiredParams"] = new[] { "codeSetId", "system" },
+                    ["reason"] = "CodeSystem rules require codeSetId and system parameters",
+                    ["explanation"] = "CodeSystem validation requires a CodeSet reference from the Terminology module. " +
+                                    "The codeSetId identifies the CodeSet, and system must match its canonical URL."
+                }
+            ));
+            return;
+        }
+        
+        // Check for missing codeSetId
+        if (!rule.Params.ContainsKey("codeSetId") || string.IsNullOrWhiteSpace(rule.Params["codeSetId"]?.ToString()))
+        {
+            issues.Add(new RuleReviewIssue(
+                Code: "CODESYSTEM_MISSING_CODESETID",
+                Severity: RuleReviewStatus.BLOCKED,
+                RuleId: rule.Id,
+                Facts: new Dictionary<string, object>
+                {
+                    ["ruleType"] = rule.Type,
+                    ["missingParam"] = "codeSetId",
+                    ["reason"] = "CodeSystem rules require codeSetId to reference a CodeSet in the Terminology module",
+                    ["explanation"] = "The codeSetId parameter identifies which CodeSet to validate against. " +
+                                    "All codes in the data must exist in the selected CodeSet (closed-world validation)."
+                }
+            ));
+        }
+        
+        // Check for missing system
+        if (!rule.Params.ContainsKey("system") || string.IsNullOrWhiteSpace(rule.Params["system"]?.ToString()))
+        {
+            issues.Add(new RuleReviewIssue(
+                Code: "CODESYSTEM_MISSING_SYSTEM",
+                Severity: RuleReviewStatus.BLOCKED,
+                RuleId: rule.Id,
+                Facts: new Dictionary<string, object>
+                {
+                    ["ruleType"] = rule.Type,
+                    ["missingParam"] = "system",
+                    ["reason"] = "CodeSystem rules require system to specify the CodeSystem canonical URL",
+                    ["explanation"] = "The system parameter must match the canonical URL of the selected CodeSet. " +
+                                    "This ensures coding.system in the data matches the expected CodeSystem."
+                }
+            ));
+        }
+        
+        // Warn if codes[] is provided (advanced restriction mode - not Tier-1)
+        if (rule.Params.ContainsKey("codes"))
+        {
+            issues.Add(new RuleReviewIssue(
+                Code: "CODESYSTEM_MANUAL_CODES_PROVIDED",
+                Severity: RuleReviewStatus.WARNING,
+                RuleId: rule.Id,
+                Facts: new Dictionary<string, object>
+                {
+                    ["ruleType"] = rule.Type,
+                    ["providedParam"] = "codes",
+                    ["reason"] = "Manual codes[] parameter is for advanced restriction scenarios only",
+                    ["explanation"] = "By default, all codes from the CodeSet are allowed. " +
+                                    "The codes[] parameter is only needed if you want to restrict further to a subset. " +
+                                    "This is an advanced feature not required for normal validation."
                 }
             ));
         }

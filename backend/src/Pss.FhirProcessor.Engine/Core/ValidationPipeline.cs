@@ -158,6 +158,8 @@ public class ValidationPipeline : IValidationPipeline
             if (ruleSet != null)
             {
                 response.Metadata.RulesVersion = ruleSet.Version;
+                // Set Project ID for terminology resolution
+                ruleSet.Project = request.ProjectId;
             }
             
             // Try to parse bundle for downstream validation

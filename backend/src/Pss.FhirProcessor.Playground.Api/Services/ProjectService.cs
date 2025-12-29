@@ -182,7 +182,8 @@ public class ProjectService : IProjectService
             CodeMasterJson = project.CodeMasterJson,
             FhirVersion = project.FhirVersion,
             ValidationMode = validationMode,
-            ValidationSettings = validationSettings
+            ValidationSettings = validationSettings,
+            ProjectId = id.ToString() // Required for CodeSet resolution from Terminology module
         };
         
         _logger.LogInformation("Validating project {ProjectId} with bundle of {Length} chars", id, bundleJson.Length);

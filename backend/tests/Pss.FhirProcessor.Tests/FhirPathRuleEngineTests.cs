@@ -1,4 +1,5 @@
 using Xunit;
+using Moq;
 using Hl7.Fhir.Model;
 using Pss.FhirProcessor.Engine.Services;
 using Pss.FhirProcessor.Engine.Core;
@@ -25,7 +26,8 @@ public class FhirPathRuleEngineTests
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
         var modelResolver = new FhirR4ModelResolverService(logger);
         var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
-        var engine = new FhirPathRuleEngine(modelResolver, engineLogger);
+        var mockTerminologyService = new Mock<ITerminologyService>();
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object);
         
         var bundle = new Bundle
         {
@@ -100,7 +102,8 @@ public class FhirPathRuleEngineTests
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
         var modelResolver = new FhirR4ModelResolverService(logger);
         var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
-        var engine = new FhirPathRuleEngine(modelResolver, engineLogger);
+        var mockTerminologyService = new Mock<ITerminologyService>();
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object);
         
         var bundle = new Bundle
         {
@@ -178,7 +181,8 @@ public class FhirPathRuleEngineTests
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
         var modelResolver = new FhirR4ModelResolverService(logger);
         var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
-        var engine = new FhirPathRuleEngine(modelResolver, engineLogger);
+        var mockTerminologyService = new Mock<ITerminologyService>();
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object);
         
         var bundle = new Bundle
         {
@@ -236,7 +240,8 @@ public class FhirPathRuleEngineTests
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
         var modelResolver = new FhirR4ModelResolverService(logger);
         var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
-        var engine = new FhirPathRuleEngine(modelResolver, engineLogger);
+        var mockTerminologyService = new Mock<ITerminologyService>();
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object);
 
         var bundle = new Bundle
         {
@@ -294,7 +299,8 @@ public class FhirPathRuleEngineTests
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
         var modelResolver = new FhirR4ModelResolverService(logger);
         var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
-        var engine = new FhirPathRuleEngine(modelResolver, engineLogger);
+        var mockTerminologyService = new Mock<ITerminologyService>();
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object);
 
         var bundle = new Bundle
         {
@@ -352,7 +358,8 @@ public class FhirPathRuleEngineTests
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
         var modelResolver = new FhirR4ModelResolverService(logger);
         var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
-        var engine = new FhirPathRuleEngine(modelResolver, engineLogger);
+        var mockTerminologyService = new Mock<ITerminologyService>();
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object);
 
         var bundle = new Bundle
         {
@@ -413,7 +420,8 @@ public class FhirPathRuleEngineTests
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
         var modelResolver = new FhirR4ModelResolverService(logger);
         var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
-        var engine = new FhirPathRuleEngine(modelResolver, engineLogger);
+        var mockTerminologyService = new Mock<ITerminologyService>();
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object);
 
         var bundle = new Bundle
         {
@@ -474,7 +482,8 @@ public class FhirPathRuleEngineTests
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
         var modelResolver = new FhirR4ModelResolverService(logger);
         var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
-        var engine = new FhirPathRuleEngine(modelResolver, engineLogger);
+        var mockTerminologyService = new Mock<ITerminologyService>();
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object);
 
         var bundle = new Bundle
         {
@@ -538,7 +547,8 @@ public class FhirPathRuleEngineTests
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
         var modelResolver = new FhirR4ModelResolverService(logger);
         var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
-        var engine = new FhirPathRuleEngine(modelResolver, engineLogger);
+        var mockTerminologyService = new Mock<ITerminologyService>();
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object);
 
         var bundle = new Bundle
         {
@@ -607,7 +617,8 @@ public class FhirPathRuleEngineTests
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
         var modelResolver = new FhirR4ModelResolverService(logger);
         var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
-        var engine = new FhirPathRuleEngine(modelResolver, engineLogger);
+        var mockTerminologyService = new Mock<ITerminologyService>();
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object);
 
         var bundle = new Bundle
         {
@@ -677,7 +688,8 @@ public class FhirPathRuleEngineTests
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirR4ModelResolverService>.Instance;
         var modelResolver = new FhirR4ModelResolverService(logger);
         var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
-        var engine = new FhirPathRuleEngine(modelResolver, engineLogger);
+        var mockTerminologyService = new Mock<ITerminologyService>();
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object);
 
         var bundle = new Bundle
         {

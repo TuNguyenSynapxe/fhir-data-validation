@@ -265,9 +265,7 @@ export const RuleForm: React.FC<RuleFormProps> = ({
       }
 
       if (ruleType === 'Terminology' && initialRule) {
-        console.log('[RuleForm] Parsing Terminology rule in edit mode:', initialRule);
         const parsed = parseTerminologyRule(initialRule as Rule);
-        console.log('[RuleForm] Parsed Terminology params:', parsed);
         setTerminologyParams(parsed);
         setIsTerminologyValid(true); // Assume valid if editing existing rule
       }

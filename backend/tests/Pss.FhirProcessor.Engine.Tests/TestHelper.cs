@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Moq;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
 using Pss.FhirProcessor.Engine.Interfaces;
@@ -221,7 +222,8 @@ public static class TestHelper
     {
         var modelResolver = CreateModelResolver();
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
-        return new FhirPathRuleEngine(modelResolver, logger);
+        var mockTerminologyService = new Mock<ITerminologyService>();
+        return new FhirPathRuleEngine(modelResolver, logger, mockTerminologyService.Object);
     }
 
     public static ICodeMasterEngine CreateCodeMasterEngine()

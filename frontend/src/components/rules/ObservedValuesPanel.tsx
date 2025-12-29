@@ -58,14 +58,13 @@ export default function ObservedValuesPanel({
       setSelectedSystem(null);
       onIntentChange(null);
     } else {
+      // NOTE: CODE_SYSTEM intent creation is disabled for tree-based authoring
+      // Use the form-based CodeSystem rule creation instead which includes codeSetId
       // Select - create intent
       setSelectedSystem(system);
-      const intent: RuleIntent = {
-        type: 'CODE_SYSTEM',
-        path,
-        params: { system },
-      };
-      onIntentChange(intent);
+      // TODO: Implement proper CODE_SYSTEM intent with codeSetId when tree-based authoring is re-enabled
+      // For now, return null to avoid validation errors
+      onIntentChange(null);
     }
   };
 

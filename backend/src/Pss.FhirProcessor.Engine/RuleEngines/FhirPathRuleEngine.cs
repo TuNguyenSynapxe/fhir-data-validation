@@ -9,6 +9,7 @@ using Pss.FhirProcessor.Engine.Models;
 using Pss.FhirProcessor.Engine.Firely;
 using Pss.FhirProcessor.Engine.Services;
 using Pss.FhirProcessor.Engine.Validation;
+using Pss.FhirProcessor.Engine.Interfaces;
 
 namespace Pss.FhirProcessor.Engine.RuleEngines;
 
@@ -20,11 +21,13 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
 {
     private readonly FhirPathCompiler _compiler;
     private readonly ILogger<FhirPathRuleEngine> _logger;
+    private readonly ITerminologyService _terminologyService;
     
-    public FhirPathRuleEngine(IFhirModelResolverService modelResolver, ILogger<FhirPathRuleEngine> logger)
+    public FhirPathRuleEngine(IFhirModelResolverService modelResolver, ILogger<FhirPathRuleEngine> logger, ITerminologyService terminologyService)
     {
         _compiler = new FhirPathCompiler();
         _logger = logger;
+        _terminologyService = terminologyService;
     }
     
     public async Task<List<RuleValidationError>> ValidateAsync(Bundle bundle, RuleSet ruleSet, CancellationToken cancellationToken = default)
@@ -33,6 +36,9 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         
         if (ruleSet?.Rules == null || ruleSet.Rules.Count == 0)
             return errors;
+        
+        // Extract projectId from RuleSet for terminology resolution
+        var projectId = ruleSet.Project;
         
         // Step 1: Validate bundle-level rules (RequiredResources / Resource)
         var bundleLevelRules = ruleSet.Rules
@@ -77,7 +83,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         continue;
                     }
                     
-                    var ruleErrors = await ValidateRuleAsync(resource, rule, entryIndex, cancellationToken);
+                    var ruleErrors = await ValidateRuleAsync(resource, rule, entryIndex, projectId, cancellationToken);
                     errors.AddRange(ruleErrors);
                 }
             }
@@ -495,9 +501,12 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         }
     }
     
-    private async Task<List<RuleValidationError>> ValidateRuleAsync(Resource resource, RuleDefinition rule, int entryIndex, CancellationToken cancellationToken)
+    private async Task<List<RuleValidationError>> ValidateRuleAsync(Resource resource, RuleDefinition rule, int entryIndex, string? projectId, CancellationToken cancellationToken)
     {
         var errors = new List<RuleValidationError>();
+        
+        _logger.LogInformation("ValidateRuleAsync: Processing rule {RuleId} of type {RuleType} for resource {ResourceType}", 
+            rule.Id, rule.Type, resource.TypeName);
         
         try
         {
@@ -524,7 +533,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                     break;
                 
                 case "CODESYSTEM":
-                    errors.AddRange(ValidateCodeSystem(resource, rule, entryIndex));
+                    errors.AddRange(await ValidateCodeSystemAsync(resource, rule, entryIndex, projectId));
                     break;
                 
                 case "CUSTOMFHIRPATH":
@@ -1044,19 +1053,32 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
     }
     
     /// <summary>
-    /// Validates CodeSystem rules.
+    /// Validates CodeSystem rules with CodeSet-driven validation (closed-world).
     /// 
-    /// UX CONTRACT:
-    /// - ErrorCode is FIXED at CODESYSTEM_VIOLATION (runtime ignores rule.ErrorCode)
-    /// - Details["violation"] distinguishes "system" vs "code" failure
+    /// CONTRACT (Tier-1 Validation):
+    /// - rule.Params must contain: codeSetId (required), system (required), mode (fixed at "codeset")
+    /// - codes[] is optional and ONLY used for future "restrict further" scenarios
+    /// 
+    /// VALIDATION BEHAVIOR:
+    /// - Resolves CodeSet by codeSetId from Terminology module
+    /// - Validates BOTH system AND code against CodeSet.concepts[]
+    /// - Any code NOT in CodeSet.concepts[] MUST FAIL
+    /// - No system-only validation - closed-world by default
+    /// 
+    /// ERROR CODE:
+    /// - Always emits ValidationErrorCodes.CODESYSTEM_VIOLATION
+    /// - Details["violation"] distinguishes "system" vs "code" vs "codeSetId" failure
     /// - Frontend UI must treat CodeSystem errorCode as read-only
-    /// - Rule authoring UI should display: "Error Code: CODESYSTEM_VIOLATION (fixed)"
     /// </summary>
-    private List<RuleValidationError> ValidateCodeSystem(Resource resource, RuleDefinition rule, int entryIndex)
+    private async Task<List<RuleValidationError>> ValidateCodeSystemAsync(Resource resource, RuleDefinition rule, int entryIndex, string? projectId)
     {
         var errors = new List<RuleValidationError>();
         
-        if (rule.Params == null || !rule.Params.ContainsKey("system"))
+        _logger.LogInformation("ValidateCodeSystem: Validating rule {RuleId} for resource {ResourceType} at path {Path}, projectId={ProjectId}", 
+            rule.Id, resource.TypeName, rule.Path, projectId ?? "null");
+        
+        // Validate params structure
+        if (rule.Params == null || !rule.Params.ContainsKey("codeSetId") || !rule.Params.ContainsKey("system"))
         {
             errors.Add(new RuleValidationError
             {
@@ -1069,7 +1091,8 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 Details = new Dictionary<string, object>
                 {
                     ["ruleType"] = "CodeSystem",
-                    ["missingParams"] = new[] { "system" }
+                    ["missingParams"] = new[] { "codeSetId", "system" },
+                    ["explanation"] = "CodeSystem rules require both codeSetId and system parameters"
                 },
                 EntryIndex = entryIndex,
                 ResourceId = resource.Id
@@ -1077,85 +1100,184 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             return errors;
         }
         
+        var codeSetId = rule.Params["codeSetId"]?.ToString();
+        var expectedSystem = rule.Params["system"]?.ToString();
+        
+        if (string.IsNullOrWhiteSpace(codeSetId) || string.IsNullOrWhiteSpace(expectedSystem))
+        {
+            errors.Add(new RuleValidationError
+            {
+                RuleId = rule.Id,
+                RuleType = rule.Type,
+                Severity = "error",
+                ResourceType = rule.ResourceType,
+                Path = rule.Path,
+                ErrorCode = "RULE_CONFIGURATION_ERROR",
+                Details = new Dictionary<string, object>
+                {
+                    ["ruleType"] = "CodeSystem",
+                    ["explanation"] = "codeSetId and system must not be empty"
+                },
+                EntryIndex = entryIndex,
+                ResourceId = resource.Id
+            });
+            return errors;
+        }
+        
+        // Resolve CodeSet from Terminology module
+        Models.Terminology.CodeSystem? codeSet = null;
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(projectId))
+            {
+                codeSet = await _terminologyService.GetCodeSystemByUrlAsync(expectedSystem, CancellationToken.None);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("ValidateCodeSystem: Error loading CodeSet {CodeSetId}: {ErrorMessage}", codeSetId, ex.Message);
+        }
+        
+        if (codeSet == null)
+        {
+            errors.Add(new RuleValidationError
+            {
+                RuleId = rule.Id,
+                RuleType = rule.Type,
+                Severity = "error",
+                ResourceType = rule.ResourceType,
+                Path = rule.Path,
+                ErrorCode = "RULE_CONFIGURATION_ERROR",
+                Details = new Dictionary<string, object>
+                {
+                    ["ruleType"] = "CodeSystem",
+                    ["codeSetId"] = codeSetId,
+                    ["system"] = expectedSystem,
+                    ["explanation"] = $"CodeSet '{codeSetId}' with system '{expectedSystem}' not found in Terminology module"
+                },
+                EntryIndex = entryIndex,
+                ResourceId = resource.Id
+            });
+            return errors;
+        }
+        
+        // Extract all valid codes from CodeSet
+        var validCodes = codeSet.Concept?.Select(c => c.Code).Where(code => !string.IsNullOrWhiteSpace(code)).ToList() ?? new List<string>();
+        
+        if (validCodes.Count == 0)
+        {
+            _logger.LogWarning("ValidateCodeSystem: CodeSet {CodeSetId} has no concepts defined", codeSetId);
+        }
+        
         // Extract field path, removing instance scope prefix
         var fieldPath = ExtractFieldPathFromRulePath(rule.Path, rule.ResourceType);
         var result = EvaluateFhirPath(resource, fieldPath, rule, entryIndex, errors);
         
+        _logger.LogInformation("ValidateCodeSystem: FhirPath evaluation returned {Count} items for path {FieldPath}", 
+            result.Count(), fieldPath);
+        
         if (!errors.Any(e => e.ErrorCode == "RULE_DEFINITION_ERROR"))
         {
-            var expectedSystem = rule.Params["system"]?.ToString();
-            var allowedCodes = rule.Params.ContainsKey("codes") 
-                ? GetAllowedValues(rule.Params["codes"]) 
-                : new List<string>();
-            
             foreach (var item in result)
             {
-                // Handle Coding type
-                if (item is Coding coding)
+                _logger.LogInformation("ValidateCodeSystem: Evaluating item of type {ItemType}", item?.GetType().Name ?? "null");
+                
+                // Extract the actual Coding object from the FhirPath result
+                Coding? coding = null;
+                
+                if (item is Coding codingDirect)
                 {
-                    if (coding.System != expectedSystem)
+                    coding = codingDirect;
+                }
+                else if (item is Hl7.Fhir.ElementModel.ITypedElement typedElement)
+                {
+                    // Convert ITypedElement to POCO
+                    try
                     {
-                        var details = new Dictionary<string, object>
-                        {
-                            ["source"] = "ProjectRule",
-                            ["resourceType"] = rule.ResourceType,
-                            ["path"] = rule.Path,
-                            ["ruleType"] = rule.Type,
-                            ["ruleId"] = rule.Id,
-                            ["violation"] = "system",
-                            ["expectedSystem"] = expectedSystem ?? "",
-                            ["actualSystem"] = coding.System ?? "",
-                            ["actualCode"] = coding.Code ?? "",
-                            ["actualDisplay"] = coding.Display ?? ""
-                        };
-                        
-                        details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.CODESYSTEM_VIOLATION, details);
-                        
-                        errors.Add(new RuleValidationError
-                        {
-                            RuleId = rule.Id,
-                            RuleType = rule.Type,
-                            Severity = rule.Severity,
-                            ResourceType = rule.ResourceType,
-                            Path = rule.Path,
-                            ErrorCode = ValidationErrorCodes.CODESYSTEM_VIOLATION,
-                            Details = details,
-                            EntryIndex = entryIndex,
-                            ResourceId = resource.Id
-                        });
+                        coding = typedElement.ToPoco<Coding>();
                     }
-                    else if (allowedCodes.Any() && !allowedCodes.Contains(coding.Code))
+                    catch (Exception ex)
                     {
-                        var details = new Dictionary<string, object>
-                        {
-                            ["source"] = "ProjectRule",
-                            ["resourceType"] = rule.ResourceType,
-                            ["path"] = rule.Path,
-                            ["ruleType"] = rule.Type,
-                            ["ruleId"] = rule.Id,
-                            ["violation"] = "code",
-                            ["expectedSystem"] = expectedSystem ?? "",
-                            ["actualSystem"] = coding.System ?? "",
-                            ["actualCode"] = coding.Code ?? "",
-                            ["actualDisplay"] = coding.Display ?? "",
-                            ["allowedCodes"] = allowedCodes
-                        };
-                        
-                        details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.CODESYSTEM_VIOLATION, details);
-                        
-                        errors.Add(new RuleValidationError
-                        {
-                            RuleId = rule.Id,
-                            RuleType = rule.Type,
-                            Severity = rule.Severity,
-                            ResourceType = rule.ResourceType,
-                            Path = rule.Path,
-                            ErrorCode = ValidationErrorCodes.CODESYSTEM_VIOLATION,
-                            Details = details,
-                            EntryIndex = entryIndex,
-                            ResourceId = resource.Id
-                        });
+                        _logger.LogWarning("ValidateCodeSystem: Failed to convert ITypedElement to Coding: {Message}", ex.Message);
                     }
+                }
+                
+                if (coding == null)
+                {
+                    _logger.LogWarning("ValidateCodeSystem: Could not extract Coding from item of type {ItemType}", item?.GetType().Name ?? "null");
+                    continue;
+                }
+                
+                _logger.LogInformation("ValidateCodeSystem: Found Coding - system={System}, code={Code}, validCodes={ValidCodes}", 
+                    coding.System, coding.Code, string.Join(",", validCodes));
+                
+                // Validate system URL
+                if (coding.System != expectedSystem)
+                {
+                    var details = new Dictionary<string, object>
+                    {
+                        ["source"] = "ProjectRule",
+                        ["resourceType"] = rule.ResourceType,
+                        ["path"] = rule.Path,
+                        ["ruleType"] = rule.Type,
+                        ["ruleId"] = rule.Id,
+                        ["violation"] = "system",
+                        ["codeSetId"] = codeSetId,
+                        ["expectedSystem"] = expectedSystem,
+                        ["actualSystem"] = coding.System ?? "",
+                        ["actualCode"] = coding.Code ?? "",
+                        ["actualDisplay"] = coding.Display ?? ""
+                    };
+                    
+                    details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.CODESYSTEM_VIOLATION, details);
+                    
+                    errors.Add(new RuleValidationError
+                    {
+                        RuleId = rule.Id,
+                        RuleType = rule.Type,
+                        Severity = rule.Severity,
+                        ResourceType = rule.ResourceType,
+                        Path = rule.Path,
+                        ErrorCode = ValidationErrorCodes.CODESYSTEM_VIOLATION,
+                        Details = details,
+                        EntryIndex = entryIndex,
+                        ResourceId = resource.Id
+                    });
+                }
+                // Validate code against CodeSet concepts (closed-world validation)
+                else if (!validCodes.Contains(coding.Code))
+                {
+                    var details = new Dictionary<string, object>
+                    {
+                        ["source"] = "ProjectRule",
+                        ["resourceType"] = rule.ResourceType,
+                        ["path"] = rule.Path,
+                        ["ruleType"] = rule.Type,
+                        ["ruleId"] = rule.Id,
+                        ["violation"] = "code",
+                        ["codeSetId"] = codeSetId,
+                        ["expectedSystem"] = expectedSystem,
+                        ["actualSystem"] = coding.System ?? "",
+                        ["actualCode"] = coding.Code ?? "",
+                        ["actualDisplay"] = coding.Display ?? "",
+                        ["validCodes"] = validCodes,
+                        ["validationMode"] = "codeset"
+                    };
+                    
+                    details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.CODESYSTEM_VIOLATION, details);
+                    
+                    errors.Add(new RuleValidationError
+                    {
+                        RuleId = rule.Id,
+                        RuleType = rule.Type,
+                        Severity = rule.Severity,
+                        ResourceType = rule.ResourceType,
+                        Path = rule.Path,
+                        ErrorCode = ValidationErrorCodes.CODESYSTEM_VIOLATION,
+                        Details = details,
+                        EntryIndex = entryIndex,
+                        ResourceId = resource.Id
+                    });
                 }
             }
         }

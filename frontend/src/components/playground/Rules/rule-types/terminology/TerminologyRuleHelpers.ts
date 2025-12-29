@@ -10,15 +10,17 @@ import type { TerminologyParams, ValidationType } from './TerminologyConfigSecti
  * - type: "CodeSystem"
  * - path: "{ResourceType}.{fieldPath}"
  * - errorCode: "CODESYSTEM_VIOLATION" (fixed)
- * - params: { system, codes? }
+ * - params: { codeSetId, system, mode, codes? }
  * 
  * Validation Types:
- * - AllowedCode: Validates against project CodeSystem (uses system, optionally codes array)
- * - ExactSystemCode: Validates exact system + code pairing (uses system + codes with single code)
+ * - AllowedCode: Validates against project CodeSystem (uses codeSetId, system, mode)
+ * - ExactSystemCode: Validates exact system + code pairing (uses codeSetId, system, mode, codes with single code)
  * 
  * Backend Contract (from FhirPathRuleEngine.cs):
+ * - params.codeSetId (required): The CodeSet identifier from Terminology module
  * - params.system (required): The CodeSystem URL to validate against
- * - params.codes (optional): Array of allowed codes. If omitted, any code from the system is allowed.
+ * - params.mode (required): Fixed at "codeset" for closed-world validation
+ * - params.codes (optional): Array of allowed codes for further restriction beyond CodeSet
  */
 
 interface BuildTerminologyRuleData {
@@ -58,17 +60,31 @@ export function buildTerminologyRule(data: BuildTerminologyRuleData): Rule {
   const params: Record<string, any> = {};
 
   if (validationType === 'AllowedCode') {
-    // Backend expects: params.system (required), params.codes (optional array)
+    // Backend expects: params.codeSetId, params.system (both required), params.mode ("codeset"), params.codes (optional)
     if (codeSystemUrl) {
+      // Extract codeSetId from CodeSystem URL (last segment)
+      const urlParts = codeSystemUrl.split('/');
+      const codeSetId = urlParts[urlParts.length - 1];
+      
+      params.codeSetId = codeSetId;
       params.system = codeSystemUrl;
+      params.mode = 'codeset';
       if (allowedCodes && allowedCodes.length > 0) {
         params.codes = allowedCodes;
       }
     }
   } else if (validationType === 'ExactSystemCode') {
-    // For exact match: system + codes array with single code
-    if (system) params.system = system;
-    if (exactCode) params.codes = [exactCode];
+    // For exact match: codeSetId, system, mode, codes array with single code
+    if (system) {
+      // Extract codeSetId from system URL (last segment)
+      const urlParts = system.split('/');
+      const codeSetId = urlParts[urlParts.length - 1];
+      
+      params.codeSetId = codeSetId;
+      params.system = system;
+      params.mode = 'codeset';
+      if (exactCode) params.codes = [exactCode];
+    }
   }
 
   return {
@@ -93,7 +109,9 @@ export function parseTerminologyRule(rule: Rule): TerminologyParams {
   const fieldPath = pathParts.slice(1).join('.');
 
   // Extract params from backend format
+  const codeSetId = rule.params?.codeSetId as string | undefined;
   const system = rule.params?.system as string | undefined;
+  const mode = rule.params?.mode as string | undefined;
   const codes = rule.params?.codes as string[] | undefined;
   
   // Infer validation type from params structure

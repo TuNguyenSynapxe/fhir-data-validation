@@ -20,9 +20,23 @@ export interface ArrayLengthParams {
 
 /**
  * Parameters for Code System rule intents
+ * 
+ * CONTRACT (Tier-1 Validation):
+ * - codeSetId: Required - identifies the CodeSet in Terminology module
+ * - system: Required - must match CodeSet canonical URL (governance validates)
+ * - mode: Fixed at "codeset" for closed-world validation
+ * - codes: Optional - ONLY for future "restrict further" scenarios (not Tier-1)
+ * 
+ * VALIDATION BEHAVIOR:
+ * - Backend validates BOTH system AND code against CodeSet.concepts[]
+ * - Any code NOT in CodeSet.concepts[] MUST FAIL
+ * - No system-only validation - closed-world by default
  */
 export interface CodeSystemParams {
-  system: string; // Required code system URI
+  codeSetId: string; // Required: Identifies CodeSet in Terminology module
+  system: string; // Required: CodeSystem canonical URL (must match CodeSet)
+  mode: 'codeset'; // Fixed: Closed-world validation against CodeSet
+  codes?: string[]; // Optional: For future "restrict further" scenarios (not required for normal validation)
 }
 
 /**

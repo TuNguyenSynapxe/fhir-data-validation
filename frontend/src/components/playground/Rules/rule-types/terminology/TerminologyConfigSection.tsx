@@ -1,8 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Code, AlertCircle, Tag, ChevronDown } from 'lucide-react';
 import FhirPathSelectorDrawer from '../../../../rules/FhirPathSelectorDrawer';
 import { listCodeSystems } from '../../../../../api/terminologyApi';
 import type { CodeSystem } from '../../../../../types/terminology';
+import type { FhirPathOption } from '../../common/FhirPathSelection.types';
+import { 
+  getSemanticType, 
+  normalizeToCodingPath,
+  isExtensionPath,
+  buildExtensionPath,
+  generateCodedFieldLabel,
+  isCodedElement
+} from '../../common/fhirPathSemanticUtils';
 
 /**
  * TERMINOLOGY CONFIG SECTION
@@ -52,13 +61,6 @@ export const TerminologyConfigSection: React.FC<TerminologyConfigSectionProps> =
   hl7Samples,
   projectId,
 }) => {
-  // Debug: Log initialParams on mount
-  useEffect(() => {
-    if (mode === 'edit') {
-      console.log('[TerminologyConfigSection] Edit mode initialParams:', initialParams);
-    }
-  }, []);
-
   const [fieldPath, setFieldPath] = useState(initialParams?.fieldPath || '');
   const [validationType, setValidationType] = useState<ValidationType>(initialParams?.validationType || 'AllowedCode');
   const [codeSystemUrl, setCodeSystemUrl] = useState(initialParams?.codeSystemUrl || '');
@@ -72,6 +74,115 @@ export const TerminologyConfigSection: React.FC<TerminologyConfigSectionProps> =
   const [showCodeSystemDropdown, setShowCodeSystemDropdown] = useState(false);
   const [showCodesDropdown, setShowCodesDropdown] = useState(false);
 
+  // Detect coded fields from project bundle for restricted selection
+  const suggestedCodedPaths = useMemo((): FhirPathOption[] => {
+    if (!projectBundle) return [];
+    
+    try {
+      const bundle = JSON.parse(JSON.stringify(projectBundle));
+      const paths: FhirPathOption[] = [];
+      const seen = new Set<string>();
+      const extensionsByUrl = new Map<string, any[]>();
+
+      const extractCodedPaths = (obj: any, currentPath: string = resourceType, parentObj?: any) => {
+        if (!obj || typeof obj !== 'object') return;
+
+        Object.keys(obj).forEach(key => {
+          const value = obj[key];
+          const fullPath = currentPath ? `${currentPath}.${key}` : key;
+          const relativePath = fullPath.replace(`${resourceType}.`, '');
+
+          // Handle extensions specially
+          if (key === 'extension' && Array.isArray(value)) {
+            value.forEach((ext: any) => {
+              if (ext.url) {
+                // Group extensions by URL
+                if (!extensionsByUrl.has(ext.url)) {
+                  extensionsByUrl.set(ext.url, []);
+                }
+                extensionsByUrl.get(ext.url)!.push(ext);
+
+                // Check for valueCodeableConcept in extension
+                if (ext.valueCodeableConcept) {
+                  const extPath = buildExtensionPath(ext.url, 'valueCodeableConcept', 'coding');
+                  if (!seen.has(extPath)) {
+                    seen.add(extPath);
+                    const label = generateCodedFieldLabel(extPath, ext.url);
+                    paths.push({
+                      label,
+                      fhirPath: extPath,
+                      description: undefined, // Hide technical details
+                      semanticType: 'Coding',
+                      isExtension: true,
+                      extensionUrl: ext.url,
+                    });
+                  }
+                }
+                
+                // Check for valueCoding in extension
+                if (ext.valueCoding) {
+                  const extPath = buildExtensionPath(ext.url, 'valueCoding');
+                  if (!seen.has(extPath)) {
+                    seen.add(extPath);
+                    const label = generateCodedFieldLabel(extPath, ext.url);
+                    paths.push({
+                      label,
+                      fhirPath: extPath,
+                      description: undefined, // Hide technical details
+                      semanticType: 'Coding',
+                      isExtension: true,
+                      extensionUrl: ext.url,
+                    });
+                  }
+                }
+              }
+            });
+            return; // Don't recurse into extensions normally
+          }
+
+          // Check if this looks like a coded element
+          if (key === 'coding' || (key === 'code' && typeof value === 'object')) {
+            if (isCodedElement(relativePath)) {
+              // Normalize CodeableConcept to .coding
+              const normalizedPath = normalizeToCodingPath(relativePath);
+              if (!seen.has(normalizedPath)) {
+                seen.add(normalizedPath);
+                const label = generateCodedFieldLabel(normalizedPath);
+                paths.push({
+                  label,
+                  fhirPath: normalizedPath,
+                  description: undefined, // Hide technical path details
+                  semanticType: getSemanticType(normalizedPath),
+                  isExtension: false,
+                });
+              }
+            }
+          }
+
+          // Recurse into nested objects/arrays
+          if (Array.isArray(value)) {
+            value.forEach(item => extractCodedPaths(item, fullPath, value));
+          } else if (value && typeof value === 'object' && key !== 'extension') {
+            extractCodedPaths(value, fullPath, obj);
+          }
+        });
+      };
+
+      if (bundle.entry && Array.isArray(bundle.entry)) {
+        bundle.entry.forEach((entry: any) => {
+          if (entry.resource && entry.resource.resourceType === resourceType) {
+            extractCodedPaths(entry.resource, resourceType);
+          }
+        });
+      }
+
+      return paths;
+    } catch (error) {
+      console.error('Failed to extract coded paths from bundle:', error);
+      return [];
+    }
+  }, [projectBundle, resourceType]);
+
   // Track if we've initialized from initialParams to prevent infinite loop
   const hasInitialized = useRef(false);
 
@@ -79,7 +190,6 @@ export const TerminologyConfigSection: React.FC<TerminologyConfigSectionProps> =
   // Only run once when initialParams has actual data (not just defaults)
   useEffect(() => {
     if (initialParams && initialParams.fieldPath && !hasInitialized.current) {
-      console.log('[TerminologyConfigSection] Initializing state from initialParams:', initialParams);
       setFieldPath(initialParams.fieldPath);
       setValidationType(initialParams.validationType || 'AllowedCode');
       setCodeSystemUrl(initialParams.codeSystemUrl || '');
@@ -151,8 +261,18 @@ export const TerminologyConfigSection: React.FC<TerminologyConfigSectionProps> =
   }, [fieldPath, validationType, codeSystemUrl, selectedCodes, system, exactCode]);
 
   const handleFieldPathSelect = (path: string) => {
-    setFieldPath(path);
-    setIsDrawerOpen(false);
+    // Normalize to .coding for terminology validation
+    try {
+      const normalized = normalizeToCodingPath(path);
+      setFieldPath(normalized);
+      setIsDrawerOpen(false);
+    } catch (error) {
+      // Handle primitive code path error
+      console.error('Invalid path selection:', error);
+      // Path will be rejected by validation
+      setFieldPath(path);
+      setIsDrawerOpen(false);
+    }
   };
 
   const handleTypeChange = (newType: ValidationType) => {
@@ -455,6 +575,11 @@ export const TerminologyConfigSection: React.FC<TerminologyConfigSectionProps> =
         resourceType={resourceType}
         projectBundle={projectBundle}
         hl7Samples={hl7Samples}
+        mode="restricted"
+        ruleContext="terminology"
+        suggestedPaths={suggestedCodedPaths}
+        allowedTypes={['Coding', 'CodeableConcept']}
+        value={fieldPath}
       />
     </div>
   );
