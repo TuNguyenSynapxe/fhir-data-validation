@@ -172,10 +172,13 @@ public class ProjectApiTests : IClassFixture<CustomWebApplicationFactory>
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         
-        var project = await response.Content.ReadFromJsonAsync<Project>();
-        project.Should().NotBeNull();
-        project!.RulesJson.Should().NotBeNullOrEmpty();
-        project.RulesJson.Should().Contain("version");
+        var reviewResponse = await response.Content.ReadFromJsonAsync<RuleReviewResponse>();
+        reviewResponse.Should().NotBeNull();
+        // Governance may return OK or WARNING (both allow save)
+        reviewResponse!.Status.Should().BeOneOf("OK", "WARNING");
+        reviewResponse.Project.Should().NotBeNull();
+        reviewResponse.Project!.RulesJson.Should().NotBeNullOrEmpty();
+        reviewResponse.Project.RulesJson.Should().Contain("version");
     }
 
     [Fact]

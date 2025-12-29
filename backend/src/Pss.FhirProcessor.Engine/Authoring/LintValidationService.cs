@@ -439,6 +439,14 @@ public class LintValidationService : ILintValidationService
             parentFhirPath,
             cancellationToken);
 
+        // Skip recursion into extension and modifierExtension to avoid false positives
+        // These are handled separately by Firely and have dynamic schemas
+        // BUT: We still need to resolve their schema context above (in case they exist in the parent schema)
+        if (propertyName == "extension" || propertyName == "modifierExtension")
+        {
+            return;
+        }
+
         // Recurse into nested objects and arrays with type-aware schema context
         if (value.ValueKind == JsonValueKind.Object)
         {

@@ -4,12 +4,16 @@
     {
       "resourceType": "Patient",
       "path": "name.family",
-      "type": "Required"
+      "type": "Required",
+      "errorCode": "FIELD_REQUIRED",
+      "severity": "error"
     },
     {
       "resourceType": "Patient",
       "path": "gender",
-      "type": "Required"
+      "type": "Required",
+      "errorCode": "FIELD_REQUIRED",
+      "severity": "error"
     }
   ]
 }

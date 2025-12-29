@@ -6,6 +6,8 @@
       "resourceType": "Patient",
       "path": "name.family",
       "type": "Required",
+      "errorCode": "FIELD_REQUIRED",
+      "severity": "error",
       "message": "Patient family name is required"
     },
     {
@@ -13,6 +15,8 @@
       "resourceType": "Patient",
       "path": "gender",
       "type": "Required",
+      "errorCode": "FIELD_REQUIRED",
+      "severity": "error",
       "message": "Patient gender is required"
     }
   ]

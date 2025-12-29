@@ -54,7 +54,7 @@ public class NoLegacyMessageAllowedTests
     [Fact]
     public void RuleSet_WithMissingErrorCode_ShouldFail_Deserialization()
     {
-        // PHASE 4: Rules without errorCode must be rejected
+        // PHASE 4: Rules without errorCode must be rejected at deserialization
         var legacyRuleJson = @"{
             ""projectId"": ""test"",
             ""rules"": [
@@ -69,21 +69,16 @@ public class NoLegacyMessageAllowedTests
             ]
         }";
         
-        // This should deserialize successfully (no compile-time error)
-        // but validation will catch it
-        var ruleSet = JsonSerializer.Deserialize<RuleSet>(legacyRuleJson, new JsonSerializerOptions
+        // Deserialization should throw JsonException because errorCode is required
+        var exception = Assert.Throws<JsonException>(() => 
         {
-            PropertyNameCaseInsensitive = true
+            JsonSerializer.Deserialize<RuleSet>(legacyRuleJson, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
         });
         
-        Assert.NotNull(ruleSet);
-        Assert.NotNull(ruleSet.Rules);
-        Assert.Single(ruleSet.Rules);
-        
-        // The rule should have empty/null ErrorCode (showing the legacy format)
-        var rule = ruleSet.Rules[0];
-        Assert.True(string.IsNullOrWhiteSpace(rule.ErrorCode), 
-            "Legacy rules without errorCode should have null/empty ErrorCode field");
+        Assert.Contains("errorCode", exception.Message);
     }
     
     [Fact]
