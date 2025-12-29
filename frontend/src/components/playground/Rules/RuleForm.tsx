@@ -18,6 +18,7 @@ import { AllowedValuesConfigSection } from './rule-types/allowed-values/AllowedV
 import { ArrayLengthConfigSection } from './rule-types/array-length/ArrayLengthConfigSection';
 import { CustomFHIRPathConfigSection } from './rule-types/custom-fhirpath/CustomFHIRPathConfigSection';
 import { ResourceConfigSection, type ResourceRequirement } from './rule-types/resource/ResourceConfigSection';
+import { TerminologyConfigSection, type TerminologyParams } from './rule-types/terminology/TerminologyConfigSection';
 import { buildRequiredRule } from './rule-types/required/RequiredRuleHelpers';
 import { buildPatternRule } from './rule-types/pattern/PatternRuleHelpers';
 import { buildQuestionAnswerRule, getDefaultIterationScope } from './rule-types/question-answer/QuestionAnswerRuleHelpers';
@@ -26,6 +27,7 @@ import { buildAllowedValuesRule } from './rule-types/allowed-values/AllowedValue
 import { buildArrayLengthRule } from './rule-types/array-length/ArrayLengthRuleHelpers';
 import { buildCustomFHIRPathRule, parseCustomFHIRPathRule } from './rule-types/custom-fhirpath/CustomFHIRPathRuleHelpers';
 import { buildResourceRule, parseResourceRule } from './rule-types/resource/ResourceRuleHelpers';
+import { buildTerminologyRule, parseTerminologyRule } from './rule-types/terminology/TerminologyRuleHelpers';
 import type { Rule } from '../../../types/rightPanelProps';
 import type { QuestionAnswerConstraint } from './rule-types/question-answer/QuestionAnswerConstraint.types';
 import { CONSTRAINT_TO_ERROR_CODE } from './rule-types/question-answer/QuestionAnswerConstraint.types';
@@ -50,7 +52,7 @@ import { CONSTRAINT_TO_ERROR_CODE } from './rule-types/question-answer/QuestionA
  * ✅ ErrorCode logic is centralized in this component
  */
 
-type RuleType = 'Required' | 'Regex' | 'QuestionAnswer' | 'FixedValue' | 'AllowedValues' | 'ArrayLength' | 'CustomFHIRPath' | 'Resource';
+type RuleType = 'Required' | 'Regex' | 'QuestionAnswer' | 'FixedValue' | 'AllowedValues' | 'ArrayLength' | 'CustomFHIRPath' | 'Resource' | 'Terminology';
 
 interface RuleFormProps {
   mode: 'create' | 'edit';
@@ -68,7 +70,7 @@ interface RuleFormProps {
 type ErrorCodeMode = 'fixed' | 'governed' | 'runtime-determined';
 
 const getErrorCodeMode = (ruleType: RuleType): ErrorCodeMode => {
-  if (ruleType === 'Required' || ruleType === 'Regex' || ruleType === 'FixedValue' || ruleType === 'AllowedValues' || ruleType === 'ArrayLength' || ruleType === 'Resource') return 'fixed';
+  if (ruleType === 'Required' || ruleType === 'Regex' || ruleType === 'FixedValue' || ruleType === 'AllowedValues' || ruleType === 'ArrayLength' || ruleType === 'Resource' || ruleType === 'Terminology') return 'fixed';
   if (ruleType === 'QuestionAnswer') return 'runtime-determined';
   if (ruleType === 'CustomFHIRPath') return 'governed';
   return 'fixed';
@@ -81,6 +83,7 @@ const getFixedErrorCode = (ruleType: RuleType): string => {
   if (ruleType === 'AllowedValues') return 'VALUE_NOT_ALLOWED';
   if (ruleType === 'ArrayLength') return 'ARRAY_LENGTH_VIOLATION';
   if (ruleType === 'Resource') return 'RESOURCE_REQUIREMENT_VIOLATION';
+  if (ruleType === 'Terminology') return 'CODESYSTEM_VIOLATION';
   return '';
 };
 
@@ -93,6 +96,7 @@ const RULE_TYPE_LABELS = {
   ArrayLength: 'Array Length',
   CustomFHIRPath: 'Custom FHIRPath',
   Resource: 'Resource (Bundle Composition)',
+  Terminology: 'Terminology / CodeSet',
 };
 
 const RULE_TYPE_DESCRIPTIONS = {
@@ -104,6 +108,7 @@ const RULE_TYPE_DESCRIPTIONS = {
   ArrayLength: 'Validate that an array has a minimum and/or maximum number of elements',
   CustomFHIRPath: 'Custom validation logic using FHIRPath expressions',
   Resource: 'Define complete bundle composition with resource requirements and attribute filters',
+  Terminology: 'Validate coded fields against ValueSets, CodeSystems, or specific system/code pairs',
 };
 
 export const RuleForm: React.FC<RuleFormProps> = ({
@@ -163,6 +168,14 @@ export const RuleForm: React.FC<RuleFormProps> = ({
 
   // Resource (new unified bundle rule)
   const [requirements, setRequirements] = useState<ResourceRequirement[]>([]);
+
+  // Terminology
+  const [terminologyParams, setTerminologyParams] = useState<TerminologyParams>({
+    fieldPath: '',
+    validationType: 'AllowedCode',
+  });
+  const [isTerminologyValid, setIsTerminologyValid] = useState(false);
+
   // === ERROR CODE STATE ===
   const errorCodeMode = getErrorCodeMode(ruleType);
   const [governedErrorCode, setGovernedErrorCode] = useState<string>(''); // For CustomFHIRPath
@@ -250,6 +263,14 @@ export const RuleForm: React.FC<RuleFormProps> = ({
         const parsed = parseResourceRule(initialRule as Rule);
         setRequirements(parsed.requirements);
       }
+
+      if (ruleType === 'Terminology' && initialRule) {
+        console.log('[RuleForm] Parsing Terminology rule in edit mode:', initialRule);
+        const parsed = parseTerminologyRule(initialRule as Rule);
+        console.log('[RuleForm] Parsed Terminology params:', parsed);
+        setTerminologyParams(parsed);
+        setIsTerminologyValid(true); // Assume valid if editing existing rule
+      }
     }
   }, [mode, initialRule, ruleType]);
 
@@ -329,6 +350,12 @@ export const RuleForm: React.FC<RuleFormProps> = ({
     if (ruleType === 'CustomFHIRPath') {
       if (!customExpression) newErrors.expression = 'FHIRPath expression is required';
       if (!customErrorCode) newErrors.errorCode = 'Error code is required';
+    }
+
+    if (ruleType === 'Terminology') {
+      if (!isTerminologyValid) {
+        newErrors.terminology = 'Please complete all required terminology fields';
+      }
     }
 
     if (ruleType === 'Resource') {
@@ -466,6 +493,18 @@ export const RuleForm: React.FC<RuleFormProps> = ({
         instanceScope,
         expression: customExpression,
         errorCode: customErrorCode,
+        severity,
+        userHint: userHint || undefined,
+      });
+    } else if (ruleType === 'Terminology') {
+      rule = buildTerminologyRule({
+        resourceType,
+        fieldPath: terminologyParams.fieldPath,
+        validationType: terminologyParams.validationType,
+        codeSystemUrl: terminologyParams.codeSystemUrl,
+        allowedCodes: terminologyParams.allowedCodes,
+        system: terminologyParams.system,
+        exactCode: terminologyParams.exactCode,
         severity,
         userHint: userHint || undefined,
       });
@@ -705,6 +744,21 @@ export const RuleForm: React.FC<RuleFormProps> = ({
               errorCode: errors.errorCode,
             }}
             resourceType={resourceType}
+          />
+        )}
+
+        {ruleType === 'Terminology' && (
+          <TerminologyConfigSection
+            mode={mode}
+            resourceType={resourceType}
+            initialParams={mode === 'edit' ? terminologyParams : undefined}
+            onParamsChange={(params, isValid) => {
+              setTerminologyParams(params);
+              setIsTerminologyValid(isValid);
+            }}
+            projectBundle={projectBundle}
+            hl7Samples={hl7Samples}
+            projectId={projectId}
           />
         )}
 

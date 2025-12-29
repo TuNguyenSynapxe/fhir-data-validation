@@ -163,6 +163,16 @@ export const AddRuleModal: React.FC<AddRuleModalProps> = ({
             projectBundle={projectBundle}
             projectId={projectId}
           />
+        ) : selectedRuleType === 'terminology' ? (
+          <RuleForm
+            mode="create"
+            ruleType="Terminology"
+            onCancel={handleCancel}
+            onSave={handleSave}
+            projectBundle={projectBundle}
+            hl7Samples={hl7Samples}
+            projectId={projectId}
+          />
         ) : selectedRuleType === 'resource' ? (
           <RuleForm
             mode="create"

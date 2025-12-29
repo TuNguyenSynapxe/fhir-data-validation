@@ -137,9 +137,14 @@ const BundleTreeView: React.FC<BundleTreeViewProps> = ({ bundleJson, onSelectPat
     }
 
     const nodes: TreeNode[] = [];
-    const keys = Object.keys(obj).filter(
-      (key) => !['meta', 'text', 'contained', 'resourceType'].includes(key)
-    );
+    // Only filter out meta, contained, and resourceType at any level
+    // Only filter 'text' if it's a narrative object at resource root (depth 0)
+    const keys = Object.keys(obj).filter((key) => {
+      if (['meta', 'contained', 'resourceType'].includes(key)) return false;
+      // Only filter out 'text' at depth 0 (resource root narrative)
+      if (key === 'text' && depth === 0) return false;
+      return true;
+    });
 
     for (const key of keys) {
       const value = obj[key];

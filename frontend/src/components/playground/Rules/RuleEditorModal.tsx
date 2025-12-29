@@ -13,11 +13,13 @@ import type { Rule } from '../../../types/rightPanelProps';
  * RULE EDITOR MODAL
  * 
  * ARCHITECTURE (UNIFIED):
- * - Required, Regex, QuestionAnswer → RuleForm with mode="edit"
- * - Legacy rule types (FixedValue, AllowedValues, CodeSystem, etc.) → Legacy editor (below)
+ * - All rule types → RuleForm with mode="edit"
+ * - CodeSystem (backend type) mapped to Terminology (frontend display)
  * 
  * MIGRATION PATH:
  * - Phase 1: Route Required/Regex/QuestionAnswer to RuleForm ✅
+ * - Phase 2: Route FixedValue/AllowedValues/ArrayLength/CustomFHIRPath/Resource/Terminology to RuleForm ✅
+ * - Phase 3: Legacy editor deprecated (kept as safety fallback)
  * - Phase 2: Migrate remaining rule types to RuleForm config sections
  * - Phase 3: Delete legacy editor entirely
  */
@@ -78,8 +80,9 @@ export const RuleEditorModal: React.FC<RuleEditorModalProps> = ({
   projectId,
 }) => {
   // === UNIFIED RULE FORM ROUTING ===
-  // Route Required, Regex, QuestionAnswer, FixedValue, AllowedValues, ArrayLength, CustomFHIRPath, Resource to RuleForm
-  if (rule && ['Required', 'Regex', 'QuestionAnswer', 'FixedValue', 'AllowedValues', 'ArrayLength', 'CustomFHIRPath', 'Resource'].includes(rule.type)) {
+  // Route Required, Regex, QuestionAnswer, FixedValue, AllowedValues, ArrayLength, CustomFHIRPath, Terminology, CodeSystem, Resource to RuleForm
+  // Note: 'CodeSystem' is the backend type, 'Terminology' is the frontend display name - both route to unified form
+  if (rule && ['Required', 'Regex', 'QuestionAnswer', 'FixedValue', 'AllowedValues', 'ArrayLength', 'CustomFHIRPath', 'Terminology', 'CodeSystem', 'Resource'].includes(rule.type)) {
     if (!isOpen) return null;
     
     return (
@@ -91,7 +94,7 @@ export const RuleEditorModal: React.FC<RuleEditorModalProps> = ({
         <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl h-full max-h-[90vh] overflow-hidden flex flex-col">
           <RuleForm
             mode="edit"
-            ruleType={rule.type as 'Required' | 'Regex' | 'QuestionAnswer' | 'FixedValue' | 'AllowedValues' | 'ArrayLength' | 'CustomFHIRPath' | 'Resource'}
+            ruleType={rule.type === 'CodeSystem' ? 'Terminology' : rule.type as 'Required' | 'Regex' | 'QuestionAnswer' | 'FixedValue' | 'AllowedValues' | 'ArrayLength' | 'CustomFHIRPath' | 'Terminology' | 'Resource'}
             initialRule={rule}
             onCancel={onClose}
             onSave={onSave}
@@ -104,7 +107,9 @@ export const RuleEditorModal: React.FC<RuleEditorModalProps> = ({
     );
   }
 
-  // === LEGACY EDITOR (for CodeSystem, etc.) ===
+  // === LEGACY EDITOR (DEPRECATED - KEPT FOR SAFETY) ===
+  // All rule types should now use unified form above.
+  // This legacy editor remains as fallback but should never be reached.
   const [formData, setFormData] = useState<Rule>({
     id: '',
     type: 'Required',

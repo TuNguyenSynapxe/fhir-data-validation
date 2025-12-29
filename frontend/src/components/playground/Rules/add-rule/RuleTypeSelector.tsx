@@ -1,7 +1,7 @@
 import React from 'react';
 import { CheckCircle, HelpCircle, FileText, Lock, FileCheck, List, Ruler, Code, Package, Layers } from 'lucide-react';
 
-export type RuleTypeOption = 'required' | 'questionAnswer' | 'pattern' | 'fixedValue' | 'allowedValues' | 'arrayLength' | 'customFhirPath' | 'resource';
+export type RuleTypeOption = 'required' | 'questionAnswer' | 'pattern' | 'fixedValue' | 'allowedValues' | 'arrayLength' | 'customFhirPath' | 'terminology' | 'resource';
 
 interface RuleTypeSelectorProps {
   onSelectType: (type: RuleTypeOption) => void;
@@ -33,6 +33,14 @@ const ruleTypes = [
     description: 'Validate field values against patterns or formats',
     enabled: true,
     priority: 'high' as const, // Visual emphasis
+  },
+  {
+    id: 'terminology' as const,
+    icon: Code,
+    title: 'Terminology / CodeSet',
+    description: 'Validate field values against ValueSets, CodeSystems, or system+code pairs',
+    enabled: true,
+    priority: 'high' as const,
   },
   {
     id: 'resource' as const,
