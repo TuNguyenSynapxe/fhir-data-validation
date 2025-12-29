@@ -1,0 +1,896 @@
+Test run for /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Tests/bin/Debug/net8.0/Pss.FhirProcessor.Tests.dll (.NETCoreApp,Version=v8.0)
+Test run for /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/bin/Debug/net8.0/Pss.FhirProcessor.Engine.Tests.dll (.NETCoreApp,Version=v8.0)
+Test run for /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Playground.Api.Tests/bin/Debug/net8.0/Pss.FhirProcessor.Playground.Api.Tests.dll (.NETCoreApp,Version=v8.0)
+Microsoft (R) Test Execution Command Line Tool Version 17.8.0 (arm64)
+Copyright (c) Microsoft Corporation.  All rights reserved.
+
+Microsoft (R) Test Execution Command Line Tool Version 17.8.0 (arm64)
+Copyright (c) Microsoft Corporation.  All rights reserved.
+
+Microsoft (R) Test Execution Command Line Tool Version 17.8.0 (arm64)
+Copyright (c) Microsoft Corporation.  All rights reserved.
+
+Starting test execution, please wait...
+Starting test execution, please wait...
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.27]     Pss.FhirProcessor.Tests.FhirPathRuleEngineTests.ValidateAsync_CodeSystem_SystemMismatch_Emits_CODESYSTEM_VIOLATION [FAIL]
+[xUnit.net 00:00:00.27]     Pss.FhirProcessor.Tests.FhirPathRuleEngineTests.ValidateAsync_CodeSystem_CodeNotAllowed_Emits_CODESYSTEM_VIOLATION [FAIL]
+  Failed Pss.FhirProcessor.Tests.FhirPathRuleEngineTests.ValidateAsync_CodeSystem_SystemMismatch_Emits_CODESYSTEM_VIOLATION [1 ms]
+  Error Message:
+   Assert.Single() Failure: The collection was empty
+  Stack Trace:
+     at Pss.FhirProcessor.Tests.FhirPathRuleEngineTests.ValidateAsync_CodeSystem_SystemMismatch_Emits_CODESYSTEM_VIOLATION() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Tests/FhirPathRuleEngineTests.cs:line 592
+--- End of stack trace from previous location ---
+  Failed Pss.FhirProcessor.Tests.FhirPathRuleEngineTests.ValidateAsync_CodeSystem_CodeNotAllowed_Emits_CODESYSTEM_VIOLATION [1 ms]
+  Error Message:
+   Assert.Single() Failure: The collection was empty
+  Stack Trace:
+     at Pss.FhirProcessor.Tests.FhirPathRuleEngineTests.ValidateAsync_CodeSystem_CodeNotAllowed_Emits_CODESYSTEM_VIOLATION() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Tests/FhirPathRuleEngineTests.cs:line 662
+--- End of stack trace from previous location ---
+[xUnit.net 00:00:00.28]     Pss.FhirProcessor.Tests.FhirPathRuleEngineTests.Invalid_FHIRPath_Should_Produce_RuleDefinitionError [FAIL]
+  Failed Pss.FhirProcessor.Tests.FhirPathRuleEngineTests.Invalid_FHIRPath_Should_Produce_RuleDefinitionError [3 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: Patient.name.wrongMethod()
+Actual:   name.wrongMethod()
+  Stack Trace:
+     at Pss.FhirProcessor.Tests.FhirPathRuleEngineTests.Invalid_FHIRPath_Should_Produce_RuleDefinitionError() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Tests/FhirPathRuleEngineTests.cs:line 91
+--- End of stack trace from previous location ---
+
+Failed!  - Failed:     3, Passed:     9, Skipped:     0, Total:    12, Duration: 208 ms - Pss.FhirProcessor.Tests.dll (net8.0)
+[xUnit.net 00:00:00.46]     Pss.FhirProcessor.Engine.Tests.LintRuleCatalogTests.AllRules_ShouldCoverAllExistingLintCodes [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.LintRuleCatalogTests.AllRules_ShouldCoverAllExistingLintCodes [2 ms]
+  Error Message:
+   Assert.Equal() Failure
+Expected: 20
+Actual:   21
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.LintRuleCatalogTests.AllRules_ShouldCoverAllExistingLintCodes() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/LintRuleCatalogTests.cs:line 165
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.49]     Pss.FhirProcessor.Engine.Tests.Navigation.EntryResolutionPolicyTests.FallbackToFirst_Policy_FallsBackWhenResourceTypeNotFound [FAIL]
+[xUnit.net 00:00:00.49]     Pss.FhirProcessor.Engine.Tests.Navigation.Structure.KnownFhirStructureHintProviderTests.IsRepeating_CaseInsensitive_ReturnsTrue [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.Navigation.EntryResolutionPolicyTests.FallbackToFirst_Policy_FallsBackWhenResourceTypeNotFound [7 ms]
+  Error Message:
+   Assert.NotNull() Failure
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.Navigation.EntryResolutionPolicyTests.FallbackToFirst_Policy_FallsBackWhenResourceTypeNotFound() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/Navigation/EntryResolutionPolicyTests.cs:line 181
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Failed Pss.FhirProcessor.Engine.Tests.Navigation.Structure.KnownFhirStructureHintProviderTests.IsRepeating_CaseInsensitive_ReturnsTrue [4 ms]
+  Error Message:
+   Assert.True() Failure
+Expected: True
+Actual:   False
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.Navigation.Structure.KnownFhirStructureHintProviderTests.IsRepeating_CaseInsensitive_ReturnsTrue() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/Navigation/Structure/KnownFhirStructureHintProviderTests.cs:line 180
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.49]     Pss.FhirProcessor.Engine.Tests.Navigation.EntryResolutionPolicyTests.Strict_Policy_RequiresExplicitEntryIndex [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.Navigation.EntryResolutionPolicyTests.Strict_Policy_RequiresExplicitEntryIndex [< 1 ms]
+  Error Message:
+   Assert.Null() Failure
+Expected: (null)
+Actual:   /entry/0/resource/identifier/0/value
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.Navigation.EntryResolutionPolicyTests.Strict_Policy_RequiresExplicitEntryIndex() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/Navigation/EntryResolutionPolicyTests.cs:line 62
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.49]     Pss.FhirProcessor.Engine.Tests.Navigation.EntryResolutionPolicyTests.FallbackToFirst_Policy_PrefersResourceTypeBeforeFirstEntry [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.Navigation.EntryResolutionPolicyTests.FallbackToFirst_Policy_PrefersResourceTypeBeforeFirstEntry [< 1 ms]
+  Error Message:
+   Assert.NotNull() Failure
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.Navigation.EntryResolutionPolicyTests.FallbackToFirst_Policy_PrefersResourceTypeBeforeFirstEntry() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/Navigation/EntryResolutionPolicyTests.cs:line 164
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.49]     Pss.FhirProcessor.Engine.Tests.Navigation.EntryResolutionPolicyTests.PreferExplicit_Policy_FallsBackWithResourceType [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.Navigation.EntryResolutionPolicyTests.PreferExplicit_Policy_FallsBackWithResourceType [< 1 ms]
+  Error Message:
+   Assert.NotNull() Failure
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.Navigation.EntryResolutionPolicyTests.PreferExplicit_Policy_FallsBackWithResourceType() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/Navigation/EntryResolutionPolicyTests.cs:line 113
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.56]     Pss.FhirProcessor.Engine.Tests.SpecHintMetadataTests.SpecHintIssue_CarriesMetadataFromHint [FAIL]
+[xUnit.net 00:00:00.57]     Pss.FhirProcessor.Engine.Tests.SpecHintMetadataTests.SimpleHint_ErrorDetails_ShowNonConditional [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.SpecHintMetadataTests.SpecHintIssue_CarriesMetadataFromHint [109 ms]
+  Error Message:
+   Assert.NotNull() Failure
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SpecHintMetadataTests.SpecHintIssue_CarriesMetadataFromHint() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SpecHintMetadataTests.cs:line 153
+--- End of stack trace from previous location ---
+  Failed Pss.FhirProcessor.Engine.Tests.SpecHintMetadataTests.SimpleHint_ErrorDetails_ShowNonConditional [8 ms]
+  Error Message:
+   Assert.NotNull() Failure
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SpecHintMetadataTests.SimpleHint_ErrorDetails_ShowNonConditional() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SpecHintMetadataTests.cs:line 108
+--- End of stack trace from previous location ---
+[xUnit.net 00:00:00.57]     Pss.FhirProcessor.Engine.Tests.SpecHintMetadataTests.ConditionalHint_ErrorDetails_ContainMetadata [FAIL]
+[xUnit.net 00:00:00.57]     Pss.FhirProcessor.Engine.Tests.Governance.RuleReviewEngineTests.QuestionAnswerWithQuestionSetId_IsOK [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.SpecHintMetadataTests.ConditionalHint_ErrorDetails_ContainMetadata [3 ms]
+  Error Message:
+   Assert.NotNull() Failure
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SpecHintMetadataTests.ConditionalHint_ErrorDetails_ContainMetadata() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SpecHintMetadataTests.cs:line 65
+--- End of stack trace from previous location ---
+  Failed Pss.FhirProcessor.Engine.Tests.Governance.RuleReviewEngineTests.QuestionAnswerWithQuestionSetId_IsOK [< 1 ms]
+  Error Message:
+   Assert.Equal() Failure
+Expected: OK
+Actual:   WARNING
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.Governance.RuleReviewEngineTests.QuestionAnswerWithQuestionSetId_IsOK() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/Governance/RuleReviewEngineTests.cs:line 276
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.58]     Pss.FhirProcessor.Engine.Tests.Governance.RuleReviewEngineTests.CustomFHIRPathRule_WithKnownErrorCode_IsWarning_NotBlocked [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.Governance.RuleReviewEngineTests.CustomFHIRPathRule_WithKnownErrorCode_IsWarning_NotBlocked [< 1 ms]
+  Error Message:
+   Assert.NotNull() Failure
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.Governance.RuleReviewEngineTests.CustomFHIRPathRule_WithKnownErrorCode_IsWarning_NotBlocked() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/Governance/RuleReviewEngineTests.cs:line 878
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.59]     Pss.FhirProcessor.Engine.Tests.SmartPathNavigationService_TolerantObjectTests.PerformerAsObject_NotArray_NavigatesToDisplay [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.SmartPathNavigationService_TolerantObjectTests.PerformerAsObject_NotArray_NavigatesToDisplay [6 ms]
+  Error Message:
+   Assert.NotNull() Failure
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SmartPathNavigationService_TolerantObjectTests.PerformerAsObject_NotArray_NavigatesToDisplay() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SmartPathNavigationService_TolerantObjectTests.cs:line 63
+--- End of stack trace from previous location ---
+[xUnit.net 00:00:00.60]     Pss.FhirProcessor.Engine.Tests.SpecHintEncounterTests.MissingEncounterClass_ShouldGenerateSpecHint [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.SpecHintEncounterTests.MissingEncounterClass_ShouldGenerateSpecHint [19 ms]
+  Error Message:
+   Assert.NotNull() Failure
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SpecHintEncounterTests.MissingEncounterClass_ShouldGenerateSpecHint() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SpecHintEncounterTests.cs:line 96
+--- End of stack trace from previous location ---
+=== Encounter Validation Issues ===
+Total issues: 0
+[12:34:11 INF] Starting FHIR Processor V2 API
+Encounter Status set: False
+Encounter Class set: False
+[xUnit.net 00:00:00.63]     Pss.FhirProcessor.Engine.Tests.SpecHintEncounterTests.MissingEncounterStatus_ShouldGenerateSpecHint [FAIL]
+[xUnit.net 00:00:00.63]     Pss.FhirProcessor.Engine.Tests.FirelyExceptionMapperTests.MapToValidationError_UnknownElementWithLocation_ExtractsPathAndJsonPointer [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.SpecHintEncounterTests.MissingEncounterStatus_ShouldGenerateSpecHint [27 ms]
+  Error Message:
+   Expected at least 2 issues (status + class), got 0
+Expected: True
+Actual:   False
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SpecHintEncounterTests.MissingEncounterStatus_ShouldGenerateSpecHint() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SpecHintEncounterTests.cs:line 56
+--- End of stack trace from previous location ---
+  Failed Pss.FhirProcessor.Engine.Tests.FirelyExceptionMapperTests.MapToValidationError_UnknownElementWithLocation_ExtractsPathAndJsonPointer [< 1 ms]
+  Error Message:
+   Assert.Equal() Failure
+                                 ↓ (pos 30)
+Expected: ···esource/actualPeriod/0
+Actual:   ···esource/actualPeriod
+                                 ↑ (pos 30)
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.FirelyExceptionMapperTests.MapToValidationError_UnknownElementWithLocation_ExtractsPathAndJsonPointer() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/FirelyExceptionMapperTests.cs:line 99
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.63]     Pss.FhirProcessor.Engine.Tests.SmartPathNavigationServiceTests.ResolvePathAsync_ComplexNestedPath_ReturnsCorrectPointer [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.SmartPathNavigationServiceTests.ResolvePathAsync_ComplexNestedPath_ReturnsCorrectPointer [2 ms]
+  Error Message:
+   Assert.NotNull() Failure
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SmartPathNavigationServiceTests.ResolvePathAsync_ComplexNestedPath_ReturnsCorrectPointer() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SmartPathNavigationServiceTests.cs:line 415
+--- End of stack trace from previous location ---
+[xUnit.net 00:00:00.64]     Pss.FhirProcessor.Engine.Tests.SpecHintConditionalTests.Patient_MultipleCommunications_MixedValidity_ReturnsWarningsPerItem [FAIL]
+[xUnit.net 00:00:00.64]     Pss.FhirProcessor.Engine.Tests.SpecHintConditionalTests.SimpleHints_StillWork_Patient_Identifier [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.SpecHintConditionalTests.Patient_MultipleCommunications_MixedValidity_ReturnsWarningsPerItem [3 ms]
+  Error Message:
+   Assert.Equal() Failure
+Expected: 2
+Actual:   0
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SpecHintConditionalTests.Patient_MultipleCommunications_MixedValidity_ReturnsWarningsPerItem() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SpecHintConditionalTests.cs:line 184
+--- End of stack trace from previous location ---
+  Failed Pss.FhirProcessor.Engine.Tests.SpecHintConditionalTests.SimpleHints_StillWork_Patient_Identifier [3 ms]
+  Error Message:
+   Assert.NotEmpty() Failure
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SpecHintConditionalTests.SimpleHints_StillWork_Patient_Identifier() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SpecHintConditionalTests.cs:line 407
+--- End of stack trace from previous location ---
+[xUnit.net 00:00:00.65]     Pss.FhirProcessor.Engine.Tests.SmartPathNavigationServiceTests.ResolvePathAsync_WhereClauseFilter_ReturnsMatchingElement [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.SmartPathNavigationServiceTests.ResolvePathAsync_WhereClauseFilter_ReturnsMatchingElement [< 1 ms]
+  Error Message:
+   Assert.NotNull() Failure
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SmartPathNavigationServiceTests.ResolvePathAsync_WhereClauseFilter_ReturnsMatchingElement() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SmartPathNavigationServiceTests.cs:line 104
+--- End of stack trace from previous location ---
+[xUnit.net 00:00:00.65]     Pss.FhirProcessor.Engine.Tests.SmartPathNavigationServiceTests.ResolvePathAsync_ArrayWithIndex_ReturnsCorrectPointer [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.SmartPathNavigationServiceTests.ResolvePathAsync_ArrayWithIndex_ReturnsCorrectPointer [4 ms]
+  Error Message:
+   Assert.NotNull() Failure
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SmartPathNavigationServiceTests.ResolvePathAsync_ArrayWithIndex_ReturnsCorrectPointer() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SmartPathNavigationServiceTests.cs:line 62
+--- End of stack trace from previous location ---
+[xUnit.net 00:00:00.66]     Pss.FhirProcessor.Engine.Tests.SmartPathNavigationServiceTests.ResolvePathAsync_SimpleDirectProperty_ReturnsCorrectPointer [FAIL]
+[xUnit.net 00:00:00.66]     Pss.FhirProcessor.Engine.Tests.SpecHintConditionalTests.SimpleHints_StillWork_Encounter_Status [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.SmartPathNavigationServiceTests.ResolvePathAsync_SimpleDirectProperty_ReturnsCorrectPointer [3 ms]
+  Error Message:
+   Assert.NotNull() Failure
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SmartPathNavigationServiceTests.ResolvePathAsync_SimpleDirectProperty_ReturnsCorrectPointer() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SmartPathNavigationServiceTests.cs:line 46
+--- End of stack trace from previous location ---
+  Failed Pss.FhirProcessor.Engine.Tests.SpecHintConditionalTests.SimpleHints_StillWork_Encounter_Status [2 ms]
+  Error Message:
+   Assert.NotEmpty() Failure
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SpecHintConditionalTests.SimpleHints_StillWork_Encounter_Status() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SpecHintConditionalTests.cs:line 378
+--- End of stack trace from previous location ---
+[xUnit.net 00:00:00.67]     Pss.FhirProcessor.Engine.Tests.SpecHintConditionalTests.Patient_WithCommunication_LanguageMissing_ReturnsWarning [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.SpecHintConditionalTests.Patient_WithCommunication_LanguageMissing_ReturnsWarning [11 ms]
+  Error Message:
+   The collection was expected to contain a single element, but it was empty.
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SpecHintConditionalTests.Patient_WithCommunication_LanguageMissing_ReturnsWarning() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SpecHintConditionalTests.cs:line 93
+--- End of stack trace from previous location ---
+[xUnit.net 00:00:00.68]     Pss.FhirProcessor.Engine.Tests.SmartPathNavigationServiceTests.ResolvePathAsync_ObservationComponent_ReturnsCorrectPointer [FAIL]
+[xUnit.net 00:00:00.69]     Pss.FhirProcessor.Engine.Tests.SpecHintConditionalTests.Patient_WithContact_NameMissing_ReturnsWarning [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.SmartPathNavigationServiceTests.ResolvePathAsync_ObservationComponent_ReturnsCorrectPointer [5 ms]
+  Error Message:
+   Assert.NotNull() Failure
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SmartPathNavigationServiceTests.ResolvePathAsync_ObservationComponent_ReturnsCorrectPointer() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SmartPathNavigationServiceTests.cs:line 251
+--- End of stack trace from previous location ---
+  Failed Pss.FhirProcessor.Engine.Tests.SpecHintConditionalTests.Patient_WithContact_NameMissing_ReturnsWarning [7 ms]
+  Error Message:
+   The collection was expected to contain a single element, but it was empty.
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SpecHintConditionalTests.Patient_WithContact_NameMissing_ReturnsWarning() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SpecHintConditionalTests.cs:line 305
+--- End of stack trace from previous location ---
+[xUnit.net 00:00:00.70]     Pss.FhirProcessor.Engine.Tests.SpecHintConditionalTests.Bundle_MultiplePatients_MixedConditionalAndSimpleHints [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.SpecHintConditionalTests.Bundle_MultiplePatients_MixedConditionalAndSimpleHints [3 ms]
+  Error Message:
+   Assert.Equal() Failure
+Expected: 2
+Actual:   0
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SpecHintConditionalTests.Bundle_MultiplePatients_MixedConditionalAndSimpleHints() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SpecHintConditionalTests.cs:line 455
+--- End of stack trace from previous location ---
+[12:34:12 INF] Playground configured with KnownFhirStructureHintProvider + FallbackToFirst policy for tolerant navigation
+[12:34:12 INF] Terminology services configured with data path: /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Playground.Api.Tests/bin/Debug/net8.0/data/terminology
+[12:34:12 INF] 
+FHIR Processor V2 API started successfully
+[xUnit.net 00:00:00.82]     Pss.FhirProcessor.Engine.Tests.SpecHintInstanceScopedTests.SpecHint_CorrectEntryIndex_InJsonPointer [FAIL]
+[xUnit.net 00:00:00.82]     Pss.FhirProcessor.Engine.Tests.SpecHintInstanceScopedTests.SpecHint_MultipleObservations_OnlyFailingInstancesGetErrors [FAIL]
+[xUnit.net 00:00:00.83]     Pss.FhirProcessor.Engine.Tests.SpecHintInstanceScopedTests.SpecHint_MixedResourceTypes_EachInstanceScoped [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.SpecHintInstanceScopedTests.SpecHint_CorrectEntryIndex_InJsonPointer [112 ms]
+  Error Message:
+   Assert.NotNull() Failure
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SpecHintInstanceScopedTests.SpecHint_CorrectEntryIndex_InJsonPointer() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SpecHintInstanceScopedTests.cs:line 171
+--- End of stack trace from previous location ---
+  Failed Pss.FhirProcessor.Engine.Tests.SpecHintInstanceScopedTests.SpecHint_MultipleObservations_OnlyFailingInstancesGetErrors [2 ms]
+  Error Message:
+   Assert.Equal() Failure
+Expected: 2
+Actual:   0
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SpecHintInstanceScopedTests.SpecHint_MultipleObservations_OnlyFailingInstancesGetErrors() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SpecHintInstanceScopedTests.cs:line 103
+--- End of stack trace from previous location ---
+  Failed Pss.FhirProcessor.Engine.Tests.SpecHintInstanceScopedTests.SpecHint_MixedResourceTypes_EachInstanceScoped [5 ms]
+  Error Message:
+   The collection was expected to contain a single element, but it was empty.
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SpecHintInstanceScopedTests.SpecHint_MixedResourceTypes_EachInstanceScoped() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SpecHintInstanceScopedTests.cs:line 269
+--- End of stack trace from previous location ---
+[12:34:12 WRN] Microsoft.AspNetCore.HttpsPolicy.HttpsRedirectionMiddleware
+Failed to determine the https port for redirect.
+[12:34:12 INF] Pss.FhirProcessor.Engine.Firely.FhirR4ModelResolverService
+Initializing FHIR R4 Model Resolver...
+[12:34:12 INF] Pss.FhirProcessor.Engine.Firely.FhirR4ModelResolverService
+FHIR R4 Model Resolver initialized successfully
+[12:34:12 WRN] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Project bc2cfc8c-819f-44a5-a175-36e69da05def not found
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP GET /api/projects/bc2cfc8c-819f-44a5-a175-36e69da05def responded 404 in 83.3505 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Created project b92198dd-d388-4457-870d-b2e65595b5a2 at /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Playground.Api.Tests/bin/Debug/net8.0/ProjectStorage/b92198dd-d388-4457-870d-b2e65595b5a2.json
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Created project b92198dd-d388-4457-870d-b2e65595b5a2 with name Test Project
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects responded 201 in 26.2770 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Saved project b92198dd-d388-4457-870d-b2e65595b5a2
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Updated rules for project b92198dd-d388-4457-870d-b2e65595b5a2
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects/b92198dd-d388-4457-870d-b2e65595b5a2/rules responded 200 in 25.1796 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Saved project b92198dd-d388-4457-870d-b2e65595b5a2
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Updated CodeMaster for project b92198dd-d388-4457-870d-b2e65595b5a2
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects/b92198dd-d388-4457-870d-b2e65595b5a2/codemaster responded 200 in 4.0918 ms
+[xUnit.net 00:00:01.01]     Pss.FhirProcessor.Engine.Tests.Validation.NoProseEnforcementTests.QuestionAnswerErrorFactory_QuestionNotFound_NoMessageSet [FAIL]
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Exported rule package for project b92198dd-d388-4457-870d-b2e65595b5a2
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP GET /api/projects/b92198dd-d388-4457-870d-b2e65595b5a2/export responded 200 in 5.5642 ms
+[xUnit.net 00:00:01.02]     Pss.FhirProcessor.Engine.Tests.Validation.NoProseEnforcementTests.CodeMasterValidationError_MessageIsDeprecated [FAIL]
+     Warning:
+     The component "Fluent Assertions" is governed by the rules defined in the Xceed License Agreement and
+     the Xceed Fluent Assertions Community License. You may use Fluent Assertions free of charge for
+     non-commercial use only. An active subscription is required to use Fluent Assertions for commercial use.
+
+     Please contact Xceed Sales mailto:sales@xceed.com to acquire a subscription at a very low cost.
+
+     A paid commercial license supports the development and continued increasing support of
+     Fluent Assertions users under both commercial and community licenses. Help us
+     keep Fluent Assertions at the forefront of unit testing.
+
+     For more information, visit https://xceed.com/products/unit-testing/fluent-assertions/
+  Failed Pss.FhirProcessor.Engine.Tests.Validation.NoProseEnforcementTests.QuestionAnswerErrorFactory_QuestionNotFound_NoMessageSet [104 ms]
+  Error Message:
+   Expected error.Details {["source"] = "Business", ["question"] = {["system"] = "http://example.org", ["code"] = "Q1", ["display"] = <null>}, ["location"] = {["path"] = "test", ["jsonPointer"] = "/test"}} to contain key "system".
+  Stack Trace:
+     at FluentAssertions.Execution.XUnit2TestFramework.Throw(String message)
+   at FluentAssertions.Execution.TestFrameworkProvider.Throw(String message)
+   at FluentAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Execution.AssertionScope.FailWith(String message, Object[] args)
+   at FluentAssertions.Collections.GenericDictionaryAssertions`4.ContainKeys(IEnumerable`1 expected, String because, Object[] becauseArgs)
+   at FluentAssertions.Collections.GenericDictionaryAssertions`4.ContainKey(TKey expected, String because, Object[] becauseArgs)
+   at Pss.FhirProcessor.Engine.Tests.Validation.NoProseEnforcementTests.QuestionAnswerErrorFactory_QuestionNotFound_NoMessageSet() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/Validation/NoProseEnforcementTests.cs:line 248
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Failed Pss.FhirProcessor.Engine.Tests.Validation.NoProseEnforcementTests.CodeMasterValidationError_MessageIsDeprecated [2 ms]
+  Error Message:
+   Expected obsoleteAttribute not to be <null> because Message property should be marked [Obsolete].
+  Stack Trace:
+     at FluentAssertions.Execution.XUnit2TestFramework.Throw(String message)
+   at FluentAssertions.Execution.TestFrameworkProvider.Throw(String message)
+   at FluentAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Execution.AssertionScope.FailWith(String message)
+   at FluentAssertions.Primitives.ReferenceTypeAssertions`2.NotBeNull(String because, Object[] becauseArgs)
+   at Pss.FhirProcessor.Engine.Tests.Validation.NoProseEnforcementTests.CodeMasterValidationError_MessageIsDeprecated() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/Validation/NoProseEnforcementTests.cs:line 172
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:01.02]     Pss.FhirProcessor.Engine.Tests.Validation.NoProseEnforcementTests.ReferenceValidationError_MessageIsDeprecated [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.Validation.NoProseEnforcementTests.ReferenceValidationError_MessageIsDeprecated [< 1 ms]
+  Error Message:
+   Expected obsoleteAttribute not to be <null> because Message property should be marked [Obsolete].
+  Stack Trace:
+     at FluentAssertions.Execution.XUnit2TestFramework.Throw(String message)
+   at FluentAssertions.Execution.TestFrameworkProvider.Throw(String message)
+   at FluentAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Execution.AssertionScope.FailWith(String message)
+   at FluentAssertions.Primitives.ReferenceTypeAssertions`2.NotBeNull(String because, Object[] becauseArgs)
+   at Pss.FhirProcessor.Engine.Tests.Validation.NoProseEnforcementTests.ReferenceValidationError_MessageIsDeprecated() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/Validation/NoProseEnforcementTests.cs:line 187
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:01.02]     Pss.FhirProcessor.Engine.Tests.Validation.NoProseEnforcementTests.RuleValidationError_MessageIsDeprecated [FAIL]
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Created project 173eded5-18ec-4545-812c-0eda4b09accb at /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Playground.Api.Tests/bin/Debug/net8.0/ProjectStorage/173eded5-18ec-4545-812c-0eda4b09accb.json
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Created project 173eded5-18ec-4545-812c-0eda4b09accb with name Test Project
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects responded 201 in 1.0600 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Saved project 173eded5-18ec-4545-812c-0eda4b09accb
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Updated sample bundle for project 173eded5-18ec-4545-812c-0eda4b09accb
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects/173eded5-18ec-4545-812c-0eda4b09accb/bundle responded 200 in 3.6513 ms
+[12:34:12 ERR] Pss.FhirProcessor.Playground.Api.Controllers.ProjectsController
+Failed to parse rules JSON
+System.Text.Json.JsonException: JSON deserialization for type 'Pss.FhirProcessor.Engine.Models.RuleDefinition' was missing required properties, including the following: errorCode
+   at System.Text.Json.ThrowHelper.ThrowJsonException_JsonRequiredPropertyMissing(JsonTypeInfo parent, BitArray requiredPropertiesSet)
+   at System.Text.Json.Serialization.Converters.ObjectDefaultConverter`1.OnTryRead(Utf8JsonReader& reader, Type typeToConvert, JsonSerializerOptions options, ReadStack& state, T& value)
+   at System.Text.Json.Serialization.JsonConverter`1.TryRead(Utf8JsonReader& reader, Type typeToConvert, JsonSerializerOptions options, ReadStack& state, T& value, Boolean& isPopulatedValue)
+   at System.Text.Json.Serialization.JsonCollectionConverter`2.OnTryRead(Utf8JsonReader& reader, Type typeToConvert, JsonSerializerOptions options, ReadStack& state, TCollection& value)
+   at System.Text.Json.Serialization.JsonConverter`1.TryRead(Utf8JsonReader& reader, Type typeToConvert, JsonSerializerOptions options, ReadStack& state, T& value, Boolean& isPopulatedValue)
+   at System.Text.Json.Serialization.Metadata.JsonPropertyInfo`1.ReadJsonAndSetMember(Object obj, ReadStack& state, Utf8JsonReader& reader)
+   at System.Text.Json.Serialization.Converters.ObjectDefaultConverter`1.OnTryRead(Utf8JsonReader& reader, Type typeToConvert, JsonSerializerOptions options, ReadStack& state, T& value)
+   at System.Text.Json.Serialization.JsonConverter`1.TryRead(Utf8JsonReader& reader, Type typeToConvert, JsonSerializerOptions options, ReadStack& state, T& value, Boolean& isPopulatedValue)
+   at System.Text.Json.Serialization.JsonConverter`1.ReadCore(Utf8JsonReader& reader, JsonSerializerOptions options, ReadStack& state)
+   at System.Text.Json.JsonSerializer.ReadFromSpan[TValue](ReadOnlySpan`1 utf8Json, JsonTypeInfo`1 jsonTypeInfo, Nullable`1 actualByteCount)
+   at System.Text.Json.JsonSerializer.ReadFromSpan[TValue](ReadOnlySpan`1 json, JsonTypeInfo`1 jsonTypeInfo)
+   at Pss.FhirProcessor.Playground.Api.Controllers.ProjectsController.UpdateRules(Guid id, SaveRuleRequest request) in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/src/Pss.FhirProcessor.Playground.Api/Controllers/ProjectsController.cs:line 132
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects/173eded5-18ec-4545-812c-0eda4b09accb/rules responded 400 in 3.7527 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Validating project 173eded5-18ec-4545-812c-0eda4b09accb, bundleJson length: 671, override: False, mode: default
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Validating project 173eded5-18ec-4545-812c-0eda4b09accb with bundle of 671 chars
+[12:34:12 DBG] Pss.FhirProcessor.Engine.Core.ValidationPipeline
+Validation mode: standard, Lint enabled: False
+[12:34:12 INF] Pss.FhirProcessor.Engine.Core.ValidationPipeline
+=== SPECHINT CHECKPOINT 1: ValidationMode=standard, IsFullAnalysis=False
+[12:34:12 INF] Pss.FhirProcessor.Engine.Core.ValidationPipeline
+=== SPECHINT CHECKPOINT X: Not in full analysis mode (mode=standard), skipping SpecHint
+[12:34:12 INF] Pss.FhirProcessor.Engine.Firely.FirelyValidationService
+Starting Firely R4 node-based structural validation for 671 chars of JSON
+[12:34:12 INF] Pss.FhirProcessor.Engine.Firely.FirelyValidationService
+Firely validation: Traversed 18 nodes successfully
+  Failed Pss.FhirProcessor.Engine.Tests.Validation.NoProseEnforcementTests.RuleValidationError_MessageIsDeprecated [< 1 ms]
+  Error Message:
+   Expected obsoleteAttribute not to be <null> because Message property should be marked [Obsolete].
+  Stack Trace:
+     at FluentAssertions.Execution.XUnit2TestFramework.Throw(String message)
+   at FluentAssertions.Execution.TestFrameworkProvider.Throw(String message)
+   at FluentAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Execution.AssertionScope.FailWith(String message)
+   at FluentAssertions.Primitives.ReferenceTypeAssertions`2.NotBeNull(String because, Object[] becauseArgs)
+   at Pss.FhirProcessor.Engine.Tests.Validation.NoProseEnforcementTests.RuleValidationError_MessageIsDeprecated() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/Validation/NoProseEnforcementTests.cs:line 157
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[12:34:12 INF] Pss.FhirProcessor.Engine.Core.ValidationPipeline
+Firely validation completed: 0 structural errors found
+[12:34:12 INF] Pss.FhirProcessor.Engine.RuleEngines.ReferenceResolver
+Reference validation starting with policy: InBundleOnly
+[12:34:12 INF] Pss.FhirProcessor.Engine.RuleEngines.ReferenceResolver
+Reference not found: urn:uuid:patient-999, Policy: InBundleOnly
+[12:34:12 INF] Pss.FhirProcessor.Engine.RuleEngines.ReferenceResolver
+Reference validation complete: 1 errors found
+[12:34:12 DBG] Pss.FhirProcessor.Engine.Navigation.SmartPathNavigationService
+DLL-SAFE MODE: Delegating to JsonPointerResolver for path: Observation.subject
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Validation complete for project 173eded5-18ec-4545-812c-0eda4b09accb: 1 errors
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects/173eded5-18ec-4545-812c-0eda4b09accb/validate responded 200 in 82.7435 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Created project 12c111a4-f815-4aeb-8b5e-12aa2b6b5022 at /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Playground.Api.Tests/bin/Debug/net8.0/ProjectStorage/12c111a4-f815-4aeb-8b5e-12aa2b6b5022.json
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Created project 12c111a4-f815-4aeb-8b5e-12aa2b6b5022 with name Concurrent Project 3
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects responded 201 in 1.2788 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Created project 9659db1c-e940-40dd-bc46-4af0cc459cc9 at /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Playground.Api.Tests/bin/Debug/net8.0/ProjectStorage/9659db1c-e940-40dd-bc46-4af0cc459cc9.json
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Created project 9659db1c-e940-40dd-bc46-4af0cc459cc9 with name Concurrent Project 1
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Created project ff2e9138-4c5f-407d-a601-59f6964868fa at /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Playground.Api.Tests/bin/Debug/net8.0/ProjectStorage/ff2e9138-4c5f-407d-a601-59f6964868fa.json
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Created project 244a3e63-a4c1-4792-9d70-55547827c038 at /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Playground.Api.Tests/bin/Debug/net8.0/ProjectStorage/244a3e63-a4c1-4792-9d70-55547827c038.json
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Created project f1f85f34-ddcf-4b5e-8cfa-7ffff890d54f at /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Playground.Api.Tests/bin/Debug/net8.0/ProjectStorage/f1f85f34-ddcf-4b5e-8cfa-7ffff890d54f.json
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Created project ff2e9138-4c5f-407d-a601-59f6964868fa with name Concurrent Project 2
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Created project f1f85f34-ddcf-4b5e-8cfa-7ffff890d54f with name Concurrent Project 0
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects responded 201 in 3.0408 ms
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects responded 201 in 3.2455 ms
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects responded 201 in 3.0373 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Created project 244a3e63-a4c1-4792-9d70-55547827c038 with name Concurrent Project 4
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects responded 201 in 2.9346 ms
+[xUnit.net 00:00:01.28]     Pss.FhirProcessor.Engine.Tests.UnifiedErrorModelBuilderTests.FromRuleErrorsAsync_NoMessage_HasMessage [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.UnifiedErrorModelBuilderTests.FromRuleErrorsAsync_NoMessage_HasMessage [4 ms]
+  Error Message:
+   Expected result[0].Message not to be <null> or empty, but found "".
+  Stack Trace:
+     at FluentAssertions.Execution.XUnit2TestFramework.Throw(String message)
+   at FluentAssertions.Execution.TestFrameworkProvider.Throw(String message)
+   at FluentAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Execution.AssertionScope.FailWith(String message, Object[] args)
+   at FluentAssertions.Primitives.StringAssertions`1.NotBeNullOrEmpty(String because, Object[] becauseArgs)
+   at Pss.FhirProcessor.Engine.Tests.UnifiedErrorModelBuilderTests.FromRuleErrorsAsync_NoMessage_HasMessage() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/UnifiedErrorModelBuilderTests.cs:line 750
+--- End of stack trace from previous location ---
+[xUnit.net 00:00:01.29]     Pss.FhirProcessor.Engine.Tests.Services.ValidationExplanationServiceNormalizationTests.Required_Variants_Return_High_Confidence(ruleType: "REQUIRED_FIELD", expectedConfidence: "high") [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.Services.ValidationExplanationServiceNormalizationTests.Required_Variants_Return_High_Confidence(ruleType: "REQUIRED_FIELD", expectedConfidence: "high") [< 1 ms]
+  Error Message:
+   Assert.Equal() Failure
+          ↓ (pos 0)
+Expected: high
+Actual:   medium
+          ↑ (pos 0)
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.Services.ValidationExplanationServiceNormalizationTests.Required_Variants_Return_High_Confidence(String ruleType, String expectedConfidence) in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/Services/ValidationExplanationServiceNormalizationTests.cs:line 35
+   at InvokeStub_ValidationExplanationServiceNormalizationTests.Required_Variants_Return_High_Confidence(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithFewArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+[xUnit.net 00:00:01.30]     Pss.FhirProcessor.Engine.Tests.UnifiedErrorModelBuilderTests.FromRuleErrorsAsync_AllFieldsMapped_RoundTrip [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.UnifiedErrorModelBuilderTests.FromRuleErrorsAsync_AllFieldsMapped_RoundTrip [12 ms]
+  Error Message:
+   Expected error.Message to be "Complete error with all fields" with a length of 30, but "" has a length of 0, differs near "" (index 0).
+  Stack Trace:
+     at FluentAssertions.Execution.XUnit2TestFramework.Throw(String message)
+   at FluentAssertions.Execution.TestFrameworkProvider.Throw(String message)
+   at FluentAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Primitives.StringEqualityValidator.ValidateAgainstLengthDifferences()
+   at FluentAssertions.Primitives.StringValidator.Validate()
+   at FluentAssertions.Primitives.StringAssertions`1.Be(String expected, String because, Object[] becauseArgs)
+   at Pss.FhirProcessor.Engine.Tests.UnifiedErrorModelBuilderTests.FromRuleErrorsAsync_AllFieldsMapped_RoundTrip() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/UnifiedErrorModelBuilderTests.cs:line 794
+--- End of stack trace from previous location ---
+[xUnit.net 00:00:01.31]     Pss.FhirProcessor.Engine.Tests.Navigation.JsonPointerResolverTests.Resolve_ArrayLevelWhere_WorksWithSimpleEquality [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.Navigation.JsonPointerResolverTests.Resolve_ArrayLevelWhere_WorksWithSimpleEquality [< 1 ms]
+  Error Message:
+   Assert.Equal() Failure
+Expected: /entry/0/resource/performer/1/display
+Actual:   (null)
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.Navigation.JsonPointerResolverTests.Resolve_ArrayLevelWhere_WorksWithSimpleEquality() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/Navigation/JsonPointerResolverTests.cs:line 177
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP GET /api/projects responded 200 in 223.4701 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Created project 7e022401-e3ee-425c-8ca1-5ffb537a8465 at /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Playground.Api.Tests/bin/Debug/net8.0/ProjectStorage/7e022401-e3ee-425c-8ca1-5ffb537a8465.json
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Created project 7e022401-e3ee-425c-8ca1-5ffb537a8465 with name Test Project
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects responded 201 in 1.2677 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Saved project 7e022401-e3ee-425c-8ca1-5ffb537a8465
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Updated rules for project 7e022401-e3ee-425c-8ca1-5ffb537a8465
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects/7e022401-e3ee-425c-8ca1-5ffb537a8465/rules responded 200 in 1.2430 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Created project 797963c4-4c67-4408-83d1-1261d89b9b46 at /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Playground.Api.Tests/bin/Debug/net8.0/ProjectStorage/797963c4-4c67-4408-83d1-1261d89b9b46.json
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Created project 797963c4-4c67-4408-83d1-1261d89b9b46 with name Test Project
+[xUnit.net 00:00:01.37]     Pss.FhirProcessor.Engine.Tests.UnifiedErrorModelBuilderTests.FromCodeMasterErrorsAsync_MissingQuestion_CreatesCorrectError [FAIL]
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects responded 201 in 1.7715 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Saved project 797963c4-4c67-4408-83d1-1261d89b9b46
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Updated sample bundle for project 797963c4-4c67-4408-83d1-1261d89b9b46
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects/797963c4-4c67-4408-83d1-1261d89b9b46/bundle responded 200 in 0.6046 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Created project 9e1e61c9-f647-41ce-8588-c69d95ddd114 at /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Playground.Api.Tests/bin/Debug/net8.0/ProjectStorage/9e1e61c9-f647-41ce-8588-c69d95ddd114.json
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Created project 9e1e61c9-f647-41ce-8588-c69d95ddd114 with name Test Project
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects responded 201 in 1.1380 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Saved project 9e1e61c9-f647-41ce-8588-c69d95ddd114
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Updated CodeMaster for project 9e1e61c9-f647-41ce-8588-c69d95ddd114
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects/9e1e61c9-f647-41ce-8588-c69d95ddd114/codemaster responded 200 in 0.5828 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Created project a6285afa-7008-422d-808c-c08c85eed679 at /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Playground.Api.Tests/bin/Debug/net8.0/ProjectStorage/a6285afa-7008-422d-808c-c08c85eed679.json
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Created project a6285afa-7008-422d-808c-c08c85eed679 with name Test Project
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects responded 201 in 0.5611 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Saved project a6285afa-7008-422d-808c-c08c85eed679
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Updated sample bundle for project a6285afa-7008-422d-808c-c08c85eed679
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects/a6285afa-7008-422d-808c-c08c85eed679/bundle responded 200 in 0.4470 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Saved project a6285afa-7008-422d-808c-c08c85eed679
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Updated rules for project a6285afa-7008-422d-808c-c08c85eed679
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects/a6285afa-7008-422d-808c-c08c85eed679/rules responded 200 in 0.5192 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Validating project a6285afa-7008-422d-808c-c08c85eed679, bundleJson length: 395, override: False, mode: default
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Validating project a6285afa-7008-422d-808c-c08c85eed679 with bundle of 395 chars
+[12:34:12 DBG] Pss.FhirProcessor.Engine.Core.ValidationPipeline
+Validation mode: standard, Lint enabled: False
+[12:34:12 INF] Pss.FhirProcessor.Engine.Core.ValidationPipeline
+=== SPECHINT CHECKPOINT 1: ValidationMode=standard, IsFullAnalysis=False
+[12:34:12 INF] Pss.FhirProcessor.Engine.Core.ValidationPipeline
+=== SPECHINT CHECKPOINT X: Not in full analysis mode (mode=standard), skipping SpecHint
+[12:34:12 INF] Pss.FhirProcessor.Engine.Firely.FirelyValidationService
+Starting Firely R4 node-based structural validation for 395 chars of JSON
+[12:34:12 INF] Pss.FhirProcessor.Engine.Firely.FirelyValidationService
+Firely validation: Traversed 11 nodes successfully
+[12:34:12 INF] Pss.FhirProcessor.Engine.Core.ValidationPipeline
+Firely validation completed: 0 structural errors found
+  Failed Pss.FhirProcessor.Engine.Tests.UnifiedErrorModelBuilderTests.FromCodeMasterErrorsAsync_MissingQuestion_CreatesCorrectError [5 ms]
+  Error Message:
+   Expected error.Message to be "Mandatory question Q002 is missing" with a length of 34, but "" has a length of 0, differs near "" (index 0).
+  Stack Trace:
+     at FluentAssertions.Execution.XUnit2TestFramework.Throw(String message)
+   at FluentAssertions.Execution.TestFrameworkProvider.Throw(String message)
+   at FluentAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Primitives.StringEqualityValidator.ValidateAgainstLengthDifferences()
+   at FluentAssertions.Primitives.StringValidator.Validate()
+   at FluentAssertions.Primitives.StringAssertions`1.Be(String expected, String because, Object[] becauseArgs)
+   at Pss.FhirProcessor.Engine.Tests.UnifiedErrorModelBuilderTests.FromCodeMasterErrorsAsync_MissingQuestion_CreatesCorrectError() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/UnifiedErrorModelBuilderTests.cs:line 352
+--- End of stack trace from previous location ---
+[xUnit.net 00:00:01.41]     Pss.FhirProcessor.Engine.Tests.UnifiedErrorModelBuilderTests.FromRuleErrorsAsync_RequiredRuleMissing_CreatesUnifiedError [FAIL]
+[xUnit.net 00:00:01.42]     Pss.FhirProcessor.Engine.Tests.SpecHintServiceTests.MultipleResources_MultipleMissingFields_ReturnsAllHints [FAIL]
+[12:34:12 INF] Pss.FhirProcessor.Engine.RuleEngines.ReferenceResolver
+Reference validation starting with policy: InBundleOnly
+[12:34:12 INF] Pss.FhirProcessor.Engine.RuleEngines.ReferenceResolver
+Reference validation complete: 0 errors found
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Validation complete for project a6285afa-7008-422d-808c-c08c85eed679: 0 errors
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects/a6285afa-7008-422d-808c-c08c85eed679/validate responded 200 in 53.8279 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Created project af6c4072-d2e6-486c-bf96-552e8d273fe7 at /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Playground.Api.Tests/bin/Debug/net8.0/ProjectStorage/af6c4072-d2e6-486c-bf96-552e8d273fe7.json
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Created project af6c4072-d2e6-486c-bf96-552e8d273fe7 with name Test Project
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects responded 201 in 0.8628 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Deleted project af6c4072-d2e6-486c-bf96-552e8d273fe7
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Deleted project af6c4072-d2e6-486c-bf96-552e8d273fe7
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP DELETE /api/projects/af6c4072-d2e6-486c-bf96-552e8d273fe7 responded 204 in 5.4888 ms
+[12:34:12 WRN] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Project af6c4072-d2e6-486c-bf96-552e8d273fe7 not found
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP GET /api/projects/af6c4072-d2e6-486c-bf96-552e8d273fe7 responded 404 in 0.4825 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Created project cf6fee3d-3415-447c-9565-237d66440e32 at /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Playground.Api.Tests/bin/Debug/net8.0/ProjectStorage/cf6fee3d-3415-447c-9565-237d66440e32.json
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Created project cf6fee3d-3415-447c-9565-237d66440e32 with name Project A
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects responded 201 in 0.7100 ms
+  Failed Pss.FhirProcessor.Engine.Tests.UnifiedErrorModelBuilderTests.FromRuleErrorsAsync_RequiredRuleMissing_CreatesUnifiedError [19 ms]
+  Error Message:
+   Expected error.Message not to be <null> or empty, but found "".
+  Stack Trace:
+     at FluentAssertions.Execution.XUnit2TestFramework.Throw(String message)
+   at FluentAssertions.Execution.TestFrameworkProvider.Throw(String message)
+   at FluentAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Execution.AssertionScope.FailWith(String message, Object[] args)
+   at FluentAssertions.Primitives.StringAssertions`1.NotBeNullOrEmpty(String because, Object[] becauseArgs)
+   at Pss.FhirProcessor.Engine.Tests.UnifiedErrorModelBuilderTests.AssertUnifiedError(ValidationError error, String expectedCode, String expectedPointer) in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/UnifiedErrorModelBuilderTests.cs:line 895
+   at Pss.FhirProcessor.Engine.Tests.UnifiedErrorModelBuilderTests.FromRuleErrorsAsync_RequiredRuleMissing_CreatesUnifiedError() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/UnifiedErrorModelBuilderTests.cs:line 157
+--- End of stack trace from previous location ---
+  Failed Pss.FhirProcessor.Engine.Tests.SpecHintServiceTests.MultipleResources_MultipleMissingFields_ReturnsAllHints [3 ms]
+  Error Message:
+   Assert.NotEmpty() Failure
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SpecHintServiceTests.MultipleResources_MultipleMissingFields_ReturnsAllHints() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SpecHintServiceTests.cs:line 270
+--- End of stack trace from previous location ---
+[xUnit.net 00:00:01.45]     Pss.FhirProcessor.Engine.Tests.SpecHintServiceTests.Patient_WithoutIdentifier_ReturnsSpecHint [FAIL]
+[xUnit.net 00:00:01.45]     Pss.FhirProcessor.Engine.Tests.SpecHintServiceTests.Observation_WithoutStatus_ReturnsSpecHint [FAIL]
+[12:34:12 WRN] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Project 786d3096-dfc1-4867-ad56-1b8941faab3e not found
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects/786d3096-dfc1-4867-ad56-1b8941faab3e/rules responded 404 in 1.0503 ms
+[xUnit.net 00:00:01.46]     Pss.FhirProcessor.Engine.Tests.SpecHintServiceTests.Observation_WithoutCode_ReturnsSpecHint [FAIL]
+[xUnit.net 00:00:01.46]     Pss.FhirProcessor.Engine.Tests.SpecHintServiceTests.Encounter_WithoutStatus_ReturnsSpecHint [FAIL]
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Created project 777946a5-a1c3-4b20-86cd-ad3cb8b705c1 at /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Playground.Api.Tests/bin/Debug/net8.0/ProjectStorage/777946a5-a1c3-4b20-86cd-ad3cb8b705c1.json
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Created project 777946a5-a1c3-4b20-86cd-ad3cb8b705c1 with name Test Project
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects responded 201 in 1.1044 ms
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP GET /api/projects/777946a5-a1c3-4b20-86cd-ad3cb8b705c1 responded 200 in 0.6616 ms
+[12:34:12 WRN] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Project 640675a7-cac0-427d-b3e6-1d498f4a92a4 not found for deletion
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP DELETE /api/projects/640675a7-cac0-427d-b3e6-1d498f4a92a4 responded 404 in 0.3901 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Created project 78a67bac-4b0a-4f89-8e32-d672e12702ef at /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Playground.Api.Tests/bin/Debug/net8.0/ProjectStorage/78a67bac-4b0a-4f89-8e32-d672e12702ef.json
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Created project 78a67bac-4b0a-4f89-8e32-d672e12702ef with name Test Project
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects responded 201 in 0.6404 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Saved project 78a67bac-4b0a-4f89-8e32-d672e12702ef
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Updated sample bundle for project 78a67bac-4b0a-4f89-8e32-d672e12702ef
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects/78a67bac-4b0a-4f89-8e32-d672e12702ef/bundle responded 200 in 0.6436 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Validating project 78a67bac-4b0a-4f89-8e32-d672e12702ef, bundleJson length: 706, override: False, mode: default
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Validating project 78a67bac-4b0a-4f89-8e32-d672e12702ef with bundle of 706 chars
+[12:34:12 DBG] Pss.FhirProcessor.Engine.Core.ValidationPipeline
+Validation mode: standard, Lint enabled: False
+[12:34:12 INF] Pss.FhirProcessor.Engine.Core.ValidationPipeline
+=== SPECHINT CHECKPOINT 1: ValidationMode=standard, IsFullAnalysis=False
+[12:34:12 INF] Pss.FhirProcessor.Engine.Core.ValidationPipeline
+=== SPECHINT CHECKPOINT X: Not in full analysis mode (mode=standard), skipping SpecHint
+[12:34:12 INF] Pss.FhirProcessor.Engine.Firely.FirelyValidationService
+Starting Firely R4 node-based structural validation for 706 chars of JSON
+[12:34:12 INF] Pss.FhirProcessor.Engine.Firely.FirelyValidationService
+Firely validation: Traversed 19 nodes successfully
+[12:34:12 INF] Pss.FhirProcessor.Engine.Core.ValidationPipeline
+Firely validation completed: 0 structural errors found
+[12:34:12 INF] Pss.FhirProcessor.Engine.RuleEngines.ReferenceResolver
+Reference validation starting with policy: InBundleOnly
+[12:34:12 INF] Pss.FhirProcessor.Engine.RuleEngines.ReferenceResolver
+Reference not found: urn:uuid:patient-999, Policy: InBundleOnly
+[12:34:12 INF] Pss.FhirProcessor.Engine.RuleEngines.ReferenceResolver
+Reference validation complete: 1 errors found
+[12:34:12 DBG] Pss.FhirProcessor.Engine.Navigation.SmartPathNavigationService
+DLL-SAFE MODE: Delegating to JsonPointerResolver for path: Observation.subject
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Validation complete for project 78a67bac-4b0a-4f89-8e32-d672e12702ef: 1 errors
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects/78a67bac-4b0a-4f89-8e32-d672e12702ef/validate responded 200 in 4.1450 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Created project c2941d1f-2adf-4bf0-95d6-a613d4b3c95a at /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Playground.Api.Tests/bin/Debug/net8.0/ProjectStorage/c2941d1f-2adf-4bf0-95d6-a613d4b3c95a.json
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Created project c2941d1f-2adf-4bf0-95d6-a613d4b3c95a with name Project 1
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects responded 201 in 0.8089 ms
+  Failed Pss.FhirProcessor.Engine.Tests.SpecHintServiceTests.Patient_WithoutIdentifier_ReturnsSpecHint [2 ms]
+  Error Message:
+   Assert.NotEmpty() Failure
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SpecHintServiceTests.Patient_WithoutIdentifier_ReturnsSpecHint() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SpecHintServiceTests.cs:line 176
+--- End of stack trace from previous location ---
+  Failed Pss.FhirProcessor.Engine.Tests.SpecHintServiceTests.Observation_WithoutStatus_ReturnsSpecHint [1 ms]
+  Error Message:
+   Assert.NotEmpty() Failure
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SpecHintServiceTests.Observation_WithoutStatus_ReturnsSpecHint() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SpecHintServiceTests.cs:line 118
+--- End of stack trace from previous location ---
+  Failed Pss.FhirProcessor.Engine.Tests.SpecHintServiceTests.Observation_WithoutCode_ReturnsSpecHint [7 ms]
+  Error Message:
+   Assert.NotEmpty() Failure
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SpecHintServiceTests.Observation_WithoutCode_ReturnsSpecHint() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SpecHintServiceTests.cs:line 146
+--- End of stack trace from previous location ---
+  Failed Pss.FhirProcessor.Engine.Tests.SpecHintServiceTests.Encounter_WithoutStatus_ReturnsSpecHint [1 ms]
+  Error Message:
+   Assert.NotEmpty() Failure
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SpecHintServiceTests.Encounter_WithoutStatus_ReturnsSpecHint() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SpecHintServiceTests.cs:line 53
+--- End of stack trace from previous location ---
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Created project 4e7a077f-42e7-44e6-aa4a-03098c0dce4e at /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Playground.Api.Tests/bin/Debug/net8.0/ProjectStorage/4e7a077f-42e7-44e6-aa4a-03098c0dce4e.json
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Created project 4e7a077f-42e7-44e6-aa4a-03098c0dce4e with name Project 2
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects responded 201 in 0.9263 ms
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP GET /api/projects responded 200 in 57.9823 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Created project 61f34b39-38bd-4ecc-a28c-c24959b4e791 at /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Playground.Api.Tests/bin/Debug/net8.0/ProjectStorage/61f34b39-38bd-4ecc-a28c-c24959b4e791.json
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Created project 61f34b39-38bd-4ecc-a28c-c24959b4e791 with name Test Project
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects responded 201 in 1.1378 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Saved project 61f34b39-38bd-4ecc-a28c-c24959b4e791
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Updated sample bundle for project 61f34b39-38bd-4ecc-a28c-c24959b4e791
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects/61f34b39-38bd-4ecc-a28c-c24959b4e791/bundle responded 200 in 1.2440 ms
+[12:34:12 ERR] Pss.FhirProcessor.Playground.Api.Controllers.ProjectsController
+Failed to parse rules JSON
+System.Text.Json.JsonException: JSON deserialization for type 'Pss.FhirProcessor.Engine.Models.RuleDefinition' was missing required properties, including the following: errorCode
+   at System.Text.Json.ThrowHelper.ThrowJsonException_JsonRequiredPropertyMissing(JsonTypeInfo parent, BitArray requiredPropertiesSet)
+   at System.Text.Json.Serialization.Converters.ObjectDefaultConverter`1.OnTryRead(Utf8JsonReader& reader, Type typeToConvert, JsonSerializerOptions options, ReadStack& state, T& value)
+   at System.Text.Json.Serialization.JsonConverter`1.TryRead(Utf8JsonReader& reader, Type typeToConvert, JsonSerializerOptions options, ReadStack& state, T& value, Boolean& isPopulatedValue)
+   at System.Text.Json.Serialization.JsonCollectionConverter`2.OnTryRead(Utf8JsonReader& reader, Type typeToConvert, JsonSerializerOptions options, ReadStack& state, TCollection& value)
+   at System.Text.Json.Serialization.JsonConverter`1.TryRead(Utf8JsonReader& reader, Type typeToConvert, JsonSerializerOptions options, ReadStack& state, T& value, Boolean& isPopulatedValue)
+   at System.Text.Json.Serialization.Metadata.JsonPropertyInfo`1.ReadJsonAndSetMember(Object obj, ReadStack& state, Utf8JsonReader& reader)
+   at System.Text.Json.Serialization.Converters.ObjectDefaultConverter`1.OnTryRead(Utf8JsonReader& reader, Type typeToConvert, JsonSerializerOptions options, ReadStack& state, T& value)
+   at System.Text.Json.Serialization.JsonConverter`1.TryRead(Utf8JsonReader& reader, Type typeToConvert, JsonSerializerOptions options, ReadStack& state, T& value, Boolean& isPopulatedValue)
+   at System.Text.Json.Serialization.JsonConverter`1.ReadCore(Utf8JsonReader& reader, JsonSerializerOptions options, ReadStack& state)
+   at System.Text.Json.JsonSerializer.ReadFromSpan[TValue](ReadOnlySpan`1 utf8Json, JsonTypeInfo`1 jsonTypeInfo, Nullable`1 actualByteCount)
+   at System.Text.Json.JsonSerializer.ReadFromSpan[TValue](ReadOnlySpan`1 json, JsonTypeInfo`1 jsonTypeInfo)
+   at Pss.FhirProcessor.Playground.Api.Controllers.ProjectsController.UpdateRules(Guid id, SaveRuleRequest request) in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/src/Pss.FhirProcessor.Playground.Api/Controllers/ProjectsController.cs:line 132
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects/61f34b39-38bd-4ecc-a28c-c24959b4e791/rules responded 400 in 2.4076 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Validating project 61f34b39-38bd-4ecc-a28c-c24959b4e791, bundleJson length: 360, override: False, mode: default
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Validating project 61f34b39-38bd-4ecc-a28c-c24959b4e791 with bundle of 360 chars
+[12:34:12 DBG] Pss.FhirProcessor.Engine.Core.ValidationPipeline
+Validation mode: standard, Lint enabled: False
+[12:34:12 INF] Pss.FhirProcessor.Engine.Core.ValidationPipeline
+=== SPECHINT CHECKPOINT 1: ValidationMode=standard, IsFullAnalysis=False
+[12:34:12 INF] Pss.FhirProcessor.Engine.Core.ValidationPipeline
+=== SPECHINT CHECKPOINT X: Not in full analysis mode (mode=standard), skipping SpecHint
+[12:34:12 INF] Pss.FhirProcessor.Engine.Firely.FirelyValidationService
+Starting Firely R4 node-based structural validation for 360 chars of JSON
+[12:34:12 INF] Pss.FhirProcessor.Engine.Firely.FirelyValidationService
+Firely validation: Traversed 10 nodes successfully
+[12:34:12 INF] Pss.FhirProcessor.Engine.Core.ValidationPipeline
+Firely validation completed: 0 structural errors found
+[12:34:12 INF] Pss.FhirProcessor.Engine.RuleEngines.ReferenceResolver
+Reference validation starting with policy: InBundleOnly
+[12:34:12 INF] Pss.FhirProcessor.Engine.RuleEngines.ReferenceResolver
+Reference validation complete: 0 errors found
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Validation complete for project 61f34b39-38bd-4ecc-a28c-c24959b4e791: 0 errors
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects/61f34b39-38bd-4ecc-a28c-c24959b4e791/validate responded 200 in 3.6134 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Created project c062fab2-0246-4281-8e33-c716b88751d7 at /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Playground.Api.Tests/bin/Debug/net8.0/ProjectStorage/c062fab2-0246-4281-8e33-c716b88751d7.json
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Created project c062fab2-0246-4281-8e33-c716b88751d7 with name Test Project
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects responded 201 in 1.1786 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Storage.ProjectRepository
+Saved project c062fab2-0246-4281-8e33-c716b88751d7
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Updated sample bundle for project c062fab2-0246-4281-8e33-c716b88751d7
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects/c062fab2-0246-4281-8e33-c716b88751d7/bundle responded 200 in 0.6406 ms
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Validating project c062fab2-0246-4281-8e33-c716b88751d7, bundleJson length: 706, override: False, mode: default
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Validating project c062fab2-0246-4281-8e33-c716b88751d7 with bundle of 706 chars
+[12:34:12 DBG] Pss.FhirProcessor.Engine.Core.ValidationPipeline
+Validation mode: standard, Lint enabled: False
+[12:34:12 INF] Pss.FhirProcessor.Engine.Core.ValidationPipeline
+=== SPECHINT CHECKPOINT 1: ValidationMode=standard, IsFullAnalysis=False
+[12:34:12 INF] Pss.FhirProcessor.Engine.Core.ValidationPipeline
+=== SPECHINT CHECKPOINT X: Not in full analysis mode (mode=standard), skipping SpecHint
+[12:34:12 INF] Pss.FhirProcessor.Engine.Firely.FirelyValidationService
+Starting Firely R4 node-based structural validation for 706 chars of JSON
+[12:34:12 INF] Pss.FhirProcessor.Engine.Firely.FirelyValidationService
+Firely validation: Traversed 19 nodes successfully
+[12:34:12 INF] Pss.FhirProcessor.Engine.Core.ValidationPipeline
+Firely validation completed: 0 structural errors found
+[12:34:12 INF] Pss.FhirProcessor.Engine.RuleEngines.ReferenceResolver
+Reference validation starting with policy: InBundleOnly
+[12:34:12 INF] Pss.FhirProcessor.Engine.RuleEngines.ReferenceResolver
+Reference not found: urn:uuid:patient-999, Policy: InBundleOnly
+[12:34:12 INF] Pss.FhirProcessor.Engine.RuleEngines.ReferenceResolver
+Reference validation complete: 1 errors found
+[12:34:12 DBG] Pss.FhirProcessor.Engine.Navigation.SmartPathNavigationService
+DLL-SAFE MODE: Delegating to JsonPointerResolver for path: Observation.subject
+[12:34:12 INF] Pss.FhirProcessor.Playground.Api.Services.ProjectService
+Validation complete for project c062fab2-0246-4281-8e33-c716b88751d7: 1 errors
+[12:34:12 DBG] Serilog.AspNetCore.RequestLoggingMiddleware
+HTTP POST /api/projects/c062fab2-0246-4281-8e33-c716b88751d7/validate responded 200 in 3.2511 ms
+
+Passed!  - Failed:     0, Passed:    17, Skipped:     0, Total:    17, Duration: 751 ms - Pss.FhirProcessor.Playground.Api.Tests.dll (net8.0)
+[xUnit.net 00:00:01.93]     Pss.FhirProcessor.Engine.Tests.LintCatalogIntegrationTests.AllCatalogRules_HaveMatchingLintServiceCode [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.LintCatalogIntegrationTests.AllCatalogRules_HaveMatchingLintServiceCode [6 ms]
+  Error Message:
+   Assert.Contains() Failure
+Not found: MISSING_REQUIRED_FIELD
+In value:  String[] ["LINT_EMPTY_INPUT", "LINT_INVALID_JSON", "LINT_ROOT_NOT_OBJECT", "LINT_MISSING_RESOURCE_TYPE", "LINT_NOT_BUNDLE", ...]
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.LintCatalogIntegrationTests.AllCatalogRules_HaveMatchingLintServiceCode() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/LintCatalogIntegrationTests.cs:line 196
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:02.15]     Pss.FhirProcessor.Engine.Tests.ValidationModeTests.DebugMode_DetectsUnknownElements [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.ValidationModeTests.DebugMode_DetectsUnknownElements [253 ms]
+  Error Message:
+   Assert.Contains() Failure
+Not found: does not exist
+In value:  property 'abcperiod' is not defined on the fhir `patient` type. found at path: 'patient.abcperiod'. note: this may still parse in permissive fhir engines.
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.ValidationModeTests.DebugMode_DetectsUnknownElements() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/ValidationModeTests.cs:line 384
+--- End of stack trace from previous location ---
+[xUnit.net 00:00:02.76]     Pss.FhirProcessor.Engine.Tests.LintUnknownElementTests.NestedUnknownField_DetectedCorrectly [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.LintUnknownElementTests.NestedUnknownField_DetectedCorrectly [675 ms]
+  Error Message:
+   Assert.NotNull() Failure
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.LintUnknownElementTests.NestedUnknownField_DetectedCorrectly() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/LintUnknownElementTests.cs:line 123
+--- End of stack trace from previous location ---
+[xUnit.net 00:00:11.39]     Pss.FhirProcessor.Engine.Tests.SpecHintIntegrationTests.DebugMode_MultipleResourceTypes_SpecHintForEach [FAIL]
+  Failed Pss.FhirProcessor.Engine.Tests.SpecHintIntegrationTests.DebugMode_MultipleResourceTypes_SpecHintForEach [1 s]
+  Error Message:
+   Assert.Contains() Failure
+Not found: (filter expression)
+In value:  List<ValidationError> [ValidationError { Details = [...], ErrorCode = "MISSING_REQUIRED_FIELD", Explanation = ValidationIssueExplanation { ... }, JsonPointer = "/entry/0/resource", Message = "According to HL7 FHIR R4, 'Encounter.status' is re"..., ... }, ValidationError { Details = [...], ErrorCode = "MISSING_REQUIRED_FIELD", Explanation = ValidationIssueExplanation { ... }, JsonPointer = "/entry/2/resource", Message = "Implementation best practice: Organization should "..., ... }]
+  Stack Trace:
+     at Pss.FhirProcessor.Engine.Tests.SpecHintIntegrationTests.DebugMode_MultipleResourceTypes_SpecHintForEach() in /Users/tunguyen/Library/CloudStorage/OneDrive-Personal/Synapxe/PSS_V2/fhir_processor_v2/backend/tests/Pss.FhirProcessor.Engine.Tests/SpecHintIntegrationTests.cs:line 250
+--- End of stack trace from previous location ---
+
+Failed!  - Failed:    48, Passed:   443, Skipped:     0, Total:   491, Duration: 10 s - Pss.FhirProcessor.Engine.Tests.dll (net8.0)

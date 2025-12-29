@@ -1,12 +1,86 @@
 {
   "version": "4.0.1",
-  "description": "Manual SPEC_HINT catalog - Fallback for rules NOT auto-generated from HL7 StructureDefinitions. Advisory only, not enforced.",
-  "_comment": "REFACTORED 2025-12-15: Removed all hints that are auto-generated from HL7 R4 StructureDefinitions (min>0 rules). Only implementation guidance and best practices remain.",
-  "_removed_categories": [
-    "Simple required fields with min=1 in HL7 StructureDefinitions (now auto-generated)",
-    "Examples removed: Encounter.status, Encounter.class, Observation.status, Observation.code"
-  ],
+  "description": "Manual SPEC_HINT catalog - Fallback for when HL7SpecHintGenerator is not available. Includes both HL7 required fields and implementation best practices.",
+  "_comment": "RESTORED 2025-12-29: Re-added core HL7 required fields for test compatibility when auto-generation is unavailable.",
   "hints": {
+    "Patient": [
+      {
+        "path": "identifier",
+        "reason": "HL7 FHIR R4 mandates identifier field (min=1)",
+        "severity": "warning",
+        "source": "HL7 R4 StructureDefinition",
+        "origin": "structuredefinition",
+        "rationale": "Required by HL7 FHIR R4 specification",
+        "isConditional": false,
+        "appliesToEach": false
+      },
+      {
+        "path": "communication.language",
+        "reason": "HL7 FHIR R4: If communication is present, language is mandatory (min=1)",
+        "severity": "warning",
+        "source": "HL7 R4 StructureDefinition",
+        "origin": "structuredefinition",
+        "rationale": "Conditional requirement: communication exists → language required",
+        "isConditional": true,
+        "condition": "communication.exists()",
+        "appliesToEach": true
+      },
+      {
+        "path": "contact.name",
+        "reason": "HL7 FHIR R4: If contact is present, name is recommended",
+        "severity": "warning",
+        "source": "HL7 R4 StructureDefinition",
+        "origin": "structuredefinition",
+        "rationale": "Conditional requirement: contact exists → name recommended",
+        "isConditional": true,
+        "condition": "contact.exists()",
+        "appliesToEach": true
+      }
+    ],
+    "Encounter": [
+      {
+        "path": "status",
+        "reason": "HL7 FHIR R4 mandates status field (min=1)",
+        "severity": "warning",
+        "source": "HL7 R4 StructureDefinition",
+        "origin": "structuredefinition",
+        "rationale": "Required by HL7 FHIR R4 specification",
+        "isConditional": false,
+        "appliesToEach": false
+      },
+      {
+        "path": "class",
+        "reason": "HL7 FHIR R4 mandates class field (min=1)",
+        "severity": "warning",
+        "source": "HL7 R4 StructureDefinition",
+        "origin": "structuredefinition",
+        "rationale": "Required by HL7 FHIR R4 specification",
+        "isConditional": false,
+        "appliesToEach": false
+      }
+    ],
+    "Observation": [
+      {
+        "path": "status",
+        "reason": "HL7 FHIR R4 mandates status field (min=1)",
+        "severity": "warning",
+        "source": "HL7 R4 StructureDefinition",
+        "origin": "structuredefinition",
+        "rationale": "Required by HL7 FHIR R4 specification",
+        "isConditional": false,
+        "appliesToEach": false
+      },
+      {
+        "path": "code",
+        "reason": "HL7 FHIR R4 mandates code field (min=1)",
+        "severity": "warning",
+        "source": "HL7 R4 StructureDefinition",
+        "origin": "structuredefinition",
+        "rationale": "Required by HL7 FHIR R4 specification",
+        "isConditional": false,
+        "appliesToEach": false
+      }
+    ],
     "Organization": [
       {
         "path": "name",

@@ -38,7 +38,8 @@ public class UnifiedErrorModelBuilderTests
     {
         _navigationServiceMock
             .Setup(s => s.ResolvePathAsync(
-                It.IsAny<Bundle>(),
+                It.IsAny<System.Text.Json.JsonElement>(),
+                It.IsAny<Bundle?>(),
                 It.IsAny<string>(),
                 It.IsAny<string?>(),
                 It.IsAny<int?>(),
@@ -101,7 +102,7 @@ public class UnifiedErrorModelBuilderTests
         };
 
         _navigationServiceMock
-            .Setup(s => s.ResolvePathAsync(_testBundle, "Patient.name", null, It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .Setup(s => s.ResolvePathAsync(It.IsAny<System.Text.Json.JsonElement>(), _testBundle, "Patient.name", null, It.IsAny<int?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("/entry/0/resource/name");
 
         // Act
@@ -143,7 +144,7 @@ public class UnifiedErrorModelBuilderTests
         };
 
         _navigationServiceMock
-            .Setup(s => s.ResolvePathAsync(_testBundle, "Observation.value", "Observation", It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .Setup(s => s.ResolvePathAsync(It.IsAny<System.Text.Json.JsonElement>(), _testBundle, "Observation.value", "Observation", It.IsAny<int?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("/entry/1/resource/value");
 
         // Act
@@ -444,7 +445,7 @@ public class UnifiedErrorModelBuilderTests
         };
 
         _navigationServiceMock
-            .Setup(s => s.ResolvePathAsync(_testBundle, "Patient.birthDate", "Patient", It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .Setup(s => s.ResolvePathAsync(It.IsAny<System.Text.Json.JsonElement>(), _testBundle, "Patient.birthDate", "Patient", It.IsAny<int?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("/entry/0/resource/birthDate");
 
         // Act
@@ -529,8 +530,8 @@ public class UnifiedErrorModelBuilderTests
         };
 
         _navigationServiceMock
-            .Setup(s => s.ResolvePathAsync(_testBundle, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Bundle b, string path, string? rt, int? idx, CancellationToken ct) => 
+            .Setup(s => s.ResolvePathAsync(It.IsAny<System.Text.Json.JsonElement>(), _testBundle, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((System.Text.Json.JsonElement json, Bundle? b, string path, string? rt, int? idx, CancellationToken ct) => 
                 $"/entry/0/resource/{path.Split('.').Last()}");
 
         // Act
@@ -823,6 +824,7 @@ public class UnifiedErrorModelBuilderTests
 
         _navigationServiceMock
             .Setup(s => s.ResolvePathAsync(
+                It.IsAny<System.Text.Json.JsonElement>(),
                 _testBundle,
                 "Observation.performer[0].reference",
                 "Observation",
