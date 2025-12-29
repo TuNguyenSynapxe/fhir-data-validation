@@ -92,8 +92,11 @@ export const AnswerFieldBuilder: React.FC<AnswerFieldBuilderProps> = ({
         break;
     }
 
-    onChange(newPath);
-  }, [selectedType, customPath, onChange, isAdvancedMode]);
+    // Only call onChange if value actually changed (prevents infinite loop)
+    if (newPath !== value) {
+      onChange(newPath);
+    }
+  }, [selectedType, customPath, value, isAdvancedMode]);
 
   if (isAdvancedMode) {
     // Advanced mode: show raw input

@@ -29,8 +29,6 @@ import { buildCustomFHIRPathRule, parseCustomFHIRPathRule } from './rule-types/c
 import { buildResourceRule, parseResourceRule } from './rule-types/resource/ResourceRuleHelpers';
 import { buildTerminologyRule, parseTerminologyRule } from './rule-types/terminology/TerminologyRuleHelpers';
 import type { Rule } from '../../../types/rightPanelProps';
-import type { QuestionAnswerConstraint } from './rule-types/question-answer/QuestionAnswerConstraint.types';
-import { CONSTRAINT_TO_ERROR_CODE } from './rule-types/question-answer/QuestionAnswerConstraint.types';
 
 /**
  * UNIFIED RULE FORM
@@ -148,9 +146,7 @@ export const RuleForm: React.FC<RuleFormProps> = ({
   // QuestionAnswer
   const [iterationScope, setIterationScope] = useState<string>('');
   const [questionPath, setQuestionPath] = useState<string>('');
-  const [answerPath, setAnswerPath] = useState<string>('');
   const [questionSetId, setQuestionSetId] = useState<string>('');
-  const [constraint, setConstraint] = useState<QuestionAnswerConstraint | ''>('');
 
   // FixedValue
   const [expectedValue, setExpectedValue] = useState<string>('');
@@ -219,9 +215,7 @@ export const RuleForm: React.FC<RuleFormProps> = ({
       if (ruleType === 'QuestionAnswer' && initialRule.params) {
         setIterationScope(initialRule.params.iterationScope || '');
         setQuestionPath(initialRule.params.questionPath || '');
-        setAnswerPath(initialRule.params.answerPath || '');
         setQuestionSetId(initialRule.params.questionSetId || '');
-        setConstraint(initialRule.params.constraint || '');
       }
 
       if (ruleType === 'FixedValue' && initialRule.params) {
@@ -283,9 +277,7 @@ export const RuleForm: React.FC<RuleFormProps> = ({
   // === COMPUTED ERROR CODE ===
   const computedErrorCode = (() => {
     if (errorCodeMode === 'fixed') return getFixedErrorCode(ruleType);
-    if (errorCodeMode === 'runtime-determined' && constraint) {
-      return CONSTRAINT_TO_ERROR_CODE[constraint];
-    }
+    if (errorCodeMode === 'runtime-determined') return ''; // QuestionAnswer: runtime-determined only
     if (errorCodeMode === 'governed') return governedErrorCode;
     return '';
   })();
@@ -310,9 +302,7 @@ export const RuleForm: React.FC<RuleFormProps> = ({
     if (ruleType === 'QuestionAnswer') {
       if (!iterationScope) newErrors.iterationScope = 'Iteration scope is required';
       if (!questionPath) newErrors.questionPath = 'Question path is required';
-      if (!answerPath) newErrors.answerPath = 'Answer path is required';
       if (!questionSetId) newErrors.questionSetId = 'Please select a question set';
-      if (!constraint) newErrors.constraint = 'Constraint is required';
     }
 
     if (ruleType === 'FixedValue') {
@@ -447,11 +437,9 @@ export const RuleForm: React.FC<RuleFormProps> = ({
         instanceScope: instanceScope.kind === 'all' ? 'all' : 'first',
         iterationScope,
         questionPath,
-        answerPath,
+        answerPath: 'value[x]',  // ALWAYS hardcoded - answer type comes from QuestionSet
         questionSetId,
         severity,
-        constraint: constraint as QuestionAnswerConstraint,
-        errorCode: computedErrorCode,
         userHint: userHint || undefined,
       });
     } else if (ruleType === 'FixedValue') {
@@ -616,9 +604,7 @@ export const RuleForm: React.FC<RuleFormProps> = ({
             resourceType={resourceType}
             iterationScope={iterationScope}
             questionPath={questionPath}
-            answerPath={answerPath}
             questionSetId={questionSetId}
-            constraint={constraint}
             onIterationScopeChange={(scope) => {
               setIterationScope(scope);
               setErrors({ ...errors, iterationScope: undefined });
@@ -627,24 +613,14 @@ export const RuleForm: React.FC<RuleFormProps> = ({
               setQuestionPath(path);
               setErrors({ ...errors, questionPath: undefined });
             }}
-            onAnswerPathChange={(path) => {
-              setAnswerPath(path);
-              setErrors({ ...errors, answerPath: undefined });
-            }}
             onQuestionSetIdChange={(id) => {
               setQuestionSetId(id);
               setErrors({ ...errors, questionSetId: undefined });
             }}
-            onConstraintChange={(c) => {
-              setConstraint(c);
-              setErrors({ ...errors, constraint: undefined });
-            }}
             errors={{
               iterationScope: errors.iterationScope,
               questionPath: errors.questionPath,
-              answerPath: errors.answerPath,
               questionSetId: errors.questionSetId,
-              constraint: errors.constraint,
             }}
             projectBundle={projectBundle}
             questionSets={questionSets}

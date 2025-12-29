@@ -1,10 +1,8 @@
 import React from 'react';
-import { HelpCircle } from 'lucide-react';
+import { HelpCircle, Info } from 'lucide-react';
 import { QuestionSetSelector } from './QuestionSetSelector';
 import { RelativePathFields } from './RelativePathFields';
 import { FhirPathPreview } from './FhirPathPreview';
-import { QuestionAnswerConstraintSelector } from './QuestionAnswerConstraintSelector';
-import type { QuestionAnswerConstraint } from './QuestionAnswerConstraint.types';
 
 /**
  * QUESTION ANSWER CONFIG SECTION
@@ -12,16 +10,14 @@ import type { QuestionAnswerConstraint } from './QuestionAnswerConstraint.types'
  * Rule-specific configuration for QuestionAnswer rules.
  * ONLY handles rule-specific parameters - NO shared UI (resource, scope, severity).
  * 
- * Responsibilities:
- * - Iteration scope / parent path configuration
- * - Question set selection
- * - Question/Answer path configuration
- * - Constraint selection (REQUIRED, TYPE, RANGE, VALUESET)
- * - Runtime error code info panel
+ * CONTRACT v2 (Contract-Safe):
+ * - QuestionSet is the single source of truth for constraints
+ * - Rule stores ONLY: questionSetId, questionPath, answerPath
+ * - NO answer type selection (inferred from QuestionSet)
+ * - NO constraint selection (defined in QuestionSet)
+ * - errorCode is runtime-determined (not configured)
  * 
  * The parent RuleForm handles: resource, scope (instance), severity, userHint, preview, save/cancel.
- * 
- * NOTE: errorCode is OMITTED from config - QuestionAnswer uses runtime-determined errorCode.
  */
 
 interface QuestionAnswerConfigSectionProps {
@@ -29,20 +25,14 @@ interface QuestionAnswerConfigSectionProps {
   resourceType: string;
   iterationScope: string;
   questionPath: string;
-  answerPath: string;
   questionSetId: string;
-  constraint: QuestionAnswerConstraint | '';
   onIterationScopeChange: (scope: string) => void;
   onQuestionPathChange: (path: string) => void;
-  onAnswerPathChange: (path: string) => void;
   onQuestionSetIdChange: (id: string) => void;
-  onConstraintChange: (constraint: QuestionAnswerConstraint) => void;
   errors?: {
     iterationScope?: string;
     questionPath?: string;
-    answerPath?: string;
     questionSetId?: string;
-    constraint?: string;
   };
   projectBundle?: object;
   questionSets?: any[];
@@ -53,32 +43,53 @@ export const QuestionAnswerConfigSection: React.FC<QuestionAnswerConfigSectionPr
   resourceType,
   iterationScope,
   questionPath,
-  answerPath,
   questionSetId,
-  constraint,
   onIterationScopeChange,
   onQuestionPathChange,
-  onAnswerPathChange,
   onQuestionSetIdChange,
-  onConstraintChange,
   errors = {},
   projectBundle,
   questionSets,
 }) => {
   return (
     <div className="space-y-6">
-      {/* Conceptual Model Hint */}
+      {/* How Question & Answer Mapping Works */}
       <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
         <div className="flex items-start gap-3">
-          <HelpCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-blue-900">
-              How Question & Answer Rules Work
+            <div className="text-sm font-medium text-blue-900 mb-2">
+              How Question & Answer Mapping Works
             </div>
-            <div className="text-xs text-blue-800 mt-1 space-y-1">
-              <div>• <strong>QuestionSet</strong>: Declares what questions exist and what answers are valid</div>
-              <div>• <strong>Rule</strong>: Defines where and how validation runs (can reuse QuestionSets)</div>
-              <div>• <strong>Paths</strong>: Auto-derived from iteration scope, can be overridden if needed</div>
+            <div className="text-xs text-blue-800 space-y-2">
+              <div>
+                <strong>This rule links FHIR data to questions defined in a Question Set.</strong>
+              </div>
+              
+              <div>
+                <div className="font-semibold mb-1">Question identification</div>
+                <ul className="list-disc ml-4 space-y-0.5">
+                  <li>Questions are matched using Coding, Identifier, or LinkId</li>
+                  <li>The system finds the matching question inside the selected Question Set</li>
+                </ul>
+              </div>
+              
+              <div>
+                <div className="font-semibold mb-1">Answer validation</div>
+                <ul className="list-disc ml-4 space-y-0.5">
+                  <li>Allowed answers, data type, and constraints come from the Question Set</li>
+                  <li>This rule does NOT define answer rules</li>
+                </ul>
+              </div>
+              
+              <div>
+                <div className="font-semibold mb-1">Runtime behavior</div>
+                <ul className="list-disc ml-4 space-y-0.5">
+                  <li>If a question is not found → validation fails</li>
+                  <li>If an answer does not match the Question Set → validation fails</li>
+                  <li>Error codes are assigned automatically at runtime</li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
@@ -115,54 +126,34 @@ export const QuestionAnswerConfigSection: React.FC<QuestionAnswerConfigSectionPr
         error={errors.questionSetId}
       />
 
-      {/* Question & Answer Paths */}
+      {/* Question Path */}
       <RelativePathFields
         questionPath={questionPath}
-        answerPath={answerPath}
         onQuestionPathChange={onQuestionPathChange}
-        onAnswerPathChange={onAnswerPathChange}
         errors={{
           questionPath: errors.questionPath,
-          answerPath: errors.answerPath,
         }}
         iterationScope={iterationScope}
       />
 
       {/* Resolved Path Preview */}
-      {iterationScope && (questionPath || answerPath) && (
-        <FhirPathPreview
-          iterationScope={iterationScope}
-          questionPath={questionPath}
-          answerPath={answerPath}
-        />
-      )}
-
-      {/* Constraint Selector */}
-      <QuestionAnswerConstraintSelector
-        value={constraint}
-        onChange={onConstraintChange}
-        error={errors.constraint}
-      />
-
-      {/* Runtime Error Code Info (Contract v1) */}
-      {constraint && (
-        <div className="rounded-md bg-blue-50 border border-blue-200 p-3 text-xs text-blue-900">
-          <div className="font-semibold mb-2 flex items-center gap-2">
-            <HelpCircle className="w-4 h-4" />
-            Runtime Error Code (Automatic)
+      {iterationScope && questionPath && (
+        <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
+          <div className="text-xs font-medium text-gray-700 mb-2">
+            Resolved Paths
           </div>
-          <div className="space-y-1 text-blue-800">
+          <div className="space-y-1 font-mono text-xs text-gray-600">
             <div>
-              The error code is determined automatically at runtime based on the validation outcome. Possible error codes:
+              <span className="text-gray-500">Question Path:</span>{' '}
+              <span className="text-blue-600">{iterationScope}.{questionPath}</span>
             </div>
-            <ul className="list-disc ml-4 mt-2 space-y-0.5">
-              <li><code className="bg-white px-1 py-0.5 rounded text-xs">ANSWER_REQUIRED</code> — Required answer missing</li>
-              <li><code className="bg-white px-1 py-0.5 rounded text-xs">INVALID_ANSWER_VALUE</code> — Answer type/format mismatch</li>
-              <li><code className="bg-white px-1 py-0.5 rounded text-xs">ANSWER_OUT_OF_RANGE</code> — Numeric value outside range</li>
-              <li><code className="bg-white px-1 py-0.5 rounded text-xs">ANSWER_NOT_IN_VALUESET</code> — Code not in allowed ValueSet</li>
-              <li><code className="bg-white px-1 py-0.5 rounded text-xs">QUESTION_NOT_FOUND</code> — Question not in QuestionSet</li>
-              <li><code className="bg-white px-1 py-0.5 rounded text-xs">QUESTIONSET_DATA_MISSING</code> — QuestionSet data unavailable</li>
-            </ul>
+            <div>
+              <span className="text-gray-500">Answer Path:</span>{' '}
+              <span className="text-blue-600">{iterationScope}.value[x]</span>
+            </div>
+          </div>
+          <div className="text-xs text-gray-500 mt-2 italic">
+            Answer type is resolved from the Question Set at runtime
           </div>
         </div>
       )}

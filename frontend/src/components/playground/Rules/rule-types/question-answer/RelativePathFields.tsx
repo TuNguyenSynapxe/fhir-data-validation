@@ -2,16 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { HelpCircle, Code } from 'lucide-react';
 import { validateRelativePath } from './QuestionAnswerRuleHelpers';
 import { QuestionFieldBuilder } from './QuestionFieldBuilder';
-import { AnswerFieldBuilder } from './AnswerFieldBuilder';
 
 interface RelativePathFieldsProps {
   questionPath: string;
-  answerPath: string;
   onQuestionPathChange: (path: string) => void;
-  onAnswerPathChange: (path: string) => void;
   errors?: {
     questionPath?: string;
-    answerPath?: string;
   };
   iterationScope?: string; // Used for the relative scope badge
 }
@@ -23,9 +19,7 @@ interface RelativePathFieldsProps {
  */
 export const RelativePathFields: React.FC<RelativePathFieldsProps> = ({
   questionPath,
-  answerPath,
   onQuestionPathChange,
-  onAnswerPathChange,
   errors = {},
   iterationScope,
 }) => {
@@ -33,7 +27,6 @@ export const RelativePathFields: React.FC<RelativePathFieldsProps> = ({
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
   
   const [questionPathError, setQuestionPathError] = useState<string | null>(null);
-  const [answerPathError, setAnswerPathError] = useState<string | null>(null);
 
   // Validate question path on change
   useEffect(() => {
@@ -45,16 +38,6 @@ export const RelativePathFields: React.FC<RelativePathFieldsProps> = ({
     }
   }, [questionPath]);
 
-  // Validate answer path on change
-  useEffect(() => {
-    if (answerPath) {
-      const validationError = validateRelativePath(answerPath);
-      setAnswerPathError(validationError);
-    } else {
-      setAnswerPathError(null);
-    }
-  }, [answerPath]);
-
   // UI-ONLY: Auto-switch to advanced mode if path looks custom
   useEffect(() => {
     const standardPaths = [
@@ -62,30 +45,19 @@ export const RelativePathFields: React.FC<RelativePathFieldsProps> = ({
       'code.coding[0]',
       'identifier',
       'linkId',
-      'valueQuantity',
-      'valueCodeableConcept',
-      'valueBoolean',
-      'valueString',
-      'valueInteger',
-      'valueDecimal',
-      'value[x]',
     ];
 
     const isQuestionStandard = !questionPath || standardPaths.some(p => 
       questionPath.toLowerCase() === p.toLowerCase()
     );
-    const isAnswerStandard = !answerPath || standardPaths.some(p => 
-      answerPath.toLowerCase() === p.toLowerCase()
-    );
 
-    // If either path is non-standard and we're not already in advanced mode, switch
-    if ((!isQuestionStandard || !isAnswerStandard) && !isAdvancedMode) {
+    // If path is non-standard and we're not already in advanced mode, switch
+    if (!isQuestionStandard && !isAdvancedMode) {
       setIsAdvancedMode(true);
     }
-  }, [questionPath, answerPath, isAdvancedMode]);
+  }, [questionPath, isAdvancedMode]);
 
   const displayQuestionError = errors.questionPath || questionPathError;
-  const displayAnswerError = errors.answerPath || answerPathError;
 
   return (
     <div className="space-y-4">
@@ -156,34 +128,20 @@ export const RelativePathFields: React.FC<RelativePathFieldsProps> = ({
         )}
       </div>
 
-      {/* Answer Path */}
-      <div>
+      {/* Answer Path (Read-Only) */}
+      <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Answer Field <span className="text-red-500">*</span>
+          Answer Path (Auto-Resolved)
         </label>
-        <AnswerFieldBuilder
-          value={answerPath}
-          onChange={onAnswerPathChange}
-          isAdvancedMode={isAdvancedMode}
-          error={displayAnswerError || undefined}
-        />
-        {!isAdvancedMode && (
-          <p className="text-xs text-gray-500 mt-2">
-            The FHIR data type that contains the answer value
-          </p>
-        )}
-        {isAdvancedMode && (
-          <>
-            <p className="text-xs text-gray-500 mt-2">
-              Path to the field containing the answer value (relative to iteration scope)
-            </p>
-            <div className="mt-1 text-xs text-gray-500">
-              Examples: <code className="bg-gray-100 px-1 rounded">value[x]</code>,{' '}
-              <code className="bg-gray-100 px-1 rounded">answer[0].value[x]</code>,{' '}
-              <code className="bg-gray-100 px-1 rounded">valueCodeableConcept</code>
-            </div>
-          </>
-        )}
+        <div className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-md">
+          <code className="text-sm font-mono text-gray-700">value[x]</code>
+          <span className="text-xs text-gray-500">(relative to iteration scope)</span>
+        </div>
+        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-900">
+          <strong>Answer type, allowed values, and constraints are defined in the selected Question Set.</strong>
+          <br />
+          This rule only links questions in FHIR data to Question Set definitions.
+        </div>
       </div>
     </div>
   );

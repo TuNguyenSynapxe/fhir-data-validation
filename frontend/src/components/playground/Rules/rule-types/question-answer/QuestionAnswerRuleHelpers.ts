@@ -20,8 +20,6 @@ interface QuestionAnswerRuleData {
   answerPath: string;
   questionSetId: string;
   severity: 'error' | 'warning' | 'information';
-  constraint: QuestionAnswerConstraint;  // CONSTRAINT-DRIVEN: Authors select constraint
-  errorCode: string;                     // Derived from constraint for backend
   userHint?: string;                     // Optional short hint
   message?: string;                      // DEPRECATED: backward compat only
 }
@@ -29,11 +27,10 @@ interface QuestionAnswerRuleData {
 /**
  * Build a complete Question & Answer rule from form data
  * 
- * CRITICAL CONTRACT (Constraint-Driven):
+ * CRITICAL CONTRACT v2 (Contract-Safe):
  * - questionPath and answerPath MUST be in rule.params
- * - Backend no longer infers or guesses paths
- * - Missing params = validation skipped
- * - constraint drives errorCode (authors never select errorCode directly)
+ * - Backend ignores rule.errorCode (runtime-determined only)
+ * - QuestionSet is the single source of truth for constraints
  */
 export function buildQuestionAnswerRule(data: QuestionAnswerRuleData): Rule {
   const {
@@ -44,8 +41,6 @@ export function buildQuestionAnswerRule(data: QuestionAnswerRuleData): Rule {
     answerPath,
     questionSetId,
     severity,
-    constraint,
-    errorCode,
     userHint,
     message,
   } = data;
@@ -59,7 +54,6 @@ export function buildQuestionAnswerRule(data: QuestionAnswerRuleData): Rule {
     resourceType,
     path: scopedPath,
     severity,
-    errorCode,                    // Derived from constraint
     userHint: userHint || undefined,
     message: message || undefined,   // DEPRECATED: backward compat only
     // CRITICAL: questionPath and answerPath MUST be in params (backend contract)
@@ -67,7 +61,6 @@ export function buildQuestionAnswerRule(data: QuestionAnswerRuleData): Rule {
       questionSetId,
       questionPath,   // ← Backend reads from here (not top-level)
       answerPath,     // ← Backend reads from here (not top-level)
-      constraint,     // ← CONSTRAINT-DRIVEN: Store constraint in params
     },
     origin: 'manual',
     enabled: true,
