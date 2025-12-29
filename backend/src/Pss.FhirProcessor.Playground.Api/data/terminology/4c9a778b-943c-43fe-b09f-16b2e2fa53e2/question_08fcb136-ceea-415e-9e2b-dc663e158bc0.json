@@ -1,0 +1,30 @@
+{
+  "id": "08fcb136-ceea-415e-9e2b-dc663e158bc0",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-C4C4-00000034"
+    },
+    "display": {
+      "value": "Has SMF (Spectacles) applied for the participant?"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": "{\u0022allowedValues\u0022:[\u0022Yes\u0022,\u0022No\u0022],\u0022allowMultiple\u0022:false,\u0022separator\u0022:\u0022,\u0022}"
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Has SMF (Spectacles) applied for the participant?",
+    "description": null,
+    "createdAt": "2025-12-29T13:07:15.441041+00:00",
+    "updatedAt": "2025-12-29T13:07:15.441041+00:00"
+  }
+}

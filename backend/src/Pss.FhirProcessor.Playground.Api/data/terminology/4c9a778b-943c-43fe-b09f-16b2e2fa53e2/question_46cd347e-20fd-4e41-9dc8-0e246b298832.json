@@ -1,0 +1,30 @@
+{
+  "id": "46cd347e-20fd-4e41-9dc8-0e246b298832",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-P4Y1-00000004"
+    },
+    "display": {
+      "value": "Visual Ear Examination (Left Ear)"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": "{\u0022allowedValues\u0022:[\u0022Pass\u0022,\u0022Refer\u0022],\u0022allowMultiple\u0022:false,\u0022separator\u0022:\u0022,\u0022}"
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Visual Ear Examination (Left Ear)",
+    "description": null,
+    "createdAt": "2025-12-29T13:07:15.379692+00:00",
+    "updatedAt": "2025-12-29T13:07:15.379693+00:00"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "f2b9cdd5-9026-45b5-9fe1-77db67780fb1",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-C2S1-00000010"
+    },
+    "display": {
+      "value": "Pure Tone Screening at 40dBHL (Right)"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": "{\u0022allowedValues\u0022:[\u0022500Hz \u2013 R\u0022,\u0022500Hz \u2013 NR\u0022,\u00221000Hz \u2013 R\u0022,\u00221000Hz \u2013 NR\u0022,\u00222000Hz \u2013 R\u0022,\u00222000Hz \u2013 NR\u0022,\u00224000Hz \u2013 R\u0022,\u00224000Hz \u2013 NR\u0022],\u0022allowMultiple\u0022:true,\u0022separator\u0022:\u0022,\u0022}"
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Pure Tone Screening at 40dBHL (Right)",
+    "description": null,
+    "createdAt": "2025-12-29T13:07:15.392785+00:00",
+    "updatedAt": "2025-12-29T13:07:15.392785+00:00"
+  }
+}

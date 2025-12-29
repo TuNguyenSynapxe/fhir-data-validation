@@ -1,0 +1,30 @@
+{
+  "id": "ae6e7d0f-5b13-47d4-84f7-cec15dffbfc8",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-M8Z2-00000011"
+    },
+    "display": {
+      "value": "Does participant have any upcoming appointment with ear specialist?"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": "{\u0022allowedValues\u0022:[\u0022Yes (To continue follow up with ear specialist)\u0022,\u0022No (Refer to L2 Hearing Follow Up if necessary)\u0022],\u0022allowMultiple\u0022:false,\u0022separator\u0022:\u0022,\u0022}"
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Does participant have any upcoming appointment with ear specialist?",
+    "description": null,
+    "createdAt": "2025-12-29T13:07:15.394572+00:00",
+    "updatedAt": "2025-12-29T13:07:15.394572+00:00"
+  }
+}

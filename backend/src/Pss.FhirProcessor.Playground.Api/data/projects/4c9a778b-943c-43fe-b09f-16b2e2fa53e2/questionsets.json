@@ -4,8 +4,153 @@
     "name": "test",
     "description": null,
     "terminologyUrl": "",
-    "questions": [],
+    "questions": [
+      {
+        "questionId": "de9fb7ea-c513-4bdf-a7bb-a959e2ed451a",
+        "required": false
+      },
+      {
+        "questionId": "c15c3a5d-5187-4837-82c5-1337757df328",
+        "required": false
+      },
+      {
+        "questionId": "5e178b36-7976-4158-8874-ba7d4beceac1",
+        "required": false
+      },
+      {
+        "questionId": "46cd347e-20fd-4e41-9dc8-0e246b298832",
+        "required": false
+      },
+      {
+        "questionId": "51770168-b095-430f-b69c-19a2236a0b98",
+        "required": false
+      },
+      {
+        "questionId": "69a9193d-87e4-4594-82c8-d4ab30bebb65",
+        "required": false
+      },
+      {
+        "questionId": "12e74c35-56c4-4f74-a882-ad926c7f2f1b",
+        "required": false
+      },
+      {
+        "questionId": "1d759af7-216d-4c91-922e-296f6eb4fe11",
+        "required": false
+      },
+      {
+        "questionId": "ed229a84-79c5-46c9-ad49-8baf2d8c061e",
+        "required": false
+      },
+      {
+        "questionId": "f2b9cdd5-9026-45b5-9fe1-77db67780fb1",
+        "required": false
+      },
+      {
+        "questionId": "ae6e7d0f-5b13-47d4-84f7-cec15dffbfc8",
+        "required": false
+      },
+      {
+        "questionId": "8a1a83c0-bed1-45f9-ae1b-3b7278e421ee",
+        "required": false
+      },
+      {
+        "questionId": "5279c964-5218-4c8d-aa59-4abdc0a28290",
+        "required": false
+      },
+      {
+        "questionId": "73e6f251-4533-4f27-8d35-4e00d05a7c38",
+        "required": false
+      },
+      {
+        "questionId": "975daea1-3e58-4521-a7d7-e08dab05ffc4",
+        "required": false
+      },
+      {
+        "questionId": "94bef8d8-22fa-49f8-a428-9082be09a7b2",
+        "required": false
+      },
+      {
+        "questionId": "444af929-9782-4e7e-bdad-834e5041203d",
+        "required": false
+      },
+      {
+        "questionId": "4922c1c3-5ffb-4029-8be3-e2d4057ec5fa",
+        "required": false
+      },
+      {
+        "questionId": "35a5f5ee-daaa-48c0-8b33-ab66cd2eac6a",
+        "required": false
+      },
+      {
+        "questionId": "64a73ca1-4c60-46b2-b952-2421379f2fcf",
+        "required": false
+      },
+      {
+        "questionId": "c5fc489a-184d-460a-b363-9e71e4572fed",
+        "required": false
+      },
+      {
+        "questionId": "069efadb-426f-4ab7-aeed-92c84423cf8f",
+        "required": false
+      },
+      {
+        "questionId": "4a4fb06a-5cc1-4897-bff6-1e8887e5bf3b",
+        "required": false
+      },
+      {
+        "questionId": "f6450575-e9e8-42ce-b177-344f84e8f6e3",
+        "required": false
+      },
+      {
+        "questionId": "f517a980-0107-40d4-9684-3d77cdbce836",
+        "required": false
+      },
+      {
+        "questionId": "cfa646bf-604f-456c-8234-06b59f1a3e12",
+        "required": false
+      },
+      {
+        "questionId": "491e93fa-725d-4339-bdb1-475cc78f7bb0",
+        "required": false
+      },
+      {
+        "questionId": "f51ce776-5038-410e-8401-60260c7b7255",
+        "required": false
+      },
+      {
+        "questionId": "283ead9c-3053-49d1-bcd9-562c66e20ec1",
+        "required": false
+      },
+      {
+        "questionId": "8df64bff-d761-4e44-aa3c-adf7900457ad",
+        "required": false
+      },
+      {
+        "questionId": "d64dfa2c-cf7a-409b-b89f-16e2d430f851",
+        "required": false
+      },
+      {
+        "questionId": "a315db05-4be4-4e55-834b-a16152a8f9a9",
+        "required": false
+      },
+      {
+        "questionId": "8433759d-a92a-432a-9ec9-249aa49f03e5",
+        "required": false
+      },
+      {
+        "questionId": "08fcb136-ceea-415e-9e2b-dc663e158bc0",
+        "required": false
+      },
+      {
+        "questionId": "dd4590db-e6d6-4ccb-a3ab-7881e397499f",
+        "required": false
+      },
+      {
+        "questionId": "23a58a35-faf5-48ef-8447-6affa4381f2f",
+        "required": false
+      }
+    ],
     "createdAt": "2025-12-29T07:40:43.100379+00:00",
-    "updatedAt": "2025-12-29T07:40:43.100442+00:00"
+    "updatedAt": "2025-12-29T13:07:15.46862+00:00"
   }
 ]

@@ -1,0 +1,30 @@
+{
+  "id": "64a73ca1-4c60-46b2-b952-2421379f2fcf",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-M3F4-00000020"
+    },
+    "display": {
+      "value": "Within the past 12 months, have you found it difficult to eat any foods because of problems with your teeth, mouth or dentures?"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": "{\u0022allowedValues\u0022:[\u0022Yes\u0022,\u0022No\u0022],\u0022allowMultiple\u0022:false,\u0022separator\u0022:\u0022,\u0022}"
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Within the past 12 months, have you found it difficult to eat any foods because of problems with your teeth, mouth or dentures?",
+    "description": null,
+    "createdAt": "2025-12-29T13:07:15.411643+00:00",
+    "updatedAt": "2025-12-29T13:07:15.411643+00:00"
+  }
+}

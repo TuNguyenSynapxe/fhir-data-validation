@@ -1,0 +1,30 @@
+{
+  "id": "975daea1-3e58-4521-a7d7-e08dab05ffc4",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-X7V6-00000015"
+    },
+    "display": {
+      "value": "Placement of Denture (Upper)"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": "{\u0022allowedValues\u0022:[\u0022Upper (partial)\u0022,\u0022Upper (full)\u0022],\u0022allowMultiple\u0022:false,\u0022separator\u0022:\u0022,\u0022}"
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Placement of Denture (Upper)",
+    "description": null,
+    "createdAt": "2025-12-29T13:07:15.402659+00:00",
+    "updatedAt": "2025-12-29T13:07:15.402659+00:00"
+  }
+}

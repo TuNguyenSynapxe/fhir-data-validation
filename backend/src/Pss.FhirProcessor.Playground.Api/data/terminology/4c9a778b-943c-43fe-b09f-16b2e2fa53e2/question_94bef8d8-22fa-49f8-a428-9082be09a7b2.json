@@ -1,0 +1,30 @@
+{
+  "id": "94bef8d8-22fa-49f8-a428-9082be09a7b2",
+  "code": {
+    "system": {
+      "value": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire"
+    },
+    "code": {
+      "value": "SQ-V1K0-00000016"
+    },
+    "display": {
+      "value": "Placement of Denture (Lower)"
+    }
+  },
+  "answerType": 4,
+  "unit": null,
+  "constraints": {
+    "min": null,
+    "max": null,
+    "precision": null,
+    "maxLength": null,
+    "regex": "{\u0022allowedValues\u0022:[\u0022Lower (partial)\u0022,\u0022Lower (full)\u0022],\u0022allowMultiple\u0022:false,\u0022separator\u0022:\u0022,\u0022}"
+  },
+  "valueSet": null,
+  "metadata": {
+    "text": "Placement of Denture (Lower)",
+    "description": null,
+    "createdAt": "2025-12-29T13:07:15.404198+00:00",
+    "updatedAt": "2025-12-29T13:07:15.404198+00:00"
+  }
+}
