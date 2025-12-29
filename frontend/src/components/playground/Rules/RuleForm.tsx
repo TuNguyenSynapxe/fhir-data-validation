@@ -17,7 +17,6 @@ import { FixedValueConfigSection } from './rule-types/fixed-value/FixedValueConf
 import { AllowedValuesConfigSection } from './rule-types/allowed-values/AllowedValuesConfigSection';
 import { ArrayLengthConfigSection } from './rule-types/array-length/ArrayLengthConfigSection';
 import { CustomFHIRPathConfigSection } from './rule-types/custom-fhirpath/CustomFHIRPathConfigSection';
-import { RequiredResourcesConfigSection, type ResourceRequirement as LegacyResourceRequirement } from './rule-types/required-resources/RequiredResourcesConfigSection';
 import { ResourceConfigSection, type ResourceRequirement } from './rule-types/resource/ResourceConfigSection';
 import { buildRequiredRule } from './rule-types/required/RequiredRuleHelpers';
 import { buildPatternRule } from './rule-types/pattern/PatternRuleHelpers';
@@ -26,7 +25,6 @@ import { buildFixedValueRule } from './rule-types/fixed-value/FixedValueRuleHelp
 import { buildAllowedValuesRule } from './rule-types/allowed-values/AllowedValuesRuleHelpers';
 import { buildArrayLengthRule } from './rule-types/array-length/ArrayLengthRuleHelpers';
 import { buildCustomFHIRPathRule, parseCustomFHIRPathRule } from './rule-types/custom-fhirpath/CustomFHIRPathRuleHelpers';
-import { buildRequiredResourcesRule, parseRequiredResourcesRule } from './rule-types/required-resources/RequiredResourcesRuleHelpers';
 import { buildResourceRule, parseResourceRule } from './rule-types/resource/ResourceRuleHelpers';
 import type { Rule } from '../../../types/rightPanelProps';
 import type { QuestionAnswerConstraint } from './rule-types/question-answer/QuestionAnswerConstraint.types';
@@ -52,7 +50,7 @@ import { CONSTRAINT_TO_ERROR_CODE } from './rule-types/question-answer/QuestionA
  * ✅ ErrorCode logic is centralized in this component
  */
 
-type RuleType = 'Required' | 'Regex' | 'QuestionAnswer' | 'FixedValue' | 'AllowedValues' | 'ArrayLength' | 'CustomFHIRPath' | 'RequiredResources' | 'Resource';
+type RuleType = 'Required' | 'Regex' | 'QuestionAnswer' | 'FixedValue' | 'AllowedValues' | 'ArrayLength' | 'CustomFHIRPath' | 'Resource';
 
 interface RuleFormProps {
   mode: 'create' | 'edit';
@@ -70,7 +68,7 @@ interface RuleFormProps {
 type ErrorCodeMode = 'fixed' | 'governed' | 'runtime-determined';
 
 const getErrorCodeMode = (ruleType: RuleType): ErrorCodeMode => {
-  if (ruleType === 'Required' || ruleType === 'Regex' || ruleType === 'FixedValue' || ruleType === 'AllowedValues' || ruleType === 'ArrayLength' || ruleType === 'RequiredResources' || ruleType === 'Resource') return 'fixed';
+  if (ruleType === 'Required' || ruleType === 'Regex' || ruleType === 'FixedValue' || ruleType === 'AllowedValues' || ruleType === 'ArrayLength' || ruleType === 'Resource') return 'fixed';
   if (ruleType === 'QuestionAnswer') return 'runtime-determined';
   if (ruleType === 'CustomFHIRPath') return 'governed';
   return 'fixed';
@@ -82,7 +80,6 @@ const getFixedErrorCode = (ruleType: RuleType): string => {
   if (ruleType === 'FixedValue') return 'FIXED_VALUE_MISMATCH';
   if (ruleType === 'AllowedValues') return 'VALUE_NOT_ALLOWED';
   if (ruleType === 'ArrayLength') return 'ARRAY_LENGTH_VIOLATION';
-  if (ruleType === 'RequiredResources') return 'REQUIRED_RESOURCE_MISSING';
   if (ruleType === 'Resource') return 'RESOURCE_REQUIREMENT_VIOLATION';
   return '';
 };
@@ -95,7 +92,6 @@ const RULE_TYPE_LABELS = {
   AllowedValues: 'Allowed Values',
   ArrayLength: 'Array Length',
   CustomFHIRPath: 'Custom FHIRPath',
-  RequiredResources: 'Required Resources',
   Resource: 'Resource (Bundle Composition)',
 };
 
@@ -107,7 +103,6 @@ const RULE_TYPE_DESCRIPTIONS = {
   AllowedValues: 'Validate that a field value is within a predefined set of allowed values',
   ArrayLength: 'Validate that an array has a minimum and/or maximum number of elements',
   CustomFHIRPath: 'Custom validation logic using FHIRPath expressions',
-  RequiredResources: 'Ensure specific resources exist in the bundle, with optional exact counts',
   Resource: 'Define complete bundle composition with resource requirements and attribute filters',
 };
 
@@ -165,9 +160,6 @@ export const RuleForm: React.FC<RuleFormProps> = ({
   // CustomFHIRPath
   const [customExpression, setCustomExpression] = useState<string>('');
   const [customErrorCode, setCustomErrorCode] = useState<string>('');
-
-  // RequiredResources
-  const [resourceRequirements, setResourceRequirements] = useState<LegacyResourceRequirement[]>([]);
 
   // Resource (new unified bundle rule)
   const [requirements, setRequirements] = useState<ResourceRequirement[]>([]);
@@ -254,11 +246,6 @@ export const RuleForm: React.FC<RuleFormProps> = ({
         setGovernedErrorCode(parsed.errorCode);
       }
 
-      if (ruleType === 'RequiredResources' && initialRule) {
-        const parsed = parseRequiredResourcesRule(initialRule as Rule);
-        setResourceRequirements(parsed.requirements);
-      }
-
       if (ruleType === 'Resource' && initialRule) {
         const parsed = parseResourceRule(initialRule as Rule);
         setRequirements(parsed.requirements);
@@ -342,27 +329,6 @@ export const RuleForm: React.FC<RuleFormProps> = ({
     if (ruleType === 'CustomFHIRPath') {
       if (!customExpression) newErrors.expression = 'FHIRPath expression is required';
       if (!customErrorCode) newErrors.errorCode = 'Error code is required';
-    }
-
-    if (ruleType === 'RequiredResources') {
-      if (resourceRequirements.length === 0) {
-        newErrors.requirements = 'At least one resource requirement is required';
-      }
-      // Validate each requirement
-      resourceRequirements.forEach((req, index) => {
-        if (!req.resourceType) {
-          newErrors[`requirement_${index}`] = 'Resource type is required';
-        }
-        if (req.count < 1) {
-          newErrors[`requirement_${index}`] = 'Count must be at least 1';
-        }
-      });
-      // Check for duplicate resourceTypes
-      const resourceTypes = resourceRequirements.map(r => r.resourceType);
-      const duplicates = resourceTypes.filter((item, index) => resourceTypes.indexOf(item) !== index);
-      if (duplicates.length > 0) {
-        newErrors.requirements = `Duplicate resource types: ${duplicates.join(', ')}`;
-      }
     }
 
     if (ruleType === 'Resource') {
@@ -503,12 +469,6 @@ export const RuleForm: React.FC<RuleFormProps> = ({
         severity,
         userHint: userHint || undefined,
       });
-    } else if (ruleType === 'RequiredResources') {
-      rule = buildRequiredResourcesRule({
-        requirements: resourceRequirements,
-        severity,
-        userHint: userHint || undefined,
-      });
     } else if (ruleType === 'Resource') {
       rule = buildResourceRule({
         requirements: requirements,
@@ -552,7 +512,7 @@ export const RuleForm: React.FC<RuleFormProps> = ({
       {/* Form Body */}
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 overscroll-contain">
         {/* 1️⃣ SHARED: Resource Selector (hidden for bundle-level rules) */}
-        {ruleType !== 'RequiredResources' && ruleType !== 'Resource' && (
+        {ruleType !== 'Resource' && (
           <ResourceSelector
             value={resourceType}
             onChange={setResourceType}
@@ -562,7 +522,7 @@ export const RuleForm: React.FC<RuleFormProps> = ({
         )}
 
         {/* 2️⃣ SHARED: Rule Scope Selector (hidden for bundle-level rules) */}
-        {ruleType !== 'RequiredResources' && ruleType !== 'Resource' && (
+        {ruleType !== 'Resource' && (
           <RuleScopeSelector
             resourceType={resourceType}
             value={instanceScope}
@@ -745,18 +705,6 @@ export const RuleForm: React.FC<RuleFormProps> = ({
               errorCode: errors.errorCode,
             }}
             resourceType={resourceType}
-          />
-        )}
-
-        {ruleType === 'RequiredResources' && (
-          <RequiredResourcesConfigSection
-            requirements={resourceRequirements}
-            onRequirementsChange={(reqs) => {
-              setResourceRequirements(reqs);
-              setErrors({ ...errors, requirements: undefined });
-            }}
-            errors={errors}
-            projectBundle={projectBundle}
           />
         )}
 

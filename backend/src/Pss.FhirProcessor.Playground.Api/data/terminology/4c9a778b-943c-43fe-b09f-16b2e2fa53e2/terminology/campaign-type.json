@@ -1,0 +1,22 @@
+{
+  "url": "https://fhir.synapxe.sg/CodeSystem/campaign-type",
+  "version": null,
+  "name": "campaign-type",
+  "title": null,
+  "status": "active",
+  "description": null,
+  "publisher": null,
+  "content": "complete",
+  "count": null,
+  "concept": [
+    {
+      "code": "silver-screening-assessment",
+      "display": "Silver Screening Assessment",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    }
+  ],
+  "meta": null
+}

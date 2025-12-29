@@ -1,0 +1,30 @@
+{
+  "url": "https://fhir.synapxe.sg/CodeSystem/residential-status",
+  "version": null,
+  "name": "residential-status",
+  "title": null,
+  "status": "active",
+  "description": null,
+  "publisher": null,
+  "content": "complete",
+  "count": null,
+  "concept": [
+    {
+      "code": "C",
+      "display": "Singaporean",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "P",
+      "display": "Singapore PR",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    }
+  ],
+  "meta": null
+}

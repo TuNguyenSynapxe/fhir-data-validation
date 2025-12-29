@@ -1,7 +1,7 @@
 import React from 'react';
 import { CheckCircle, HelpCircle, FileText, Lock, FileCheck, List, Ruler, Code, Package, Layers } from 'lucide-react';
 
-export type RuleTypeOption = 'required' | 'questionAnswer' | 'pattern' | 'fixedValue' | 'allowedValues' | 'arrayLength' | 'customFhirPath' | 'requiredResources' | 'resource';
+export type RuleTypeOption = 'required' | 'questionAnswer' | 'pattern' | 'fixedValue' | 'allowedValues' | 'arrayLength' | 'customFhirPath' | 'resource';
 
 interface RuleTypeSelectorProps {
   onSelectType: (type: RuleTypeOption) => void;
@@ -33,14 +33,6 @@ const ruleTypes = [
     description: 'Validate field values against patterns or formats',
     enabled: true,
     priority: 'high' as const, // Visual emphasis
-  },
-  {
-    id: 'requiredResources' as const,
-    icon: Package,
-    title: 'Required Resources (Legacy)',
-    description: 'Ensure specific resources exist in the bundle, with optional exact counts',
-    enabled: true,
-    priority: 'normal' as const,
   },
   {
     id: 'resource' as const,
@@ -85,14 +77,11 @@ const ruleTypes = [
 ];
 
 export const RuleTypeSelector: React.FC<RuleTypeSelectorProps> = ({ onSelectType, existingRules = [] }) => {
-  // Check if RequiredResources or Resource rule already exists (only one bundle rule allowed per project)
-  const hasRequiredResourcesRule = existingRules.some(
-    (rule) => rule.type.toLowerCase() === 'requiredresources'
-  );
+  // Check if Resource rule already exists (only one bundle rule allowed per project)
   const hasResourceRule = existingRules.some(
     (rule) => rule.type.toLowerCase() === 'resource'
   );
-  const hasBundleRule = hasRequiredResourcesRule || hasResourceRule;
+  const hasBundleRule = hasResourceRule;
 
   return (
     <div>
@@ -106,9 +95,9 @@ export const RuleTypeSelector: React.FC<RuleTypeSelectorProps> = ({ onSelectType
           const Icon = ruleType.icon;
           // Disable bundle rules if one already exists
           const isDisabled = !ruleType.enabled || 
-            ((ruleType.id === 'requiredResources' || ruleType.id === 'resource') && hasBundleRule);
+            (ruleType.id === 'resource' && hasBundleRule);
           const isHighPriority = ruleType.priority === 'high';
-          const disabledReason = (ruleType.id === 'requiredResources' || ruleType.id === 'resource') && hasBundleRule
+          const disabledReason = ruleType.id === 'resource' && hasBundleRule
             ? 'Only one bundle-level rule is allowed per project.'
             : undefined;
 

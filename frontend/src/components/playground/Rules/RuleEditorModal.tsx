@@ -78,8 +78,8 @@ export const RuleEditorModal: React.FC<RuleEditorModalProps> = ({
   projectId,
 }) => {
   // === UNIFIED RULE FORM ROUTING ===
-  // Route Required, Regex, QuestionAnswer, FixedValue, AllowedValues, ArrayLength, CustomFHIRPath, RequiredResources, Resource to RuleForm
-  if (rule && ['Required', 'Regex', 'QuestionAnswer', 'FixedValue', 'AllowedValues', 'ArrayLength', 'CustomFHIRPath', 'RequiredResources', 'Resource'].includes(rule.type)) {
+  // Route Required, Regex, QuestionAnswer, FixedValue, AllowedValues, ArrayLength, CustomFHIRPath, Resource to RuleForm
+  if (rule && ['Required', 'Regex', 'QuestionAnswer', 'FixedValue', 'AllowedValues', 'ArrayLength', 'CustomFHIRPath', 'Resource'].includes(rule.type)) {
     if (!isOpen) return null;
     
     return (
@@ -91,7 +91,7 @@ export const RuleEditorModal: React.FC<RuleEditorModalProps> = ({
         <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl h-full max-h-[90vh] overflow-hidden flex flex-col">
           <RuleForm
             mode="edit"
-            ruleType={rule.type as 'Required' | 'Regex' | 'QuestionAnswer' | 'FixedValue' | 'AllowedValues' | 'ArrayLength' | 'CustomFHIRPath' | 'RequiredResources' | 'Resource'}
+            ruleType={rule.type as 'Required' | 'Regex' | 'QuestionAnswer' | 'FixedValue' | 'AllowedValues' | 'ArrayLength' | 'CustomFHIRPath' | 'Resource'}
             initialRule={rule}
             onCancel={onClose}
             onSave={onSave}

@@ -356,9 +356,10 @@ frontend/src/components/playground/Rules/
 - ✅ Edit mode uses same UI as create mode (no outdated UI)
 
 ### Phase 3: Delete Legacy Forms
-- [ ] Delete RequiredRuleForm.tsx
-- [ ] Delete PatternRuleForm.tsx
-- [ ] Delete QuestionAnswerRuleForm.tsx
+- ✅ Delete legacy RequiredResources (replaced by unified Resource rule)
+- [ ] Delete RequiredRuleForm.tsx (if not already using unified RuleForm)
+- [ ] Delete PatternRuleForm.tsx (if not already using unified RuleForm)
+- [ ] Delete QuestionAnswerRuleForm.tsx (if not already using unified RuleForm)
 - [ ] Update imports throughout codebase
 
 ### Phase 4: Add More Rule Types
@@ -443,7 +444,8 @@ frontend/src/components/playground/Rules/
 
 ---
 
-**Status:** ✅ ARCHITECTURE COMPLETE (Wiring & Testing Pending)  
-**Date:** 28 December 2025  
+**Status:** ✅ ARCHITECTURE COMPLETE + LEGACY CLEANUP  
+**Date:** 29 December 2025  
 **Files Created:** 10 (RuleForm + 5 shared + 3 config + 1 export update)  
-**Breaking Changes:** None (legacy forms preserved for now)
+**Files Deleted:** Legacy RequiredResources (RequiredResourcesConfigSection.tsx, RequiredResourcesRuleHelpers.ts)  
+**Breaking Changes:** None (backend still supports RequiredResources type for backward compatibility)

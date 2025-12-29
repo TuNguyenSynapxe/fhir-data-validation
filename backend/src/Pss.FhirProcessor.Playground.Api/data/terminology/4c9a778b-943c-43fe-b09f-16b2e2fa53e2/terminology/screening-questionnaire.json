@@ -1,0 +1,302 @@
+{
+  "url": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire",
+  "version": null,
+  "name": "screening-questionnaire",
+  "title": null,
+  "status": "active",
+  "description": null,
+  "publisher": null,
+  "content": "complete",
+  "count": null,
+  "concept": [
+    {
+      "code": "SQ-L2H9-00000001",
+      "display": "Is the participant currently wearing hearing aid(s)?",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-Q1P1-00000002",
+      "display": "Do participant need to change your hearing aid(s)?",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-R5W8-00000003",
+      "display": "Did participant proceed with Hearing Screening?",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-P4Y1-00000004",
+      "display": "Visual Ear Examination (Left Ear)",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-S7Q0-00000005",
+      "display": "Visual Ear Examination (Right Ear)",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-J3J4-00000006",
+      "display": "Practice Tone (500Hz at 60dB in better ear)",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-F7B7-00000007",
+      "display": "Pure Tone Screening at 25dBHL (Left)",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-B7P7-00000008",
+      "display": "Pure Tone Screening at 25dBHL (Right)",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-C1M5-00000009",
+      "display": "Pure Tone Screening at 40dBHL (Left)",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-C2S1-00000010",
+      "display": "Pure Tone Screening at 40dBHL (Right)",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-M8Z2-00000011",
+      "display": "Does participant have any upcoming appointment with ear specialist?",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-D3S4-00000012",
+      "display": "Does the participant require to refer to L2 Hearing?",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-L6T4-00000013",
+      "display": "Does the participant agree to proceed with L2 Hearing?",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-J1V1-00000014",
+      "display": "Is the participant currently wearing dentures or has dentures?",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-X7V6-00000015",
+      "display": "Placement of Denture (Upper)",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-V1K0-00000016",
+      "display": "Placement of Denture (Lower)",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-D7V0-00000017",
+      "display": "Did participant proceed with Oral Screening?",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-V0X0-00000018",
+      "display": "Do you have any dental pain on a scale of 1 to 10? (On a scale of 1-10, 1 being not painful at all and 10 being extremely painful)",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-J6Q3-00000019",
+      "display": "Within the past 12 months, have you had any trouble speaking because of problems with your teeth, mouth or dentures?",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-M3F4-00000020",
+      "display": "Within the past 12 months, have you found it difficult to eat any foods because of problems with your teeth, mouth or dentures?",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-S3K2-00000021",
+      "display": "OHAT Status",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-X4H3-00000022",
+      "display": "Does participant have any upcoming appointment with any dentist?",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-H6B2-00000023",
+      "display": "Does the participant require to refer to L2 Oral?",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-Y3R0-00000024",
+      "display": "Does the participant agree to proceed with L2 Oral?",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-X1V3-00000025",
+      "display": "Is the participant currently wearing spectacles?",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-Z6G5-00000026",
+      "display": "Did participant proceed with Vision Screening?",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-R1R7-00000027",
+      "display": "Snellen Test (Right Eye)\n(Please test the right eye first)",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-F6X7-00000028",
+      "display": "Snellen Test (Left Eye)",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-L9J4-00000029",
+      "display": "Pinhole Test (Right Eye)\n(If Snellen is worse than 6/12, please continue with Pinhole and test the right eye first)",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-Z2W8-00000030",
+      "display": "Pinhole Test (Left Eye)",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-K8L7-00000031",
+      "display": "Does participant have any upcoming appointment with any eye specialist or eye review at polyclinic or CHAS GP clinics?",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-G0W6-00000032",
+      "display": "Does the participant require new spectacles?",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-H4N6-00000033",
+      "display": "Is the participant eligible for SMF (Spectacles)?",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-C4C4-00000034",
+      "display": "Has SMF (Spectacles) applied for the participant?",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-T6W1-00000035",
+      "display": "Does the participant require to refer to L2 Vision?",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "SQ-F1T3-00000036",
+      "display": "Does the participant agree to proceed with L2 Vision?",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    }
+  ],
+  "meta": null
+}

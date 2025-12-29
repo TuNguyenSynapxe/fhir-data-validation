@@ -1,0 +1,46 @@
+{
+  "url": "https://fhir.synapxe.sg/CodeSystem/language",
+  "version": null,
+  "name": "language",
+  "title": null,
+  "status": "active",
+  "description": null,
+  "publisher": null,
+  "content": "complete",
+  "count": null,
+  "concept": [
+    {
+      "code": "CN",
+      "display": "Mandarin/Dialect",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "MY",
+      "display": "Malay",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "EN",
+      "display": "English",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    },
+    {
+      "code": "IN",
+      "display": "Tamil",
+      "definition": null,
+      "designation": null,
+      "property": null,
+      "concept": null
+    }
+  ],
+  "meta": null
+}
