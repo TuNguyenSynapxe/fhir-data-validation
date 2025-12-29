@@ -350,9 +350,10 @@ frontend/src/components/playground/Rules/
 - ⚠️ Legacy forms still exist (RequiredRuleForm.tsx, PatternRuleForm.tsx, QuestionAnswerRuleForm.tsx)
 
 ### Phase 2: Wire RuleForm into Entry Points
-- [ ] Update RuleBuilder to use RuleForm for create flow
-- [ ] Update RuleEditorModal to use RuleForm for edit flow
-- [ ] Verify all rule types work with RuleForm
+- ✅ Updated RuleBuilder to use RuleForm for create flow
+- ✅ Updated RuleEditorModal to use RuleForm for edit flow
+- ✅ All rule types (Required, Regex, QuestionAnswer, FixedValue, AllowedValues, ArrayLength, CustomFHIRPath, RequiredResources, Resource) routed to RuleForm
+- ✅ Edit mode uses same UI as create mode (no outdated UI)
 
 ### Phase 3: Delete Legacy Forms
 - [ ] Delete RequiredRuleForm.tsx
