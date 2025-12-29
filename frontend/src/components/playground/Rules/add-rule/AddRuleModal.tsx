@@ -1,10 +1,21 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { RuleTypeSelector, type RuleTypeOption } from './RuleTypeSelector';
-import { RequiredRuleForm } from '../rule-types/required';
-import { QuestionAnswerRuleForm } from '../rule-types/question-answer';
-import { PatternRuleForm } from '../rule-types/pattern';
+import { RuleForm } from '../RuleForm';
 import type { Rule } from '../../../../types/rightPanelProps';
+
+/**
+ * ADD RULE MODAL
+ * 
+ * ARCHITECTURE:
+ * - Step 1: Select rule type (RuleTypeSelector)
+ * - Step 2: Configure rule (RuleForm with mode="create")
+ * 
+ * UNIFIED RULE AUTHORING:
+ * - ALL rule types use RuleForm.tsx
+ * - NO rule-specific create forms
+ * - RuleForm determines which ConfigSection to render based on ruleType
+ */
 
 interface AddRuleModalProps {
   isOpen: boolean;
@@ -53,7 +64,7 @@ export const AddRuleModal: React.FC<AddRuleModalProps> = ({
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl h-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl h-full max-h-[90vh] overflow-hidden flex flex-col">
         {selectedRuleType === null ? (
           <>
             {/* Header */}
@@ -83,28 +94,72 @@ export const AddRuleModal: React.FC<AddRuleModalProps> = ({
             </div>
           </>
         ) : selectedRuleType === 'required' ? (
-          <RequiredRuleForm
+          <RuleForm
+            mode="create"
+            ruleType="Required"
             onCancel={handleCancel}
             onSave={handleSave}
             projectBundle={projectBundle}
             hl7Samples={hl7Samples}
-            initialResourceType={selectedResourceType}
+            projectId={projectId}
           />
         ) : selectedRuleType === 'questionAnswer' ? (
-          <QuestionAnswerRuleForm
-            projectId={projectId || ''}
+          <RuleForm
+            mode="create"
+            ruleType="QuestionAnswer"
             onCancel={handleCancel}
             onSave={handleSave}
             projectBundle={projectBundle}
-            initialResourceType={selectedResourceType}
+            projectId={projectId}
           />
         ) : selectedRuleType === 'pattern' ? (
-          <PatternRuleForm
+          <RuleForm
+            mode="create"
+            ruleType="Regex"
             onCancel={handleCancel}
             onSave={handleSave}
             projectBundle={projectBundle}
             hl7Samples={hl7Samples}
-            initialResourceType={selectedResourceType}
+            projectId={projectId}
+          />
+        ) : selectedRuleType === 'fixedValue' ? (
+          <RuleForm
+            mode="create"
+            ruleType="FixedValue"
+            onCancel={handleCancel}
+            onSave={handleSave}
+            projectBundle={projectBundle}
+            hl7Samples={hl7Samples}
+            projectId={projectId}
+          />
+        ) : selectedRuleType === 'allowedValues' ? (
+          <RuleForm
+            mode="create"
+            ruleType="AllowedValues"
+            onCancel={handleCancel}
+            onSave={handleSave}
+            projectBundle={projectBundle}
+            hl7Samples={hl7Samples}
+            projectId={projectId}
+          />
+        ) : selectedRuleType === 'arrayLength' ? (
+          <RuleForm
+            mode="create"
+            ruleType="ArrayLength"
+            onCancel={handleCancel}
+            onSave={handleSave}
+            projectBundle={projectBundle}
+            hl7Samples={hl7Samples}
+            projectId={projectId}
+          />
+        ) : selectedRuleType === 'customFhirPath' ? (
+          <RuleForm
+            mode="create"
+            ruleType="CustomFHIRPath"
+            onCancel={handleCancel}
+            onSave={handleSave}
+            projectBundle={projectBundle}
+            projectId={projectId}
           />
         ) : null}
       </div>

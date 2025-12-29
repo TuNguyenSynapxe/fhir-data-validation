@@ -2,15 +2,25 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, AlertCircle } from 'lucide-react';
 import FhirPathSelectorDrawer from '../../rules/FhirPathSelectorDrawer';
 import { MessageEditor } from '../MessageEditor';
+import { RuleForm } from './RuleForm';
 import { 
   generateDefaultMessage, 
   type RuleContext 
 } from '../../../utils/ruleMessageTemplates';
 import type { Rule } from '../../../types/rightPanelProps';
 
-// ⚠️ LEGACY: Used only for editing existing rules.
-// New rule creation is handled by rule-type-specific forms.
-// See: src/components/playground/Rules/rule-types/
+/**
+ * RULE EDITOR MODAL
+ * 
+ * ARCHITECTURE (UNIFIED):
+ * - Required, Regex, QuestionAnswer → RuleForm with mode="edit"
+ * - Legacy rule types (FixedValue, AllowedValues, CodeSystem, etc.) → Legacy editor (below)
+ * 
+ * MIGRATION PATH:
+ * - Phase 1: Route Required/Regex/QuestionAnswer to RuleForm ✅
+ * - Phase 2: Migrate remaining rule types to RuleForm config sections
+ * - Phase 3: Delete legacy editor entirely
+ */
 
 interface RuleEditorModalProps {
   rule: Rule | null;
@@ -19,6 +29,7 @@ interface RuleEditorModalProps {
   onSave: (rule: Rule) => void;
   projectBundle?: object;
   hl7Samples?: any[];
+  projectId?: string;
 }
 
 // Backend-supported rule types (EXACT match with FhirPathRuleEngine.cs)
@@ -64,7 +75,36 @@ export const RuleEditorModal: React.FC<RuleEditorModalProps> = ({
   onSave,
   projectBundle,
   hl7Samples,
+  projectId,
 }) => {
+  // === UNIFIED RULE FORM ROUTING ===
+  // Route Required, Regex, QuestionAnswer, FixedValue, AllowedValues, ArrayLength, CustomFHIRPath to RuleForm
+  if (rule && ['Required', 'Regex', 'QuestionAnswer', 'FixedValue', 'AllowedValues', 'ArrayLength', 'CustomFHIRPath'].includes(rule.type)) {
+    if (!isOpen) return null;
+    
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div
+          className="absolute inset-0 bg-black bg-opacity-50"
+          onClick={onClose}
+        />
+        <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl h-full max-h-[90vh] overflow-hidden flex flex-col">
+          <RuleForm
+            mode="edit"
+            ruleType={rule.type as 'Required' | 'Regex' | 'QuestionAnswer' | 'FixedValue' | 'AllowedValues' | 'ArrayLength' | 'CustomFHIRPath'}
+            initialRule={rule}
+            onCancel={onClose}
+            onSave={onSave}
+            projectBundle={projectBundle}
+            hl7Samples={hl7Samples}
+            projectId={projectId}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // === LEGACY EDITOR (for CodeSystem, etc.) ===
   const [formData, setFormData] = useState<Rule>({
     id: '',
     type: 'Required',

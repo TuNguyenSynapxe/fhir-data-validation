@@ -60,14 +60,26 @@ function composeFhirPath(
   // Get base scope path (e.g., "Patient[*]", "Observation[0]", "Patient.where(...)")
   const scopePath = composeInstanceScopedPath(resourceType, instanceScope);
   
-  // If fieldPath already contains the resource type, extract relative part
-  if (fieldPath.startsWith(resourceType + '.')) {
-    const relativePart = fieldPath.substring(resourceType.length + 1);
-    return `${scopePath}.${relativePart}`;
+  // If fieldPath starts with resourceType, extract the relative field path
+  // e.g., "Patient[*].id" → "id" or "Patient.id" → "id"
+  const resourcePrefix = resourceType + '[';
+  const resourceDotPrefix = resourceType + '.';
+  
+  let relativePath = fieldPath;
+  
+  if (fieldPath.startsWith(resourcePrefix)) {
+    // Handle "Patient[*].id" → extract "id"
+    const afterBracket = fieldPath.indexOf('].', resourceType.length);
+    if (afterBracket > -1) {
+      relativePath = fieldPath.substring(afterBracket + 2); // Skip '].
+    }
+  } else if (fieldPath.startsWith(resourceDotPrefix)) {
+    // Handle "Patient.id" → extract "id"
+    relativePath = fieldPath.substring(resourceDotPrefix.length);
   }
   
-  // fieldPath is relative, append directly
-  return `${scopePath}.${fieldPath}`;
+  // Compose final path: scopePath + relativePath
+  return `${scopePath}.${relativePath}`;
 }
 
 /**

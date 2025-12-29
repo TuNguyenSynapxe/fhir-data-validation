@@ -44,7 +44,7 @@ export function buildPatternRule(data: PatternRuleData): Rule {
   } = data;
 
   // Compose FHIRPath: instanceScope + fieldPath
-  const absolutePath = composeInstanceScopedPath(resourceType, instanceScope) + '.' + fieldPath;
+  const absolutePath = composeFhirPath(resourceType, instanceScope, fieldPath);
 
   return {
     id: `rule-${Date.now()}`,
@@ -67,30 +67,37 @@ export function buildPatternRule(data: PatternRuleData): Rule {
 }
 
 /**
- * Compose absolute FHIRPath with resource scope
- * Example: Patient[*].identifier[0].value
+ * Compose FHIRPath from instance scope and field path
+ * Uses composeInstanceScopedPath utility for consistent path generation
  */
-export function composeFhirPath(
+function composeFhirPath(
   resourceType: string,
-  instanceScope: 'all' | 'first',
+  instanceScope: InstanceScope,
   fieldPath: string
 ): string {
-  // Clean fieldPath - if it already includes resource type, extract relative part
+  // Get base scope path (e.g., "Patient[*]", "Observation[0]", "Patient.where(...)")
+  const scopePath = composeInstanceScopedPath(resourceType, instanceScope);
+  
+  // If fieldPath starts with resourceType, extract the relative field path
+  // e.g., "Patient[*].id" → "id" or "Patient.id" → "id"
+  const resourcePrefix = resourceType + '[';
+  const resourceDotPrefix = resourceType + '.';
+  
   let relativePath = fieldPath;
-  if (fieldPath.startsWith(resourceType + '.')) {
-    relativePath = fieldPath.substring(resourceType.length + 1);
-  } else if (fieldPath.startsWith(resourceType + '[')) {
-    // Handle cases like "Patient[0].name"
-    const afterResource = fieldPath.substring(resourceType.length);
-    const dotIndex = afterResource.indexOf('.');
-    if (dotIndex > 0) {
-      relativePath = afterResource.substring(dotIndex + 1);
+  
+  if (fieldPath.startsWith(resourcePrefix)) {
+    // Handle "Patient[*].id" → extract "id"
+    const afterBracket = fieldPath.indexOf('].', resourceType.length);
+    if (afterBracket > -1) {
+      relativePath = fieldPath.substring(afterBracket + 2); // Skip '].
     }
+  } else if (fieldPath.startsWith(resourceDotPrefix)) {
+    // Handle "Patient.id" → extract "id"
+    relativePath = fieldPath.substring(resourceDotPrefix.length);
   }
-
-  // Compose: ResourceType[scope].relativePath
-  const scope = instanceScope === 'all' ? '[*]' : '[0]';
-  return `${resourceType}${scope}.${relativePath}`;
+  
+  // Compose final path: scopePath + relativePath
+  return `${scopePath}.${relativePath}`;
 }
 
 /**

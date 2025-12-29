@@ -1,3 +1,19 @@
+/**
+ * ⚠️⚠️⚠️ LEGACY — DO NOT USE ⚠️⚠️⚠️
+ * 
+ * This component is DEPRECATED.
+ * All rule authoring MUST use RuleForm.tsx with mode="create"|"edit".
+ * 
+ * Rendering this component is a BUG.
+ * 
+ * CORRECT USAGE:
+ * <RuleForm mode="create" ruleType="Required" onSave={...} onCancel={...} />
+ * <RuleForm mode="edit" ruleType="Required" initialRule={rule} onSave={...} onCancel={...} />
+ * 
+ * See: frontend/src/components/playground/Rules/RuleForm.tsx
+ * See: frontend/UNIFIED_RULE_ARCHITECTURE_COMPLETE.md
+ */
+
 import React, { useState, useEffect } from 'react';
 import { X, Check, AlertCircle, User, FileText, Activity, Building, MapPin, Briefcase, HelpCircle, ChevronDown } from 'lucide-react';
 import FhirPathSelectorDrawer from '../../../../rules/FhirPathSelectorDrawer';
