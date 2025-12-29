@@ -419,24 +419,26 @@ public class RuleReviewEngine : IRuleReviewEngine
     }
     
     /// <summary>
-    /// BLOCKED: RequiredResources rules must use REQUIRED_RESOURCE_MISSING errorCode.
+    /// BLOCKED: RequiredResources/Resource rules must use RESOURCE_REQUIREMENT_VIOLATION errorCode.
     /// 
     /// GOVERNANCE CONTRACT:
-    /// - errorCode must be absent or REQUIRED_RESOURCE_MISSING (no custom errorCodes)
-    /// - Fixed semantic: resource count constraint violation
+    /// - errorCode must be absent or RESOURCE_REQUIREMENT_VIOLATION (no custom errorCodes)
+    /// - Fixed semantic: resource requirement violated (min/max cardinality or undeclared resource)
     /// 
     /// RATIONALE:
-    /// - RequiredResources has one semantic meaning: resource missing or count wrong
+    /// - RequiredResources/Resource has one semantic meaning: bundle resource requirements violated
     /// - Allowing custom errorCodes creates semantic drift
     /// - Mode and count details belong in Details, not errorCode
     /// </summary>
     private void CheckRequiredResourcesErrorCode(RuleDefinition rule, List<RuleReviewIssue> issues)
     {
-        if (rule.Type != "RequiredResources")
+        if (rule.Type != "RequiredResources" && rule.Type != "Resource")
             return;
         
-        // errorCode must be absent (will default to REQUIRED_RESOURCE_MISSING at runtime) or explicitly REQUIRED_RESOURCE_MISSING
-        if (!string.IsNullOrWhiteSpace(rule.ErrorCode) && rule.ErrorCode != "REQUIRED_RESOURCE_MISSING")
+        // errorCode must be absent (will default to RESOURCE_REQUIREMENT_VIOLATION at runtime) or explicitly RESOURCE_REQUIREMENT_VIOLATION
+        if (!string.IsNullOrWhiteSpace(rule.ErrorCode) && 
+            rule.ErrorCode != "RESOURCE_REQUIREMENT_VIOLATION" && 
+            rule.ErrorCode != "REQUIRED_RESOURCE_MISSING") // Legacy support
         {
             issues.Add(new RuleReviewIssue(
                 Code: "REQUIRED_RESOURCES_ERROR_CODE_NOT_ALLOWED",
@@ -446,10 +448,10 @@ public class RuleReviewEngine : IRuleReviewEngine
                 {
                     ["ruleType"] = rule.Type,
                     ["currentErrorCode"] = rule.ErrorCode,
-                    ["requiredErrorCode"] = "REQUIRED_RESOURCE_MISSING",
-                    ["reason"] = "RequiredResources rules have a fixed semantic errorCode and must use REQUIRED_RESOURCE_MISSING.",
-                    ["explanation"] = "RequiredResources validation has one fixed meaning: required resource count constraint violated. " +
-                                    "Use Details['mode'] and Details['expectedCount'] to distinguish 'at least' vs 'exactly', not custom errorCodes."
+                    ["requiredErrorCode"] = "RESOURCE_REQUIREMENT_VIOLATION",
+                    ["reason"] = "Resource rules have a fixed semantic errorCode and must use RESOURCE_REQUIREMENT_VIOLATION.",
+                    ["explanation"] = "Resource validation has one fixed meaning: bundle resource requirements violated (min/max cardinality or undeclared resource). " +
+                                    "Use Details['violations'] to provide specific violation information, not custom errorCodes."
                 }
             ));
         }
@@ -475,7 +477,7 @@ public class RuleReviewEngine : IRuleReviewEngine
     /// </summary>
     private void CheckRequiredResourcesConfiguration(RuleDefinition rule, List<RuleReviewIssue> issues)
     {
-        if (rule.Type != "RequiredResources")
+        if (rule.Type != "RequiredResources" && rule.Type != "Resource")
             return;
         
         // Check 1: params.requirements must exist
@@ -1036,7 +1038,8 @@ public class RuleReviewEngine : IRuleReviewEngine
     private void CheckSingleRequiredResourcesRule(List<RuleDefinition> rules, List<RuleReviewResult> results)
     {
         var requiredResourcesRules = rules
-            .Where(r => r.Type.Equals("RequiredResources", StringComparison.OrdinalIgnoreCase))
+            .Where(r => r.Type.Equals("RequiredResources", StringComparison.OrdinalIgnoreCase) || 
+                       r.Type.Equals("Resource", StringComparison.OrdinalIgnoreCase))
             .ToList();
         
         if (requiredResourcesRules.Count > 1)
@@ -1057,8 +1060,8 @@ public class RuleReviewEngine : IRuleReviewEngine
                         {
                             ["ruleType"] = rule.Type,
                             ["totalCount"] = requiredResourcesRules.Count,
-                            ["reason"] = "Only one bundle-level Required Resources rule is allowed per project.",
-                            ["explanation"] = "RequiredResources defines the complete bundle composition contract. " +
+                            ["reason"] = "Only one bundle-level Resource rule is allowed per project.",
+                            ["explanation"] = "Resource rule defines the complete bundle composition contract. " +
                                             "Multiple rules would create conflicting constraints. " +
                                             "Please consolidate all resource requirements into a single rule."
                         }

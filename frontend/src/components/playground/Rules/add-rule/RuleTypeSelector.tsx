@@ -1,7 +1,7 @@
 import React from 'react';
-import { CheckCircle, HelpCircle, FileText, Lock, FileCheck, List, Ruler, Code, Package } from 'lucide-react';
+import { CheckCircle, HelpCircle, FileText, Lock, FileCheck, List, Ruler, Code, Package, Layers } from 'lucide-react';
 
-export type RuleTypeOption = 'required' | 'questionAnswer' | 'pattern' | 'fixedValue' | 'allowedValues' | 'arrayLength' | 'customFhirPath' | 'requiredResources';
+export type RuleTypeOption = 'required' | 'questionAnswer' | 'pattern' | 'fixedValue' | 'allowedValues' | 'arrayLength' | 'customFhirPath' | 'requiredResources' | 'resource';
 
 interface RuleTypeSelectorProps {
   onSelectType: (type: RuleTypeOption) => void;
@@ -37,10 +37,18 @@ const ruleTypes = [
   {
     id: 'requiredResources' as const,
     icon: Package,
-    title: 'Required Resources',
+    title: 'Required Resources (Legacy)',
     description: 'Ensure specific resources exist in the bundle, with optional exact counts',
     enabled: true,
     priority: 'normal' as const,
+  },
+  {
+    id: 'resource' as const,
+    icon: Layers,
+    title: 'Resource (Bundle Composition)',
+    description: 'Define complete bundle composition with resource requirements and conditional where filters',
+    enabled: true,
+    priority: 'high' as const,
   },
   {
     id: 'allowedValues' as const,
@@ -77,10 +85,14 @@ const ruleTypes = [
 ];
 
 export const RuleTypeSelector: React.FC<RuleTypeSelectorProps> = ({ onSelectType, existingRules = [] }) => {
-  // Check if RequiredResources rule already exists (only one allowed per project)
+  // Check if RequiredResources or Resource rule already exists (only one bundle rule allowed per project)
   const hasRequiredResourcesRule = existingRules.some(
     (rule) => rule.type.toLowerCase() === 'requiredresources'
   );
+  const hasResourceRule = existingRules.some(
+    (rule) => rule.type.toLowerCase() === 'resource'
+  );
+  const hasBundleRule = hasRequiredResourcesRule || hasResourceRule;
 
   return (
     <div>
@@ -92,12 +104,12 @@ export const RuleTypeSelector: React.FC<RuleTypeSelectorProps> = ({ onSelectType
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {ruleTypes.map((ruleType) => {
           const Icon = ruleType.icon;
-          // Disable RequiredResources if one already exists
+          // Disable bundle rules if one already exists
           const isDisabled = !ruleType.enabled || 
-            (ruleType.id === 'requiredResources' && hasRequiredResourcesRule);
+            ((ruleType.id === 'requiredResources' || ruleType.id === 'resource') && hasBundleRule);
           const isHighPriority = ruleType.priority === 'high';
-          const disabledReason = ruleType.id === 'requiredResources' && hasRequiredResourcesRule
-            ? 'Only one bundle-level Required Resources rule is allowed per project.'
+          const disabledReason = (ruleType.id === 'requiredResources' || ruleType.id === 'resource') && hasBundleRule
+            ? 'Only one bundle-level rule is allowed per project.'
             : undefined;
 
           return (

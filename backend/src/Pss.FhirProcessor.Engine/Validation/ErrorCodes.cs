@@ -183,7 +183,11 @@ public static class ValidationErrorCodes
     /// <summary>Entry reference does not match bundle structure</summary>
     public const string ENTRY_REFERENCE_MISMATCH = "ENTRY_REFERENCE_MISMATCH";
     
-    /// <summary>Required resource is missing from bundle or count constraint violated (RequiredResources rule)</summary>
+    /// <summary>Bundle resource requirement violated (Resource rule) - min/max cardinality or undeclared resource</summary>
+    public const string RESOURCE_REQUIREMENT_VIOLATION = "RESOURCE_REQUIREMENT_VIOLATION";
+    
+    /// <summary>OBSOLETE: Use RESOURCE_REQUIREMENT_VIOLATION instead</summary>
+    [Obsolete("Use RESOURCE_REQUIREMENT_VIOLATION instead")]
     public const string REQUIRED_RESOURCE_MISSING = "REQUIRED_RESOURCE_MISSING";
 
     // =========================================================================

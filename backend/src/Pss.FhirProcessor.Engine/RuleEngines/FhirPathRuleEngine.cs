@@ -34,9 +34,10 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         if (ruleSet?.Rules == null || ruleSet.Rules.Count == 0)
             return errors;
         
-        // Step 1: Validate bundle-level rules (RequiredResources)
+        // Step 1: Validate bundle-level rules (RequiredResources / Resource)
         var bundleLevelRules = ruleSet.Rules
-            .Where(r => r.Type.Equals("RequiredResources", StringComparison.OrdinalIgnoreCase))
+            .Where(r => r.Type.Equals("RequiredResources", StringComparison.OrdinalIgnoreCase) ||
+                       r.Type.Equals("Resource", StringComparison.OrdinalIgnoreCase))
             .ToList();
         
         foreach (var rule in bundleLevelRules)
@@ -107,7 +108,8 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             // Step 1: Validate bundle-level rules (RequiredResources)
             // Try to parse Bundle for RequiredResources validation
             var bundleLevelRules = ruleSet.Rules
-                .Where(r => r.Type.Equals("RequiredResources", StringComparison.OrdinalIgnoreCase))
+                .Where(r => r.Type.Equals("RequiredResources", StringComparison.OrdinalIgnoreCase) ||
+                           r.Type.Equals("Resource", StringComparison.OrdinalIgnoreCase))
                 .ToList();
             
             if (bundleLevelRules.Any())
@@ -151,7 +153,8 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             
             // Group rules by resource type (exclude bundle-level rules)
             var rulesByType = ruleSet.Rules
-                .Where(r => !r.Type.Equals("RequiredResources", StringComparison.OrdinalIgnoreCase))
+                .Where(r => !r.Type.Equals("RequiredResources", StringComparison.OrdinalIgnoreCase) && 
+                           !r.Type.Equals("Resource", StringComparison.OrdinalIgnoreCase))
                 .GroupBy(r => r.ResourceType)
                 .ToDictionary(g => g.Key, g => g.ToList());
             
@@ -1269,10 +1272,11 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
     /// - No duplicate resourceTypes
     /// 
     /// UX CONTRACT:
-    /// - Rule authoring UI hides errorCode dropdown (read-only: REQUIRED_RESOURCE_MISSING)
+    /// - Rule authoring UI shows fixed error code: RESOURCE_REQUIREMENT_VIOLATION
     /// - Mode selector: "At least" (min only) vs "Exactly" (min === max)
     /// - Count input (minimum 1)
-    /// - Duplicate detection UI
+    /// - Advanced: where attribute filters (FHIRPath conditions)
+    /// - Banner: "Any resource not declared will be rejected"
     /// </summary>
     private List<RuleValidationError> ValidateRequiredResources(Bundle bundle, RuleDefinition rule)
     {
@@ -1298,6 +1302,13 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 ResourceId = null
             });
             return errors;
+        }
+        
+        // Parse rejectUndeclaredResources flag (default: true for Resource rules)
+        var rejectUndeclaredResources = true;
+        if (rule.Params.ContainsKey("rejectUndeclaredResources"))
+        {
+            rejectUndeclaredResources = Convert.ToBoolean(rule.Params["rejectUndeclaredResources"]);
         }
         
         // Parse requirements array from params
@@ -1329,11 +1340,65 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             return errors;
         }
         
-        // Count resources by type in bundle
-        var resourceCounts = bundle.Entry
+        // Group all resources by type for initial counting
+        var resourcesByType = bundle.Entry
             .Where(e => e.Resource != null)
             .GroupBy(e => e.Resource!.TypeName)
-            .ToDictionary(g => g.Key, g => g.Count());
+            .ToDictionary(g => g.Key, g => g.Select(e => e.Resource!).ToList());
+        
+        // Apply where filters if present to get matching resources per requirement
+        var matchingCounts = new Dictionary<string, int>();
+        foreach (var requirement in requirements)
+        {
+            var resourcesOfType = resourcesByType.GetValueOrDefault(requirement.ResourceType, new List<Resource>());
+            
+            // If no where filters, count all resources of this type
+            if (requirement.Where == null || !requirement.Where.Any())
+            {
+                matchingCounts[requirement.ResourceType] = resourcesOfType.Count;
+                continue;
+            }
+            
+            // Apply where filters using FHIRPath
+            var matchingResources = resourcesOfType.Where(resource =>
+            {
+                try
+                {
+                    foreach (var filter in requirement.Where)
+                    {
+                        var compiled = _compiler.Compile(filter.Path);
+                        var typedElement = resource.ToTypedElement();
+                        var scopedNode = new ScopedNode(typedElement);
+                        var result = compiled(scopedNode, new EvaluationContext());
+                        var resultValue = result.FirstOrDefault()?.ToString() ?? "";
+                        
+                        // Evaluate filter condition
+                        var matches = filter.Op switch
+                        {
+                            "=" => resultValue.Equals(filter.Value?.ToString() ?? "", StringComparison.Ordinal),
+                            "!=" => !resultValue.Equals(filter.Value?.ToString() ?? "", StringComparison.Ordinal),
+                            "contains" => resultValue.Contains(filter.Value?.ToString() ?? "", StringComparison.Ordinal),
+                            "in" => filter.Value is System.Text.Json.JsonElement jsonArray && jsonArray.ValueKind == System.Text.Json.JsonValueKind.Array
+                                ? jsonArray.EnumerateArray().Any(item => item.GetString()?.Equals(resultValue, StringComparison.Ordinal) == true)
+                                : false,
+                            _ => false
+                        };
+                        
+                        if (!matches) return false;
+                    }
+                    return true;
+                }
+                catch
+                {
+                    return false; // Filter evaluation failed, exclude resource
+                }
+            }).ToList();
+            
+            matchingCounts[requirement.ResourceType] = matchingResources.Count;
+        }
+        
+        // Count ALL resources by type (for undeclared resource check)
+        var allResourceCounts = resourcesByType.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Count);
         
         // Extract declared resource types
         var declaredResourceTypes = new HashSet<string>(requirements.Select(r => r.ResourceType), StringComparer.Ordinal);
@@ -1341,10 +1406,10 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         // Track violations for structured error reporting
         var violations = new List<Dictionary<string, object>>();
         
-        // PHASE A: Cardinality validation for declared resources
+        // PHASE A: Cardinality validation for declared resources (with where filters applied)
         foreach (var requirement in requirements)
         {
-            var actualCount = resourceCounts.GetValueOrDefault(requirement.ResourceType, 0);
+            var actualCount = matchingCounts.GetValueOrDefault(requirement.ResourceType, 0);
             var isExactMode = requirement.Max.HasValue && requirement.Max.Value == requirement.Min;
             
             // Check min constraint
@@ -1358,31 +1423,59 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 var mode = isExactMode ? "exactly" : "at least";
                 var expectedCount = requirement.Min;
                 
-                violations.Add(new Dictionary<string, object>
+                var violation = new Dictionary<string, object>
                 {
                     ["resourceType"] = requirement.ResourceType,
                     ["expected"] = $"{mode} {expectedCount}",
                     ["actual"] = actualCount,
                     ["violation"] = "cardinality"
-                });
+                };
+                
+                // Add where filter info if present
+                if (requirement.Where != null && requirement.Where.Any())
+                {
+                    // Build human-readable condition string
+                    var conditions = requirement.Where.Select(w => 
+                    {
+                        var valueStr = w.Value switch
+                        {
+                            System.Text.Json.JsonElement jsonEl when jsonEl.ValueKind == System.Text.Json.JsonValueKind.Array => 
+                                $"[{string.Join(", ", jsonEl.EnumerateArray().Select(e => e.GetString()))}]",
+                            _ => w.Value?.ToString() ?? ""
+                        };
+                        return $"{w.Path} {w.Op} {valueStr}";
+                    });
+                    violation["condition"] = string.Join(" AND ", conditions);
+                    violation["whereFilters"] = requirement.Where.Select(w => new Dictionary<string, object>
+                    {
+                        ["path"] = w.Path,
+                        ["op"] = w.Op,
+                        ["value"] = w.Value ?? ""
+                    }).ToList();
+                }
+                
+                violations.Add(violation);
             }
         }
         
-        // PHASE B: Closed bundle enforcement - reject undeclared resources
-        foreach (var kvp in resourceCounts)
+        // PHASE B: Closed bundle enforcement - reject undeclared resources (if enabled)
+        if (rejectUndeclaredResources)
         {
-            var resourceType = kvp.Key;
-            var actualCount = kvp.Value;
-            
-            if (!declaredResourceTypes.Contains(resourceType))
+            foreach (var kvp in allResourceCounts)
             {
-                violations.Add(new Dictionary<string, object>
+                var resourceType = kvp.Key;
+                var actualCount = kvp.Value;
+                
+                if (!declaredResourceTypes.Contains(resourceType))
                 {
-                    ["resourceType"] = resourceType,
-                    ["expected"] = "not allowed",
-                    ["actual"] = actualCount,
-                    ["violation"] = "undeclared"
-                });
+                    violations.Add(new Dictionary<string, object>
+                    {
+                        ["resourceType"] = resourceType,
+                        ["expected"] = "not allowed",
+                        ["actual"] = actualCount,
+                        ["violation"] = "undeclared"
+                    });
+                }
             }
         }
         
@@ -1396,10 +1489,11 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 ["path"] = rule.Path,
                 ["ruleType"] = rule.Type,
                 ["ruleId"] = rule.Id,
-                ["violations"] = violations
+                ["violations"] = violations,
+                ["rejectUndeclaredResources"] = rejectUndeclaredResources
             };
             
-            details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.REQUIRED_RESOURCE_MISSING, details);
+            details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.RESOURCE_REQUIREMENT_VIOLATION, details);
             
             errors.Add(new RuleValidationError
             {
@@ -1408,7 +1502,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 Severity = rule.Severity,
                 ResourceType = rule.ResourceType,
                 Path = rule.Path,
-                ErrorCode = ValidationErrorCodes.REQUIRED_RESOURCE_MISSING,
+                ErrorCode = ValidationErrorCodes.RESOURCE_REQUIREMENT_VIOLATION,
                 Details = details,
                 EntryIndex = null, // Bundle-level validation
                 ResourceId = null  // No specific resource
@@ -1795,4 +1889,23 @@ internal class ResourceRequirement
     
     [System.Text.Json.Serialization.JsonPropertyName("max")]
     public int? Max { get; set; }
+    
+    [System.Text.Json.Serialization.JsonPropertyName("where")]
+    public List<WhereFilter>? Where { get; set; }
+}
+
+/// <summary>
+/// Filter condition for Resource requirements
+/// Supports FHIRPath-based filtering before counting resources
+/// </summary>
+internal class WhereFilter
+{
+    [System.Text.Json.Serialization.JsonPropertyName("path")]
+    public required string Path { get; set; }
+    
+    [System.Text.Json.Serialization.JsonPropertyName("op")]
+    public required string Op { get; set; } // Supported: "=", "!=", "contains", "in"
+    
+    [System.Text.Json.Serialization.JsonPropertyName("value")]
+    public object? Value { get; set; } // string for =, !=, contains | string[] for in
 }

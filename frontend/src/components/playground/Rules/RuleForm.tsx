@@ -17,7 +17,8 @@ import { FixedValueConfigSection } from './rule-types/fixed-value/FixedValueConf
 import { AllowedValuesConfigSection } from './rule-types/allowed-values/AllowedValuesConfigSection';
 import { ArrayLengthConfigSection } from './rule-types/array-length/ArrayLengthConfigSection';
 import { CustomFHIRPathConfigSection } from './rule-types/custom-fhirpath/CustomFHIRPathConfigSection';
-import { RequiredResourcesConfigSection, type ResourceRequirement } from './rule-types/required-resources/RequiredResourcesConfigSection';
+import { RequiredResourcesConfigSection, type ResourceRequirement as LegacyResourceRequirement } from './rule-types/required-resources/RequiredResourcesConfigSection';
+import { ResourceConfigSection, type ResourceRequirement } from './rule-types/resource/ResourceConfigSection';
 import { buildRequiredRule } from './rule-types/required/RequiredRuleHelpers';
 import { buildPatternRule } from './rule-types/pattern/PatternRuleHelpers';
 import { buildQuestionAnswerRule, getDefaultIterationScope } from './rule-types/question-answer/QuestionAnswerRuleHelpers';
@@ -26,6 +27,7 @@ import { buildAllowedValuesRule } from './rule-types/allowed-values/AllowedValue
 import { buildArrayLengthRule } from './rule-types/array-length/ArrayLengthRuleHelpers';
 import { buildCustomFHIRPathRule, parseCustomFHIRPathRule } from './rule-types/custom-fhirpath/CustomFHIRPathRuleHelpers';
 import { buildRequiredResourcesRule, parseRequiredResourcesRule } from './rule-types/required-resources/RequiredResourcesRuleHelpers';
+import { buildResourceRule, parseResourceRule } from './rule-types/resource/ResourceRuleHelpers';
 import type { Rule } from '../../../types/rightPanelProps';
 import type { QuestionAnswerConstraint } from './rule-types/question-answer/QuestionAnswerConstraint.types';
 import { CONSTRAINT_TO_ERROR_CODE } from './rule-types/question-answer/QuestionAnswerConstraint.types';
@@ -50,7 +52,7 @@ import { CONSTRAINT_TO_ERROR_CODE } from './rule-types/question-answer/QuestionA
  * ✅ ErrorCode logic is centralized in this component
  */
 
-type RuleType = 'Required' | 'Regex' | 'QuestionAnswer' | 'FixedValue' | 'AllowedValues' | 'ArrayLength' | 'CustomFHIRPath' | 'RequiredResources';
+type RuleType = 'Required' | 'Regex' | 'QuestionAnswer' | 'FixedValue' | 'AllowedValues' | 'ArrayLength' | 'CustomFHIRPath' | 'RequiredResources' | 'Resource';
 
 interface RuleFormProps {
   mode: 'create' | 'edit';
@@ -68,7 +70,7 @@ interface RuleFormProps {
 type ErrorCodeMode = 'fixed' | 'governed' | 'runtime-determined';
 
 const getErrorCodeMode = (ruleType: RuleType): ErrorCodeMode => {
-  if (ruleType === 'Required' || ruleType === 'Regex' || ruleType === 'FixedValue' || ruleType === 'AllowedValues' || ruleType === 'ArrayLength' || ruleType === 'RequiredResources') return 'fixed';
+  if (ruleType === 'Required' || ruleType === 'Regex' || ruleType === 'FixedValue' || ruleType === 'AllowedValues' || ruleType === 'ArrayLength' || ruleType === 'RequiredResources' || ruleType === 'Resource') return 'fixed';
   if (ruleType === 'QuestionAnswer') return 'runtime-determined';
   if (ruleType === 'CustomFHIRPath') return 'governed';
   return 'fixed';
@@ -81,6 +83,7 @@ const getFixedErrorCode = (ruleType: RuleType): string => {
   if (ruleType === 'AllowedValues') return 'VALUE_NOT_ALLOWED';
   if (ruleType === 'ArrayLength') return 'ARRAY_LENGTH_VIOLATION';
   if (ruleType === 'RequiredResources') return 'REQUIRED_RESOURCE_MISSING';
+  if (ruleType === 'Resource') return 'RESOURCE_REQUIREMENT_VIOLATION';
   return '';
 };
 
@@ -93,6 +96,7 @@ const RULE_TYPE_LABELS = {
   ArrayLength: 'Array Length',
   CustomFHIRPath: 'Custom FHIRPath',
   RequiredResources: 'Required Resources',
+  Resource: 'Resource (Bundle Composition)',
 };
 
 const RULE_TYPE_DESCRIPTIONS = {
@@ -104,6 +108,7 @@ const RULE_TYPE_DESCRIPTIONS = {
   ArrayLength: 'Validate that an array has a minimum and/or maximum number of elements',
   CustomFHIRPath: 'Custom validation logic using FHIRPath expressions',
   RequiredResources: 'Ensure specific resources exist in the bundle, with optional exact counts',
+  Resource: 'Define complete bundle composition with resource requirements and attribute filters',
 };
 
 export const RuleForm: React.FC<RuleFormProps> = ({
@@ -162,8 +167,10 @@ export const RuleForm: React.FC<RuleFormProps> = ({
   const [customErrorCode, setCustomErrorCode] = useState<string>('');
 
   // RequiredResources
-  const [resourceRequirements, setResourceRequirements] = useState<ResourceRequirement[]>([]);
+  const [resourceRequirements, setResourceRequirements] = useState<LegacyResourceRequirement[]>([]);
 
+  // Resource (new unified bundle rule)
+  const [requirements, setRequirements] = useState<ResourceRequirement[]>([]);
   // === ERROR CODE STATE ===
   const errorCodeMode = getErrorCodeMode(ruleType);
   const [governedErrorCode, setGovernedErrorCode] = useState<string>(''); // For CustomFHIRPath
@@ -250,6 +257,11 @@ export const RuleForm: React.FC<RuleFormProps> = ({
       if (ruleType === 'RequiredResources' && initialRule) {
         const parsed = parseRequiredResourcesRule(initialRule as Rule);
         setResourceRequirements(parsed.requirements);
+      }
+
+      if (ruleType === 'Resource' && initialRule) {
+        const parsed = parseResourceRule(initialRule as Rule);
+        setRequirements(parsed.requirements);
       }
     }
   }, [mode, initialRule, ruleType]);
@@ -347,6 +359,38 @@ export const RuleForm: React.FC<RuleFormProps> = ({
       });
       // Check for duplicate resourceTypes
       const resourceTypes = resourceRequirements.map(r => r.resourceType);
+      const duplicates = resourceTypes.filter((item, index) => resourceTypes.indexOf(item) !== index);
+      if (duplicates.length > 0) {
+        newErrors.requirements = `Duplicate resource types: ${duplicates.join(', ')}`;
+      }
+    }
+
+    if (ruleType === 'Resource') {
+      if (requirements.length === 0) {
+        newErrors.requirements = 'At least one resource requirement is required';
+      }
+      // Validate each requirement
+      requirements.forEach((req, index) => {
+        if (!req.resourceType) {
+          newErrors[`requirement_${index}`] = 'Resource type is required';
+        }
+        if (req.count < 1) {
+          newErrors[`requirement_${index}`] = 'Count must be at least 1';
+        }
+        // Validate where filters
+        if (req.where && req.where.length > 0) {
+          req.where.forEach((filter, filterIndex) => {
+            if (!filter.path) {
+              newErrors[`filter_${index}_${filterIndex}`] = 'Filter path is required';
+            }
+            if (!filter.value) {
+              newErrors[`filter_${index}_${filterIndex}`] = 'Filter value is required';
+            }
+          });
+        }
+      });
+      // Check for duplicate resourceTypes
+      const resourceTypes = requirements.map(r => r.resourceType);
       const duplicates = resourceTypes.filter((item, index) => resourceTypes.indexOf(item) !== index);
       if (duplicates.length > 0) {
         newErrors.requirements = `Duplicate resource types: ${duplicates.join(', ')}`;
@@ -465,6 +509,12 @@ export const RuleForm: React.FC<RuleFormProps> = ({
         severity,
         userHint: userHint || undefined,
       });
+    } else if (ruleType === 'Resource') {
+      rule = buildResourceRule({
+        requirements: requirements,
+        severity,
+        userHint: userHint || undefined,
+      });
     } else {
       // Other types - not yet implemented
       return;
@@ -502,7 +552,7 @@ export const RuleForm: React.FC<RuleFormProps> = ({
       {/* Form Body */}
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 overscroll-contain">
         {/* 1️⃣ SHARED: Resource Selector (hidden for bundle-level rules) */}
-        {ruleType !== 'RequiredResources' && (
+        {ruleType !== 'RequiredResources' && ruleType !== 'Resource' && (
           <ResourceSelector
             value={resourceType}
             onChange={setResourceType}
@@ -512,7 +562,7 @@ export const RuleForm: React.FC<RuleFormProps> = ({
         )}
 
         {/* 2️⃣ SHARED: Rule Scope Selector (hidden for bundle-level rules) */}
-        {ruleType !== 'RequiredResources' && (
+        {ruleType !== 'RequiredResources' && ruleType !== 'Resource' && (
           <RuleScopeSelector
             resourceType={resourceType}
             value={instanceScope}
@@ -703,6 +753,18 @@ export const RuleForm: React.FC<RuleFormProps> = ({
             requirements={resourceRequirements}
             onRequirementsChange={(reqs) => {
               setResourceRequirements(reqs);
+              setErrors({ ...errors, requirements: undefined });
+            }}
+            errors={errors}
+            projectBundle={projectBundle}
+          />
+        )}
+
+        {ruleType === 'Resource' && (
+          <ResourceConfigSection
+            requirements={requirements}
+            onRequirementsChange={(reqs) => {
+              setRequirements(reqs);
               setErrors({ ...errors, requirements: undefined });
             }}
             errors={errors}

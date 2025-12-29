@@ -172,6 +172,15 @@ export const AddRuleModal: React.FC<AddRuleModalProps> = ({
             projectBundle={projectBundle}
             projectId={projectId}
           />
+        ) : selectedRuleType === 'resource' ? (
+          <RuleForm
+            mode="create"
+            ruleType="Resource"
+            onCancel={handleCancel}
+            onSave={handleSave}
+            projectBundle={projectBundle}
+            projectId={projectId}
+          />
         ) : null}
       </div>
     </div>
