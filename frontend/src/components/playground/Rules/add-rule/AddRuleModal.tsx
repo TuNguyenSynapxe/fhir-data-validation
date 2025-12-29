@@ -25,6 +25,7 @@ interface AddRuleModalProps {
   projectBundle?: object;
   hl7Samples?: any[];
   projectId?: string;
+  existingRules?: Rule[];
 }
 
 export const AddRuleModal: React.FC<AddRuleModalProps> = ({
@@ -35,6 +36,7 @@ export const AddRuleModal: React.FC<AddRuleModalProps> = ({
   projectBundle,
   hl7Samples,
   projectId,
+  existingRules = [],
 }) => {
   const [selectedRuleType, setSelectedRuleType] = useState<RuleTypeOption | null>(null);
 
@@ -80,7 +82,7 @@ export const AddRuleModal: React.FC<AddRuleModalProps> = ({
 
             {/* Content */}
             <div className="px-6 py-6 overflow-y-auto">
-              <RuleTypeSelector onSelectType={handleSelectType} />
+              <RuleTypeSelector onSelectType={handleSelectType} existingRules={existingRules} />
             </div>
 
             {/* Footer */}
@@ -156,6 +158,15 @@ export const AddRuleModal: React.FC<AddRuleModalProps> = ({
           <RuleForm
             mode="create"
             ruleType="CustomFHIRPath"
+            onCancel={handleCancel}
+            onSave={handleSave}
+            projectBundle={projectBundle}
+            projectId={projectId}
+          />
+        ) : selectedRuleType === 'requiredResources' ? (
+          <RuleForm
+            mode="create"
+            ruleType="RequiredResources"
             onCancel={handleCancel}
             onSave={handleSave}
             projectBundle={projectBundle}

@@ -182,6 +182,9 @@ public static class ValidationErrorCodes
     
     /// <summary>Entry reference does not match bundle structure</summary>
     public const string ENTRY_REFERENCE_MISMATCH = "ENTRY_REFERENCE_MISMATCH";
+    
+    /// <summary>Required resource is missing from bundle or count constraint violated (RequiredResources rule)</summary>
+    public const string REQUIRED_RESOURCE_MISSING = "REQUIRED_RESOURCE_MISSING";
 
     // =========================================================================
     // QUESTION / ANSWER (QuestionAnswer rule type)

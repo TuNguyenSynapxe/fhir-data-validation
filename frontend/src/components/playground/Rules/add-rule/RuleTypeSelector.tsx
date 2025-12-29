@@ -1,10 +1,11 @@
 import React from 'react';
-import { CheckCircle, HelpCircle, FileText, Lock, FileCheck, List, Ruler, Code } from 'lucide-react';
+import { CheckCircle, HelpCircle, FileText, Lock, FileCheck, List, Ruler, Code, Package } from 'lucide-react';
 
-export type RuleTypeOption = 'required' | 'questionAnswer' | 'pattern' | 'fixedValue' | 'allowedValues' | 'arrayLength' | 'customFhirPath';
+export type RuleTypeOption = 'required' | 'questionAnswer' | 'pattern' | 'fixedValue' | 'allowedValues' | 'arrayLength' | 'customFhirPath' | 'requiredResources';
 
 interface RuleTypeSelectorProps {
   onSelectType: (type: RuleTypeOption) => void;
+  existingRules?: Array<{ type: string }>;
 }
 
 // Ordered by most common usage (no grouping headers)
@@ -32,6 +33,14 @@ const ruleTypes = [
     description: 'Validate field values against patterns or formats',
     enabled: true,
     priority: 'high' as const, // Visual emphasis
+  },
+  {
+    id: 'requiredResources' as const,
+    icon: Package,
+    title: 'Required Resources',
+    description: 'Ensure specific resources exist in the bundle, with optional exact counts',
+    enabled: true,
+    priority: 'normal' as const,
   },
   {
     id: 'allowedValues' as const,
@@ -67,7 +76,12 @@ const ruleTypes = [
   },
 ];
 
-export const RuleTypeSelector: React.FC<RuleTypeSelectorProps> = ({ onSelectType }) => {
+export const RuleTypeSelector: React.FC<RuleTypeSelectorProps> = ({ onSelectType, existingRules = [] }) => {
+  // Check if RequiredResources rule already exists (only one allowed per project)
+  const hasRequiredResourcesRule = existingRules.some(
+    (rule) => rule.type.toLowerCase() === 'requiredresources'
+  );
+
   return (
     <div>
       <p className="text-sm text-gray-600 mb-6">
@@ -78,8 +92,13 @@ export const RuleTypeSelector: React.FC<RuleTypeSelectorProps> = ({ onSelectType
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {ruleTypes.map((ruleType) => {
           const Icon = ruleType.icon;
-          const isDisabled = !ruleType.enabled;
+          // Disable RequiredResources if one already exists
+          const isDisabled = !ruleType.enabled || 
+            (ruleType.id === 'requiredResources' && hasRequiredResourcesRule);
           const isHighPriority = ruleType.priority === 'high';
+          const disabledReason = ruleType.id === 'requiredResources' && hasRequiredResourcesRule
+            ? 'Only one bundle-level Required Resources rule is allowed per project.'
+            : undefined;
 
           return (
             <button
@@ -122,7 +141,7 @@ export const RuleTypeSelector: React.FC<RuleTypeSelectorProps> = ({ onSelectType
                   {ruleType.title}
                 </h3>
                 <p className="text-xs text-gray-600 leading-relaxed">
-                  {ruleType.description}
+                  {disabledReason || ruleType.description}
                 </p>
               </div>
             </button>

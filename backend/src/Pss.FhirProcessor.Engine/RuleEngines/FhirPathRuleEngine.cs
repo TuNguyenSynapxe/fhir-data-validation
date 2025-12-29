@@ -34,8 +34,22 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         if (ruleSet?.Rules == null || ruleSet.Rules.Count == 0)
             return errors;
         
-        // Group rules by resource type
-        var rulesByType = ruleSet.Rules.GroupBy(r => r.ResourceType);
+        // Step 1: Validate bundle-level rules (RequiredResources)
+        var bundleLevelRules = ruleSet.Rules
+            .Where(r => r.Type.Equals("RequiredResources", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        
+        foreach (var rule in bundleLevelRules)
+        {
+            var bundleErrors = ValidateRequiredResources(bundle, rule);
+            errors.AddRange(bundleErrors);
+        }
+        
+        // Step 2: Validate resource-level rules
+        // Group rules by resource type (exclude bundle-level rules)
+        var rulesByType = ruleSet.Rules
+            .Where(r => !r.Type.Equals("RequiredResources", StringComparison.OrdinalIgnoreCase))
+            .GroupBy(r => r.ResourceType);
         
         foreach (var resourceGroup in rulesByType)
         {
@@ -90,6 +104,38 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         
         try
         {
+            // Step 1: Validate bundle-level rules (RequiredResources)
+            // Try to parse Bundle for RequiredResources validation
+            var bundleLevelRules = ruleSet.Rules
+                .Where(r => r.Type.Equals("RequiredResources", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            
+            if (bundleLevelRules.Any())
+            {
+                try
+                {
+                    var parser = new FhirJsonParser(new ParserSettings
+                    {
+                        AcceptUnknownMembers = true,
+                        AllowUnrecognizedEnums = true,
+                        PermissiveParsing = true
+                    });
+                    var bundle = parser.Parse<Bundle>(bundleJson);
+                    
+                    foreach (var rule in bundleLevelRules)
+                    {
+                        var bundleErrors = ValidateRequiredResources(bundle, rule);
+                        errors.AddRange(bundleErrors);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "ValidateJsonAsync: Failed to parse Bundle for RequiredResources validation");
+                    // Continue without bundle-level validation - structural errors already captured by Firely
+                }
+            }
+            
+            // Step 2: Validate resource-level rules
             // Parse bundle JSON using System.Text.Json for simpler navigation
             using var bundleDoc = System.Text.Json.JsonDocument.Parse(bundleJson);
             var root = bundleDoc.RootElement;
@@ -103,8 +149,11 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             var entryCount = entriesArray.GetArrayLength();
             _logger.LogDebug("ValidateJsonAsync found {EntryCount} bundle entries", entryCount);
             
-            // Group rules by resource type
-            var rulesByType = ruleSet.Rules.GroupBy(r => r.ResourceType).ToDictionary(g => g.Key, g => g.ToList());
+            // Group rules by resource type (exclude bundle-level rules)
+            var rulesByType = ruleSet.Rules
+                .Where(r => !r.Type.Equals("RequiredResources", StringComparison.OrdinalIgnoreCase))
+                .GroupBy(r => r.ResourceType)
+                .ToDictionary(g => g.Key, g => g.ToList());
             
             // Also parse with ISourceNode for actual rule evaluation
             var sourceNode = FhirJsonNode.Parse(bundleJson);
@@ -480,7 +529,8 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                     break;
                 
                 case "FULLURLIDMATCH":
-                    // This is bundle-level validation, skip here
+                case "REQUIREDRESOURCES":
+                    // These are bundle-level validations, skip here
                     break;
                 
                 default:
@@ -1201,6 +1251,173 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         return errors;
     }
     
+    /// <summary>
+    /// Validates RequiredResources rules (bundle-level validation).
+    /// 
+    /// SEMANTIC CONTRACT:
+    /// - Always emits ValidationErrorCodes.REQUIRED_RESOURCE_MISSING (ignores rule.ErrorCode)
+    /// - Governance layer blocks RequiredResources rules with incorrect errorCode
+    /// - Two modes: "min" (at least) and "exact" (min === max)
+    /// - No range support (min < max is blocked by governance)
+    /// 
+    /// GOVERNANCE CONTRACT:
+    /// - errorCode must be absent or REQUIRED_RESOURCE_MISSING (no custom errorCodes)
+    /// - requirements array must not be empty
+    /// - Each requirement must have resourceType and min >= 1
+    /// - max >= min OR max absent (no range support)
+    /// - max === min OR max absent (exact or min-only modes)
+    /// - No duplicate resourceTypes
+    /// 
+    /// UX CONTRACT:
+    /// - Rule authoring UI hides errorCode dropdown (read-only: REQUIRED_RESOURCE_MISSING)
+    /// - Mode selector: "At least" (min only) vs "Exactly" (min === max)
+    /// - Count input (minimum 1)
+    /// - Duplicate detection UI
+    /// </summary>
+    private List<RuleValidationError> ValidateRequiredResources(Bundle bundle, RuleDefinition rule)
+    {
+        var errors = new List<RuleValidationError>();
+        
+        // Validation check: params.requirements must exist
+        if (rule.Params == null || !rule.Params.ContainsKey("requirements"))
+        {
+            errors.Add(new RuleValidationError
+            {
+                RuleId = rule.Id,
+                RuleType = rule.Type,
+                Severity = "error",
+                ResourceType = rule.ResourceType,
+                Path = rule.Path,
+                ErrorCode = "RULE_CONFIGURATION_ERROR",
+                Details = new Dictionary<string, object>
+                {
+                    ["ruleType"] = "RequiredResources",
+                    ["missingParams"] = new[] { "requirements" }
+                },
+                EntryIndex = null,
+                ResourceId = null
+            });
+            return errors;
+        }
+        
+        // Parse requirements array from params
+        List<ResourceRequirement> requirements;
+        try
+        {
+            var requirementsJson = JsonSerializer.Serialize(rule.Params["requirements"]);
+            requirements = JsonSerializer.Deserialize<List<ResourceRequirement>>(requirementsJson) ?? new List<ResourceRequirement>();
+        }
+        catch (Exception ex)
+        {
+            errors.Add(new RuleValidationError
+            {
+                RuleId = rule.Id,
+                RuleType = rule.Type,
+                Severity = "error",
+                ResourceType = rule.ResourceType,
+                Path = rule.Path,
+                ErrorCode = "RULE_CONFIGURATION_ERROR",
+                Details = new Dictionary<string, object>
+                {
+                    ["ruleType"] = "RequiredResources",
+                    ["reason"] = "Failed to parse requirements array",
+                    ["exception"] = ex.Message
+                },
+                EntryIndex = null,
+                ResourceId = null
+            });
+            return errors;
+        }
+        
+        // Count resources by type in bundle
+        var resourceCounts = bundle.Entry
+            .Where(e => e.Resource != null)
+            .GroupBy(e => e.Resource!.TypeName)
+            .ToDictionary(g => g.Key, g => g.Count());
+        
+        // Extract declared resource types
+        var declaredResourceTypes = new HashSet<string>(requirements.Select(r => r.ResourceType), StringComparer.Ordinal);
+        
+        // Track violations for structured error reporting
+        var violations = new List<Dictionary<string, object>>();
+        
+        // PHASE A: Cardinality validation for declared resources
+        foreach (var requirement in requirements)
+        {
+            var actualCount = resourceCounts.GetValueOrDefault(requirement.ResourceType, 0);
+            var isExactMode = requirement.Max.HasValue && requirement.Max.Value == requirement.Min;
+            
+            // Check min constraint
+            var meetsMin = actualCount >= requirement.Min;
+            
+            // Check exact constraint (if in exact mode)
+            var meetsExact = !isExactMode || actualCount == requirement.Min;
+            
+            if (!meetsMin || !meetsExact)
+            {
+                var mode = isExactMode ? "exactly" : "at least";
+                var expectedCount = requirement.Min;
+                
+                violations.Add(new Dictionary<string, object>
+                {
+                    ["resourceType"] = requirement.ResourceType,
+                    ["expected"] = $"{mode} {expectedCount}",
+                    ["actual"] = actualCount,
+                    ["violation"] = "cardinality"
+                });
+            }
+        }
+        
+        // PHASE B: Closed bundle enforcement - reject undeclared resources
+        foreach (var kvp in resourceCounts)
+        {
+            var resourceType = kvp.Key;
+            var actualCount = kvp.Value;
+            
+            if (!declaredResourceTypes.Contains(resourceType))
+            {
+                violations.Add(new Dictionary<string, object>
+                {
+                    ["resourceType"] = resourceType,
+                    ["expected"] = "not allowed",
+                    ["actual"] = actualCount,
+                    ["violation"] = "undeclared"
+                });
+            }
+        }
+        
+        // If any violations found, emit single consolidated error
+        if (violations.Any())
+        {
+            var details = new Dictionary<string, object>
+            {
+                ["source"] = "ProjectRule",
+                ["resourceType"] = rule.ResourceType,
+                ["path"] = rule.Path,
+                ["ruleType"] = rule.Type,
+                ["ruleId"] = rule.Id,
+                ["violations"] = violations
+            };
+            
+            details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.REQUIRED_RESOURCE_MISSING, details);
+            
+            errors.Add(new RuleValidationError
+            {
+                RuleId = rule.Id,
+                RuleType = rule.Type,
+                Severity = rule.Severity,
+                ResourceType = rule.ResourceType,
+                Path = rule.Path,
+                ErrorCode = ValidationErrorCodes.REQUIRED_RESOURCE_MISSING,
+                Details = details,
+                EntryIndex = null, // Bundle-level validation
+                ResourceId = null  // No specific resource
+            });
+        }
+        
+        return errors;
+    }
+    
     private IEnumerable<object> EvaluateFhirPath(
         Resource resource,
         string path,
@@ -1563,4 +1780,19 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         // If no match, return the original path (shouldn't happen, but safe fallback)
         return rulePath;
     }
+}
+
+/// <summary>
+/// Resource requirement for RequiredResources rule validation
+/// </summary>
+internal class ResourceRequirement
+{
+    [System.Text.Json.Serialization.JsonPropertyName("resourceType")]
+    public required string ResourceType { get; set; }
+    
+    [System.Text.Json.Serialization.JsonPropertyName("min")]
+    public required int Min { get; set; }
+    
+    [System.Text.Json.Serialization.JsonPropertyName("max")]
+    public int? Max { get; set; }
 }

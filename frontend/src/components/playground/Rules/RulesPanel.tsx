@@ -686,6 +686,7 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
         projectBundle={projectBundle}
         hl7Samples={hl7Samples}
         projectId={projectId}
+        existingRules={rules}
       />
 
       {/* Rule Mode Selector Modal - REMOVED: Creation uses AddRuleModal only */}

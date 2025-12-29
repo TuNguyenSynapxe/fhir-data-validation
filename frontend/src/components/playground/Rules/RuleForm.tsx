@@ -9,13 +9,15 @@ import {
   InstanceScopeDrawer,
   type InstanceScope,
 } from './common';
-import { RequiredConfigSection } from './rule-types/required/RequiredConfigSection';
+import { composeInstanceScopedPath } from './common/InstanceScope.utils';
+import { RequiredConfigSection, type RequiredParams } from './rule-types/required/RequiredConfigSection';
 import { PatternConfigSection } from './rule-types/pattern/PatternConfigSection';
 import { QuestionAnswerConfigSection } from './rule-types/question-answer/QuestionAnswerConfigSection';
 import { FixedValueConfigSection } from './rule-types/fixed-value/FixedValueConfigSection';
 import { AllowedValuesConfigSection } from './rule-types/allowed-values/AllowedValuesConfigSection';
 import { ArrayLengthConfigSection } from './rule-types/array-length/ArrayLengthConfigSection';
 import { CustomFHIRPathConfigSection } from './rule-types/custom-fhirpath/CustomFHIRPathConfigSection';
+import { RequiredResourcesConfigSection, type ResourceRequirement } from './rule-types/required-resources/RequiredResourcesConfigSection';
 import { buildRequiredRule } from './rule-types/required/RequiredRuleHelpers';
 import { buildPatternRule } from './rule-types/pattern/PatternRuleHelpers';
 import { buildQuestionAnswerRule, getDefaultIterationScope } from './rule-types/question-answer/QuestionAnswerRuleHelpers';
@@ -23,6 +25,7 @@ import { buildFixedValueRule } from './rule-types/fixed-value/FixedValueRuleHelp
 import { buildAllowedValuesRule } from './rule-types/allowed-values/AllowedValuesRuleHelpers';
 import { buildArrayLengthRule } from './rule-types/array-length/ArrayLengthRuleHelpers';
 import { buildCustomFHIRPathRule, parseCustomFHIRPathRule } from './rule-types/custom-fhirpath/CustomFHIRPathRuleHelpers';
+import { buildRequiredResourcesRule, parseRequiredResourcesRule } from './rule-types/required-resources/RequiredResourcesRuleHelpers';
 import type { Rule } from '../../../types/rightPanelProps';
 import type { QuestionAnswerConstraint } from './rule-types/question-answer/QuestionAnswerConstraint.types';
 import { CONSTRAINT_TO_ERROR_CODE } from './rule-types/question-answer/QuestionAnswerConstraint.types';
@@ -47,7 +50,7 @@ import { CONSTRAINT_TO_ERROR_CODE } from './rule-types/question-answer/QuestionA
  * ✅ ErrorCode logic is centralized in this component
  */
 
-type RuleType = 'Required' | 'Regex' | 'QuestionAnswer' | 'FixedValue' | 'AllowedValues' | 'ArrayLength' | 'CustomFHIRPath';
+type RuleType = 'Required' | 'Regex' | 'QuestionAnswer' | 'FixedValue' | 'AllowedValues' | 'ArrayLength' | 'CustomFHIRPath' | 'RequiredResources';
 
 interface RuleFormProps {
   mode: 'create' | 'edit';
@@ -65,7 +68,7 @@ interface RuleFormProps {
 type ErrorCodeMode = 'fixed' | 'governed' | 'runtime-determined';
 
 const getErrorCodeMode = (ruleType: RuleType): ErrorCodeMode => {
-  if (ruleType === 'Required' || ruleType === 'Regex' || ruleType === 'FixedValue' || ruleType === 'AllowedValues' || ruleType === 'ArrayLength') return 'fixed';
+  if (ruleType === 'Required' || ruleType === 'Regex' || ruleType === 'FixedValue' || ruleType === 'AllowedValues' || ruleType === 'ArrayLength' || ruleType === 'RequiredResources') return 'fixed';
   if (ruleType === 'QuestionAnswer') return 'runtime-determined';
   if (ruleType === 'CustomFHIRPath') return 'governed';
   return 'fixed';
@@ -77,6 +80,7 @@ const getFixedErrorCode = (ruleType: RuleType): string => {
   if (ruleType === 'FixedValue') return 'FIXED_VALUE_MISMATCH';
   if (ruleType === 'AllowedValues') return 'VALUE_NOT_ALLOWED';
   if (ruleType === 'ArrayLength') return 'ARRAY_LENGTH_VIOLATION';
+  if (ruleType === 'RequiredResources') return 'REQUIRED_RESOURCE_MISSING';
   return '';
 };
 
@@ -88,6 +92,7 @@ const RULE_TYPE_LABELS = {
   AllowedValues: 'Allowed Values',
   ArrayLength: 'Array Length',
   CustomFHIRPath: 'Custom FHIRPath',
+  RequiredResources: 'Required Resources',
 };
 
 const RULE_TYPE_DESCRIPTIONS = {
@@ -98,6 +103,7 @@ const RULE_TYPE_DESCRIPTIONS = {
   AllowedValues: 'Validate that a field value is within a predefined set of allowed values',
   ArrayLength: 'Validate that an array has a minimum and/or maximum number of elements',
   CustomFHIRPath: 'Custom validation logic using FHIRPath expressions',
+  RequiredResources: 'Ensure specific resources exist in the bundle, with optional exact counts',
 };
 
 export const RuleForm: React.FC<RuleFormProps> = ({
@@ -124,8 +130,10 @@ export const RuleForm: React.FC<RuleFormProps> = ({
   const [showPreview, setShowPreview] = useState(false);
 
   // === RULE-SPECIFIC STATE ===
-  // Required
-  const [fieldPath, setFieldPath] = useState<string>('');
+  // Required (Field or Resource mode)
+  const [requiredParams, setRequiredParams] = useState<RequiredParams | null>(null);
+  const [requiredParamsValid, setRequiredParamsValid] = useState<boolean>(false);
+  const [fieldPath, setFieldPath] = useState<string>(''); // Legacy for other rule types
 
   // Pattern
   const [pattern, setPattern] = useState<string>('');
@@ -153,6 +161,9 @@ export const RuleForm: React.FC<RuleFormProps> = ({
   const [customExpression, setCustomExpression] = useState<string>('');
   const [customErrorCode, setCustomErrorCode] = useState<string>('');
 
+  // RequiredResources
+  const [resourceRequirements, setResourceRequirements] = useState<ResourceRequirement[]>([]);
+
   // === ERROR CODE STATE ===
   const errorCodeMode = getErrorCodeMode(ruleType);
   const [governedErrorCode, setGovernedErrorCode] = useState<string>(''); // For CustomFHIRPath
@@ -170,11 +181,17 @@ export const RuleForm: React.FC<RuleFormProps> = ({
       setUserHint(initialRule.userHint || '');
 
       // Rule-specific fields
-      if (ruleType === 'Required' && initialRule.path) {
-        // Extract field path from full path (remove resource type prefix)
-        const pathParts = initialRule.path.split('.');
-        const fieldPath = pathParts.slice(1).join('.');
-        setFieldPath(fieldPath);
+      if (ruleType === 'Required') {
+        // Check if this is a resource requirement or field requirement
+        if (initialRule.params && 'resourceRequirement' in initialRule.params) {
+          // Resource mode
+          setRequiredParams(initialRule.params as RequiredParams);
+        } else if (initialRule.path) {
+          // Field mode - extract field path from full path
+          const pathParts = initialRule.path.split('.');
+          const fieldPath = pathParts.slice(1).join('.');
+          setRequiredParams({ path: fieldPath });
+        }
       }
 
       if (ruleType === 'Regex' && initialRule.params) {
@@ -228,6 +245,11 @@ export const RuleForm: React.FC<RuleFormProps> = ({
         setCustomExpression(parsed.expression);
         setCustomErrorCode(parsed.errorCode);
         setGovernedErrorCode(parsed.errorCode);
+      }
+
+      if (ruleType === 'RequiredResources' && initialRule) {
+        const parsed = parseRequiredResourcesRule(initialRule as Rule);
+        setResourceRequirements(parsed.requirements);
       }
     }
   }, [mode, initialRule, ruleType]);
@@ -310,6 +332,27 @@ export const RuleForm: React.FC<RuleFormProps> = ({
       if (!customErrorCode) newErrors.errorCode = 'Error code is required';
     }
 
+    if (ruleType === 'RequiredResources') {
+      if (resourceRequirements.length === 0) {
+        newErrors.requirements = 'At least one resource requirement is required';
+      }
+      // Validate each requirement
+      resourceRequirements.forEach((req, index) => {
+        if (!req.resourceType) {
+          newErrors[`requirement_${index}`] = 'Resource type is required';
+        }
+        if (req.count < 1) {
+          newErrors[`requirement_${index}`] = 'Count must be at least 1';
+        }
+      });
+      // Check for duplicate resourceTypes
+      const resourceTypes = resourceRequirements.map(r => r.resourceType);
+      const duplicates = resourceTypes.filter((item, index) => resourceTypes.indexOf(item) !== index);
+      if (duplicates.length > 0) {
+        newErrors.requirements = `Duplicate resource types: ${duplicates.join(', ')}`;
+      }
+    }
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -319,14 +362,38 @@ export const RuleForm: React.FC<RuleFormProps> = ({
     let rule: Rule;
 
     if (ruleType === 'Required') {
-      rule = buildRequiredRule({
-        resourceType,
-        instanceScope,
-        fieldPath,
-        severity,
-        errorCode: computedErrorCode,
-        userHint: userHint || undefined,
-      });
+      if (!requiredParams) {
+        throw new Error('Required params not set');
+      }
+      
+      // Check if field mode or resource mode
+      if ('path' in requiredParams) {
+        // Field mode - use existing buildRequiredRule
+        rule = buildRequiredRule({
+          resourceType,
+          instanceScope,
+          fieldPath: requiredParams.path,
+          severity,
+          errorCode: computedErrorCode,
+          userHint: userHint || undefined,
+        });
+      } else {
+        // Resource mode - store resourceRequirement in params
+        const fullPath = composeInstanceScopedPath(resourceType, instanceScope);
+        rule = {
+          id: mode === 'edit' && initialRule?.id ? initialRule.id : `rule-${Date.now()}`,
+          type: 'Required',
+          resourceType,
+          path: fullPath,
+          severity,
+          errorCode: computedErrorCode,
+          userHint: userHint || undefined,
+          params: requiredParams,
+          origin: 'manual',
+          enabled: true,
+          isMessageCustomized: false,
+        };
+      }
     } else if (ruleType === 'Regex') {
       rule = buildPatternRule({
         resourceType,
@@ -392,6 +459,12 @@ export const RuleForm: React.FC<RuleFormProps> = ({
         severity,
         userHint: userHint || undefined,
       });
+    } else if (ruleType === 'RequiredResources') {
+      rule = buildRequiredResourcesRule({
+        requirements: resourceRequirements,
+        severity,
+        userHint: userHint || undefined,
+      });
     } else {
       // Other types - not yet implemented
       return;
@@ -428,32 +501,37 @@ export const RuleForm: React.FC<RuleFormProps> = ({
 
       {/* Form Body */}
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 overscroll-contain">
-        {/* 1️⃣ SHARED: Resource Selector */}
-        <ResourceSelector
-          value={resourceType}
-          onChange={setResourceType}
-          disabled={mode === 'edit'} // Lock resource type in edit mode
-          projectBundle={projectBundle} // Pass bundle for availability check
-        />
+        {/* 1️⃣ SHARED: Resource Selector (hidden for bundle-level rules) */}
+        {ruleType !== 'RequiredResources' && (
+          <ResourceSelector
+            value={resourceType}
+            onChange={setResourceType}
+            disabled={mode === 'edit'} // Lock resource type in edit mode
+            projectBundle={projectBundle} // Pass bundle for availability check
+          />
+        )}
 
-        {/* 2️⃣ SHARED: Rule Scope Selector */}
-        <RuleScopeSelector
-          resourceType={resourceType}
-          value={instanceScope}
-          onSelect={() => setIsScopeDrawerOpen(true)}
-          error={errors.instanceScope}
-        />
+        {/* 2️⃣ SHARED: Rule Scope Selector (hidden for bundle-level rules) */}
+        {ruleType !== 'RequiredResources' && (
+          <RuleScopeSelector
+            resourceType={resourceType}
+            value={instanceScope}
+            onSelect={() => setIsScopeDrawerOpen(true)}
+            error={errors.instanceScope}
+          />
+        )}
 
         {/* 3️⃣ RULE-SPECIFIC CONFIG SECTION */}
         {ruleType === 'Required' && (
           <RequiredConfigSection
+            mode={mode}
             resourceType={resourceType}
-            fieldPath={fieldPath}
-            onFieldPathChange={(path) => {
-              setFieldPath(path);
-              setErrors({ ...errors, fieldPath: undefined });
+            initialParams={requiredParams || undefined}
+            onParamsChange={(params, isValid) => {
+              setRequiredParams(params);
+              setRequiredParamsValid(isValid);
+              setErrors({ ...errors, requiredParams: undefined });
             }}
-            error={errors.fieldPath}
             projectBundle={projectBundle}
             hl7Samples={hl7Samples}
           />
@@ -617,6 +695,18 @@ export const RuleForm: React.FC<RuleFormProps> = ({
               errorCode: errors.errorCode,
             }}
             resourceType={resourceType}
+          />
+        )}
+
+        {ruleType === 'RequiredResources' && (
+          <RequiredResourcesConfigSection
+            requirements={resourceRequirements}
+            onRequirementsChange={(reqs) => {
+              setResourceRequirements(reqs);
+              setErrors({ ...errors, requirements: undefined });
+            }}
+            errors={errors}
+            projectBundle={projectBundle}
           />
         )}
 

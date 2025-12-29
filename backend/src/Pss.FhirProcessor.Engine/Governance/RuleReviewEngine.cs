@@ -57,6 +57,8 @@ public class RuleReviewEngine : IRuleReviewEngine
         CheckArrayLengthErrorCode(rule, issues);
         CheckFixedValueErrorCode(rule, issues);
         CheckCodeSystemErrorCode(rule, issues);
+        CheckRequiredResourcesErrorCode(rule, issues);
+        CheckRequiredResourcesConfiguration(rule, issues);
         CheckCustomFhirPathErrorCodeIsKnown(rule, issues);
         CheckReferenceRuleNotSupported(rule, issues);
         CheckFullUrlIdMatchRuleNotSupported(rule, issues);
@@ -91,6 +93,9 @@ public class RuleReviewEngine : IRuleReviewEngine
         
         // Check for path conflicts with different errorCodes (WARNING level)
         CheckPathErrorCodeConflicts(rulesList, results);
+        
+        // Check for multiple RequiredResources rules (BLOCKED level)
+        CheckSingleRequiredResourcesRule(rulesList, results);
         
         return results.AsReadOnly();
     }
@@ -410,6 +415,253 @@ public class RuleReviewEngine : IRuleReviewEngine
                                     "Use Details['violation'] to distinguish 'system' vs 'code' failure, not custom errorCodes."
                 }
             ));
+        }
+    }
+    
+    /// <summary>
+    /// BLOCKED: RequiredResources rules must use REQUIRED_RESOURCE_MISSING errorCode.
+    /// 
+    /// GOVERNANCE CONTRACT:
+    /// - errorCode must be absent or REQUIRED_RESOURCE_MISSING (no custom errorCodes)
+    /// - Fixed semantic: resource count constraint violation
+    /// 
+    /// RATIONALE:
+    /// - RequiredResources has one semantic meaning: resource missing or count wrong
+    /// - Allowing custom errorCodes creates semantic drift
+    /// - Mode and count details belong in Details, not errorCode
+    /// </summary>
+    private void CheckRequiredResourcesErrorCode(RuleDefinition rule, List<RuleReviewIssue> issues)
+    {
+        if (rule.Type != "RequiredResources")
+            return;
+        
+        // errorCode must be absent (will default to REQUIRED_RESOURCE_MISSING at runtime) or explicitly REQUIRED_RESOURCE_MISSING
+        if (!string.IsNullOrWhiteSpace(rule.ErrorCode) && rule.ErrorCode != "REQUIRED_RESOURCE_MISSING")
+        {
+            issues.Add(new RuleReviewIssue(
+                Code: "REQUIRED_RESOURCES_ERROR_CODE_NOT_ALLOWED",
+                Severity: RuleReviewStatus.BLOCKED,
+                RuleId: rule.Id,
+                Facts: new Dictionary<string, object>
+                {
+                    ["ruleType"] = rule.Type,
+                    ["currentErrorCode"] = rule.ErrorCode,
+                    ["requiredErrorCode"] = "REQUIRED_RESOURCE_MISSING",
+                    ["reason"] = "RequiredResources rules have a fixed semantic errorCode and must use REQUIRED_RESOURCE_MISSING.",
+                    ["explanation"] = "RequiredResources validation has one fixed meaning: required resource count constraint violated. " +
+                                    "Use Details['mode'] and Details['expectedCount'] to distinguish 'at least' vs 'exactly', not custom errorCodes."
+                }
+            ));
+        }
+    }
+    
+    /// <summary>
+    /// BLOCKED: RequiredResources rules must have valid configuration.
+    /// 
+    /// GOVERNANCE CONTRACT:
+    /// - requirements array must not be empty
+    /// - Each requirement must have resourceType
+    /// - min >= 1 for all requirements
+    /// - max >= min when max present (no invalid ranges)
+    /// - max === min OR max absent (no range support - only "at least" or "exactly" modes)
+    /// - No duplicate resourceTypes
+    /// 
+    /// RATIONALE:
+    /// - Empty requirements = meaningless rule
+    /// - min < 1 = nonsensical (resource count cannot be negative)
+    /// - max < min = invalid constraint
+    /// - min < max = range mode not supported (governance enforces binary choice: min-only or exact)
+    /// - Duplicates = ambiguous/conflicting constraints
+    /// </summary>
+    private void CheckRequiredResourcesConfiguration(RuleDefinition rule, List<RuleReviewIssue> issues)
+    {
+        if (rule.Type != "RequiredResources")
+            return;
+        
+        // Check 1: params.requirements must exist
+        if (rule.Params == null || !rule.Params.ContainsKey("requirements"))
+        {
+            issues.Add(new RuleReviewIssue(
+                Code: "REQUIRED_RESOURCES_INVALID_CONFIG",
+                Severity: RuleReviewStatus.BLOCKED,
+                RuleId: rule.Id,
+                Facts: new Dictionary<string, object>
+                {
+                    ["ruleType"] = rule.Type,
+                    ["reason"] = "Missing 'requirements' parameter",
+                    ["explanation"] = "RequiredResources rules must have a 'requirements' array parameter with at least one requirement."
+                }
+            ));
+            return;
+        }
+        
+        // Parse requirements array
+        List<System.Text.Json.JsonElement>? requirementsArray = null;
+        try
+        {
+            var requirementsJson = System.Text.Json.JsonSerializer.Serialize(rule.Params["requirements"]);
+            var requirementsDoc = System.Text.Json.JsonDocument.Parse(requirementsJson);
+            requirementsArray = requirementsDoc.RootElement.EnumerateArray().ToList();
+        }
+        catch
+        {
+            issues.Add(new RuleReviewIssue(
+                Code: "REQUIRED_RESOURCES_INVALID_CONFIG",
+                Severity: RuleReviewStatus.BLOCKED,
+                RuleId: rule.Id,
+                Facts: new Dictionary<string, object>
+                {
+                    ["ruleType"] = rule.Type,
+                    ["reason"] = "Failed to parse 'requirements' array",
+                    ["explanation"] = "The 'requirements' parameter must be a valid JSON array."
+                }
+            ));
+            return;
+        }
+        
+        // Check 2: requirements array must not be empty
+        if (requirementsArray == null || !requirementsArray.Any())
+        {
+            issues.Add(new RuleReviewIssue(
+                Code: "REQUIRED_RESOURCES_INVALID_CONFIG",
+                Severity: RuleReviewStatus.BLOCKED,
+                RuleId: rule.Id,
+                Facts: new Dictionary<string, object>
+                {
+                    ["ruleType"] = rule.Type,
+                    ["reason"] = "Empty 'requirements' array",
+                    ["explanation"] = "RequiredResources rules must have at least one requirement."
+                }
+            ));
+            return;
+        }
+        
+        // Check each requirement
+        var seenResourceTypes = new HashSet<string>(StringComparer.Ordinal);
+        
+        for (int i = 0; i < requirementsArray.Count; i++)
+        {
+            var req = requirementsArray[i];
+            
+            // Check resourceType exists
+            if (!req.TryGetProperty("resourceType", out var resourceTypeProp) || string.IsNullOrWhiteSpace(resourceTypeProp.GetString()))
+            {
+                issues.Add(new RuleReviewIssue(
+                    Code: "REQUIRED_RESOURCES_INVALID_CONFIG",
+                    Severity: RuleReviewStatus.BLOCKED,
+                    RuleId: rule.Id,
+                    Facts: new Dictionary<string, object>
+                    {
+                        ["ruleType"] = rule.Type,
+                        ["requirementIndex"] = i,
+                        ["reason"] = "Missing or empty 'resourceType' in requirement",
+                        ["explanation"] = "Each requirement must specify a valid FHIR resourceType."
+                    }
+                ));
+                continue;
+            }
+            
+            var resourceType = resourceTypeProp.GetString()!;
+            
+            // Check for duplicates
+            if (!seenResourceTypes.Add(resourceType))
+            {
+                issues.Add(new RuleReviewIssue(
+                    Code: "REQUIRED_RESOURCES_INVALID_CONFIG",
+                    Severity: RuleReviewStatus.BLOCKED,
+                    RuleId: rule.Id,
+                    Facts: new Dictionary<string, object>
+                    {
+                        ["ruleType"] = rule.Type,
+                        ["resourceType"] = resourceType,
+                        ["reason"] = "Duplicate resourceType in requirements",
+                        ["explanation"] = $"Resource type '{resourceType}' appears multiple times. Each resource type can only have one requirement."
+                    }
+                ));
+            }
+            
+            // Check min exists and >= 1
+            if (!req.TryGetProperty("min", out var minProp))
+            {
+                issues.Add(new RuleReviewIssue(
+                    Code: "REQUIRED_RESOURCES_INVALID_CONFIG",
+                    Severity: RuleReviewStatus.BLOCKED,
+                    RuleId: rule.Id,
+                    Facts: new Dictionary<string, object>
+                    {
+                        ["ruleType"] = rule.Type,
+                        ["resourceType"] = resourceType,
+                        ["requirementIndex"] = i,
+                        ["reason"] = "Missing 'min' value in requirement",
+                        ["explanation"] = "Each requirement must specify a minimum count (min >= 1)."
+                    }
+                ));
+                continue;
+            }
+            
+            var min = minProp.GetInt32();
+            
+            if (min < 1)
+            {
+                issues.Add(new RuleReviewIssue(
+                    Code: "REQUIRED_RESOURCES_INVALID_CONFIG",
+                    Severity: RuleReviewStatus.BLOCKED,
+                    RuleId: rule.Id,
+                    Facts: new Dictionary<string, object>
+                    {
+                        ["ruleType"] = rule.Type,
+                        ["resourceType"] = resourceType,
+                        ["min"] = min,
+                        ["reason"] = "Invalid 'min' value (must be >= 1)",
+                        ["explanation"] = "Minimum count must be at least 1."
+                    }
+                ));
+            }
+            
+            // Check max (if present)
+            if (req.TryGetProperty("max", out var maxProp))
+            {
+                var max = maxProp.GetInt32();
+                
+                // Check max >= min
+                if (max < min)
+                {
+                    issues.Add(new RuleReviewIssue(
+                        Code: "REQUIRED_RESOURCES_INVALID_CONFIG",
+                        Severity: RuleReviewStatus.BLOCKED,
+                        RuleId: rule.Id,
+                        Facts: new Dictionary<string, object>
+                        {
+                            ["ruleType"] = rule.Type,
+                            ["resourceType"] = resourceType,
+                            ["min"] = min,
+                            ["max"] = max,
+                            ["reason"] = "Invalid constraint: max < min",
+                            ["explanation"] = "Maximum count must be greater than or equal to minimum count."
+                        }
+                    ));
+                }
+                
+                // Check max === min OR max absent (no range support)
+                if (max != min)
+                {
+                    issues.Add(new RuleReviewIssue(
+                        Code: "REQUIRED_RESOURCES_INVALID_CONFIG",
+                        Severity: RuleReviewStatus.BLOCKED,
+                        RuleId: rule.Id,
+                        Facts: new Dictionary<string, object>
+                        {
+                            ["ruleType"] = rule.Type,
+                            ["resourceType"] = resourceType,
+                            ["min"] = min,
+                            ["max"] = max,
+                            ["reason"] = "Range mode not supported (min < max)",
+                            ["explanation"] = "RequiredResources only supports two modes: 'At least' (min only, no max) or 'Exactly' (min === max). " +
+                                            "Ranges (min < max) are not supported. Please use either min-only or set max equal to min."
+                        }
+                    ));
+                }
+            }
         }
     }
     
@@ -767,6 +1019,59 @@ public class RuleReviewEngine : IRuleReviewEngine
             else
             {
                 seen[key] = rule.Id;
+            }
+        }
+    }
+    
+    /// <summary>
+    /// BLOCKED: Multiple RequiredResources rules not allowed.
+    /// RequiredResources defines the complete bundle composition contract.
+    /// Only ONE such rule is permitted per project.
+    /// 
+    /// RATIONALE:
+    /// - RequiredResources is a closed-bundle rule (declares ALL allowed resources)
+    /// - Multiple rules would create conflicting bundle contracts
+    /// - Single rule = single source of truth for bundle composition
+    /// </summary>
+    private void CheckSingleRequiredResourcesRule(List<RuleDefinition> rules, List<RuleReviewResult> results)
+    {
+        var requiredResourcesRules = rules
+            .Where(r => r.Type.Equals("RequiredResources", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        
+        if (requiredResourcesRules.Count > 1)
+        {
+            // Block ALL RequiredResources rules if multiple exist
+            foreach (var rule in requiredResourcesRules)
+            {
+                var existingResult = results.FirstOrDefault(r => r.RuleId == rule.Id);
+                if (existingResult != null)
+                {
+                    // Add issue to existing result
+                    var mutableIssues = existingResult.Issues.ToList();
+                    mutableIssues.Add(new RuleReviewIssue(
+                        Code: "DUPLICATE_BUNDLE_RESOURCE_RULE",
+                        Severity: RuleReviewStatus.BLOCKED,
+                        RuleId: rule.Id,
+                        Facts: new Dictionary<string, object>
+                        {
+                            ["ruleType"] = rule.Type,
+                            ["totalCount"] = requiredResourcesRules.Count,
+                            ["reason"] = "Only one bundle-level Required Resources rule is allowed per project.",
+                            ["explanation"] = "RequiredResources defines the complete bundle composition contract. " +
+                                            "Multiple rules would create conflicting constraints. " +
+                                            "Please consolidate all resource requirements into a single rule."
+                        }
+                    ));
+                    
+                    // Update result with BLOCKED status
+                    var index = results.IndexOf(existingResult);
+                    results[index] = new RuleReviewResult(
+                        existingResult.RuleId,
+                        RuleReviewStatus.BLOCKED,
+                        mutableIssues.AsReadOnly()
+                    );
+                }
             }
         }
     }
