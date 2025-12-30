@@ -35,7 +35,8 @@ public class RuleEvaluationFallbackTests
             Id = "test-rule",
             Type = "Required",
             ResourceType = "Patient",
-            Path = "gender",
+            FieldPath = "gender",
+            InstanceScope = new AllInstances(),
             ErrorCode = "TEST_ERROR_CODE"
         };
         var patient = new Patient { Gender = AdministrativeGender.Male };
@@ -59,7 +60,8 @@ public class RuleEvaluationFallbackTests
             Id = "test-rule",
             Type = "Required",
             ResourceType = "Patient",
-            Path = "gender",
+            FieldPath = "gender",
+            InstanceScope = new AllInstances(),
             ErrorCode = "TEST_ERROR_CODE"
         };
         
@@ -81,7 +83,8 @@ public class RuleEvaluationFallbackTests
             Id = "test-rule",
             Type = "CustomFHIRPath",
             ResourceType = "Patient",
-            Path = "name.exists()",
+            FieldPath = "name.exists()",
+            InstanceScope = new AllInstances(),
             ErrorCode = "TEST_ERROR_CODE"
         };
         var patient = new Patient();
@@ -105,7 +108,8 @@ public class RuleEvaluationFallbackTests
             Id = "test-rule",
             Type = "Required",
             ResourceType = "Patient",
-            Path = "extension.where(url='http://example.com').value",
+            FieldPath = "extension.where(url='http://example.com').value",
+            InstanceScope = new AllInstances(),
             ErrorCode = "TEST_ERROR_CODE"
         };
         var patient = new Patient();
@@ -129,7 +133,8 @@ public class RuleEvaluationFallbackTests
             Id = "test-rule",
             Type = "Required",
             ResourceType = "Patient",
-            Path = "name[0].given",
+            FieldPath = "name.given",
+            InstanceScope = new FirstInstance(),
             ErrorCode = "TEST_ERROR_CODE"
         };
         var patient = new Patient();
@@ -158,7 +163,8 @@ public class RuleEvaluationFallbackTests
             Id = "test-rule",
             Type = "Required",
             ResourceType = "Patient",
-            Path = "contact.name",
+            FieldPath = "contact.name",
+            InstanceScope = new AllInstances(),
             ErrorCode = "TEST_ERROR_CODE"
         };
         var patient = new Patient();

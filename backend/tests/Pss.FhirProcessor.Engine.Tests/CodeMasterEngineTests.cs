@@ -1038,8 +1038,8 @@ public class CodeMasterEngineTests
         }
         if (expectedPath != null)
         {
-            error.Path.Should().Be(expectedPath);
+            error.FieldPath.Should().Be(expectedPath);
         }
-        error.Path.Should().NotBeNullOrEmpty();
+        error.FieldPath.Should().NotBeNullOrEmpty();
     }
 }

@@ -30,7 +30,8 @@ public class RuleReviewEngineTests
             Id = "test-rule",
             Type = "Required",
             ResourceType = "Patient",
-            Path = "Patient.name",
+            FieldPath = "name",
+            InstanceScope = new AllInstances(),
             ErrorCode = "" // Empty errorCode
         };
 
@@ -51,7 +52,8 @@ public class RuleReviewEngineTests
             Id = "test-rule",
             Type = "Required",
             ResourceType = "Patient",
-            Path = "", // Empty path
+            FieldPath = "",
+            InstanceScope = new AllInstances(), // Empty path
             ErrorCode = "FIELD_REQUIRED"
         };
 
@@ -72,7 +74,8 @@ public class RuleReviewEngineTests
             Id = "test-rule",
             Type = "Required",
             ResourceType = "Patient",
-            Path = "Patient", // Root-level only
+            FieldPath = "",
+            InstanceScope = new AllInstances(), // Root-level only
             ErrorCode = "FIELD_REQUIRED"
         };
 
@@ -93,7 +96,8 @@ public class RuleReviewEngineTests
             Id = "test-rule",
             Type = "QuestionAnswer",
             ResourceType = "Observation",
-            Path = "Observation.component",
+            FieldPath = "component",
+            InstanceScope = new AllInstances(),
             ErrorCode = "INVALID_ANSWER",
             Params = new Dictionary<string, object>() // No questionSetId
         };
@@ -115,7 +119,8 @@ public class RuleReviewEngineTests
             Id = "test-rule",
             Type = "Regex",
             ResourceType = "Patient",
-            Path = "Patient.active", // Boolean field
+            FieldPath = "active",
+            InstanceScope = new AllInstances(), // Boolean field
             ErrorCode = "PATTERN_MISMATCH"
         };
 
@@ -140,7 +145,8 @@ public class RuleReviewEngineTests
             Id = "test-rule",
             Type = "Required",
             ResourceType = "Patient",
-            Path = "Patient.name", // Only 2 segments
+            FieldPath = "name",
+            InstanceScope = new AllInstances(), // Only 2 segments
             ErrorCode = "FIELD_REQUIRED"
         };
 
@@ -161,7 +167,8 @@ public class RuleReviewEngineTests
             Id = "test-rule",
             Type = "Required",
             ResourceType = "Bundle",
-            Path = "Bundle.entry[*].resource", // Wildcard without where()
+            FieldPath = "entry[*].resource",
+            InstanceScope = new AllInstances(), // Wildcard without where()
             ErrorCode = "FIELD_REQUIRED"
         };
 
@@ -182,7 +189,8 @@ public class RuleReviewEngineTests
             Id = "test-rule",
             Type = "FixedValue",
             ResourceType = "Observation",
-            Path = "Observation.code.coding.code", // Code without system filter
+            FieldPath = "code.coding.code",
+            InstanceScope = new AllInstances(), // Code without system filter
             ErrorCode = "FIXED_VALUE_MISMATCH" // Must use correct ErrorCode to reach system check
         };
 
@@ -205,7 +213,8 @@ public class RuleReviewEngineTests
                 Id = "rule-1",
                 Type = "Required",
                 ResourceType = "Patient",
-                Path = "Patient.name.family",
+                FieldPath = "name.family",
+                InstanceScope = new AllInstances(),
                 ErrorCode = "FIELD_REQUIRED"
             },
             new RuleDefinition
@@ -213,7 +222,8 @@ public class RuleReviewEngineTests
                 Id = "rule-2",
                 Type = "Required",
                 ResourceType = "Patient",
-                Path = "Patient.name.family", // Same type + path
+                FieldPath = "name.family",
+                InstanceScope = new AllInstances(), // Same type + path
                 ErrorCode = "FIELD_REQUIRED"
             }
         };
@@ -240,7 +250,8 @@ public class RuleReviewEngineTests
             Id = "test-rule",
             Type = "Required",
             ResourceType = "Patient",
-            Path = "Patient.name.where(use='official').family",
+            FieldPath = "name.where(use='official').family",
+            InstanceScope = new AllInstances(),
             ErrorCode = "FIELD_REQUIRED"
         };
 
@@ -261,7 +272,8 @@ public class RuleReviewEngineTests
             Id = "test-rule",
             Type = "QuestionAnswer",
             ResourceType = "Observation",
-            Path = "Observation.component.where(code.coding.system='http://example.org')",
+            FieldPath = "component.where(code.coding.system='http://example.org')",
+            InstanceScope = new AllInstances(),
             ErrorCode = "INVALID_ANSWER",
             Params = new Dictionary<string, object>
             {
@@ -286,7 +298,8 @@ public class RuleReviewEngineTests
             Id = "test-rule",
             Type = "QuestionAnswer",
             ResourceType = "Observation",
-            Path = "Observation.component.where(code.coding.system='http://loinc.org')",
+            FieldPath = "component.where(code.coding.system='http://loinc.org')",
+            InstanceScope = new AllInstances(),
             ErrorCode = "", // Empty/missing errorCode allowed for QuestionAnswer
             Params = new Dictionary<string, object>
             {
@@ -312,7 +325,8 @@ public class RuleReviewEngineTests
             Id = "test-rule",
             Type = "QuestionAnswer",
             ResourceType = "Observation",
-            Path = "Observation.component.where(code.coding.system='http://loinc.org')",
+            FieldPath = "component.where(code.coding.system='http://loinc.org')",
+            InstanceScope = new AllInstances(),
             ErrorCode = "ANSWER_REQUIRED", // Provided errorCode
             Params = new Dictionary<string, object>
             {
@@ -344,7 +358,8 @@ public class RuleReviewEngineTests
             Id = "test-rule",
             Type = "Required",
             ResourceType = "Patient",
-            Path = "Patient.name",
+            FieldPath = "name",
+            InstanceScope = new AllInstances(),
             ErrorCode = "FIELD_REQUIRED"
         };
 
@@ -369,7 +384,8 @@ public class RuleReviewEngineTests
             Id = "test-rule",
             Type = "Required",
             ResourceType = "Patient",
-            Path = "Patient.thisFieldDoesNotExist", // Intentionally invalid
+            FieldPath = "thisFieldDoesNotExist",
+            InstanceScope = new AllInstances(), // Intentionally invalid
             ErrorCode = "FIELD_REQUIRED"
         };
 
@@ -387,13 +403,14 @@ public class RuleReviewEngineTests
     public void ReviewEngine_DoesNotMutateRule()
     {
         // Arrange
-        var originalPath = "Patient.name";
+        var originalFieldPath = "name";
         var rule = new RuleDefinition
         {
             Id = "test-rule",
             Type = "Required",
             ResourceType = "Patient",
-            Path = originalPath,
+            FieldPath = originalFieldPath,
+            InstanceScope = new AllInstances(),
             ErrorCode = "FIELD_REQUIRED"
         };
 
@@ -401,7 +418,7 @@ public class RuleReviewEngineTests
         _ = _engine.Review(rule);
 
         // Assert
-        Assert.Equal(originalPath, rule.Path);
+        Assert.Equal(originalFieldPath, rule.FieldPath);
         Assert.Equal("test-rule", rule.Id);
         Assert.Equal("Required", rule.Type);
     }
@@ -418,7 +435,8 @@ public class RuleReviewEngineTests
             Id = "test-rule",
             Type = "Required",
             ResourceType = "Patient",
-            Path = "Patient", // BLOCKED (root-level path)
+            FieldPath = "",
+            InstanceScope = new AllInstances(), // BLOCKED (root-level path)
             ErrorCode = "FIELD_REQUIRED"
         };
 
@@ -427,8 +445,8 @@ public class RuleReviewEngineTests
 
         // Assert
         Assert.Equal(RuleReviewStatus.BLOCKED, result.Status);
-        // Rule definition is unchanged
-        Assert.Equal("Patient", rule.Path);
+        // Rule definition is unchanged - check ResourceType instead of removed Path property
+        Assert.Equal("Patient", rule.ResourceType);
         // If this rule were passed to validation pipeline, it would still execute
         // (governance is orthogonal to validation)
     }
@@ -447,7 +465,8 @@ public class RuleReviewEngineTests
             Id = "pattern-correct",
             Type = "Pattern",
             ResourceType = "Patient",
-            Path = "Patient.identifier.value",
+            FieldPath = "identifier.value",
+            InstanceScope = new AllInstances(),
             ErrorCode = "PATTERN_MISMATCH"
         };
 
@@ -470,7 +489,8 @@ public class RuleReviewEngineTests
             Id = "pattern-wrong-code",
             Type = "Pattern",
             ResourceType = "Patient",
-            Path = "Patient.identifier.value",
+            FieldPath = "identifier.value",
+            InstanceScope = new AllInstances(),
             ErrorCode = "INVALID_FORMAT" // Not allowed
         };
 
@@ -492,7 +512,8 @@ public class RuleReviewEngineTests
             Id = "regex-correct",
             Type = "Regex",
             ResourceType = "Patient",
-            Path = "Patient.identifier.value",
+            FieldPath = "identifier.value",
+            InstanceScope = new AllInstances(),
             ErrorCode = "PATTERN_MISMATCH"
         };
 
@@ -514,7 +535,8 @@ public class RuleReviewEngineTests
             Id = "regex-wrong-code",
             Type = "Regex",
             ResourceType = "Patient",
-            Path = "Patient.identifier.value",
+            FieldPath = "identifier.value",
+            InstanceScope = new AllInstances(),
             ErrorCode = "REGEX_NO_MATCH" // Not allowed
         };
 
@@ -538,7 +560,8 @@ public class RuleReviewEngineTests
             Id = "av-correct-code",
             Type = "AllowedValues",
             ResourceType = "Patient",
-            Path = "Patient.gender",
+            FieldPath = "gender",
+            InstanceScope = new AllInstances(),
             ErrorCode = "VALUE_NOT_ALLOWED",
             Params = new Dictionary<string, object>
             {
@@ -564,7 +587,8 @@ public class RuleReviewEngineTests
             Id = "av-wrong-code",
             Type = "AllowedValues",
             ResourceType = "Patient",
-            Path = "Patient.gender",
+            FieldPath = "gender",
+            InstanceScope = new AllInstances(),
             ErrorCode = "ENUM_VIOLATION", // Not allowed
             Params = new Dictionary<string, object>
             {
@@ -592,7 +616,8 @@ public class RuleReviewEngineTests
             Id = "al-correct-code",
             Type = "ArrayLength",
             ResourceType = "Patient",
-            Path = "Patient.name",
+            FieldPath = "name",
+            InstanceScope = new AllInstances(),
             ErrorCode = "ARRAY_LENGTH_VIOLATION",
             Params = new Dictionary<string, object>
             {
@@ -619,7 +644,8 @@ public class RuleReviewEngineTests
             Id = "al-wrong-code",
             Type = "ArrayLength",
             ResourceType = "Patient",
-            Path = "Patient.name",
+            FieldPath = "name",
+            InstanceScope = new AllInstances(),
             ErrorCode = "ARRAY_TOO_SHORT", // Not allowed
             Params = new Dictionary<string, object>
             {
@@ -647,7 +673,8 @@ public class RuleReviewEngineTests
             Id = "fv-correct-001",
             Type = "FixedValue",
             ResourceType = "Patient",
-            Path = "Patient.gender",
+            FieldPath = "gender",
+            InstanceScope = new AllInstances(),
             ErrorCode = "FIXED_VALUE_MISMATCH",
             Params = new Dictionary<string, object>
             {
@@ -673,7 +700,8 @@ public class RuleReviewEngineTests
             Id = "fv-wrong-001",
             Type = "FixedValue",
             ResourceType = "Patient",
-            Path = "Patient.gender",
+            FieldPath = "gender",
+            InstanceScope = new AllInstances(),
             ErrorCode = "VALUE_NOT_EQUAL", // Frontend-suggested code, but wrong
             Params = new Dictionary<string, object>
             {
@@ -702,7 +730,8 @@ public class RuleReviewEngineTests
             Id = "ref-rule-001",
             Type = "Reference",
             ResourceType = "Observation",
-            Path = "Observation.subject",
+            FieldPath = "subject",
+            InstanceScope = new AllInstances(),
             ErrorCode = "REFERENCE_NOT_FOUND",
             Params = new Dictionary<string, object>
             {
@@ -728,7 +757,8 @@ public class RuleReviewEngineTests
             Id = "ref-rule-002",
             Type = "Reference",
             ResourceType = "Patient",
-            Path = "Patient.managingOrganization",
+            FieldPath = "managingOrganization",
+            InstanceScope = new AllInstances(),
             ErrorCode = "CUSTOM_REF_ERROR"
         };
 
@@ -753,7 +783,8 @@ public class RuleReviewEngineTests
             Id = "test-codesystem",
             Type = "CodeSystem",
             ResourceType = "Patient",
-            Path = "Patient.maritalStatus.coding",
+            FieldPath = "maritalStatus.coding",
+            InstanceScope = new AllInstances(),
             ErrorCode = "CODESYSTEM_VIOLATION",
             Params = new Dictionary<string, object>
             {
@@ -778,7 +809,8 @@ public class RuleReviewEngineTests
             Id = "test-codesystem",
             Type = "CodeSystem",
             ResourceType = "Patient",
-            Path = "Patient.maritalStatus.coding",
+            FieldPath = "maritalStatus.coding",
+            InstanceScope = new AllInstances(),
             ErrorCode = "INVALID_SYSTEM", // Wrong errorCode
             Params = new Dictionary<string, object>
             {
@@ -810,7 +842,8 @@ public class RuleReviewEngineTests
             Id = "custom-missing-errorcode",
             Type = "CustomFHIRPath",
             ResourceType = "Patient",
-            Path = "gender.exists()",
+            FieldPath = "gender.exists()",
+            InstanceScope = new AllInstances(),
             ErrorCode = "" // Missing errorCode
         };
 
@@ -833,7 +866,8 @@ public class RuleReviewEngineTests
             Id = "custom-unknown-errorcode",
             Type = "CustomFHIRPath",
             ResourceType = "Patient",
-            Path = "gender.exists()",
+            FieldPath = "gender.exists()",
+            InstanceScope = new AllInstances(),
             ErrorCode = "TOTALLY_MADE_UP_CODE_123" // Unknown errorCode
         };
 
@@ -857,7 +891,8 @@ public class RuleReviewEngineTests
             Id = "custom-known-errorcode",
             Type = "CustomFHIRPath",
             ResourceType = "Patient",
-            Path = "gender.exists()",
+            FieldPath = "gender.exists()",
+            InstanceScope = new AllInstances(),
             ErrorCode = Pss.FhirProcessor.Engine.Validation.ValidationErrorCodes.CUSTOMFHIRPATH_CONDITION_FAILED // Known errorCode
         };
 
@@ -891,7 +926,8 @@ public class RuleReviewEngineTests
             Id = "fullurl-test",
             Type = "FullUrlIdMatch",
             ResourceType = "Patient",
-            Path = "Patient.id",
+            FieldPath = "id",
+            InstanceScope = new AllInstances(),
             ErrorCode = "FULLURL_ID_MISMATCH"
         };
 
@@ -914,7 +950,8 @@ public class RuleReviewEngineTests
             Id = "fullurl-test-lower",
             Type = "fullurlidmatch",
             ResourceType = "Patient",
-            Path = "Patient.id",
+            FieldPath = "id",
+            InstanceScope = new AllInstances(),
             ErrorCode = "FULLURL_ID_MISMATCH"
         };
 

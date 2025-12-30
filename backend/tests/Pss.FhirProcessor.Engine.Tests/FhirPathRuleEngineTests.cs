@@ -34,7 +34,8 @@ public class FhirPathRuleEngineTests
                     Id = "R1",
                     Type = "Required",
                     ResourceType = "Patient",
-                    Path = "name.family",
+                    FieldPath = "name.family",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "TEST_ERROR_CODE"
                 }
             }
@@ -61,7 +62,8 @@ public class FhirPathRuleEngineTests
                     Id = "R1",
                     Type = "Required",
                     ResourceType = "Patient",
-                    Path = "name.family",
+                    FieldPath = "name.family",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "MANDATORY_MISSING"
                 }
             }
@@ -92,7 +94,8 @@ public class FhirPathRuleEngineTests
                     Id = "FV-001",
                     Type = "FixedValue",
                     ResourceType = "Patient",
-                    Path = "Patient.gender",
+                    FieldPath = "gender",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "FIXED_VALUE_MISMATCH",
                     Params = new Dictionary<string, object> { { "value", "female" } }
                 }
@@ -125,7 +128,8 @@ public class FhirPathRuleEngineTests
                     Id = "FV-002",
                     Type = "FixedValue",
                     ResourceType = "Patient",
-                    Path = "gender",
+                    FieldPath = "gender",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "FIXED_VALUE_MISMATCH",
                     Params = new Dictionary<string, object> { { "value", "female" } }
                 }
@@ -154,7 +158,8 @@ public class FhirPathRuleEngineTests
                     Id = "FV-003",
                     Type = "FixedValue",
                     ResourceType = "Patient",
-                    Path = "gender",
+                    FieldPath = "gender",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "FIXED_VALUE_MISMATCH",
                     Params = new Dictionary<string, object>() // Missing "value" key
                 }
@@ -184,7 +189,8 @@ public class FhirPathRuleEngineTests
                     Id = "R3",
                     Type = "Regex",
                     ResourceType = "Patient",
-                    Path = "identifier.where(system='http://example.org/nric').value",
+                    FieldPath = "identifier.where(system='http://example.org/nric').value",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "TEST_ERROR_CODE",
                     Params = new Dictionary<string, object> { { "pattern", @"^[STFG]\d{7}[A-Z]$" } }
                 }
@@ -212,7 +218,8 @@ public class FhirPathRuleEngineTests
                     Id = "R3",
                     Type = "Regex",
                     ResourceType = "Patient",
-                    Path = "identifier.where(system='http://example.org/nric').value",
+                    FieldPath = "identifier.where(system='http://example.org/nric').value",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "REGEX_INVALID",
                     Params = new Dictionary<string, object> { { "pattern", @"^[STFG]\d{7}[A-Z]$" } }
                 }
@@ -243,7 +250,8 @@ public class FhirPathRuleEngineTests
                     Id = "R_INVALID",
                     Type = "Required",  // Changed from CustomFHIRPath to test actual FHIRPath syntax errors
                     ResourceType = "Patient",
-                    Path = "invalid((syntax",
+                    FieldPath = "invalid((syntax",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "TEST_ERROR_CODE"
                 }
             }
@@ -273,7 +281,8 @@ public class FhirPathRuleEngineTests
                     Id = "R1",
                     Type = "Required",
                     ResourceType = "Patient",
-                    Path = "name.family",
+                    FieldPath = "name.family",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "MANDATORY_MISSING"
                 },
                 new RuleDefinition
@@ -281,7 +290,8 @@ public class FhirPathRuleEngineTests
                     Id = "R2",
                     Type = "FixedValue",
                     ResourceType = "Patient",
-                    Path = "gender",
+                    FieldPath = "gender",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "FIXED_VALUE_MISMATCH",
                     Params = new Dictionary<string, object> { { "value", "female" } }
                 }
@@ -315,7 +325,8 @@ public class FhirPathRuleEngineTests
                     Id = "R1",
                     Type = "Required",
                     ResourceType = "Patient",
-                    Path = "name.family",
+                    FieldPath = "name.family",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "TEST_ERROR_CODE"
                 }
             }
@@ -361,7 +372,8 @@ public class FhirPathRuleEngineTests
                     Id = "AV-MISSING-PARAM",
                     Type = "AllowedValues",
                     ResourceType = "Patient",
-                    Path = "Patient.gender",
+                    FieldPath = "gender",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "TEST_ERROR_CODE",
                     Params = new Dictionary<string, object>() // Missing "values" key
                 }
@@ -392,7 +404,8 @@ public class FhirPathRuleEngineTests
                     Id = "AV-GENDER",
                     Type = "AllowedValues",
                     ResourceType = "Patient",
-                    Path = "Patient.gender",
+                    FieldPath = "gender",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "VALUE_NOT_ALLOWED",
                     Params = new Dictionary<string, object>
                     {
@@ -426,7 +439,8 @@ public class FhirPathRuleEngineTests
                     Id = "AV-GENDER-VALID",
                     Type = "AllowedValues",
                     ResourceType = "Patient",
-                    Path = "Patient.gender",
+                    FieldPath = "gender",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "VALUE_NOT_ALLOWED",
                     Params = new Dictionary<string, object>
                     {
@@ -463,7 +477,8 @@ public class FhirPathRuleEngineTests
                     Id = "REGEX-MISSING-PARAM",
                     Type = "Regex",
                     ResourceType = "Patient",
-                    Path = "name.family",
+                    FieldPath = "name.family",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "TEST_ERROR_CODE",
                     Params = new Dictionary<string, object>() // Missing "pattern" key
                 }
@@ -493,7 +508,8 @@ public class FhirPathRuleEngineTests
                     Id = "AL-MISSING-PARAMS",
                     Type = "ArrayLength",
                     ResourceType = "Patient",
-                    Path = "name",
+                    FieldPath = "name",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "TEST_ERROR_CODE",
                     Params = new Dictionary<string, object>() // Missing both "min" and "max"
                 }
@@ -523,7 +539,8 @@ public class FhirPathRuleEngineTests
                     Id = "AL-MIN-ONLY",
                     Type = "ArrayLength",
                     ResourceType = "Patient",
-                    Path = "name",
+                    FieldPath = "name",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "TEST_ERROR_CODE",
                     Params = new Dictionary<string, object> { { "min", 1 } } // Only min, no max - should be valid
                 }
@@ -570,7 +587,8 @@ public class FhirPathRuleEngineTests
                     Id = "AL-MIN-VIOLATION",
                     Type = "ArrayLength",
                     ResourceType = "Patient",
-                    Path = "Patient.name",
+                    FieldPath = "name",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "ARRAY_LENGTH_VIOLATION",
                     Params = new Dictionary<string, object>
                     {
@@ -631,7 +649,8 @@ public class FhirPathRuleEngineTests
                     Id = "AL-MAX-VIOLATION",
                     Type = "ArrayLength",
                     ResourceType = "Patient",
-                    Path = "Patient.name",
+                    FieldPath = "name",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "ARRAY_LENGTH_VIOLATION",
                     Params = new Dictionary<string, object>
                     {
@@ -690,7 +709,8 @@ public class FhirPathRuleEngineTests
                     Id = "AL-VALID-RANGE",
                     Type = "ArrayLength",
                     ResourceType = "Patient",
-                    Path = "Patient.name",
+                    FieldPath = "name",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "ARRAY_LENGTH_VIOLATION",
                     Params = new Dictionary<string, object>
                     {
@@ -745,7 +765,8 @@ public class FhirPathRuleEngineTests
                     Id = "CS-MISSING-PARAM",
                     Type = "CodeSystem",
                     ResourceType = "Observation",
-                    Path = "code.coding",
+                    FieldPath = "code.coding",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "TEST_ERROR_CODE",
                     Params = new Dictionary<string, object>() // Missing "system" key
                 }
@@ -775,7 +796,8 @@ public class FhirPathRuleEngineTests
                     Id = "R1-BAD",
                     Type = "FixedValue",
                     ResourceType = "Patient",
-                    Path = "gender",
+                    FieldPath = "gender",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "TEST_ERROR_CODE",
                     Params = new Dictionary<string, object>() // Missing params
                 },
@@ -784,7 +806,8 @@ public class FhirPathRuleEngineTests
                     Id = "R2-BAD",
                     Type = "Regex",
                     ResourceType = "Patient",
-                    Path = "name.family",
+                    FieldPath = "name.family",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "TEST_ERROR_CODE",
                     Params = new Dictionary<string, object>() // Missing params
                 },
@@ -793,7 +816,8 @@ public class FhirPathRuleEngineTests
                     Id = "R3-GOOD",
                     Type = "Required",
                     ResourceType = "Patient",
-                    Path = "name.family",
+                    FieldPath = "name.family",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "TEST_ERROR_CODE"
                 }
             }
@@ -824,7 +848,8 @@ public class FhirPathRuleEngineTests
                     Id = "CHECK-DETAILS",
                     Type = "FixedValue",
                     ResourceType = "Patient",
-                    Path = "gender",
+                    FieldPath = "gender",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "TEST_ERROR_CODE",
                     Params = new Dictionary<string, object>()
                 }
@@ -862,7 +887,8 @@ public class FhirPathRuleEngineTests
                     Id = "PATTERN-DEFAULT",
                     Type = "Regex",
                     ResourceType = "Patient",
-                    Path = "identifier.where(system='http://example.org/nric').value",
+                    FieldPath = "identifier.where(system='http://example.org/nric').value",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "PATTERN_MISMATCH",
                     Params = new Dictionary<string, object> { { "pattern", @"^\d+$" } }
                 }
@@ -892,7 +918,8 @@ public class FhirPathRuleEngineTests
                     Id = "REGEX-CUSTOM-CODE",
                     Type = "Regex",
                     ResourceType = "Patient",
-                    Path = "identifier.where(system='http://example.org/nric').value",
+                    FieldPath = "identifier.where(system='http://example.org/nric').value",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "CUSTOM_CODE", // Should be ignored
                     Params = new Dictionary<string, object> { { "pattern", @"^\d+$" } }
                 }
@@ -923,7 +950,8 @@ public class FhirPathRuleEngineTests
                     Id = "PATTERN-TEST",
                     Type = "Regex",
                     ResourceType = "Patient",
-                    Path = "identifier.where(system='http://example.org/nric').value",
+                    FieldPath = "identifier.where(system='http://example.org/nric').value",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "PATTERN_MISMATCH",
                     Params = new Dictionary<string, object> { { "pattern", @"^\d+$" } }
                 }
@@ -939,7 +967,8 @@ public class FhirPathRuleEngineTests
                     Id = "REGEX-TEST",
                     Type = "Regex",
                     ResourceType = "Patient",
-                    Path = "identifier.where(system='http://example.org/nric').value",
+                    FieldPath = "identifier.where(system='http://example.org/nric').value",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = "PATTERN_MISMATCH",
                     Params = new Dictionary<string, object> { { "pattern", @"^\d+$" } }
                 }
@@ -978,7 +1007,8 @@ public class FhirPathRuleEngineTests
                     Id = "CUSTOM_01",
                     Type = "CustomFHIRPath",
                     ResourceType = "Patient",
-                    Path = "gender.exists()",
+                    FieldPath = "gender.exists()",
+                    InstanceScope = new AllInstances(),
                     ErrorCode = ValidationErrorCodes.CUSTOMFHIRPATH_CONDITION_FAILED
                 }
             }
@@ -1021,7 +1051,8 @@ public class FhirPathRuleEngineTests
                     Id = "CUSTOM_02",
                     Type = "CustomFHIRPath",
                     ResourceType = "Patient",
-                    Path = "name.empty() = false",  // Expression evaluates to false when name is empty
+                    FieldPath = "name.empty() = false",
+                    InstanceScope = new AllInstances(),  // Expression evaluates to false when name is empty
                     ErrorCode = ValidationErrorCodes.CUSTOMFHIRPATH_CONDITION_FAILED
                 }
             }

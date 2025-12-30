@@ -20,10 +20,8 @@ public class MessageTokenResolver
         
         var resolved = template;
         
-        // Global tokens - prefer FieldPath over Path
-        var displayPath = !string.IsNullOrEmpty(rule.FieldPath) 
-            ? rule.FieldPath 
-            : rule.Path ?? "";
+        // Global tokens - use FieldPath
+        var displayPath = rule.FieldPath ?? "";
             
         var fullPath = !string.IsNullOrEmpty(displayPath) 
             ? $"{rule.ResourceType}.{displayPath}" 

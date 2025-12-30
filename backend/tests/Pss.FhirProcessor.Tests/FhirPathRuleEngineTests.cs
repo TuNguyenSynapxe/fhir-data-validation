@@ -66,7 +66,8 @@ public class FhirPathRuleEngineTests
                     Id = "R25",
                     Type = "Required",
                     ResourceType = "Patient",
-                    Path = "Patient.name.wrongMethod()",
+                    FieldPath = "name.wrongMethod()",
+                    InstanceScope = new AllInstances(),
                     Severity = "error",
                     ErrorCode = "TEST_ERROR"
                 }
@@ -86,13 +87,13 @@ public class FhirPathRuleEngineTests
         Assert.Equal("Patient", error.ResourceType);
         Assert.Equal("patient-001", error.ResourceId);
         Assert.Equal(0, error.EntryIndex);
-        Assert.Equal("Patient.name.wrongMethod()", error.Path);
+        Assert.Equal("name.wrongMethod()", error.FieldPath);
         Assert.Equal("RULE_DEFINITION_ERROR", error.ErrorCode);
         
         // Verify details are present
         Assert.NotNull(error.Details);
         Assert.True(error.Details.ContainsKey("fhirPath"));
-        Assert.Equal("Patient.name.wrongMethod()", error.Details["fhirPath"]);
+        Assert.Equal("name.wrongMethod()", error.Details["fhirPath"]);
         Assert.True(error.Details.ContainsKey("exceptionType"));
         Assert.True(error.Details.ContainsKey("exceptionMessage"));
     }
@@ -144,7 +145,8 @@ public class FhirPathRuleEngineTests
                     Id = "R1",
                     Type = "Required",
                     ResourceType = "Patient",
-                    Path = "Patient.name.invalidFunction()",
+                    FieldPath = "name.invalidFunction()",
+                    InstanceScope = new AllInstances(),
                     Severity = "error",
                     ErrorCode = "TEST_ERROR_1"
                 },
@@ -153,7 +155,8 @@ public class FhirPathRuleEngineTests
                     Id = "R2",
                     Type = "Required",
                     ResourceType = "Patient",
-                    Path = "Patient.gender",
+                    FieldPath = "gender",
+                    InstanceScope = new AllInstances(),
                     Severity = "error",
                     ErrorCode = "MISSING_GENDER"
                 }
@@ -225,7 +228,8 @@ public class FhirPathRuleEngineTests
                     Id = "R3",
                     Type = "Required",
                     ResourceType = "Patient",
-                    Path = "Patient.name.family",
+                    FieldPath = "name.family",
+                    InstanceScope = new AllInstances(),
                     Severity = "error",
                     ErrorCode = "MISSING_FAMILY"
                 }
@@ -279,7 +283,8 @@ public class FhirPathRuleEngineTests
                     Id = "FV1",
                     Type = "FixedValue",
                     ResourceType = "Patient",
-                    Path = "Patient.gender",
+                    FieldPath = "gender",
+                    InstanceScope = new AllInstances(),
                     Severity = "error",
                     ErrorCode = "INVALID_GENDER",
                     Params = new Dictionary<string, object>() // Missing "value" param
@@ -340,7 +345,8 @@ public class FhirPathRuleEngineTests
                     Id = "AV1",
                     Type = "AllowedValues",
                     ResourceType = "Patient",
-                    Path = "Patient.gender",
+                    FieldPath = "gender",
+                    InstanceScope = new AllInstances(),
                     Severity = "error",
                     ErrorCode = "INVALID_GENDER",
                     Params = new Dictionary<string, object>() // Missing "values" param
@@ -404,7 +410,8 @@ public class FhirPathRuleEngineTests
                     Id = "RX1",
                     Type = "Regex",
                     ResourceType = "Patient",
-                    Path = "Patient.name.family",
+                    FieldPath = "name.family",
+                    InstanceScope = new AllInstances(),
                     Severity = "error",
                     ErrorCode = "INVALID_FAMILY_FORMAT",
                     Params = new Dictionary<string, object>() // Missing "pattern" param
@@ -468,7 +475,8 @@ public class FhirPathRuleEngineTests
                     Id = "AL1",
                     Type = "ArrayLength",
                     ResourceType = "Patient",
-                    Path = "Patient.name.given",
+                    FieldPath = "name.given",
+                    InstanceScope = new AllInstances(),
                     Severity = "error",
                     ErrorCode = "INVALID_GIVEN_COUNT",
                     Params = new Dictionary<string, object>() // Missing both "min" and "max" params
@@ -535,7 +543,8 @@ public class FhirPathRuleEngineTests
                     Id = "CS1",
                     Type = "CodeSystem",
                     ResourceType = "Patient",
-                    Path = "Patient.maritalStatus",
+                    FieldPath = "maritalStatus",
+                    InstanceScope = new AllInstances(),
                     Severity = "error",
                     ErrorCode = "INVALID_MARITAL_SYSTEM",
                     Params = new Dictionary<string, object>() // Missing "system" param
@@ -602,7 +611,8 @@ public class FhirPathRuleEngineTests
                     Id = "CS1",
                     Type = "CodeSystem",
                     ResourceType = "Patient",
-                    Path = "Patient.maritalStatus.coding",
+                    FieldPath = "maritalStatus.coding",
+                    InstanceScope = new AllInstances(),
                     Severity = "error",
                     ErrorCode = "CODESYSTEM_VIOLATION",
                     Params = new Dictionary<string, object>
@@ -674,7 +684,8 @@ public class FhirPathRuleEngineTests
                     Id = "CS2",
                     Type = "CodeSystem",
                     ResourceType = "Patient",
-                    Path = "Patient.maritalStatus.coding",
+                    FieldPath = "maritalStatus.coding",
+                    InstanceScope = new AllInstances(),
                     Severity = "error",
                     ErrorCode = "CODESYSTEM_VIOLATION",
                     Params = new Dictionary<string, object>
@@ -747,7 +758,8 @@ public class FhirPathRuleEngineTests
                     Id = "CS3",
                     Type = "CodeSystem",
                     ResourceType = "Patient",
-                    Path = "Patient.maritalStatus.coding",
+                    FieldPath = "maritalStatus.coding",
+                    InstanceScope = new AllInstances(),
                     Severity = "error",
                     ErrorCode = "CODESYSTEM_VIOLATION",
                     Params = new Dictionary<string, object>

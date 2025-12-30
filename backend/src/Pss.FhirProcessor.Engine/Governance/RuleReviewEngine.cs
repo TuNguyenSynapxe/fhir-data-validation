@@ -990,11 +990,11 @@ public class RuleReviewEngine : IRuleReviewEngine
     /// Two rules are duplicates if they have:
     /// - Same Type
     /// - Same FieldPath
-    /// - Same InstanceScope (structural equality via ToStableKey())
+    /// - Same InstanceScope (structural equality via RuleIdentity.GetIdentityKey())
     /// </summary>
     private void CheckDuplicateRules(List<RuleDefinition> rules, List<RuleReviewResult> results)
     {
-        var seen = new Dictionary<string, string>(); // key: type|fieldPath|scopeKey, value: ruleId
+        var seen = new Dictionary<string, string>(); // key: identityKey, value: ruleId
         
         foreach (var rule in rules)
         {
@@ -1002,11 +1002,10 @@ public class RuleReviewEngine : IRuleReviewEngine
             if (string.IsNullOrWhiteSpace(rule.FieldPath))
                 continue; // Will be caught by CheckEmptyOrRootPath
                 
-            // Phase 2A: Use ToStableKey() for InstanceScope structural identity
-            var scopeKey = rule.InstanceScope?.ToStableKey() ?? "none";
-            var key = $"{rule.Type}|{rule.FieldPath}|{scopeKey}";
+            // Phase 2A: Use centralized identity helper
+            var identityKey = RuleIdentity.GetIdentityKey(rule);
             
-            if (seen.TryGetValue(key, out var existingRuleId))
+            if (seen.TryGetValue(identityKey, out var existingRuleId))
             {
                 // Found duplicate - add WARNING to current rule's result
                 var currentResult = results.FirstOrDefault(r => r.RuleId == rule.Id);
@@ -1022,7 +1021,8 @@ public class RuleReviewEngine : IRuleReviewEngine
                             ["duplicateOf"] = existingRuleId,
                             ["ruleType"] = rule.Type,
                             ["fieldPath"] = rule.FieldPath,
-                            ["instanceScope"] = scopeKey
+                            ["instanceScope"] = rule.InstanceScope?.ToStableKey() ?? "none",
+                            ["identityKey"] = identityKey
                         }
                     ));
                     
@@ -1037,7 +1037,7 @@ public class RuleReviewEngine : IRuleReviewEngine
             }
             else
             {
-                seen[key] = rule.Id;
+                seen[identityKey] = rule.Id;
             }
         }
     }

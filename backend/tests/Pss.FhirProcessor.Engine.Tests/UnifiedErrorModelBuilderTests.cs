@@ -115,7 +115,7 @@ public class UnifiedErrorModelBuilderTests
         AssertUnifiedError(error, "REQUIRED", "/entry/0/resource/name");
         error.Source.Should().Be("FHIR");
         error.Severity.Should().Be("error");
-        error.Path.Should().Be("Patient.name");
+        error.Path.Should().Be("name");  // FieldPath mapped to Path by UnifiedErrorModelBuilder
         error.Message.Should().Be("Required field is missing");
         // Navigation property removed in Phase 1 - jsonPointer is now top-level only
     }
@@ -133,7 +133,7 @@ public class UnifiedErrorModelBuilderTests
                 RuleType = "Required",
                 Severity = "error",
                 ResourceType = "Observation",
-                Path = "Observation.value",
+                FieldPath = "Observation.value",
                 ErrorCode = "RULE_REQUIRED",
                 Details = new Dictionary<string, object>
                 {
@@ -176,7 +176,7 @@ public class UnifiedErrorModelBuilderTests
                 RuleType = "FixedValue",
                 Severity = "error",
                 ResourceType = "Observation",
-                Path = "Observation.status",
+                FieldPath = "Observation.status",
                 ErrorCode = "FIXED_VALUE_MISMATCH",
                 Details = new Dictionary<string, object>
                 {
@@ -214,7 +214,7 @@ public class UnifiedErrorModelBuilderTests
                 RuleType = "Regex",
                 Severity = "warning",
                 ResourceType = "Patient",
-                Path = "Patient.identifier.value",
+                FieldPath = "Patient.identifier.value",
                 ErrorCode = "REGEX_PATTERN_MISMATCH",
                 Details = new Dictionary<string, object>
                 {
@@ -253,7 +253,7 @@ public class UnifiedErrorModelBuilderTests
                 RuleType = "ArrayLength",
                 Severity = "error",
                 ResourceType = "Patient",
-                Path = "Patient.name",
+                FieldPath = "Patient.name",
                 ErrorCode = "ARRAY_LENGTH_VIOLATION",
                 Details = new Dictionary<string, object>
                 {
@@ -292,7 +292,7 @@ public class UnifiedErrorModelBuilderTests
             {
                 Severity = "error",
                 ResourceType = "Observation",
-                Path = "Observation.component[0].valueString",
+                FieldPath = "Observation.component[0].valueString",
                 ErrorCode = "INVALID_ANSWER_VALUE",
                 Details = new Dictionary<string, object>
                 {
@@ -331,7 +331,7 @@ public class UnifiedErrorModelBuilderTests
             {
                 Severity = "error",
                 ResourceType = "Observation",
-                Path = "Observation.component",
+                FieldPath = "Observation.component",
                 ErrorCode = "MANDATORY_MISSING_QA",
                 Details = new Dictionary<string, object>
                 {
@@ -364,7 +364,7 @@ public class UnifiedErrorModelBuilderTests
             {
                 Severity = "error",
                 ResourceType = "Observation",
-                Path = "Observation.subject",
+                FieldPath = "Observation.subject",
                 ErrorCode = "REFERENCE_NOT_FOUND",
                 Details = new Dictionary<string, object>
                 {
@@ -403,7 +403,7 @@ public class UnifiedErrorModelBuilderTests
             {
                 Severity = "error",
                 ResourceType = "Observation",
-                Path = "Observation.subject",
+                FieldPath = "Observation.subject",
                 ErrorCode = "REFERENCE_TYPE_MISMATCH",
                 Details = new Dictionary<string, object>
                 {
@@ -439,7 +439,7 @@ public class UnifiedErrorModelBuilderTests
                 RuleType = "Required",
                 Severity = "error",
                 ResourceType = "Patient",
-                Path = "Patient.birthDate",
+                FieldPath = "Patient.birthDate",
                 ErrorCode = "RULE_REQUIRED"
             }
         };
@@ -506,7 +506,7 @@ public class UnifiedErrorModelBuilderTests
                 RuleType = "Required",
                 Severity = "error",
                 ResourceType = "Patient",
-                Path = "Patient.name",
+                FieldPath = "Patient.name",
                 ErrorCode = "RULE_REQUIRED"
             },
             new RuleValidationError
@@ -515,7 +515,7 @@ public class UnifiedErrorModelBuilderTests
                 RuleType = "Required",
                 Severity = "error",
                 ResourceType = "Patient",
-                Path = "Patient.address",
+                FieldPath = "Patient.address",
                 ErrorCode = "RULE_REQUIRED"
             },
             new RuleValidationError
@@ -524,7 +524,7 @@ public class UnifiedErrorModelBuilderTests
                 RuleType = "Required",
                 Severity = "error",
                 ResourceType = "Patient",
-                Path = "Patient.birthDate",
+                FieldPath = "Patient.birthDate",
                 ErrorCode = "RULE_REQUIRED"
             }
         };
@@ -646,7 +646,7 @@ public class UnifiedErrorModelBuilderTests
                 RuleType = "Required",
                 Severity = "error",
                 ResourceType = "Observation",
-                Path = "Observation.value",
+                FieldPath = "Observation.value",
                 ErrorCode = "RULE_REQUIRED"
             }
         };
@@ -658,7 +658,7 @@ public class UnifiedErrorModelBuilderTests
             {
                 Severity = "error",
                 ResourceType = "Observation",
-                Path = "Observation.component[0].valueString",
+                FieldPath = "Observation.component[0].valueString",
                 ErrorCode = "INVALID_ANSWER_VALUE"
             }
         };
@@ -670,7 +670,7 @@ public class UnifiedErrorModelBuilderTests
             {
                 Severity = "error",
                 ResourceType = "Observation",
-                Path = "Observation.subject",
+                FieldPath = "Observation.subject",
                 ErrorCode = "REFERENCE_NOT_FOUND",
                 Reference = "Patient/999"
             }
@@ -737,7 +737,7 @@ public class UnifiedErrorModelBuilderTests
                 RuleType = "Required",
                 Severity = "error",
                 ResourceType = "Patient",
-                Path = "Patient.name",
+                FieldPath = "Patient.name",
                 ErrorCode = "RULE_REQUIRED" // Message is required
             }
         };
@@ -764,7 +764,7 @@ public class UnifiedErrorModelBuilderTests
                 RuleType = "FixedValue",
                 Severity = "warning",
                 ResourceType = "Observation",
-                Path = "Observation.status",
+                FieldPath = "Observation.status",
                 ErrorCode = "FIXED_VALUE_MISMATCH",
                 Details = new Dictionary<string, object>
                 {
@@ -789,7 +789,7 @@ public class UnifiedErrorModelBuilderTests
         error.Source.Should().Be("Business");
         error.Severity.Should().Be("warning");
         error.ResourceType.Should().Be("Observation");
-        error.Path.Should().Be("Observation.status");
+        error.Path.Should().Be("status");  // FieldPath mapped to Path by UnifiedErrorModelBuilder
         error.ErrorCode.Should().Be("FIXED_VALUE_MISMATCH");
         error.Message.Should().Be("Complete error with all fields");
         
@@ -816,7 +816,7 @@ public class UnifiedErrorModelBuilderTests
             {
                 Severity = "error",
                 ResourceType = "Observation",
-                Path = "Observation.performer[0].reference",
+                FieldPath = "Observation.performer[0].reference",
                 ErrorCode = "REFERENCE_NOT_FOUND",
                 Reference = "Practitioner/999"
             }

@@ -124,7 +124,7 @@ public class NoLegacyMessageAllowedTests
             RuleType = "Required",
             Severity = "error",
             ResourceType = "Observation",
-            Path = "Observation.value",
+            FieldPath = "Observation.value",
             ErrorCode = "FIELD_REQUIRED"
         };
         
@@ -144,7 +144,7 @@ public class NoLegacyMessageAllowedTests
         {
             Severity = "error",
             ResourceType = "Observation",
-            Path = "Observation.component[0]",
+            FieldPath = "Observation.component[0]",
             ErrorCode = "UNKNOWN_SCREENING_TYPE"
         };
         
@@ -163,7 +163,7 @@ public class NoLegacyMessageAllowedTests
         {
             Severity = "error",
             ResourceType = "Observation",
-            Path = "Observation.subject",
+            FieldPath = "Observation.subject",
             ErrorCode = "REFERENCE_NOT_FOUND"
         };
         

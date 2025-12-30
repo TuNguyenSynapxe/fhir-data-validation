@@ -100,7 +100,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                             RuleId = rule.Id,
                             RuleType = rule.Type,
                             ResourceType = rule.ResourceType,
-                            Path = rule.FieldPath ?? rule.Path,
+                            FieldPath = rule.FieldPath,
                             ErrorCode = "INVALID_FIELD_PATH",
                             Details = new Dictionary<string, object>
                             {
@@ -332,13 +332,13 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                             RuleType = rule.Type,
                             Severity = rule.Severity,
                             ResourceType = resourceType ?? rule.ResourceType,
-                            Path = rule.FieldPath ?? rule.Path,
-                            ErrorCode = "MANDATORY_MISSING",
+                            FieldPath = rule.FieldPath,
+                            ErrorCode = rule.ErrorCode ?? ValidationErrorCodes.FIELD_REQUIRED,
                             Details = new Dictionary<string, object>
                             {
                                 ["source"] = "ProjectRule",
                                 ["resourceType"] = resourceType ?? rule.ResourceType,
-                                ["path"] = rule.FieldPath ?? rule.Path,
+                                ["path"] = rule.FieldPath,
                                 ["ruleId"] = rule.Id,
                                 ["entryIndex"] = entryIndex,
                                 ["_precomputedJsonPointer"] = jsonPointer  // Special key for UnifiedErrorModelBuilder
@@ -486,7 +486,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 RuleType = rule.Type,
                 Severity = rule.Severity,
                 ResourceType = resourceType ?? rule.ResourceType,
-                Path = fieldPath,
+                FieldPath = rule.FieldPath,
                 ErrorCode = rule.ErrorCode ?? "ARRAY_LENGTH_VIOLATION",
                 Details = details,
                 EntryIndex = entryIndex,
@@ -552,13 +552,13 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 RuleType = rule.Type,
                 Severity = "error",
                 ResourceType = rule.ResourceType,
-                Path = rule.FieldPath ?? rule.Path,
+                FieldPath = rule.FieldPath,
                 ErrorCode = "RULE_EXECUTION_ERROR",
                 Details = new Dictionary<string, object>
                 {
                     ["source"] = "ProjectRule",
                     ["resourceType"] = rule.ResourceType,
-                    ["path"] = rule.FieldPath ?? rule.Path,
+                    ["path"] = rule.FieldPath,
                     ["ruleType"] = rule.Type,
                     ["ruleId"] = rule.Id,
                     ["exceptionType"] = ex.GetType().Name,
@@ -583,7 +583,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         
         var result = EvaluateFhirPath(resource, fieldPath, rule, entryIndex, errors);
         
-        _logger.LogTrace("ValidateRequired: Rule {RuleId}, Path {Path}, FieldPath {FieldPath}, ResourceType {ResourceType}", rule.Id, rule.Path, fieldPath, rule.ResourceType);
+        _logger.LogTrace("ValidateRequired: Rule {RuleId}, FieldPath {FieldPath}, ResourceType {ResourceType}", rule.Id, fieldPath, rule.ResourceType);
         _logger.LogTrace("ValidateRequired: Result count {ResultCount}", result?.Count() ?? 0);
         
         // Check if result is missing OR if all values are empty/whitespace
@@ -613,7 +613,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             {
                 ["source"] = "ProjectRule",
                 ["resourceType"] = rule.ResourceType,
-                ["path"] = rule.FieldPath ?? rule.Path,
+                ["path"] = rule.FieldPath,
                 ["ruleType"] = rule.Type,
                 ["ruleId"] = rule.Id,
                 ["isMissing"] = isMissing,
@@ -628,7 +628,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 RuleType = rule.Type,
                 Severity = rule.Severity,
                 ResourceType = rule.ResourceType,
-                Path = rule.FieldPath ?? rule.Path,
+                FieldPath = rule.FieldPath,
                 ErrorCode = rule.ErrorCode ?? ValidationErrorCodes.FIELD_REQUIRED,
                 Details = details,
                 EntryIndex = entryIndex,
@@ -669,7 +669,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 RuleType = rule.Type,
                 Severity = "error",
                 ResourceType = rule.ResourceType,
-                Path = rule.FieldPath ?? rule.Path,
+                FieldPath = rule.FieldPath,
                 ErrorCode = "RULE_CONFIGURATION_ERROR",
                 Details = new Dictionary<string, object>
                 {
@@ -682,7 +682,8 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             return errors;
         }
         
-        var result = EvaluateFhirPath(resource, rule.Path, rule, entryIndex, errors);
+        var fieldPath = GetFieldPathForRule(rule);
+        var result = EvaluateFhirPath(resource, fieldPath, rule, entryIndex, errors);
         
         if (!errors.Any(e => e.ErrorCode == "RULE_DEFINITION_ERROR"))
         {
@@ -698,7 +699,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                     {
                         ["source"] = "ProjectRule",
                         ["resourceType"] = rule.ResourceType,
-                        ["path"] = rule.FieldPath ?? rule.Path,
+                        ["path"] = rule.FieldPath,
                         ["ruleType"] = rule.Type,
                         ["ruleId"] = rule.Id,
                         ["expected"] = expectedValue ?? "",
@@ -713,7 +714,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         RuleType = rule.Type,
                         Severity = rule.Severity,
                         ResourceType = rule.ResourceType,
-                        Path = rule.FieldPath ?? rule.Path,
+                        FieldPath = rule.FieldPath,
                         ErrorCode = ValidationErrorCodes.FIXED_VALUE_MISMATCH,
                         Details = details,
                         EntryIndex = entryIndex,
@@ -753,7 +754,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 RuleType = rule.Type,
                 Severity = "error",
                 ResourceType = rule.ResourceType,
-                Path = rule.FieldPath ?? rule.Path,
+                FieldPath = rule.FieldPath,
                 ErrorCode = "RULE_CONFIGURATION_ERROR",
                 Details = new Dictionary<string, object>
                 {
@@ -784,7 +785,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                     {
                         ["source"] = "ProjectRule",
                         ["resourceType"] = rule.ResourceType,
-                        ["path"] = rule.FieldPath ?? rule.Path,
+                        ["path"] = rule.FieldPath,
                         ["ruleType"] = rule.Type,
                         ["ruleId"] = rule.Id,
                         ["actual"] = actualValue,
@@ -799,7 +800,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         RuleType = rule.Type,
                         Severity = rule.Severity,
                         ResourceType = rule.ResourceType,
-                        Path = rule.FieldPath ?? rule.Path,
+                        FieldPath = rule.FieldPath,
                         ErrorCode = ValidationErrorCodes.VALUE_NOT_ALLOWED,
                         Details = details,
                         EntryIndex = entryIndex,
@@ -824,7 +825,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 RuleType = rule.Type,
                 Severity = "error",
                 ResourceType = rule.ResourceType,
-                Path = rule.FieldPath ?? rule.Path,
+                FieldPath = rule.FieldPath,
                 ErrorCode = "RULE_CONFIGURATION_ERROR",
                 Details = new Dictionary<string, object>
                 {
@@ -860,7 +861,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                     {
                         ["source"] = "ProjectRule",
                         ["resourceType"] = rule.ResourceType,
-                        ["path"] = rule.FieldPath ?? rule.Path,
+                        ["path"] = rule.FieldPath,
                         ["ruleType"] = rule.Type,
                         ["ruleId"] = rule.Id,
                         ["actual"] = actualValue,
@@ -875,7 +876,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         RuleType = rule.Type,
                         Severity = rule.Severity,
                         ResourceType = rule.ResourceType,
-                        Path = rule.FieldPath ?? rule.Path,
+                        FieldPath = rule.FieldPath,
                         ErrorCode = ValidationErrorCodes.PATTERN_MISMATCH,
                         Details = details,
                         EntryIndex = entryIndex,
@@ -929,7 +930,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 RuleType = rule.Type,
                 Severity = "error",
                 ResourceType = rule.ResourceType,
-                Path = rule.FieldPath ?? rule.Path,
+                FieldPath = rule.FieldPath,
                 ErrorCode = "RULE_CONFIGURATION_ERROR",
                 Details = new Dictionary<string, object>
                 {
@@ -970,7 +971,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                     {
                         ["source"] = "ProjectRule",
                         ["resourceType"] = rule.ResourceType,
-                        ["path"] = rule.FieldPath ?? rule.Path,
+                        ["path"] = rule.FieldPath,
                         ["ruleType"] = rule.Type,
                         ["ruleId"] = rule.Id,
                         ["count"] = count,
@@ -987,7 +988,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         RuleType = rule.Type,
                         Severity = rule.Severity,
                         ResourceType = rule.ResourceType,
-                        Path = rule.FieldPath ?? rule.Path,
+                        FieldPath = rule.FieldPath,
                         ErrorCode = ValidationErrorCodes.ARRAY_LENGTH_VIOLATION,
                         Details = details,
                         EntryIndex = entryIndex,
@@ -1016,7 +1017,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                     {
                         ["source"] = "ProjectRule",
                         ["resourceType"] = rule.ResourceType,
-                        ["path"] = rule.FieldPath ?? rule.Path,
+                        ["path"] = rule.FieldPath,
                         ["ruleType"] = rule.Type,
                         ["ruleId"] = rule.Id,
                         ["count"] = count,
@@ -1033,7 +1034,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         RuleType = rule.Type,
                         Severity = rule.Severity,
                         ResourceType = rule.ResourceType,
-                        Path = rule.FieldPath ?? rule.Path,
+                        FieldPath = rule.FieldPath,
                         ErrorCode = ValidationErrorCodes.ARRAY_LENGTH_VIOLATION,
                         Details = details,
                         EntryIndex = entryIndex,
@@ -1068,8 +1069,9 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
     {
         var errors = new List<RuleValidationError>();
         
-        _logger.LogInformation("ValidateCodeSystem: Validating rule {RuleId} for resource {ResourceType} at path {Path}, projectId={ProjectId}", 
-            rule.Id, resource.TypeName, rule.Path, projectId ?? "null");
+        var fieldPath = GetFieldPathForRule(rule);
+        _logger.LogInformation("ValidateCodeSystem: Validating rule {RuleId} for resource {ResourceType} at fieldPath {FieldPath}, projectId={ProjectId}", 
+            rule.Id, resource.TypeName, fieldPath, projectId ?? "null");
         
         // Validate params structure
         if (rule.Params == null || !rule.Params.ContainsKey("codeSetId") || !rule.Params.ContainsKey("system"))
@@ -1080,7 +1082,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 RuleType = rule.Type,
                 Severity = "error",
                 ResourceType = rule.ResourceType,
-                Path = rule.FieldPath ?? rule.Path,
+                FieldPath = rule.FieldPath,
                 ErrorCode = "RULE_CONFIGURATION_ERROR",
                 Details = new Dictionary<string, object>
                 {
@@ -1105,7 +1107,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 RuleType = rule.Type,
                 Severity = "error",
                 ResourceType = rule.ResourceType,
-                Path = rule.FieldPath ?? rule.Path,
+                FieldPath = rule.FieldPath,
                 ErrorCode = "RULE_CONFIGURATION_ERROR",
                 Details = new Dictionary<string, object>
                 {
@@ -1140,7 +1142,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 RuleType = rule.Type,
                 Severity = "error",
                 ResourceType = rule.ResourceType,
-                Path = rule.FieldPath ?? rule.Path,
+                FieldPath = rule.FieldPath,
                 ErrorCode = "RULE_CONFIGURATION_ERROR",
                 Details = new Dictionary<string, object>
                 {
@@ -1163,8 +1165,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             _logger.LogWarning("ValidateCodeSystem: CodeSet {CodeSetId} has no concepts defined", codeSetId);
         }
         
-        // Extract field path, removing instance scope prefix
-        var fieldPath = GetFieldPathForRule(rule);
+        // Use the fieldPath from earlier in the method
         var result = EvaluateFhirPath(resource, fieldPath, rule, entryIndex, errors);
         
         _logger.LogInformation("ValidateCodeSystem: FhirPath evaluation returned {Count} items for path {FieldPath}", 
@@ -1212,7 +1213,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                     {
                         ["source"] = "ProjectRule",
                         ["resourceType"] = rule.ResourceType,
-                        ["path"] = rule.FieldPath ?? rule.Path,
+                        ["path"] = rule.FieldPath,
                         ["ruleType"] = rule.Type,
                         ["ruleId"] = rule.Id,
                         ["violation"] = "system",
@@ -1231,7 +1232,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         RuleType = rule.Type,
                         Severity = rule.Severity,
                         ResourceType = rule.ResourceType,
-                        Path = rule.FieldPath ?? rule.Path,
+                        FieldPath = rule.FieldPath,
                         ErrorCode = ValidationErrorCodes.CODESYSTEM_VIOLATION,
                         Details = details,
                         EntryIndex = entryIndex,
@@ -1245,7 +1246,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                     {
                         ["source"] = "ProjectRule",
                         ["resourceType"] = rule.ResourceType,
-                        ["path"] = rule.FieldPath ?? rule.Path,
+                        ["path"] = rule.FieldPath,
                         ["ruleType"] = rule.Type,
                         ["ruleId"] = rule.Id,
                         ["violation"] = "code",
@@ -1266,7 +1267,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         RuleType = rule.Type,
                         Severity = rule.Severity,
                         ResourceType = rule.ResourceType,
-                        Path = rule.FieldPath ?? rule.Path,
+                        FieldPath = rule.FieldPath,
                         ErrorCode = ValidationErrorCodes.CODESYSTEM_VIOLATION,
                         Details = details,
                         EntryIndex = entryIndex,
@@ -1306,7 +1307,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 RuleType = rule.Type,
                 Severity = "error",
                 ResourceType = rule.ResourceType,
-                Path = rule.FieldPath,
+                FieldPath = rule.FieldPath,
                 ErrorCode = "RULE_DEFINITION_ERROR",
                 Details = new Dictionary<string, object>
                 {
@@ -1360,7 +1361,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                     RuleType = rule.Type,
                     Severity = rule.Severity,
                     ResourceType = rule.ResourceType,
-                    Path = fieldPath,
+                    FieldPath = rule.FieldPath,
                     ErrorCode = rule.ErrorCode!,
                     Details = details,
                     EntryIndex = entryIndex,
@@ -1409,7 +1410,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 RuleType = rule.Type,
                 Severity = "error",
                 ResourceType = rule.ResourceType,
-                Path = rule.FieldPath ?? rule.Path,
+                FieldPath = rule.FieldPath,
                 ErrorCode = "RULE_CONFIGURATION_ERROR",
                 Details = new Dictionary<string, object>
                 {
@@ -1444,7 +1445,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 RuleType = rule.Type,
                 Severity = "error",
                 ResourceType = rule.ResourceType,
-                Path = rule.FieldPath ?? rule.Path,
+                FieldPath = rule.FieldPath,
                 ErrorCode = "RULE_CONFIGURATION_ERROR",
                 Details = new Dictionary<string, object>
                 {
@@ -1604,7 +1605,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             {
                 ["source"] = "ProjectRule",
                 ["resourceType"] = rule.ResourceType,
-                ["path"] = rule.FieldPath ?? rule.Path,
+                ["path"] = rule.FieldPath,
                 ["ruleType"] = rule.Type,
                 ["ruleId"] = rule.Id,
                 ["violations"] = violations,
@@ -1619,7 +1620,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 RuleType = rule.Type,
                 Severity = rule.Severity,
                 ResourceType = rule.ResourceType,
-                Path = rule.FieldPath ?? rule.Path,
+                FieldPath = rule.FieldPath,
                 ErrorCode = ValidationErrorCodes.RESOURCE_REQUIREMENT_VIOLATION,
                 Details = details,
                 EntryIndex = null, // Bundle-level validation
@@ -1668,13 +1669,13 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 RuleType = rule.Type,
                 Severity = "error",
                 ResourceType = rule.ResourceType,
-                Path = rule.FieldPath ?? rule.Path,
+                FieldPath = rule.FieldPath,
                 ErrorCode = "RULE_DEFINITION_ERROR",
                 Details = new Dictionary<string, object>
                 {
                     ["source"] = "ProjectRule",
                     ["resourceType"] = rule.ResourceType,
-                    ["path"] = rule.FieldPath ?? rule.Path,
+                    ["path"] = rule.FieldPath,
                     ["ruleType"] = rule.Type,
                     ["ruleId"] = rule.Id,
                     ["fhirPath"] = path,
@@ -1743,7 +1744,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             RuleType = rule.Type,
             Severity = "error",
             ResourceType = rule.ResourceType,
-            Path = rule.FieldPath ?? rule.Path,
+            FieldPath = rule.FieldPath,
             ErrorCode = "RULE_EVALUATION_ERROR",
             EntryIndex = entryIndex,
             ResourceId = resource.Id
@@ -1827,20 +1828,28 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
     {
         try
         {
-            var path = rule.Path;
-            
-            // Check if path contains a .where() filter (instance scope)
-            // Example: "Observation.where(code.coding.code='HS').performer.display"
-            var whereMatch = Regex.Match(path, $@"^{Regex.Escape(resourceType)}\.where\(([^)]+)\)");
-            
-            if (!whereMatch.Success)
+            // Check if InstanceScope has filter (new architecture)
+            if (rule.InstanceScope == null || rule.InstanceScope is AllInstances)
             {
                 // No filter present, validate all resources of this type
-                _logger.LogTrace("ShouldValidateResourcePoco: No .where() filter in path, validating resource");
+                _logger.LogTrace("ShouldValidateResourcePoco: No InstanceScope filter, validating resource");
                 return true;
             }
             
-            var filterExpression = whereMatch.Groups[1].Value;
+            if (rule.InstanceScope is FirstInstance)
+            {
+                // First instance only - would need entry index to check
+                // For now, we'll validate (refinement needed for multi-instance support)
+                return true;
+            }
+            
+            if (rule.InstanceScope is not FilteredInstances filteredScope)
+            {
+                // Unknown scope type, validate by default
+                return true;
+            }
+            
+            var filterExpression = filteredScope.ConditionFhirPath;
             _logger.LogTrace("ShouldValidateResourcePoco: Found filter expression: {FilterExpression}", filterExpression);
             
             // Evaluate the filter expression against the resource
@@ -1898,20 +1907,28 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
     {
         try
         {
-            var path = rule.Path;
-            
-            // Check if path contains a .where() filter (instance scope)
-            // Example: "Observation.where(code.coding.code='HS').performer.display"
-            var whereMatch = Regex.Match(path, $@"^{Regex.Escape(resourceType)}\.where\(([^)]+)\)");
-            
-            if (!whereMatch.Success)
+            // Check if InstanceScope has filter (new architecture)
+            if (rule.InstanceScope == null || rule.InstanceScope is AllInstances)
             {
                 // No filter present, validate all resources of this type
-                _logger.LogTrace("ShouldValidateResource: No .where() filter in path, validating resource");
+                _logger.LogTrace("ShouldValidateResource: No InstanceScope filter, validating resource");
                 return true;
             }
             
-            var filterExpression = whereMatch.Groups[1].Value;
+            if (rule.InstanceScope is FirstInstance)
+            {
+                // First instance only - would need entry index to check
+                // For now, we'll validate (refinement needed for multi-instance support)
+                return true;
+            }
+            
+            if (rule.InstanceScope is not FilteredInstances filteredScope)
+            {
+                // Unknown scope type, validate by default
+                return true;
+            }
+            
+            var filterExpression = filteredScope.ConditionFhirPath;
             _logger.LogTrace("ShouldValidateResource: Found filter expression: {FilterExpression}", filterExpression);
             
             // Evaluate the filter expression against the resource

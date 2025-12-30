@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
+using Pss.FhirProcessor.Engine.Models;
 using Pss.FhirProcessor.Playground.Api.Models;
 
 namespace Pss.FhirProcessor.Playground.Api.Services;
@@ -327,7 +328,7 @@ public class RuleService : IRuleService
     /// Two rules are duplicates if they have:
     /// - Same Type
     /// - Same FieldPath
-    /// - Same InstanceScope (structural equality)
+    /// - Same InstanceScope (structural equality via RuleIdentity)
     /// </summary>
     private bool IsDuplicateRule(List<DraftRule> existingRules, RuleIntent intent)
     {
@@ -338,34 +339,19 @@ public class RuleService : IRuleService
         if (string.IsNullOrWhiteSpace(intent.FieldPath))
             return false;
         
-        return existingRules.Any(r => 
-            r.Type == ruleType && 
-            r.FieldPath == intent.FieldPath &&
-            InstanceScopeEquals(r.InstanceScope, intent.InstanceScope));
+        // Phase 2A-4: Use centralized identity helper
+        var intentIdentityKey = RuleIdentity.GetIdentityKey(ruleType, intent.FieldPath, intent.InstanceScope);
+        
+        return existingRules.Any(r =>
+        {
+            if (string.IsNullOrWhiteSpace(r.FieldPath))
+                return false;
+                
+            var existingIdentityKey = RuleIdentity.GetIdentityKey(r.Type, r.FieldPath, r.InstanceScope);
+            return existingIdentityKey == intentIdentityKey;
+        });
     }
     
-    /// <summary>
-    /// Compare two InstanceScope objects for structural equality (Phase 2A-4)
-    /// Uses JSON serialization for comparison since InstanceScope may be deserialized as JsonElement
-    /// </summary>
-    private bool InstanceScopeEquals(object? scope1, object? scope2)
-    {
-        // Both null = equal
-        if (scope1 == null && scope2 == null)
-            return true;
-        
-        // One null, one not = not equal
-        if (scope1 == null || scope2 == null)
-            return false;
-        
-        // Serialize both to JSON and compare strings
-        // This handles both InstanceScope objects and JsonElement deserialization
-        var json1 = JsonSerializer.Serialize(scope1);
-        var json2 = JsonSerializer.Serialize(scope2);
-        
-        return json1 == json2;
-    }
-
     /// <summary>
     /// Create a rule entity from intent (Phase 2A-4: Copy FieldPath + InstanceScope)
     /// </summary>

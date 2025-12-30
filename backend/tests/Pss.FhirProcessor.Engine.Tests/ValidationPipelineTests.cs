@@ -423,7 +423,8 @@ public class ValidationPipelineTests
                 {
                     Id = "INVALID_RULE",
                     ResourceType = "Patient",
-                    Path = "name[invalid syntax here",
+                    FieldPath = "name[invalid syntax here",
+                    InstanceScope = new AllInstances(),
                     Type = "Required",
                     ErrorCode = "TEST_ERROR_CODE"
                 }

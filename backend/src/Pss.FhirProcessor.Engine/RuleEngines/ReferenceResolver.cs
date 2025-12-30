@@ -128,7 +128,7 @@ public class ReferenceResolver : IReferenceResolver
                 {
                     Severity = severity,
                     ResourceType = resource.TypeName,
-                    Path = refPath,
+                    FieldPath = refPath,
                     ErrorCode = "REFERENCE_NOT_FOUND",
                     Details = new Dictionary<string, object>
                     {
@@ -153,7 +153,7 @@ public class ReferenceResolver : IReferenceResolver
                     {
                         Severity = "error",
                         ResourceType = resource.TypeName,
-                        Path = refPath,
+                        FieldPath = refPath,
                         ErrorCode = "REFERENCE_TYPE_MISMATCH",
                         Details = new Dictionary<string, object>
                         {

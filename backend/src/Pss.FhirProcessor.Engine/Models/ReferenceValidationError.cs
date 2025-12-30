@@ -8,7 +8,11 @@ public class ReferenceValidationError
 {
     public required string Severity { get; set; }
     public required string ResourceType { get; set; }
-    public required string Path { get; set; }
+    
+    /// <summary>
+    /// Field path relative to resource (no resource type prefix)
+    /// </summary>
+    public required string FieldPath { get; set; }
     
     /// <summary>
     /// REQUIRED: Machine-readable error code

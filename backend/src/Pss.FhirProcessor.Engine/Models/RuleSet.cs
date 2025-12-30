@@ -59,16 +59,6 @@ public class RuleDefinition
     public string? FieldPath { get; set; }
     
     /// <summary>
-    /// LEGACY: Combined FHIRPath with instance scope encoded in string.
-    /// Examples: "Patient[*].gender", "Observation.where(code='X').value[x]"
-    /// DEPRECATED: Use InstanceScope + FieldPath instead.
-    /// Kept for backward compatibility during migration.
-    /// </summary>
-    [JsonPropertyName("path")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? Path { get; set; }
-    
-    /// <summary>
     /// Severity: error, warning, info
     /// </summary>
     [JsonPropertyName("severity")]

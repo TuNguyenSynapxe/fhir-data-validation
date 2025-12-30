@@ -179,7 +179,7 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
             else if (rawJson.ValueKind != JsonValueKind.Undefined)
             {
                 // Normal path: resolve using SmartPathNavigation on raw JSON
-                jsonPointer = await _navigationService.ResolvePathAsync(rawJson, bundle, error.Path, error.ResourceType, null, cancellationToken);
+                jsonPointer = await _navigationService.ResolvePathAsync(rawJson, bundle, error.FieldPath, error.ResourceType, null, cancellationToken);
             }
             
             // Include engine metadata in details for Firely-preferred with safe fallback strategy
@@ -206,14 +206,14 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 Source = "Business",
                 Severity = error.Severity,
                 ResourceType = error.ResourceType,
-                Path = error.Path,
+                Path = error.FieldPath,  // Map intermediate FieldPath to unified Path
                 JsonPointer = jsonPointer,
                 ErrorCode = error.ErrorCode,
                 Message = string.Empty, // PHASE 4: Backend does not emit prose. Frontend uses ErrorCode.
                 Details = details,
                 Explanation = ValidationExplanationService.ForProjectRule(
                     error.ErrorCode ?? "UNKNOWN",
-                    error.Path,
+                    error.FieldPath,
                     null, // RuleExplanation - will be added when rules support it
                     details
                 )
@@ -245,7 +245,7 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
             string? jsonPointer = null;
             if (rawJson.ValueKind != JsonValueKind.Undefined)
             {
-                jsonPointer = await _navigationService.ResolvePathAsync(rawJson, bundle, error.Path, error.ResourceType, null, cancellationToken);
+                jsonPointer = await _navigationService.ResolvePathAsync(rawJson, bundle, error.FieldPath, error.ResourceType, null, cancellationToken);
             }
             
             validationErrors.Add(new ValidationError
@@ -253,14 +253,14 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 Source = "CodeMaster",
                 Severity = error.Severity,
                 ResourceType = error.ResourceType,
-                Path = error.Path,
+                Path = error.FieldPath,  // Map intermediate FieldPath to unified Path
                 JsonPointer = jsonPointer,
                 ErrorCode = error.ErrorCode,
                 Message = string.Empty, // PHASE 4: Backend does not emit prose. Frontend uses ErrorCode.
                 Details = error.Details,
                 Explanation = ValidationExplanationService.ForReference(
                     error.ErrorCode,
-                    error.Path,
+                    error.FieldPath,
                     error.Details
                 )
             });
@@ -291,7 +291,7 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
             string? jsonPointer = null;
             if (rawJson.ValueKind != JsonValueKind.Undefined)
             {
-                jsonPointer = await _navigationService.ResolvePathAsync(rawJson, bundle, error.Path, error.ResourceType, error.EntryIndex, cancellationToken);
+                jsonPointer = await _navigationService.ResolvePathAsync(rawJson, bundle, error.FieldPath, error.ResourceType, error.EntryIndex, cancellationToken);
             }
             
             validationErrors.Add(new ValidationError
@@ -299,14 +299,14 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 Source = "Reference",
                 Severity = error.Severity,
                 ResourceType = error.ResourceType,
-                Path = error.Path,
+                Path = error.FieldPath,  // Map intermediate FieldPath to unified Path
                 JsonPointer = jsonPointer,
                 ErrorCode = error.ErrorCode,
                 Message = string.Empty, // PHASE 4: Backend does not emit prose. Frontend uses ErrorCode.
                 Details = error.Details,
                 Explanation = ValidationExplanationService.ForReference(
                     error.ErrorCode,
-                    error.Path,
+                    error.FieldPath,
                     error.Details
                 )
             });

@@ -57,7 +57,8 @@ public class RequiredRuleExecutionTests
                     Id = "REQ_BIRTHDATE",
                     Type = "Required",
                     ResourceType = "Patient",
-                    Path = "Patient.birthDate",
+                    FieldPath = "birthDate",
+                    InstanceScope = new AllInstances(),
                     Severity = "error",
                     ErrorCode = ValidationErrorCodes.FIELD_REQUIRED
                 }
@@ -74,7 +75,8 @@ public class RequiredRuleExecutionTests
         error.RuleId.Should().Be("REQ_BIRTHDATE");
         error.RuleType.Should().Be("Required");
         error.ResourceType.Should().Be("Patient");
-        error.Path.Should().Be("Patient.birthDate");
+        // Phase5: Changed to FieldPath (engine-level validation errors use FieldPath)
+        error.FieldPath.Should().Be("birthDate");
     }
 
     [Fact]
@@ -113,7 +115,8 @@ public class RequiredRuleExecutionTests
                     Id = "REQ_TELECOM",
                     Type = "Required",
                     ResourceType = "Patient",
-                    Path = "Patient.telecom",
+                    FieldPath = "telecom",
+                    InstanceScope = new AllInstances(),
                     Severity = "error",
                     ErrorCode = ValidationErrorCodes.FIELD_REQUIRED
                 }
@@ -166,7 +169,8 @@ public class RequiredRuleExecutionTests
                     Id = "REQ_FAMILY",
                     Type = "Required",
                     ResourceType = "Patient",
-                    Path = "Patient.name.family",
+                    FieldPath = "name.family",
+                    InstanceScope = new AllInstances(),
                     Severity = "error",
                     ErrorCode = ValidationErrorCodes.FIELD_REQUIRED
                 }
@@ -234,7 +238,8 @@ public class RequiredRuleExecutionTests
                     Id = "REQ_GENDER",
                     Type = "Required",
                     ResourceType = "Patient",
-                    Path = "Patient.gender",
+                    FieldPath = "gender",
+                    InstanceScope = new AllInstances(),
                     Severity = "error",
                     ErrorCode = ValidationErrorCodes.FIELD_REQUIRED
                 }
@@ -285,7 +290,8 @@ public class RequiredRuleExecutionTests
                     Id = "REQ_NAME",
                     Type = "Required",
                     ResourceType = "Patient",
-                    Path = "Patient.name",
+                    FieldPath = "name",
+                    InstanceScope = new AllInstances(),
                     Severity = "error",
                     ErrorCode = ValidationErrorCodes.FIELD_REQUIRED
                 },
@@ -294,7 +300,8 @@ public class RequiredRuleExecutionTests
                     Id = "REQ_BIRTHDATE_2",
                     Type = "Required",
                     ResourceType = "Patient",
-                    Path = "Patient.birthDate",
+                    FieldPath = "birthDate",
+                    InstanceScope = new AllInstances(),
                     Severity = "warning",
                     ErrorCode = ValidationErrorCodes.FIELD_REQUIRED
                 },
@@ -303,7 +310,8 @@ public class RequiredRuleExecutionTests
                     Id = "REQ_GENDER_2",
                     Type = "Required",
                     ResourceType = "Patient",
-                    Path = "Patient.gender",
+                    FieldPath = "gender",
+                    InstanceScope = new AllInstances(),
                     Severity = "information",
                     ErrorCode = ValidationErrorCodes.FIELD_REQUIRED
                 }

@@ -43,7 +43,7 @@ public class CodeMasterEngine : ICodeMasterEngine
                 {
                     Severity = "error",
                     ResourceType = "Observation",
-                    Path = "Observation.code",
+                    FieldPath = "code",
                     ErrorCode = "UNKNOWN_SCREENING_TYPE",
                     Details = new Dictionary<string, object>
                     {
@@ -104,7 +104,7 @@ public class CodeMasterEngine : ICodeMasterEngine
             {
                 Severity = "error",
                 ResourceType = "Observation",
-                Path = $"Observation.component[{componentIndex}].code",
+                FieldPath = $"component[{componentIndex}].code",
                 ErrorCode = "MISSING_QUESTION_CODE",
                 EntryIndex = entryIndex,
                 ResourceId = resourceId
@@ -122,7 +122,7 @@ public class CodeMasterEngine : ICodeMasterEngine
             {
                 Severity = "error",
                 ResourceType = "Observation",
-                Path = $"Observation.component[{componentIndex}].code",
+                FieldPath = $"component[{componentIndex}].code",
                 ErrorCode = "INVALID_QUESTION_CODE",
                 Details = new Dictionary<string, object>
                 {
@@ -191,7 +191,7 @@ public class CodeMasterEngine : ICodeMasterEngine
             {
                 Severity = "error",
                 ResourceType = "Observation",
-                Path = $"Observation.component[{componentIndex}].value",
+                FieldPath = $"component[{componentIndex}].value",
                 ErrorCode = "MULTIPLE_VALUES_NOT_ALLOWED",
                 Details = new Dictionary<string, object>
                 {
@@ -217,7 +217,7 @@ public class CodeMasterEngine : ICodeMasterEngine
                 {
                     Severity = "error",
                     ResourceType = "Observation",
-                    Path = $"Observation.component[{componentIndex}].value",
+                    FieldPath = $"component[{componentIndex}].value",
                     ErrorCode = "INVALID_ANSWER_VALUE",
                     Details = new Dictionary<string, object>
                     {
