@@ -94,14 +94,25 @@ const RuleRowComponent: React.FC<RuleRowProps> = ({
           className="w-4 h-4 flex-shrink-0"
         />
         
-        {/* Path - Monospace FHIRPath */}
-        <span 
-          className="font-mono text-xs font-medium text-gray-900 truncate flex-shrink"
-          title={rule.path}
-          style={{ minWidth: '180px', maxWidth: '280px' }}
-        >
-          {rule.path || 'No path'}
-        </span>
+        {/* Field Path - Monospace FHIRPath */}
+        <div className="flex items-center gap-1 flex-shrink" style={{ minWidth: '180px', maxWidth: '280px' }}>
+          <span className="font-mono text-xs text-gray-500">
+            {rule.resourceType}.
+          </span>
+          <span 
+            className="font-mono text-xs font-medium text-gray-900 truncate"
+            title={rule.fieldPath}
+          >
+            {rule.fieldPath || 'No field'}
+          </span>
+        </div>
+        
+        {/* Instance Scope Indicator */}
+        {rule.instanceScope && rule.instanceScope.kind !== 'all' && (
+          <span className="text-xs px-1.5 py-0.5 bg-indigo-50 text-indigo-700 rounded flex-shrink-0">
+            {rule.instanceScope.kind === 'first' ? '[first]' : '[filter]'}
+          </span>
+        )}
         
         {/* Rule Type Chip */}
         <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded flex-shrink-0">

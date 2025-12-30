@@ -73,8 +73,8 @@ export function buildResourceRule(params: BuildResourceRuleParams): Rule {
   return {
     id: `rule-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     type: 'Resource',
-    resourceType: 'Bundle', // Bundle-level rule
-    path: 'Bundle',
+    resourceType: 'Bundle',
+    fieldPath: '',
     severity,
     errorCode: 'RESOURCE_REQUIREMENT_VIOLATION', // Fixed errorCode
     params: {

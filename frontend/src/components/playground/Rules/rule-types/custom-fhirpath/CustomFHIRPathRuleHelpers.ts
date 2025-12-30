@@ -1,6 +1,5 @@
 import type { Rule } from '../../../../../types/rightPanelProps';
 import type { InstanceScope } from '../../common/InstanceScope.types';
-import { composeInstanceScopedPath } from '../../common/InstanceScope.utils';
 
 /**
  * CUSTOM FHIRPATH RULE HELPERS
@@ -38,15 +37,12 @@ export function buildCustomFHIRPathRule(params: BuildCustomFHIRPathRuleParams): 
     userHint,
   } = params;
 
-  // For CustomFHIRPath, the path is just the resource with scope
-  // The expression is stored in params and evaluated by the backend
-  const path = composeInstanceScopedPath(resourceType, instanceScope);
-
   return {
     id: `rule-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     type: 'CustomFHIRPath',
     resourceType,
-    path,
+    fieldPath: '',
+    instanceScope,
     severity,
     errorCode,
     params: {

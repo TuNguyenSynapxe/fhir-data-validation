@@ -120,7 +120,7 @@ export const QuestionSetEditorPanel: React.FC<QuestionSetEditorPanelProps> = ({
         questions: updatedQuestions,
         terminologyUrl: '',
       });
-      setSuccessMessage('Question removed');
+      alert(`✅ Question removed successfully!`);
       onSave();
     } catch (err: any) {
       setError(err.message || 'Failed to remove question');
@@ -191,7 +191,7 @@ export const QuestionSetEditorPanel: React.FC<QuestionSetEditorPanelProps> = ({
         questions: updatedQuestions,
       });
       
-      setSuccessMessage(`Added ${concepts.length} question${concepts.length !== 1 ? 's' : ''}`);
+      alert(`✅ Added ${concepts.length} question${concepts.length !== 1 ? 's' : ''} successfully!`);
       onSave();
     } catch (err: any) {
       setError(err.message || 'Failed to add questions');
@@ -222,7 +222,7 @@ export const QuestionSetEditorPanel: React.FC<QuestionSetEditorPanelProps> = ({
         terminologyUrl: '',
       });
       
-      setSuccessMessage(`Imported ${questionIds.length} question${questionIds.length !== 1 ? 's' : ''}`);
+      alert(`✅ Imported ${questionIds.length} question${questionIds.length !== 1 ? 's' : ''} successfully!`);
       onSave();
     } catch (err: any) {
       setError(err.message || 'Failed to import questions');

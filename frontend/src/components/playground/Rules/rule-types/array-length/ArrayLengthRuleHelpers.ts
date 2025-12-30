@@ -1,6 +1,5 @@
 import type { Rule } from '../../../../../types/rightPanelProps';
 import type { InstanceScope } from '../../common/InstanceScope.types';
-import { composeInstanceScopedPath } from '../../common/InstanceScope.utils';
 import { validateFieldPath } from '../../../../../utils/fieldPathValidator';
 
 /**
@@ -33,19 +32,6 @@ interface BuildArrayLengthRuleParams {
 }
 
 /**
- * Compose full FHIRPath from components.
- * Used for backward compatibility with legacy path field.
- */
-function composeFhirPath(
-  resourceType: string,
-  instanceScope: InstanceScope,
-  arrayPath: string
-): string {
-  const scopePath = composeInstanceScopedPath(resourceType, instanceScope);
-  return `${scopePath}.${arrayPath}`;
-}
-
-/**
  * Build an ArrayLength rule from form data.
  * PHASE 4: Stores instanceScope and fieldPath as separate properties
  */
@@ -67,10 +53,6 @@ export function buildArrayLengthRule(params: BuildArrayLengthRuleParams): Rule {
     throw new Error(`Invalid field path: ${validation.errorMessage}`);
   }
 
-  // ✅ NEW: Store structured fields
-  // ⚠️ Also compose legacy path for backward compatibility
-  const legacyPath = composeFhirPath(resourceType, instanceScope, arrayPath);
-
   const ruleParams: { min?: number; max?: number } = {};
   if (min !== undefined) ruleParams.min = min;
   if (max !== undefined) ruleParams.max = max;
@@ -79,14 +61,8 @@ export function buildArrayLengthRule(params: BuildArrayLengthRuleParams): Rule {
     id: `rule-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     type: 'ArrayLength',
     resourceType,
-    
-    // ✅ NEW STRUCTURED FIELDS (PHASE 4)
     instanceScope,
     fieldPath: arrayPath,
-    
-    // ⚠️ DEPRECATED: Legacy path for backward compatibility
-    path: legacyPath,
-    
     severity,
     errorCode,
     params: ruleParams,
@@ -105,9 +81,8 @@ export function parseArrayLengthRule(rule: Rule): {
   min?: number;
   max?: number;
 } {
-  // Extract array path from full path
-  const pathParts = rule.path?.split('.') || [];
-  const arrayPath = pathParts.slice(1).join('.');
+  // arrayPath is already resource-relative
+  const arrayPath = rule.fieldPath || '';
   
   const min = rule.params?.min !== undefined ? Number(rule.params.min) : undefined;
   const max = rule.params?.max !== undefined ? Number(rule.params.max) : undefined;

@@ -198,10 +198,16 @@ public class RuleReviewEngine : IRuleReviewEngine
     
     /// <summary>
     /// BLOCKED: Rule FieldPath is empty (Phase 2A: Path-free governance)
+    /// EXCEPTION: Resource and CustomFHIRPath rules may have empty FieldPath (bundle/resource-level validation)
     /// Path-based checks removed - execution layer enforces FieldPath requirement
     /// </summary>
     private void CheckEmptyOrRootPath(RuleDefinition rule, List<RuleReviewIssue> issues)
     {
+        // Exception: Resource rules operate at Bundle level (FieldPath = "")
+        // Exception: CustomFHIRPath rules may evaluate at resource level (FieldPath = "")
+        if (rule.Type == "Resource" || rule.Type == "CustomFHIRPath")
+            return;
+        
         // Phase 2A: Only check FieldPath presence (execution layer will enforce this)
         if (string.IsNullOrWhiteSpace(rule.FieldPath))
         {

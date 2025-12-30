@@ -9,7 +9,6 @@
  */
 
 import type { InstanceScope } from '../../common/InstanceScope.types';
-import { composeInstanceScopedPath } from '../../common/InstanceScope.utils';
 import type { Rule } from '../../../../../types/rightPanelProps';
 import { validateFieldPath } from '../../../../../utils/fieldPathValidator';
 
@@ -50,22 +49,12 @@ export function buildPatternRule(data: PatternRuleData): Rule {
     throw new Error(`Invalid field path: ${validation.errorMessage}`);
   }
 
-  // ✅ NEW: Store structured fields
-  // ⚠️ Also compose legacy path for backward compatibility
-  const legacyPath = composeFhirPath(resourceType, instanceScope, fieldPath);
-
   return {
     id: `rule-${Date.now()}`,
     type: 'Regex',
     resourceType,
-    
-    // ✅ NEW STRUCTURED FIELDS (PHASE 4)
     instanceScope,
     fieldPath,
-    
-    // ⚠️ DEPRECATED: Legacy path for backward compatibility
-    path: legacyPath,
-    
     severity,
     errorCode,                    // PHASE 3: errorCode is primary
     userHint: userHint || undefined, // PHASE 3: optional short hint
@@ -79,22 +68,6 @@ export function buildPatternRule(data: PatternRuleData): Rule {
     enabled: true,
     isMessageCustomized: false,      // No longer applicable with errorCode-first
   };
-}
-
-/**
- * Compose FHIRPath from instance scope and field path
- * Used for backward compatibility with legacy path field
- */
-function composeFhirPath(
-  resourceType: string,
-  instanceScope: InstanceScope,
-  fieldPath: string
-): string {
-  // Get base scope path (e.g., "Patient[*]", "Observation[0]", "Patient.where(...)")
-  const scopePath = composeInstanceScopedPath(resourceType, instanceScope);
-  
-  // Compose final path: scopePath + fieldPath
-  return `${scopePath}.${fieldPath}`;
 }
 
 /**

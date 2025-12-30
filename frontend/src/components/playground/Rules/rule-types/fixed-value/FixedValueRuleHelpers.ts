@@ -1,6 +1,5 @@
 import type { Rule } from '../../../../../types/rightPanelProps';
 import type { InstanceScope } from '../../common/InstanceScope.types';
-import { composeInstanceScopedPath } from '../../common/InstanceScope.utils';
 import { validateFieldPath } from '../../../../../utils/fieldPathValidator';
 
 /**
@@ -31,19 +30,6 @@ interface BuildFixedValueRuleParams {
 }
 
 /**
- * Compose full FHIRPath from components.
- * Used for backward compatibility with legacy path field.
- */
-function composeFhirPath(
-  resourceType: string,
-  instanceScope: InstanceScope,
-  fieldPath: string
-): string {
-  const scopePath = composeInstanceScopedPath(resourceType, instanceScope);
-  return `${scopePath}.${fieldPath}`;
-}
-
-/**
  * Build a FixedValue rule from form data.
  * PHASE 4: Stores instanceScope and fieldPath as separate properties
  */
@@ -64,22 +50,12 @@ export function buildFixedValueRule(params: BuildFixedValueRuleParams): Rule {
     throw new Error(`Invalid field path: ${validation.errorMessage}`);
   }
 
-  // ✅ NEW: Store structured fields
-  // ⚠️ Also compose legacy path for backward compatibility
-  const legacyPath = composeFhirPath(resourceType, instanceScope, fieldPath);
-
   return {
     id: `rule-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     type: 'FixedValue',
     resourceType,
-    
-    // ✅ NEW STRUCTURED FIELDS (PHASE 4)
     instanceScope,
     fieldPath,
-    
-    // ⚠️ DEPRECATED: Legacy path for backward compatibility
-    path: legacyPath,
-    
     severity,
     errorCode,
     params: {
@@ -99,9 +75,8 @@ export function parseFixedValueRule(rule: Rule): {
   fieldPath: string;
   expectedValue: string;
 } {
-  // Extract field path from full path
-  const pathParts = rule.path?.split('.') || [];
-  const fieldPath = pathParts.slice(1).join('.');
+  // fieldPath is already resource-relative
+  const fieldPath = rule.fieldPath || '';
   
   const expectedValue = rule.params?.value?.toString() || '';
 

@@ -53,9 +53,6 @@ export function buildTerminologyRule(data: BuildTerminologyRuleData): Rule {
     ruleId,
   } = data;
 
-  // Compose FHIR path
-  const path = `${resourceType}.${fieldPath}`;
-
   // Build params based on validation type
   const params: Record<string, any> = {};
 
@@ -91,8 +88,8 @@ export function buildTerminologyRule(data: BuildTerminologyRuleData): Rule {
     id: ruleId || `rule_${Date.now()}`,
     type: 'CodeSystem',
     resourceType,
-    path,
-    errorCode: 'CODESYSTEM_VIOLATION', // Fixed error code
+    fieldPath,
+    errorCode: 'CODESYSTEM_VIOLATION',
     severity,
     userHint,
     enabled: true,
@@ -104,9 +101,8 @@ export function buildTerminologyRule(data: BuildTerminologyRuleData): Rule {
  * Parse a Terminology rule for edit mode
  */
 export function parseTerminologyRule(rule: Rule): TerminologyParams {
-  // Extract field path from rule.path (remove resourceType prefix)
-  const pathParts = rule.path?.split('.') || [];
-  const fieldPath = pathParts.slice(1).join('.');
+  // fieldPath is already resource-relative
+  const fieldPath = rule.fieldPath || '';
 
   // Extract params from backend format
   const codeSetId = rule.params?.codeSetId as string | undefined;

@@ -81,20 +81,20 @@ export function reviewRules(
       }
       
       // Check 1: PATH_NOT_OBSERVED (only if bundle available)
-      if (bundle && rule.path) {
-        const fullPath = rule.path;
-        // Use rule.resourceType if available, otherwise extract from path
-        const resourceType = rule.resourceType || extractResourceType(fullPath);
+      if (bundle && rule.fieldPath && rule.resourceType) {
+        const fieldPath = rule.fieldPath;
+        const resourceType = rule.resourceType;
         
         // Skip observation check for internal schema paths
+        const fullPath = `${resourceType}.${fieldPath}`;
         const isInternalPath = isInternalSchemaPath(fullPath);
         
         let observed = false;
-        if (!isInternalPath && resourceType) {
+        if (!isInternalPath) {
           observed = isPathObservedInBundle({
             bundle,
             resourceType,
-            path: fullPath,
+            path: fieldPath,  // Pass fieldPath (no resource prefix)
           });
         }
         
@@ -151,19 +151,20 @@ export function reviewRules(
       ruleSignatures.get(signature)!.push(rule);
       
       // Check 4: ARRAY_HANDLING_MISSING
-      if (rule.path && isArrayPath(rule.path)) {
-        // Check if path uses explicit array indexing
-        const hasExplicitIndex = /\[\d+\]/.test(rule.path);
+      if (rule.fieldPath && isArrayPath(rule.fieldPath)) {
+        // Check if path uses explicit array indexing or instanceScope
+        const hasExplicitIndex = /\[\d+\]/.test(rule.fieldPath);
+        const hasInstanceScope = rule.instanceScope && rule.instanceScope.kind !== 'all';
         
-        if (!hasExplicitIndex) {
+        if (!hasExplicitIndex && !hasInstanceScope) {
           issues.push({
             ruleId: rule.id,
             type: 'ARRAY_HANDLING_MISSING',
             severity: 'warning',
-            message: `Path "${rule.path}" targets an array without explicit indexing`,
-            details: 'Rule will apply to all array elements. This may be intentional, but consider if you need to target a specific index.',
+            message: `Field "${rule.fieldPath}" targets an array without explicit indexing or instanceScope`,
+            details: 'Rule will apply to all array elements. This may be intentional, but consider using instanceScope (first/filter) to target specific instances.',
             reason: 'ARRAY_WITHOUT_INDEX',
-            path: rule.path,
+            path: rule.fieldPath,
           });
         }
       }

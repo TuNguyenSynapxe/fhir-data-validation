@@ -48,8 +48,16 @@ export const RuleCard: React.FC<RuleCardProps> = ({ rule, onEdit, onDelete }) =>
               <span className="font-semibold">Resource:</span> {rule.resourceType}
             </div>
             <div>
-              <span className="font-semibold">Path:</span> <code className="bg-gray-100 px-1 rounded">{rule.path}</code>
+              <span className="font-semibold">Field:</span> <code className="bg-gray-100 px-1 rounded">{rule.fieldPath}</code>
             </div>
+            {rule.instanceScope && rule.instanceScope.kind !== 'all' && (
+              <div>
+                <span className="font-semibold">Scope:</span>{' '}
+                {rule.instanceScope.kind === 'first' 
+                  ? 'First instance' 
+                  : `Filter: ${rule.instanceScope.filter.type}`}
+              </div>
+            )}
             <div>
               <span className="font-semibold">Message:</span> {rule.message}
             </div>

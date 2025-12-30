@@ -161,16 +161,39 @@ export function extractBundleResourceTypes(bundleJson?: string): Set<string> {
 
 /**
  * Create a rule signature for duplicate detection
- * Returns normalized string combining path, expression, and severity
+ * Uses fieldPath + instanceScope (Phase 6: Path-free)
+ * Returns normalized string combining fieldPath, instanceScope, type, and severity
  */
 export function getRuleSignature(rule: Rule): string {
-  const path = normalizePath(rule.path || '');
+  const fieldPath = (rule.fieldPath || '').trim();
+  const resourceType = (rule.resourceType || '').trim();
   const type = (rule.type || '').trim();
-  const message = (rule.message || '').trim();
   const severity = (rule.severity || '').toLowerCase();
   
-  // Include type and message to identify duplicates
-  return `${path}|${type}|${message}|${severity}`;
+  // Instance scope as string representation
+  let scopeKey = 'all'; // default
+  if (rule.instanceScope) {
+    if (rule.instanceScope.kind === 'first') {
+      scopeKey = 'first';
+    } else if (rule.instanceScope.kind === 'filter') {
+      // Extract condition string from filter for signature
+      const filter = rule.instanceScope.filter;
+      let conditionStr = '';
+      if (filter.type === 'code') {
+        conditionStr = `code=${filter.code}`;
+      } else if (filter.type === 'systemCode') {
+        conditionStr = `sys=${filter.system}&code=${filter.code}`;
+      } else if (filter.type === 'identifier') {
+        conditionStr = `id=${filter.system}|${filter.value}`;
+      } else if (filter.type === 'custom') {
+        conditionStr = filter.fhirPath;
+      }
+      scopeKey = `filter:${conditionStr}`;
+    }
+  }
+  
+  // Signature: resourceType + fieldPath + scopeKey + type + severity
+  return `${resourceType}|${fieldPath}|${scopeKey}|${type}|${severity}`;
 }
 
 /**

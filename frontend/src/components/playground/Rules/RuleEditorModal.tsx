@@ -123,7 +123,7 @@ export const RuleEditorModal: React.FC<RuleEditorModalProps> = ({
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [paramErrors, setParamErrors] = useState<Record<string, string>>({});
   const prevRuleTypeRef = useRef<string>('');
-  const prevPathRef = useRef<string>('');
+  const prevFieldPathRef = useRef<string>('');
   const prevParamsRef = useRef<Record<string, any>>({});
 
   useEffect(() => {
@@ -133,22 +133,22 @@ export const RuleEditorModal: React.FC<RuleEditorModalProps> = ({
         isMessageCustomized: rule.isMessageCustomized ?? false
       });
       prevRuleTypeRef.current = rule.type;
-      prevPathRef.current = rule.path || '';
+      prevFieldPathRef.current = rule.fieldPath || '';
       prevParamsRef.current = rule.params || {};
     }
   }, [rule]);
 
-  // Auto-generate message when rule type, path, or params change (unless customized)
+  // Auto-generate message when rule type, fieldPath, or params change (unless customized)
   useEffect(() => {
-    if (!formData.isMessageCustomized && formData.path) {
+    if (!formData.isMessageCustomized && formData.fieldPath) {
       const hasRuleTypeChanged = prevRuleTypeRef.current !== formData.type;
-      const hasPathChanged = prevPathRef.current !== formData.path;
+      const hasFieldPathChanged = prevFieldPathRef.current !== formData.fieldPath;
       const hasParamsChanged = JSON.stringify(prevParamsRef.current) !== JSON.stringify(formData.params || {});
       
-      if (hasRuleTypeChanged || hasPathChanged || hasParamsChanged) {
+      if (hasRuleTypeChanged || hasFieldPathChanged || hasParamsChanged) {
         const context: RuleContext = {
           resourceType: formData.resourceType,
-          path: formData.path,
+          path: formData.fieldPath || '',  // Use fieldPath for message generation
           ruleType: formData.type,
           severity: formData.severity,
           params: formData.params
@@ -159,7 +159,7 @@ export const RuleEditorModal: React.FC<RuleEditorModalProps> = ({
         
         // Update refs
         prevRuleTypeRef.current = formData.type;
-        prevPathRef.current = formData.path;
+        prevFieldPathRef.current = formData.fieldPath || '';
         prevParamsRef.current = formData.params || {};
       }
     }
@@ -293,7 +293,7 @@ export const RuleEditorModal: React.FC<RuleEditorModalProps> = ({
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">
-              {rule.id.startsWith('rule-') && rule.path === '' ? 'Create Rule' : 'Edit Rule'}
+              {rule.id.startsWith('rule-') && !rule.fieldPath ? 'Create Rule' : 'Edit Rule'}
             </h2>
             <p className="text-sm text-gray-600 mt-1">
               {RULE_TYPE_DESCRIPTIONS[formData.type] || 'Configure validation rule'}

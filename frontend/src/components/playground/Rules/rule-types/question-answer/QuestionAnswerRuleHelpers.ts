@@ -45,15 +45,13 @@ export function buildQuestionAnswerRule(data: QuestionAnswerRuleData): Rule {
     message,
   } = data;
 
-  // Compose FHIRPath: ResourceType[scope].iterationScope
-  const scopedPath = composeScopedFhirPath(resourceType, instanceScope, iterationScope);
-
   return {
     id: `rule-${Date.now()}`,
     type: 'QuestionAnswer',
     resourceType,
-    path: scopedPath,
+    fieldPath: iterationScope,
     severity,
+    errorCode: 'INVALID_ANSWER_VALUE', // Required for deserialization, runtime overrides
     userHint: userHint || undefined,
     message: message || undefined,   // DEPRECATED: backward compat only
     // CRITICAL: questionPath and answerPath MUST be in params (backend contract)
@@ -66,23 +64,6 @@ export function buildQuestionAnswerRule(data: QuestionAnswerRuleData): Rule {
     enabled: true,
     isMessageCustomized: false,
   };
-}
-
-/**
- * Compose scoped FHIRPath for iteration
- * Example: Observation[*].component[*]
- */
-export function composeScopedFhirPath(
-  resourceType: string,
-  instanceScope: 'all' | 'first',
-  iterationScope: string
-): string {
-  const scope = instanceScope === 'all' ? '[*]' : '[0]';
-  
-  // Clean iteration scope (remove leading dots or slashes)
-  const cleanScope = iterationScope.replace(/^[./]+/, '');
-  
-  return `${resourceType}${scope}.${cleanScope}`;
 }
 
 /**

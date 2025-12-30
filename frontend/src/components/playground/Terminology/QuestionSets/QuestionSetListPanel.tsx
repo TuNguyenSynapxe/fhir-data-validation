@@ -71,6 +71,9 @@ export const QuestionSetListPanel: React.FC<QuestionSetListPanelProps> = ({
       // Select the newly created question set
       onSelectQuestionSet(newQuestionSet);
       
+      // Show success message
+      alert(`✅ Question set "${name}" created successfully!`);
+      
       // Close dialog
       setShowCreateDialog(false);
     } catch (err: any) {

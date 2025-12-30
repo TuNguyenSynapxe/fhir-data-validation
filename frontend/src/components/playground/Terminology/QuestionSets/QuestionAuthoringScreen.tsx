@@ -499,6 +499,7 @@ export const QuestionAuthoringScreen: React.FC<QuestionAuthoringScreenProps> = (
         };
         const created = await questionSetsApi.createQuestionSet(projectId, qsDto);
         questionSetId = created.id;
+        alert(`✅ Question set "${created.name}" created successfully!`);
       }
 
       // Step 2: Create/update Questions
@@ -546,9 +547,10 @@ export const QuestionAuthoringScreen: React.FC<QuestionAuthoringScreenProps> = (
           questions: questionRefs,
         };
         await questionSetsApi.updateQuestionSet(projectId, questionSetId, updateDto);
+        alert(`✅ Question set "${updateDto.name}" updated successfully!`);
       }
 
-      alert('Question Set saved successfully!');
+      alert('✅ Question Set saved successfully!');
 
       // Reset state
       setState({

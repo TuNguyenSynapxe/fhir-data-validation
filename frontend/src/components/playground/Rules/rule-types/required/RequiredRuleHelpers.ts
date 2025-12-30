@@ -10,7 +10,6 @@
  */
 
 import type { InstanceScope } from '../../common/InstanceScope.types';
-import { composeInstanceScopedPath } from '../../common/InstanceScope.utils';
 import type { Rule } from '../../../../../types/rightPanelProps';
 import { validateFieldPath } from '../../../../../utils/fieldPathValidator';
 

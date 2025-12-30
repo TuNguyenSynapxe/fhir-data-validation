@@ -79,7 +79,7 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({
   const validationRules: ValidationRule[] = useMemo(() => {
     return rules.map(rule => ({
       id: rule.id,
-      fhirPath: rule.path || '',  // Fallback for legacy rules without path
+      fhirPath: rule.fieldPath || '',  // Use fieldPath (resource-relative)
       operator: rule.type,
       value: rule.params?.value,
       message: rule.message,
@@ -106,9 +106,11 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({
       const newRules = [...rules];
       newRules[existingIndex] = updatedRule;
       onRulesChange(newRules);
+      alert(`✅ Rule "${updatedRule.type}" updated successfully!`);
     } else {
       // Add new rule
       onRulesChange([...rules, updatedRule]);
+      alert(`✅ Rule "${updatedRule.type}" created successfully!`);
     }
     setIsModalOpen(false);
     setEditingRule(null);
