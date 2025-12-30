@@ -1,0 +1,53 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "test-patient-1",
+        "birthDate": "1960-05-15x",
+        "gender": "unknown",
+        "identifier": {
+          "system": "wrong-should-be-array",
+          "value": "12345"
+        },
+        "address": [
+          {
+            "line": ["123 Main St"]
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "test-obs-1",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "invalid-code",
+              "display": "Test"
+            }
+          ]
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "https://fhir.synapxe.sg/CodeSystem/screening-questionnaire",
+                  "code": "Q1",
+                  "display": "Question 1"
+                }
+              ]
+            },
+            "valueString": "Answer 1"
+          }
+        ]
+      }
+    }
+  ]
+}

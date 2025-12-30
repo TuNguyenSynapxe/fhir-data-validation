@@ -203,32 +203,47 @@ public class ValidationPipeline : IValidationPipeline
             // Step 4: Business Rule Validation (FHIRPath)
             // CRITICAL: Always attempt to run business rules even if Firely failed
             // This ensures users get all possible errors in one validation run
+            _logger.LogInformation("=== BUSINESS RULES CHECKPOINT 1: RuleSet available: {HasRules}, Rule count: {RuleCount}, POCO available: {HasBundle}", 
+                ruleSet?.Rules != null, ruleSet?.Rules?.Count ?? 0, bundle != null);
+            
             if (ruleSet?.Rules != null && ruleSet.Rules.Any())
             {
+                _logger.LogInformation("=== BUSINESS RULES CHECKPOINT 2: Starting business rule validation with {RuleCount} rules", ruleSet.Rules.Count);
+                
                 try
                 {
                     if (bundle != null)
                     {
                         // Use POCO-based validation (preferred, more complete)
+                        _logger.LogInformation("=== BUSINESS RULES CHECKPOINT 3: Using POCO-based validation");
                         var ruleErrors = await _ruleEngine.ValidateAsync(bundle, ruleSet, cancellationToken);
+                        _logger.LogInformation("=== BUSINESS RULES CHECKPOINT 4: POCO validation returned {ErrorCount} errors", ruleErrors.Count);
                         var businessErrors = await _errorBuilder.FromRuleErrorsAsync(ruleErrors, request.BundleJson, bundle, cancellationToken);
                         response.Errors.AddRange(businessErrors);
+                        _logger.LogInformation("=== BUSINESS RULES CHECKPOINT 5: Added {ErrorCount} business errors to response", businessErrors.Count);
                     }
                     else
                     {
                         // Fallback: Use JSON-based validation with ITypedElement
                         // This works even when POCO parsing fails due to structural errors
-                        _logger.LogDebug("Using JSON fallback for business rule validation");
+                        _logger.LogInformation("=== BUSINESS RULES CHECKPOINT 3-JSON: POCO unavailable, using JSON fallback for business rule validation");
                         var ruleErrors = await _ruleEngine.ValidateJsonAsync(request.BundleJson, ruleSet, cancellationToken);
+                        _logger.LogInformation("=== BUSINESS RULES CHECKPOINT 4-JSON: JSON validation returned {ErrorCount} errors", ruleErrors.Count);
                         var businessErrors = await _errorBuilder.FromRuleErrorsAsync(ruleErrors, request.BundleJson, null, cancellationToken);
                         response.Errors.AddRange(businessErrors);
+                        _logger.LogInformation("=== BUSINESS RULES CHECKPOINT 5-JSON: Added {ErrorCount} business errors to response", businessErrors.Count);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Business rule validation failed: {Message}", ex.Message);
+                    _logger.LogWarning(ex, "=== BUSINESS RULES CHECKPOINT ERROR: Business rule validation failed: {Message}", ex.Message);
                     // Continue to collect other errors
                 }
+            }
+            else
+            {
+                _logger.LogWarning("=== BUSINESS RULES CHECKPOINT X: Skipping business rules - RuleSet: {HasRuleSet}, Rules: {HasRules}, Count: {Count}", 
+                    ruleSet != null, ruleSet?.Rules != null, ruleSet?.Rules?.Count ?? 0);
             }
             
             // Step 4.5: QuestionAnswer Validation (Phase 3D)
