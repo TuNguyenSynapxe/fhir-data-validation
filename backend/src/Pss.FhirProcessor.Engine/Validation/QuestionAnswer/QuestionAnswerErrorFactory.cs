@@ -38,6 +38,9 @@ public static class QuestionAnswerErrorFactory
         ExpectedAnswer expected,
         ActualAnswer actual,
         ValidationLocation location,
+        string questionSetId,
+        string questionIdentifierType,
+        int iterationIndex,
         int? entryIndex = null,
         string? userHint = null)
     {
@@ -56,21 +59,29 @@ public static class QuestionAnswerErrorFactory
             Details = new Dictionary<string, object>
             {
                 ["source"] = "Business",
+                ["questionSetId"] = questionSetId,
+                ["iteration"] = new Dictionary<string, object>
+                {
+                    ["path"] = location.FhirPath,
+                    ["index"] = iterationIndex
+                },
                 ["question"] = new Dictionary<string, object?>
                 {
+                    ["identifierType"] = questionIdentifierType,
+                    ["identifier"] = question.Code,
                     ["system"] = question.System,
-                    ["code"] = question.Code,
                     ["display"] = question.Display
+                },
+                ["answer"] = new Dictionary<string, object?>
+                {
+                    ["path"] = "value[x]",
+                    ["actualType"] = actual.AnswerType,
+                    ["actualValue"] = actual.Value
                 },
                 ["expected"] = new Dictionary<string, object?>
                 {
                     ["answerType"] = expected.AnswerType,
                     ["constraints"] = expected.Constraints
-                },
-                ["actual"] = new Dictionary<string, object?>
-                {
-                    ["answerType"] = actual.AnswerType,
-                    ["value"] = actual.Value
                 },
                 ["location"] = new Dictionary<string, object?>
                 {
@@ -93,6 +104,9 @@ public static class QuestionAnswerErrorFactory
         decimal? max,
         decimal actualValue,
         ValidationLocation location,
+        string questionSetId,
+        string questionIdentifierType,
+        int iterationIndex,
         int? entryIndex = null,
         string? userHint = null)
     {
@@ -111,25 +125,30 @@ public static class QuestionAnswerErrorFactory
             Details = new Dictionary<string, object>
             {
                 ["source"] = "Business",
+                ["questionSetId"] = questionSetId,
+                ["iteration"] = new Dictionary<string, object>
+                {
+                    ["path"] = location.FhirPath,
+                    ["index"] = iterationIndex
+                },
                 ["question"] = new Dictionary<string, object?>
                 {
+                    ["identifierType"] = questionIdentifierType,
+                    ["identifier"] = question.Code,
                     ["system"] = question.System,
-                    ["code"] = question.Code,
                     ["display"] = question.Display
+                },
+                ["answer"] = new Dictionary<string, object?>
+                {
+                    ["path"] = "value[x]",
+                    ["actualType"] = "quantity",
+                    ["actualValue"] = actualValue
                 },
                 ["expected"] = new Dictionary<string, object?>
                 {
                     ["answerType"] = "quantity",
-                    ["constraints"] = new Dictionary<string, object?>
-                    {
-                        ["min"] = min,
-                        ["max"] = max
-                    }
-                },
-                ["actual"] = new Dictionary<string, object?>
-                {
-                    ["answerType"] = "quantity",
-                    ["value"] = actualValue
+                    ["min"] = min,
+                    ["max"] = max
                 },
                 ["location"] = new Dictionary<string, object?>
                 {
@@ -152,6 +171,9 @@ public static class QuestionAnswerErrorFactory
         string actualCode,
         string? actualSystem,
         ValidationLocation location,
+        string questionSetId,
+        string questionIdentifierType,
+        int iterationIndex,
         int? entryIndex = null,
         string? userHint = null)
     {
@@ -170,28 +192,33 @@ public static class QuestionAnswerErrorFactory
             Details = new Dictionary<string, object>
             {
                 ["source"] = "Business",
+                ["questionSetId"] = questionSetId,
+                ["iteration"] = new Dictionary<string, object>
+                {
+                    ["path"] = location.FhirPath,
+                    ["index"] = iterationIndex
+                },
                 ["question"] = new Dictionary<string, object?>
                 {
+                    ["identifierType"] = questionIdentifierType,
+                    ["identifier"] = question.Code,
                     ["system"] = question.System,
-                    ["code"] = question.Code,
                     ["display"] = question.Display
                 },
-                ["expected"] = new Dictionary<string, object?>
+                ["answer"] = new Dictionary<string, object?>
                 {
-                    ["answerType"] = "codeableConcept",
-                    ["constraints"] = new Dictionary<string, object>
-                    {
-                        ["valueSetUrl"] = valueSetUrl
-                    }
-                },
-                ["actual"] = new Dictionary<string, object?>
-                {
-                    ["answerType"] = "codeableConcept",
-                    ["value"] = new Dictionary<string, object?>
+                    ["path"] = "value[x]",
+                    ["actualType"] = "codeableConcept",
+                    ["actualValue"] = new Dictionary<string, object?>
                     {
                         ["code"] = actualCode,
                         ["system"] = actualSystem
                     }
+                },
+                ["expected"] = new Dictionary<string, object?>
+                {
+                    ["answerType"] = "codeableConcept",
+                    ["allowedCodes"] = new object[] { new { valueSetUrl } }
                 },
                 ["location"] = new Dictionary<string, object?>
                 {
@@ -212,6 +239,9 @@ public static class QuestionAnswerErrorFactory
         QuestionRef question,
         string expectedAnswerType,
         ValidationLocation location,
+        string questionSetId,
+        string questionIdentifierType,
+        int iterationIndex,
         int? entryIndex = null,
         string? userHint = null)
     {
@@ -230,21 +260,28 @@ public static class QuestionAnswerErrorFactory
             Details = new Dictionary<string, object>
             {
                 ["source"] = "Business",
+                ["questionSetId"] = questionSetId,
+                ["iteration"] = new Dictionary<string, object>
+                {
+                    ["path"] = location.FhirPath,
+                    ["index"] = iterationIndex
+                },
                 ["question"] = new Dictionary<string, object?>
                 {
+                    ["identifierType"] = questionIdentifierType,
+                    ["identifier"] = question.Code,
                     ["system"] = question.System,
-                    ["code"] = question.Code,
                     ["display"] = question.Display
+                },
+                ["answer"] = new Dictionary<string, object?>
+                {
+                    ["path"] = "value[x]",
+                    ["actualType"] = "missing",
+                    ["actualValue"] = null
                 },
                 ["expected"] = new Dictionary<string, object?>
                 {
-                    ["answerType"] = expectedAnswerType,
-                    ["constraints"] = null
-                },
-                ["actual"] = new Dictionary<string, object?>
-                {
-                    ["answerType"] = "missing",
-                    ["value"] = null
+                    ["answerType"] = expectedAnswerType
                 },
                 ["location"] = new Dictionary<string, object?>
                 {
@@ -296,6 +333,9 @@ public static class QuestionAnswerErrorFactory
         string? system,
         string code,
         ValidationLocation location,
+        string questionSetId,
+        string questionIdentifierType,
+        int iterationIndex,
         int? entryIndex = null,
         string? userHint = null)
     {
@@ -314,11 +354,22 @@ public static class QuestionAnswerErrorFactory
             Details = new Dictionary<string, object>
             {
                 ["source"] = "Business",
+                ["questionSetId"] = questionSetId,
+                ["iteration"] = new Dictionary<string, object>
+                {
+                    ["path"] = location.FhirPath,
+                    ["index"] = iterationIndex
+                },
                 ["question"] = new Dictionary<string, object?>
                 {
+                    ["identifierType"] = questionIdentifierType,
+                    ["identifier"] = code,
                     ["system"] = system,
-                    ["code"] = code,
                     ["display"] = null
+                },
+                ["expected"] = new Dictionary<string, object>
+                {
+                    ["questionIdentifiers"] = "Must match a question in the QuestionSet"
                 },
                 ["location"] = new Dictionary<string, object?>
                 {

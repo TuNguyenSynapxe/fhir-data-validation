@@ -47,7 +47,8 @@ public class DefaultQuestionAnswerContextProvider : IQuestionAnswerContextProvid
                     Resource: resource,
                     IterationNode: resource,
                     EntryIndex: entryIndex,
-                    CurrentFhirPath: BuildResourceLevelPath(entryIndex)
+                    CurrentFhirPath: BuildResourceLevelPath(entryIndex),
+                    IterationIndex: 0
                 );
             }
             else
@@ -59,7 +60,8 @@ public class DefaultQuestionAnswerContextProvider : IQuestionAnswerContextProvid
                         Resource: resource,
                         IterationNode: iterationNodes[i],
                         EntryIndex: entryIndex,
-                        CurrentFhirPath: BuildIterationNodePath(resource.TypeName, entryIndex, i, rule.Path)
+                        CurrentFhirPath: BuildIterationNodePath(resource.TypeName, entryIndex, i, rule.Path),
+                        IterationIndex: i
                     );
                 }
             }

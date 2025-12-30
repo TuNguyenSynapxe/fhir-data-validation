@@ -8,6 +8,7 @@ using Pss.FhirProcessor.Engine.Models.Questions;
 using Pss.FhirProcessor.Engine.Services.Questions;
 using Pss.FhirProcessor.Engine.Validation.QuestionAnswer.Models;
 using Pss.FhirProcessor.Engine.Core.Execution;
+using Pss.FhirProcessor.Engine.Interfaces;
 
 namespace Pss.FhirProcessor.Engine.Validation.QuestionAnswer;
 
@@ -18,17 +19,20 @@ namespace Pss.FhirProcessor.Engine.Validation.QuestionAnswer;
 public class QuestionAnswerValidator
 {
     private readonly IQuestionService _questionService;
+    private readonly ITerminologyService _terminologyService;
     private readonly IQuestionAnswerContextProvider _contextProvider;
     private readonly QuestionAnswerValueExtractor _valueExtractor;
     private readonly ILogger<QuestionAnswerValidator> _logger;
 
     public QuestionAnswerValidator(
         IQuestionService questionService,
+        ITerminologyService terminologyService,
         IQuestionAnswerContextProvider contextProvider,
         QuestionAnswerValueExtractor valueExtractor,
         ILogger<QuestionAnswerValidator> logger)
     {
         _questionService = questionService;
+        _terminologyService = terminologyService;
         _contextProvider = contextProvider;
         _valueExtractor = valueExtractor;
         _logger = logger;
@@ -161,12 +165,25 @@ public class QuestionAnswerValidator
             }
 
             // Match question in set
+            _logger.LogDebug("Looking up question: System={System}, Code={Code}, Display={Display}. QuestionSet has {Count} questions",
+                context.QuestionCoding.System, context.QuestionCoding.Code, context.QuestionCoding.Display, questionSet.Questions.Count);
+
             var questionRef = questionSet.Questions.FirstOrDefault(q =>
             {
                 var question = questions.GetValueOrDefault(q.QuestionId);
-                return question != null &&
-                       question.Code.System == context.QuestionCoding.System &&
-                       question.Code.Code == context.QuestionCoding.Code;
+                if (question == null)
+                {
+                    _logger.LogDebug("Question {QuestionId} not found in questions dictionary", q.QuestionId);
+                    return false;
+                }
+                var matches = question.Code.System == context.QuestionCoding.System &&
+                              question.Code.Code == context.QuestionCoding.Code;
+                if (!matches)
+                {
+                    _logger.LogDebug("Question {QuestionId} doesn't match: Expected System={ExpectedSystem}, Code={ExpectedCode}, Got System={ActualSystem}, Code={ActualCode}",
+                        q.QuestionId, context.QuestionCoding.System, context.QuestionCoding.Code, question.Code.System, question.Code.Code);
+                }
+                return matches;
             });
 
         if (questionRef == null)
@@ -178,6 +195,7 @@ public class QuestionAnswerValidator
                     System: context.QuestionCoding.System,
                     Code: context.QuestionCoding.Code,
                     Display: context.QuestionCoding.Display);
+                var identifierType = QuestionAnswerContext.GetQuestionIdentifierType(questionPath);
                 errors.Add(QuestionAnswerErrorFactory.QuestionNotFound(
                     ruleId: rule.Id,
                     resourceType: rule.ResourceType,
@@ -185,6 +203,9 @@ public class QuestionAnswerValidator
                     system: context.QuestionCoding.System,
                     code: context.QuestionCoding.Code,
                     location: location,
+                    questionSetId: questionSetId,
+                    questionIdentifierType: identifierType,
+                    iterationIndex: seed.IterationIndex,
                     entryIndex: seed.EntryIndex));
                 continue;
             }
@@ -206,8 +227,8 @@ public class QuestionAnswerValidator
             // Extract answer value
             context.ExtractedAnswer = _valueExtractor.ExtractAnswerValue(seed.IterationNode, answerPath);
 
-            // Validate answer
-            var validationErrors = ValidateAnswer(context);
+            // Validate answer (passing metadata for enhanced error details)
+            var validationErrors = ValidateAnswer(context, questionSetId, questionPath, seed.IterationIndex);
             errors.AddRange(validationErrors);
         }
 
@@ -294,6 +315,7 @@ public class QuestionAnswerValidator
                     System: context.QuestionCoding.System,
                     Code: context.QuestionCoding.Code,
                     Display: context.QuestionCoding.Display);
+                var identifierType = QuestionAnswerContext.GetQuestionIdentifierType(questionPath);
                 errors.Add(QuestionAnswerErrorFactory.QuestionNotFound(
                     ruleId: rule.Id,
                     resourceType: rule.ResourceType,
@@ -301,6 +323,9 @@ public class QuestionAnswerValidator
                     system: context.QuestionCoding.System,
                     code: context.QuestionCoding.Code,
                     location: location,
+                    questionSetId: questionSetId,
+                    questionIdentifierType: identifierType,
+                    iterationIndex: seed.IterationIndex,
                     entryIndex: seed.EntryIndex));
                 continue;
             }
@@ -322,8 +347,8 @@ public class QuestionAnswerValidator
             // Extract answer value
             context.ExtractedAnswer = _valueExtractor.ExtractAnswerValue(seed.IterationNode, answerPath);
 
-            // Validate answer
-            var validationErrors = ValidateAnswer(context);
+            // Validate answer (passing metadata for enhanced error details)
+            var validationErrors = ValidateAnswer(context, questionSetId, questionPath, seed.IterationIndex);
             errors.AddRange(validationErrors);
         }
 
@@ -332,11 +357,19 @@ public class QuestionAnswerValidator
 
     /// <summary>
     /// Validate answer against Question definition
+    /// Enhanced with iteration metadata for precise error reporting
     /// </summary>
-    private List<RuleValidationError> ValidateAnswer(QuestionAnswerContext context)
+    private List<RuleValidationError> ValidateAnswer(
+        QuestionAnswerContext context,
+        string questionSetId,
+        string questionPath,
+        int iterationIndex)
     {
         var errors = new List<RuleValidationError>();
         var question = context.ResolvedQuestion!;
+
+        // Compute identifier type once for all error calls
+        var identifierType = QuestionAnswerContext.GetQuestionIdentifierType(questionPath);
 
         // Check if answer is present
         bool isPresent = _valueExtractor.IsAnswerPresent(context.ExtractedAnswer);
@@ -359,37 +392,40 @@ public class QuestionAnswerValidator
                     question: questionRef,
                     expectedAnswerType: question.AnswerType.ToString().ToLower(),
                     location: location,
+                    questionSetId: questionSetId,
+                    questionIdentifierType: identifierType,
+                    iterationIndex: iterationIndex,
                     entryIndex: context.EntryIndex,
                 userHint: context.Rule.UserHint));
             }
             return errors;
         }
 
-        // Validate based on answer type
+        // Validate based on answer type (pass metadata for error reporting)
         switch (question.AnswerType)
         {
             case QuestionAnswerType.Code:
-                errors.AddRange(ValidateCodeAnswer(context, question));
+                errors.AddRange(ValidateCodeAnswer(context, question, questionSetId, identifierType, iterationIndex));
                 break;
 
             case QuestionAnswerType.Quantity:
-                errors.AddRange(ValidateQuantityAnswer(context, question));
+                errors.AddRange(ValidateQuantityAnswer(context, question, questionSetId, identifierType, iterationIndex));
                 break;
 
             case QuestionAnswerType.Integer:
-                errors.AddRange(ValidateIntegerAnswer(context, question));
+                errors.AddRange(ValidateIntegerAnswer(context, question, questionSetId, identifierType, iterationIndex));
                 break;
 
             case QuestionAnswerType.Decimal:
-                errors.AddRange(ValidateDecimalAnswer(context, question));
+                errors.AddRange(ValidateDecimalAnswer(context, question, questionSetId, identifierType, iterationIndex));
                 break;
 
             case QuestionAnswerType.String:
-                errors.AddRange(ValidateStringAnswer(context, question));
+                errors.AddRange(ValidateStringAnswer(context, question, questionSetId, identifierType, iterationIndex));
                 break;
 
             case QuestionAnswerType.Boolean:
-                errors.AddRange(ValidateBooleanAnswer(context, question));
+                errors.AddRange(ValidateBooleanAnswer(context, question, questionSetId, identifierType, iterationIndex));
                 break;
 
             default:
@@ -405,7 +441,7 @@ public class QuestionAnswerValidator
     /// <summary>
     /// Validate Code answer
     /// </summary>
-    private List<RuleValidationError> ValidateCodeAnswer(QuestionAnswerContext context, Question question)
+    private List<RuleValidationError> ValidateCodeAnswer(QuestionAnswerContext context, Question question, string questionSetId, string questionIdentifierType, int iterationIndex)
     {
         var errors = new List<RuleValidationError>();
 
@@ -440,6 +476,9 @@ public class QuestionAnswerValidator
                 expected: expected,
                 actual: actual,
                 location: location,
+                questionSetId: questionSetId,
+                questionIdentifierType: questionIdentifierType,
+                iterationIndex: iterationIndex,
                 entryIndex: context.EntryIndex,
                 userHint: context.Rule.UserHint));
             return errors;
@@ -475,6 +514,9 @@ public class QuestionAnswerValidator
                     actualCode: answerCoding.Code ?? "",
                     actualSystem: answerCoding.System,
                     location: location,
+                    questionSetId: questionSetId,
+                    questionIdentifierType: questionIdentifierType,
+                    iterationIndex: iterationIndex,
                     entryIndex: context.EntryIndex,
                 userHint: context.Rule.UserHint));
             }
@@ -486,7 +528,7 @@ public class QuestionAnswerValidator
     /// <summary>
     /// Validate Quantity answer
     /// </summary>
-    private List<RuleValidationError> ValidateQuantityAnswer(QuestionAnswerContext context, Question question)
+    private List<RuleValidationError> ValidateQuantityAnswer(QuestionAnswerContext context, Question question, string questionSetId, string questionIdentifierType, int iterationIndex)
     {
         var errors = new List<RuleValidationError>();
 
@@ -513,6 +555,9 @@ public class QuestionAnswerValidator
                 expected: expected,
                 actual: actual,
                 location: location,
+                questionSetId: questionSetId,
+                questionIdentifierType: questionIdentifierType,
+                iterationIndex: iterationIndex,
                 entryIndex: context.EntryIndex,
                 userHint: context.Rule.UserHint));
             return errors;
@@ -536,6 +581,9 @@ public class QuestionAnswerValidator
                     question: questionRef,
                     expectedAnswerType: "quantity",
                     location: location,
+                    questionSetId: questionSetId,
+                    questionIdentifierType: questionIdentifierType,
+                    iterationIndex: iterationIndex,
                     entryIndex: context.EntryIndex,
                 userHint: context.Rule.UserHint));
             }
@@ -568,6 +616,9 @@ public class QuestionAnswerValidator
                     expected: expected,
                     actual: actual,
                     location: location,
+                    questionSetId: questionSetId,
+                    questionIdentifierType: questionIdentifierType,
+                    iterationIndex: iterationIndex,
                     entryIndex: context.EntryIndex,
                 userHint: context.Rule.UserHint));
             }
@@ -597,6 +648,9 @@ public class QuestionAnswerValidator
                     max: constraints.Max,
                     actualValue: value,
                     location: location,
+                    questionSetId: questionSetId,
+                    questionIdentifierType: questionIdentifierType,
+                    iterationIndex: iterationIndex,
                     entryIndex: context.EntryIndex,
                 userHint: context.Rule.UserHint));
             }
@@ -611,6 +665,9 @@ public class QuestionAnswerValidator
                     max: constraints.Max,
                     actualValue: value,
                     location: location,
+                    questionSetId: questionSetId,
+                    questionIdentifierType: questionIdentifierType,
+                    iterationIndex: iterationIndex,
                     entryIndex: context.EntryIndex,
                 userHint: context.Rule.UserHint));
             }
@@ -622,7 +679,7 @@ public class QuestionAnswerValidator
     /// <summary>
     /// Validate Integer answer
     /// </summary>
-    private List<RuleValidationError> ValidateIntegerAnswer(QuestionAnswerContext context, Question question)
+    private List<RuleValidationError> ValidateIntegerAnswer(QuestionAnswerContext context, Question question, string questionSetId, string questionIdentifierType, int iterationIndex)
     {
         var errors = new List<RuleValidationError>();
 
@@ -656,6 +713,9 @@ public class QuestionAnswerValidator
                     expected: expected,
                     actual: actual,
                     location: location,
+                    questionSetId: questionSetId,
+                    questionIdentifierType: questionIdentifierType,
+                    iterationIndex: iterationIndex,
                     entryIndex: context.EntryIndex,
                 userHint: context.Rule.UserHint));
                 return errors;
@@ -685,6 +745,9 @@ public class QuestionAnswerValidator
                     max: constraints.Max,
                     actualValue: intValue,
                     location: location,
+                    questionSetId: questionSetId,
+                    questionIdentifierType: questionIdentifierType,
+                    iterationIndex: iterationIndex,
                     entryIndex: context.EntryIndex,
                 userHint: context.Rule.UserHint));
             }
@@ -699,6 +762,9 @@ public class QuestionAnswerValidator
                     max: constraints.Max,
                     actualValue: intValue,
                     location: location,
+                    questionSetId: questionSetId,
+                    questionIdentifierType: questionIdentifierType,
+                    iterationIndex: iterationIndex,
                     entryIndex: context.EntryIndex,
                 userHint: context.Rule.UserHint));
             }
@@ -710,7 +776,7 @@ public class QuestionAnswerValidator
     /// <summary>
     /// Validate Decimal answer
     /// </summary>
-    private List<RuleValidationError> ValidateDecimalAnswer(QuestionAnswerContext context, Question question)
+    private List<RuleValidationError> ValidateDecimalAnswer(QuestionAnswerContext context, Question question, string questionSetId, string questionIdentifierType, int iterationIndex)
     {
         var errors = new List<RuleValidationError>();
 
@@ -744,6 +810,9 @@ public class QuestionAnswerValidator
                     expected: expected,
                     actual: actual,
                     location: location,
+                    questionSetId: questionSetId,
+                    questionIdentifierType: questionIdentifierType,
+                    iterationIndex: iterationIndex,
                     entryIndex: context.EntryIndex,
                 userHint: context.Rule.UserHint));
                 return errors;
@@ -773,6 +842,9 @@ public class QuestionAnswerValidator
                     max: constraints.Max,
                     actualValue: decValue,
                     location: location,
+                    questionSetId: questionSetId,
+                    questionIdentifierType: questionIdentifierType,
+                    iterationIndex: iterationIndex,
                     entryIndex: context.EntryIndex,
                 userHint: context.Rule.UserHint));
             }
@@ -787,6 +859,9 @@ public class QuestionAnswerValidator
                     max: constraints.Max,
                     actualValue: decValue,
                     location: location,
+                    questionSetId: questionSetId,
+                    questionIdentifierType: questionIdentifierType,
+                    iterationIndex: iterationIndex,
                     entryIndex: context.EntryIndex,
                 userHint: context.Rule.UserHint));
             }
@@ -798,7 +873,7 @@ public class QuestionAnswerValidator
     /// <summary>
     /// Validate String answer
     /// </summary>
-    private List<RuleValidationError> ValidateStringAnswer(QuestionAnswerContext context, Question question)
+    private List<RuleValidationError> ValidateStringAnswer(QuestionAnswerContext context, Question question, string questionSetId, string questionIdentifierType, int iterationIndex)
     {
         var errors = new List<RuleValidationError>();
 
@@ -825,6 +900,9 @@ public class QuestionAnswerValidator
                 expected: expected,
                 actual: actual,
                 location: location,
+                questionSetId: questionSetId,
+                questionIdentifierType: questionIdentifierType,
+                iterationIndex: iterationIndex,
                 entryIndex: context.EntryIndex,
                 userHint: context.Rule.UserHint));
             return errors;
@@ -858,6 +936,9 @@ public class QuestionAnswerValidator
                     expected: expected,
                     actual: actual,
                     location: location,
+                    questionSetId: questionSetId,
+                    questionIdentifierType: questionIdentifierType,
+                    iterationIndex: iterationIndex,
                     entryIndex: context.EntryIndex,
                 userHint: context.Rule.UserHint));
             }
@@ -883,6 +964,9 @@ public class QuestionAnswerValidator
                             expected: expected,
                             actual: actual,
                             location: location,
+                            questionSetId: questionSetId,
+                            questionIdentifierType: questionIdentifierType,
+                            iterationIndex: iterationIndex,
                             entryIndex: context.EntryIndex,
                 userHint: context.Rule.UserHint));
                     }
@@ -900,7 +984,7 @@ public class QuestionAnswerValidator
     /// <summary>
     /// Validate Boolean answer
     /// </summary>
-    private List<RuleValidationError> ValidateBooleanAnswer(QuestionAnswerContext context, Question question)
+    private List<RuleValidationError> ValidateBooleanAnswer(QuestionAnswerContext context, Question question, string questionSetId, string questionIdentifierType, int iterationIndex)
     {
         var errors = new List<RuleValidationError>();
 
@@ -927,6 +1011,9 @@ public class QuestionAnswerValidator
                 expected: expected,
                 actual: actual,
                 location: location,
+                questionSetId: questionSetId,
+                questionIdentifierType: questionIdentifierType,
+                iterationIndex: iterationIndex,
                 entryIndex: context.EntryIndex,
                 userHint: context.Rule.UserHint));
         }
@@ -997,9 +1084,32 @@ public class QuestionAnswerValidator
     {
         try
         {
-            // TODO: Implement QuestionSet service integration
-            // For now, return null to trigger advisory error
-            return null;
+            // Load CodeSystem (QuestionSet) from terminology service
+            var codeSystem = await _terminologyService.GetCodeSystemByUrlAsync(questionSetId, cancellationToken);
+            if (codeSystem == null)
+            {
+                _logger.LogWarning("QuestionSet not found: {QuestionSetId}", questionSetId);
+                return null;
+            }
+
+            // Convert CodeSystem to QuestionSet model
+            var questionSet = new QuestionSet
+            {
+                Id = codeSystem.Url,
+                Name = codeSystem.Name ?? codeSystem.Title ?? "Unknown",
+                Description = codeSystem.Description,
+                TerminologyUrl = codeSystem.Url,
+                Questions = codeSystem.Concept.Select(c => new QuestionSetQuestionRef
+                {
+                    QuestionId = c.Code,
+                    Required = false // Default to not required
+                }).ToList()
+            };
+
+            _logger.LogDebug("Loaded QuestionSet {QuestionSetId} with {QuestionCount} questions: {QuestionCodes}",
+                questionSetId, questionSet.Questions.Count, string.Join(", ", questionSet.Questions.Select(q => q.QuestionId).Take(5)));
+
+            return questionSet;
         }
         catch (Exception ex)
         {
@@ -1015,20 +1125,43 @@ public class QuestionAnswerValidator
     {
         var questions = new Dictionary<string, Question>();
 
-        foreach (var questionRef in questionSet.Questions)
+        _logger.LogDebug("LoadQuestionsAsync: Loading ALL questions for project {ProjectId}", projectId);
+
+        // Load ALL questions from the project
+        var allQuestions = await _questionService.ListQuestionsAsync(projectId);
+
+        _logger.LogDebug("LoadQuestionsAsync: Loaded {TotalQuestions} questions from project", allQuestions.Count());
+
+        // Build lookup by question code (not UUID)
+        foreach (var question in allQuestions)
         {
             try
             {
-                var question = await _questionService.GetQuestionAsync(projectId, questionRef.QuestionId);
-                if (question != null)
-                {
-                    questions[questionRef.QuestionId] = question;
-                }
+                var questionCode = question.Code.Code;
+                questions[questionCode] = question;
+                _logger.LogDebug("Indexed question: Code={Code}, System={System}, Display={Display}",
+                    questionCode, question.Code.System, question.Code.Display);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to load Question {QuestionId}", questionRef.QuestionId);
+                _logger.LogWarning(ex, "Failed to index question {QuestionId}", question.Id);
             }
+        }
+
+        // Check which questions from the QuestionSet were found
+        var questionSetCodes = questionSet.Questions.Select(q => q.QuestionId).ToList();
+        var foundCodes = questionSetCodes.Where(code => questions.ContainsKey(code)).ToList();
+        var missingCodes = questionSetCodes.Except(foundCodes).ToList();
+
+        _logger.LogInformation(
+            "LoadQuestionsAsync: For QuestionSet {QuestionSetId}, found {FoundCount}/{TotalCount} questions",
+            questionSet.Id, foundCodes.Count, questionSetCodes.Count);
+
+        if (missingCodes.Any())
+        {
+            _logger.LogWarning(
+                "LoadQuestionsAsync: Missing questions: {MissingCodes}",
+                string.Join(", ", missingCodes.Take(5)));
         }
 
         return questions;

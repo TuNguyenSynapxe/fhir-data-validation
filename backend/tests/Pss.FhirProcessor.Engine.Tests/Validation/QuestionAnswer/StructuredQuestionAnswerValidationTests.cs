@@ -54,6 +54,9 @@ public class StructuredQuestionAnswerValidationTests
             expected: expected,
             actual: actual,
             location: location,
+            questionSetId: "test-questionset-id",
+            questionIdentifierType: "coding",
+            iterationIndex: 0,
             entryIndex: 0
         );
 
@@ -66,31 +69,31 @@ public class StructuredQuestionAnswerValidationTests
         // Assert - Structured details exist
         error.Details.Should().ContainKey("question");
         error.Details.Should().ContainKey("expected");
-        error.Details.Should().ContainKey("actual");
+        error.Details.Should().ContainKey("answer");
         error.Details.Should().ContainKey("location");
 
         // Assert - Question structure
         var questionDict = error.Details["question"] as Dictionary<string, object?>;
         questionDict.Should().NotBeNull();
         questionDict!["system"].Should().Be("http://loinc.org");
-        questionDict["code"].Should().Be("8867-4");
+        questionDict["identifier"].Should().Be("8867-4");
         questionDict["display"].Should().Be("Heart rate");
 
         // Assert - Expected structure
         var expectedDict = error.Details["expected"] as Dictionary<string, object?>;
         expectedDict.Should().NotBeNull();
         expectedDict!["answerType"].Should().Be("quantity");
-        
-        var constraints = expectedDict["constraints"] as IDictionary<string, object>;
-        constraints.Should().NotBeNull();
-        constraints!["min"].Should().Be(40);
-        constraints["max"].Should().Be(180);
+        var constraintsDict = expectedDict["constraints"] as Dictionary<string, object>;
+        constraintsDict.Should().NotBeNull();
+        constraintsDict!["min"].Should().Be(40);
+        constraintsDict["max"].Should().Be(180);
+        constraintsDict["unit"].Should().Be("beats/min");
 
         // Assert - Actual structure
-        var actualDict = error.Details["actual"] as Dictionary<string, object?>;
+        var actualDict = error.Details["answer"] as Dictionary<string, object?>;
         actualDict.Should().NotBeNull();
-        actualDict!["answerType"].Should().Be("string");
-        actualDict["value"].Should().Be("fast");
+        actualDict!["actualType"].Should().Be("string");
+        actualDict["actualValue"].Should().Be("fast");
 
         // Assert - Location structure
         var locationDict = error.Details["location"] as Dictionary<string, object?>;
@@ -127,6 +130,9 @@ public class StructuredQuestionAnswerValidationTests
             max: 180,
             actualValue: 250,
             location: location,
+            questionSetId: "test-questionset-id",
+            questionIdentifierType: "coding",
+            iterationIndex: 0,
             entryIndex: 0
         );
 
@@ -134,12 +140,11 @@ public class StructuredQuestionAnswerValidationTests
         error.ErrorCode.Should().Be(ValidationErrorCodes.ANSWER_OUT_OF_RANGE);
         
         var expectedDict = error.Details["expected"] as Dictionary<string, object?>;
-        var constraints = expectedDict!["constraints"] as Dictionary<string, object?>;
-        constraints!["min"].Should().Be(40m);
-        constraints["max"].Should().Be(180m);
+        expectedDict!["min"].Should().Be(40m);
+        expectedDict["max"].Should().Be(180m);
 
-        var actualDict = error.Details["actual"] as Dictionary<string, object?>;
-        actualDict!["value"].Should().Be(250m);
+        var actualDict = error.Details["answer"] as Dictionary<string, object?>;
+        actualDict!["actualValue"].Should().Be(250m);
     }
 
     /// <summary>
@@ -170,20 +175,28 @@ public class StructuredQuestionAnswerValidationTests
             actualCode: "invalid-code",
             actualSystem: "http://custom.system",
             location: location,
+            questionSetId: "test-questionset-id",
+            questionIdentifierType: "coding",
+            iterationIndex: 0,
             entryIndex: 0
         );
 
         // Assert
         error.ErrorCode.Should().Be(ValidationErrorCodes.ANSWER_NOT_IN_VALUESET);
         
+        // Assert enhanced error structure
+        error.Details.Should().ContainKey("questionSetId");
+        error.Details.Should().ContainKey("iteration");
+        error.Details.Should().ContainKey("question");
+        error.Details.Should().ContainKey("answer");
+        error.Details.Should().ContainKey("expected");
+        
         var expectedDict = error.Details["expected"] as Dictionary<string, object?>;
         expectedDict!["answerType"].Should().Be("codeableConcept");
-        
-        var constraints = expectedDict["constraints"] as Dictionary<string, object>;
-        constraints!["valueSetUrl"].Should().Be("http://hl7.org/fhir/ValueSet/observation-status");
+        expectedDict!["allowedCodes"].Should().NotBeNull();
 
-        var actualDict = error.Details["actual"] as Dictionary<string, object?>;
-        var actualValue = actualDict!["value"] as Dictionary<string, object?>;
+        var answerDict = error.Details["answer"] as Dictionary<string, object?>;
+        var actualValue = answerDict!["actualValue"] as Dictionary<string, object?>;
         actualValue!["code"].Should().Be("invalid-code");
         actualValue["system"].Should().Be("http://custom.system");
     }
@@ -214,18 +227,27 @@ public class StructuredQuestionAnswerValidationTests
             question: question,
             expectedAnswerType: "quantity",
             location: location,
+            questionSetId: "test-questionset-id",
+            questionIdentifierType: "coding",
+            iterationIndex: 0,
             entryIndex: 0
         );
 
         // Assert
         error.ErrorCode.Should().Be(ValidationErrorCodes.ANSWER_REQUIRED);
         
+        // Assert enhanced error structure
+        error.Details.Should().ContainKey("questionSetId");
+        error.Details.Should().ContainKey("iteration");
+        error.Details.Should().ContainKey("question");
+        error.Details.Should().ContainKey("answer");
+        
         var expectedDict = error.Details["expected"] as Dictionary<string, object?>;
         expectedDict!["answerType"].Should().Be("quantity");
 
-        var actualDict = error.Details["actual"] as Dictionary<string, object?>;
-        actualDict!["answerType"].Should().Be("missing");
-        actualDict["value"].Should().BeNull();
+        var answerDict = error.Details["answer"] as Dictionary<string, object?>;
+        answerDict!["actualType"].Should().Be("missing");
+        answerDict["actualValue"].Should().BeNull();
     }
 
     /// <summary>
@@ -248,6 +270,9 @@ public class StructuredQuestionAnswerValidationTests
             system: "http://loinc.org",
             code: "unknown-code",
             location: location,
+            questionSetId: "test-questionset-id",
+            questionIdentifierType: "coding",
+            iterationIndex: 0,
             entryIndex: 0
         );
 
@@ -256,7 +281,7 @@ public class StructuredQuestionAnswerValidationTests
         
         var questionDict = error.Details["question"] as Dictionary<string, object?>;
         questionDict!["system"].Should().Be("http://loinc.org");
-        questionDict["code"].Should().Be("unknown-code");
+        questionDict["identifier"].Should().Be("unknown-code");
         questionDict["display"].Should().BeNull();
     }
 
@@ -294,13 +319,16 @@ public class StructuredQuestionAnswerValidationTests
 
         // Act
         var error = QuestionAnswerErrorFactory.InvalidAnswerValue(
-            "rule-123", "Observation", "error", question, expected, actual, location
+            "rule-123", "Observation", "error", question, expected, actual, location,
+            questionSetId: "test-questionset-id",
+            questionIdentifierType: "coding",
+            iterationIndex: 0
         );
 
         // Assert - Structured data is complete
         error.Details.Should().ContainKey("question");
         error.Details.Should().ContainKey("expected");
-        error.Details.Should().ContainKey("actual");
+        error.Details.Should().ContainKey("answer");
     }
 
     /// <summary>
@@ -317,7 +345,10 @@ public class StructuredQuestionAnswerValidationTests
 
         // Act
         var error = QuestionAnswerErrorFactory.InvalidAnswerValue(
-            "rule-123", "Observation", "error", question, expected, actual, location
+            "rule-123", "Observation", "error", question, expected, actual, location,
+            questionSetId: "test-questionset-id",
+            questionIdentifierType: "coding",
+            iterationIndex: 0
         );
 
         // Assert
@@ -354,6 +385,9 @@ public class StructuredQuestionAnswerValidationTests
             question: question,
             expectedAnswerType: "quantity",
             location: location,
+            questionSetId: "test-questionset-id",
+            questionIdentifierType: "coding",
+            iterationIndex: 0,
             entryIndex: 0
         );
 
@@ -361,7 +395,7 @@ public class StructuredQuestionAnswerValidationTests
         error.ErrorCode.Should().Be(ValidationErrorCodes.ANSWER_REQUIRED);
         var questionDict = error.Details["question"] as Dictionary<string, object?>;
         questionDict!["system"].Should().Be("http://loinc.org");
-        questionDict["code"].Should().Be("8867-4");
+        questionDict["identifier"].Should().Be("8867-4");
     }
 
     /// <summary>
@@ -384,6 +418,9 @@ public class StructuredQuestionAnswerValidationTests
             system: "http://snomed.info/sct",  // Wrong system
             code: "8867-4",
             location: location,
+            questionSetId: "test-questionset-id",
+            questionIdentifierType: "coding",
+            iterationIndex: 0,
             entryIndex: 0
         );
 
@@ -392,7 +429,7 @@ public class StructuredQuestionAnswerValidationTests
         
         var questionDict = error.Details["question"] as Dictionary<string, object?>;
         questionDict!["system"].Should().Be("http://snomed.info/sct");
-        questionDict["code"].Should().Be("8867-4");
+        questionDict["identifier"].Should().Be("8867-4");
     }
 
     /// <summary>
@@ -415,6 +452,9 @@ public class StructuredQuestionAnswerValidationTests
             system: "http://loinc.org",
             code: "9999-9",  // Wrong code
             location: location,
+            questionSetId: "test-questionset-id",
+            questionIdentifierType: "coding",
+            iterationIndex: 0,
             entryIndex: 0
         );
 
@@ -423,7 +463,7 @@ public class StructuredQuestionAnswerValidationTests
         
         var questionDict = error.Details["question"] as Dictionary<string, object?>;
         questionDict!["system"].Should().Be("http://loinc.org");
-        questionDict["code"].Should().Be("9999-9");
+        questionDict["identifier"].Should().Be("9999-9");
     }
 
     /// <summary>
@@ -452,6 +492,9 @@ public class StructuredQuestionAnswerValidationTests
             question: question,
             expectedAnswerType: "quantity",
             location: location,
+            questionSetId: "test-questionset-id",
+            questionIdentifierType: "coding",
+            iterationIndex: 0,
             entryIndex: 0
         );
 
@@ -462,9 +505,9 @@ public class StructuredQuestionAnswerValidationTests
         var expectedDict = error.Details["expected"] as Dictionary<string, object?>;
         expectedDict!["answerType"].Should().Be("quantity");
 
-        var actualDict = error.Details["actual"] as Dictionary<string, object?>;
-        actualDict!["answerType"].Should().Be("missing");
-        actualDict["value"].Should().BeNull();
+        var actualDict = error.Details["answer"] as Dictionary<string, object?>;
+        actualDict!["actualType"].Should().Be("missing");
+        actualDict["actualValue"].Should().BeNull();
     }
 
     /// <summary>
@@ -495,6 +538,9 @@ public class StructuredQuestionAnswerValidationTests
             actualCode: "invalid-position",
             actualSystem: "http://custom.system",
             location: location,
+            questionSetId: "test-questionset-id",
+            questionIdentifierType: "coding",
+            iterationIndex: 0,
             entryIndex: 0
         );
 
@@ -503,11 +549,11 @@ public class StructuredQuestionAnswerValidationTests
         error.Severity.Should().Be("error");
         
         var expectedDict = error.Details["expected"] as Dictionary<string, object?>;
-        var constraints = expectedDict!["constraints"] as Dictionary<string, object>;
-        constraints!["valueSetUrl"].Should().Be("http://hl7.org/fhir/ValueSet/bp-position");
+        var allowedCodes = expectedDict!["allowedCodes"] as object[];
+        allowedCodes.Should().NotBeNull();
 
-        var actualDict = error.Details["actual"] as Dictionary<string, object?>;
-        var actualValue = actualDict!["value"] as Dictionary<string, object?>;
+        var actualDict = error.Details["answer"] as Dictionary<string, object?>;
+        var actualValue = actualDict!["actualValue"] as Dictionary<string, object?>;
         actualValue!["code"].Should().Be("invalid-position");
         actualValue["system"].Should().Be("http://custom.system");
     }
@@ -549,6 +595,9 @@ public class StructuredQuestionAnswerValidationTests
             expected: expected,
             actual: actual,
             location: location,
+            questionSetId: "test-questionset-id",
+            questionIdentifierType: "coding",
+            iterationIndex: 0,
             entryIndex: 0
         );
 
@@ -558,9 +607,9 @@ public class StructuredQuestionAnswerValidationTests
         var expectedDict = error.Details["expected"] as Dictionary<string, object?>;
         expectedDict!["answerType"].Should().Be("quantity");
 
-        var actualDict = error.Details["actual"] as Dictionary<string, object?>;
-        actualDict!["answerType"].Should().Be("boolean");
-        actualDict["value"].Should().Be(true);
+        var actualDict = error.Details["answer"] as Dictionary<string, object?>;
+        actualDict!["actualType"].Should().Be("boolean");
+        actualDict["actualValue"].Should().Be(true);
     }
 
     /// <summary>
@@ -582,23 +631,38 @@ public class StructuredQuestionAnswerValidationTests
                 "rule-1", "Observation", "error", question,
                 new ExpectedAnswer("quantity", null),
                 new ActualAnswer("string", "text"),
-                location
+                location,
+                questionSetId: "test-questionset-id",
+                questionIdentifierType: "coding",
+                iterationIndex: 0
             ),
             QuestionAnswerErrorFactory.AnswerOutOfRange(
                 "rule-1", "Observation", "error", question,
-                40, 180, 250, location
+                40, 180, 250, location,
+                questionSetId: "test-questionset-id",
+                questionIdentifierType: "coding",
+                iterationIndex: 0
             ),
             QuestionAnswerErrorFactory.AnswerNotInValueSet(
                 "rule-1", "Observation", "error", question,
-                "http://valueset", "bad-code", "system", location
+                "http://valueset", "bad-code", "system", location,
+                questionSetId: "test-questionset-id",
+                questionIdentifierType: "coding",
+                iterationIndex: 0
             ),
             QuestionAnswerErrorFactory.AnswerRequired(
                 "rule-1", "Observation", "error", question,
-                "quantity", location
+                "quantity", location,
+                questionSetId: "test-questionset-id",
+                questionIdentifierType: "coding",
+                iterationIndex: 0
             ),
             QuestionAnswerErrorFactory.QuestionNotFound(
                 "rule-1", "Observation", "warning",
-                "http://loinc.org", "unknown", location
+                "http://loinc.org", "unknown", location,
+                questionSetId: "test-questionset-id",
+                questionIdentifierType: "coding",
+                iterationIndex: 0
             ),
             QuestionAnswerErrorFactory.QuestionSetDataMissing(
                 "rule-1", "Observation", "error", "qs-123"

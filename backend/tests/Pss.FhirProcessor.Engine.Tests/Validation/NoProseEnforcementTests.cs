@@ -31,6 +31,9 @@ public class NoProseEnforcementTests
                 question: new QuestionRef(System: "test", Code: "test", Display: null),
                 expectedAnswerType: "string",
                 location: new ValidationLocation(FhirPath: "test", JsonPointer: "/test"),
+                questionSetId: "test-questionset-id",
+                questionIdentifierType: "coding",
+                iterationIndex: 0,
                 userHint: tooLong
             ));
         
@@ -53,6 +56,9 @@ public class NoProseEnforcementTests
                 question: new QuestionRef(System: "test", Code: "test", Display: null),
                 expectedAnswerType: "string",
                 location: new ValidationLocation(FhirPath: "test", JsonPointer: "/test"),
+                questionSetId: "test-questionset-id",
+                questionIdentifierType: "coding",
+                iterationIndex: 0,
                 userHint: sentence
             ));
         
@@ -74,6 +80,9 @@ public class NoProseEnforcementTests
                 system: "test",
                 code: "test",
                 location: new ValidationLocation(FhirPath: "test", JsonPointer: "/test"),
+                questionSetId: "test-questionset-id",
+                questionIdentifierType: "coding",
+                iterationIndex: 0,
                 userHint: truncated
             ));
         
@@ -93,6 +102,9 @@ public class NoProseEnforcementTests
                 question: new QuestionRef(System: "test", Code: "test", Display: null),
                 expectedAnswerType: "string",
                 location: new ValidationLocation(FhirPath: "test", JsonPointer: "/test"),
+                questionSetId: "test-questionset-id",
+                questionIdentifierType: "coding",
+                iterationIndex: 0,
                 userHint: null
             ));
         
@@ -204,7 +216,10 @@ public class NoProseEnforcementTests
             min: 0,
             max: 100,
             actualValue: 150,
-            location: new ValidationLocation(FhirPath: "test", JsonPointer: "/test")
+            location: new ValidationLocation(FhirPath: "test", JsonPointer: "/test"),
+            questionSetId: "test-questionset-id",
+            questionIdentifierType: "coding",
+            iterationIndex: 0
         );
         
         // Assert
@@ -222,7 +237,10 @@ public class NoProseEnforcementTests
             severity: "error",
             question: new QuestionRef(System: "test", Code: "Q1", Display: null),
             expectedAnswerType: "string",
-            location: new ValidationLocation(FhirPath: "test", JsonPointer: "/test")
+            location: new ValidationLocation(FhirPath: "test", JsonPointer: "/test"),
+            questionSetId: "test-questionset-id",
+            questionIdentifierType: "coding",
+            iterationIndex: 0
         );
         
         // Assert
@@ -240,7 +258,10 @@ public class NoProseEnforcementTests
             severity: "error",
             system: "http://example.org",
             code: "Q1",
-            location: new ValidationLocation(FhirPath: "test", JsonPointer: "/test")
+            location: new ValidationLocation(FhirPath: "test", JsonPointer: "/test"),
+            questionSetId: "test-questionset-id",
+            questionIdentifierType: "coding",
+            iterationIndex: 0
         );
         
         // Assert

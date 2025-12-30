@@ -25,5 +25,6 @@ public sealed record QuestionAnswerContextSeed(
     Resource Resource,
     Base IterationNode,
     int EntryIndex,
-    string CurrentFhirPath
+    string CurrentFhirPath,
+    int IterationIndex  // Array index within the iteration (e.g., component[2] -> 2)
 );

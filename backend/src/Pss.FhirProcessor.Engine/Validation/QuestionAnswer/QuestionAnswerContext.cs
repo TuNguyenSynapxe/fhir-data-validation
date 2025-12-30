@@ -70,6 +70,26 @@ public class QuestionAnswerContext
     /// Is this question required per QuestionSet?
     /// </summary>
     public bool IsRequired { get; set; }
+
+    /// <summary>
+    /// Get the question identifier type based on the questionPath parameter
+    /// </summary>
+    public static string GetQuestionIdentifierType(string? questionPath)
+    {
+        if (string.IsNullOrWhiteSpace(questionPath))
+            return "unknown";
+
+        var lowerPath = questionPath.ToLowerInvariant();
+
+        if (lowerPath.Contains("coding"))
+            return "coding";
+        if (lowerPath.Contains("identifier"))
+            return "identifier";
+        if (lowerPath.Contains("linkid"))
+            return "linkId";
+
+        return "custom";
+    }
 }
 
 /// <summary>
