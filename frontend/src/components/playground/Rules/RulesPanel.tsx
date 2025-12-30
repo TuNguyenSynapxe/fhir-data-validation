@@ -88,8 +88,11 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
     }
     
     // Skip if no rules
-    if (rules.length === 0) {
-      console.log('[RulesPanel:AutoSave] Skipped - no rules');
+    if (rules.length === 0 && lastSavedRulesRef.current !== '[]') {
+      console.log('[RulesPanel:AutoSave] Rules deleted - triggering save for empty state');
+      // Don't skip - we need to save the empty state to persist deletion
+    } else if (rules.length === 0) {
+      console.log('[RulesPanel:AutoSave] Skipped - no rules and already saved empty');
       return;
     }
     
@@ -703,7 +706,7 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
           existingRules={rules.map(r => ({
             id: r.id,
             type: r.type,
-            path: r.path,
+            path: r.path || '',
             message: r.message || '',
             severity: r.severity,
           }))}

@@ -198,3 +198,62 @@ export function formatFhirPathForDisplay(fhirPath: string): string {
   
   return `${basePath}.where(\n  ${formattedCondition}\n)`;
 }
+
+/**
+ * Convert frontend InstanceScope to backend format
+ * 
+ * Backend expects:
+ * - { kind: 'all' }
+ * - { kind: 'first' }
+ * - { kind: 'filter', condition: string }
+ * 
+ * Frontend has:
+ * - { kind: 'all' }
+ * - { kind: 'first' }
+ * - { kind: 'filter', filter: FilterSpec }
+ * 
+ * This function extracts the FHIRPath condition string from FilterSpec
+ * for backend consumption.
+ */
+export function convertToBackendInstanceScope(instanceScope: InstanceScope): any {
+  if (instanceScope.kind === 'all' || instanceScope.kind === 'first') {
+    return { kind: instanceScope.kind };
+  }
+  
+  if (instanceScope.kind === 'filter') {
+    // Extract the where() condition from the filter
+    const filter = instanceScope.filter;
+    let condition: string;
+    
+    switch (filter.type) {
+      case 'code':
+        condition = `code.coding.code='${escapeString(filter.code)}'`;
+        break;
+      
+      case 'systemCode':
+        condition = `code.coding.system='${escapeString(filter.system)}' and code.coding.code='${escapeString(filter.code)}'`;
+        break;
+      
+      case 'identifier':
+        condition = `identifier.system='${escapeString(filter.system)}' and identifier.value='${escapeString(filter.value)}'`;
+        break;
+      
+      case 'custom':
+        // Custom filter already contains the full where(...) expression
+        // Extract just the condition inside where(...)
+        const match = filter.fhirPath.match(/^where\((.+)\)$/);
+        condition = match ? match[1] : filter.fhirPath;
+        break;
+      
+      default:
+        condition = 'true';
+    }
+    
+    return {
+      kind: 'filter',
+      condition,
+    };
+  }
+  
+  return { kind: 'all' };
+}

@@ -125,20 +125,26 @@ export const PatternRuleForm: React.FC<PatternRuleFormProps> = ({
     }
 
     // PHASE 3: Build rule with fixed errorCode PATTERN_MISMATCH + userHint (NO message)
-    const rule = buildPatternRule({
-      resourceType,
-      instanceScope,
-      fieldPath,
-      pattern,
-      negate,
-      caseSensitive,
-      severity,
-      errorCode: 'PATTERN_MISMATCH',
-      userHint: userHint || undefined,
-    });
+    try {
+      const rule = buildPatternRule({
+        resourceType,
+        instanceScope,
+        fieldPath,
+        pattern,
+        negate,
+        caseSensitive,
+        severity,
+        errorCode: 'PATTERN_MISMATCH',
+        userHint: userHint || undefined,
+      });
 
-    // Save and close
-    onSave(rule);
+      // Save and close
+      onSave(rule);
+    } catch (error) {
+      // Handle field path validation errors
+      const errorMessage = error instanceof Error ? error.message : 'Invalid field path';
+      setErrors({ fieldPath: errorMessage });
+    }
   };
 
   // Test pattern against test value

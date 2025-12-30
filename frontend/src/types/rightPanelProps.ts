@@ -8,12 +8,26 @@
  */
 
 import { RightPanelMode } from './rightPanel';
+import type { InstanceScope } from '../components/playground/Rules/common/InstanceScope.types';
+
+/**
+ * Instance Scope Discriminated Union
+ * Matches backend InstanceScope model
+ */
+export type { InstanceScope };
 
 export interface Rule {
   id: string;
   type: string;
   resourceType: string;
-  path: string;
+  
+  // ✅ NEW STRUCTURED FIELDS (PHASE 4)
+  instanceScope?: InstanceScope;  // Structured instance scope (first/all/filter)
+  fieldPath?: string;             // Resource-relative field path (e.g., "gender", "name.given")
+  
+  // ⚠️ DEPRECATED: Legacy path field (kept for backward compatibility)
+  path?: string;                  // Composed FHIRPath (e.g., "Patient[*].gender")
+  
   severity: string;
   message?: string;
   errorCode?: string;            // PHASE 3: errorCode is primary for new rules

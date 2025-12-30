@@ -126,17 +126,23 @@ export const RequiredRuleForm: React.FC<RequiredRuleFormProps> = ({
     }
 
     // PHASE X: Build rule with auto-set errorCode (FIELD_REQUIRED)
-    const rule = buildRequiredRule({
-      resourceType,
-      instanceScope,
-      fieldPath,
-      severity,
-      errorCode, // Auto-set to 'FIELD_REQUIRED'
-      userHint: userHint || undefined,
-    });
+    try {
+      const rule = buildRequiredRule({
+        resourceType,
+        instanceScope,
+        fieldPath,
+        severity,
+        errorCode, // Auto-set to 'FIELD_REQUIRED'
+        userHint: userHint || undefined,
+      });
 
-    // Save and close
-    onSave(rule);
+      // Save and close
+      onSave(rule);
+    } catch (error) {
+      // Handle field path validation errors
+      const errorMessage = error instanceof Error ? error.message : 'Invalid field path';
+      setErrors({ fieldPath: errorMessage });
+    }
   };
 
   const scopeSummary = getInstanceScopeSummary(resourceType, instanceScope);

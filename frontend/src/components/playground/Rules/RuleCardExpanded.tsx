@@ -64,7 +64,7 @@ export const RuleCardExpanded: React.FC<RuleCardExpandedProps> = ({
 
   const handleCopyPath = async () => {
     try {
-      await navigator.clipboard.writeText(rule.path);
+      await navigator.clipboard.writeText(rule.path || '');
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {

@@ -79,7 +79,7 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({
   const validationRules: ValidationRule[] = useMemo(() => {
     return rules.map(rule => ({
       id: rule.id,
-      fhirPath: rule.path,
+      fhirPath: rule.path || '',  // Fallback for legacy rules without path
       operator: rule.type,
       value: rule.params?.value,
       message: rule.message,

@@ -3,7 +3,7 @@
  * 
  * Responsibilities:
  * - Default rule construction
- * - Absolute FHIRPath composition
+ * - Structured instanceScope + fieldPath storage (PHASE 4)
  * - Pattern validation
  * - ErrorCode-first architecture (Phase 3)
  */
@@ -11,6 +11,7 @@
 import type { InstanceScope } from '../../common/InstanceScope.types';
 import { composeInstanceScopedPath } from '../../common/InstanceScope.utils';
 import type { Rule } from '../../../../../types/rightPanelProps';
+import { validateFieldPath } from '../../../../../utils/fieldPathValidator';
 
 interface PatternRuleData {
   resourceType: string;
@@ -27,7 +28,7 @@ interface PatternRuleData {
 
 /**
  * Build a complete Pattern rule from form data
- * PHASE 3: Uses errorCode + userHint instead of message
+ * PHASE 4: Stores instanceScope and fieldPath as separate properties
  */
 export function buildPatternRule(data: PatternRuleData): Rule {
   const {
@@ -43,14 +44,28 @@ export function buildPatternRule(data: PatternRuleData): Rule {
     message,
   } = data;
 
-  // Compose FHIRPath: instanceScope + fieldPath
-  const absolutePath = composeFhirPath(resourceType, instanceScope, fieldPath);
+  // Validate field path (should be resource-relative)
+  const validation = validateFieldPath(fieldPath);
+  if (!validation.isValid) {
+    throw new Error(`Invalid field path: ${validation.errorMessage}`);
+  }
+
+  // ✅ NEW: Store structured fields
+  // ⚠️ Also compose legacy path for backward compatibility
+  const legacyPath = composeFhirPath(resourceType, instanceScope, fieldPath);
 
   return {
     id: `rule-${Date.now()}`,
     type: 'Regex',
     resourceType,
-    path: absolutePath,
+    
+    // ✅ NEW STRUCTURED FIELDS (PHASE 4)
+    instanceScope,
+    fieldPath,
+    
+    // ⚠️ DEPRECATED: Legacy path for backward compatibility
+    path: legacyPath,
+    
     severity,
     errorCode,                    // PHASE 3: errorCode is primary
     userHint: userHint || undefined, // PHASE 3: optional short hint
@@ -68,7 +83,7 @@ export function buildPatternRule(data: PatternRuleData): Rule {
 
 /**
  * Compose FHIRPath from instance scope and field path
- * Uses composeInstanceScopedPath utility for consistent path generation
+ * Used for backward compatibility with legacy path field
  */
 function composeFhirPath(
   resourceType: string,
@@ -78,26 +93,8 @@ function composeFhirPath(
   // Get base scope path (e.g., "Patient[*]", "Observation[0]", "Patient.where(...)")
   const scopePath = composeInstanceScopedPath(resourceType, instanceScope);
   
-  // If fieldPath starts with resourceType, extract the relative field path
-  // e.g., "Patient[*].id" → "id" or "Patient.id" → "id"
-  const resourcePrefix = resourceType + '[';
-  const resourceDotPrefix = resourceType + '.';
-  
-  let relativePath = fieldPath;
-  
-  if (fieldPath.startsWith(resourcePrefix)) {
-    // Handle "Patient[*].id" → extract "id"
-    const afterBracket = fieldPath.indexOf('].', resourceType.length);
-    if (afterBracket > -1) {
-      relativePath = fieldPath.substring(afterBracket + 2); // Skip '].
-    }
-  } else if (fieldPath.startsWith(resourceDotPrefix)) {
-    // Handle "Patient.id" → extract "id"
-    relativePath = fieldPath.substring(resourceDotPrefix.length);
-  }
-  
-  // Compose final path: scopePath + relativePath
-  return `${scopePath}.${relativePath}`;
+  // Compose final path: scopePath + fieldPath
+  return `${scopePath}.${fieldPath}`;
 }
 
 /**

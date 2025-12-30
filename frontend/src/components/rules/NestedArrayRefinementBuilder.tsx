@@ -108,8 +108,9 @@ const NestedArrayRefinementBuilder: React.FC<NestedArrayRefinementBuilderProps> 
 
   const getLayerSummary = (layer: ArrayLayerRefinement): string => {
     switch (layer.mode) {
+      case 'first':
       case 'all':
-        return 'All items [*]';
+        return 'All elements (implicit traversal)';
       case 'index':
         return `Index [${layer.indexValue ?? 0}]`;
       case 'filter':
@@ -117,9 +118,8 @@ const NestedArrayRefinementBuilder: React.FC<NestedArrayRefinementBuilderProps> 
           return `Where ${layer.filterCondition.property} ${layer.filterCondition.operator} '${layer.filterCondition.value}'`;
         }
         return 'Filter (not configured)';
-      case 'first':
       default:
-        return 'First item (default)';
+        return 'All elements (implicit traversal)';
     }
   };
 

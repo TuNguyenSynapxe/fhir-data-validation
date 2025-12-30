@@ -1,17 +1,21 @@
 import type { Rule } from '../../../../../types/rightPanelProps';
 import type { InstanceScope } from '../../common/InstanceScope.types';
 import { composeInstanceScopedPath } from '../../common/InstanceScope.utils';
+import { validateFieldPath } from '../../../../../utils/fieldPathValidator';
 
 /**
  * ARRAY LENGTH RULE HELPERS
  * 
  * Build and parse ArrayLength rules for the unified RuleForm architecture.
  * 
+ * PHASE 4: Stores instanceScope and fieldPath as structured properties
  * FIXED ERROR CODE: ARRAY_LENGTH_VIOLATION (cannot be changed by user)
  * 
  * Rule Structure:
  * - type: "ArrayLength"
- * - path: Full FHIRPath (e.g., "Patient[*].name")
+ * - instanceScope: Structured instance scope object
+ * - fieldPath: Resource-relative array path
+ * - path: Legacy composed path (backward compat)
  * - params.min: Minimum length (optional)
  * - params.max: Maximum length (optional)
  * - errorCode: "ARRAY_LENGTH_VIOLATION" (fixed)
@@ -30,7 +34,7 @@ interface BuildArrayLengthRuleParams {
 
 /**
  * Compose full FHIRPath from components.
- * Handles both full paths like "Patient[*].name" and relative paths like "name".
+ * Used for backward compatibility with legacy path field.
  */
 function composeFhirPath(
   resourceType: string,
@@ -38,27 +42,12 @@ function composeFhirPath(
   arrayPath: string
 ): string {
   const scopePath = composeInstanceScopedPath(resourceType, instanceScope);
-  
-  // Extract relative path if arrayPath starts with resource type
-  let relativePath = arrayPath;
-  
-  if (arrayPath.startsWith(resourceType + '[')) {
-    // Handle "Patient[*].name" → extract "name"
-    const afterBracket = arrayPath.indexOf('].', resourceType.length);
-    if (afterBracket > -1) {
-      relativePath = arrayPath.substring(afterBracket + 2);
-    }
-  } else if (arrayPath.startsWith(resourceType + '.')) {
-    // Handle "Patient.name" → extract "name"
-    const resourceDotPrefix = resourceType + '.';
-    relativePath = arrayPath.substring(resourceDotPrefix.length);
-  }
-  
-  return `${scopePath}.${relativePath}`;
+  return `${scopePath}.${arrayPath}`;
 }
 
 /**
  * Build an ArrayLength rule from form data.
+ * PHASE 4: Stores instanceScope and fieldPath as separate properties
  */
 export function buildArrayLengthRule(params: BuildArrayLengthRuleParams): Rule {
   const {
@@ -72,7 +61,15 @@ export function buildArrayLengthRule(params: BuildArrayLengthRuleParams): Rule {
     userHint,
   } = params;
 
-  const absolutePath = composeFhirPath(resourceType, instanceScope, arrayPath);
+  // Validate field path (should be resource-relative)
+  const validation = validateFieldPath(arrayPath);
+  if (!validation.isValid) {
+    throw new Error(`Invalid field path: ${validation.errorMessage}`);
+  }
+
+  // ✅ NEW: Store structured fields
+  // ⚠️ Also compose legacy path for backward compatibility
+  const legacyPath = composeFhirPath(resourceType, instanceScope, arrayPath);
 
   const ruleParams: { min?: number; max?: number } = {};
   if (min !== undefined) ruleParams.min = min;
@@ -82,7 +79,14 @@ export function buildArrayLengthRule(params: BuildArrayLengthRuleParams): Rule {
     id: `rule-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     type: 'ArrayLength',
     resourceType,
-    path: absolutePath,
+    
+    // ✅ NEW STRUCTURED FIELDS (PHASE 4)
+    instanceScope,
+    fieldPath: arrayPath,
+    
+    // ⚠️ DEPRECATED: Legacy path for backward compatibility
+    path: legacyPath,
+    
     severity,
     errorCode,
     params: ruleParams,

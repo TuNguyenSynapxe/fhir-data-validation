@@ -55,7 +55,7 @@ type RuleType = 'Required' | 'Regex' | 'QuestionAnswer' | 'FixedValue' | 'Allowe
 interface RuleFormProps {
   mode: 'create' | 'edit';
   ruleType: RuleType;
-  initialRule?: Partial<Rule> & { instanceScope?: string };
+  initialRule?: Partial<Rule>;
   onCancel: () => void;
   onSave: (rule: Rule) => void;
   projectBundle?: object;

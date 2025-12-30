@@ -4,11 +4,10 @@ import type { RefinementMode } from '../../types/fhirPathRefinement';
 /**
  * RefinementModeSelector - Radio button selector for refinement modes
  * 
- * Phase 1 modes:
- * - First element (default)
- * - All elements [*]
- * - Index [n]
- * - Filter (where)
+ * FHIRPath-correct array refinement modes:
+ * - All elements (default) - implicit traversal
+ * - Specific index [n]
+ * - Filter (where condition)
  */
 interface RefinementModeSelectorProps {
   selectedMode: RefinementMode;
@@ -24,23 +23,18 @@ const RefinementModeSelector: React.FC<RefinementModeSelectorProps> = ({
   const modes: { value: RefinementMode; label: string; description: string }[] = [
     {
       value: 'first',
-      label: 'First element (default)',
-      description: 'No modification to the path',
-    },
-    {
-      value: 'all',
-      label: 'All elements [*]',
-      description: 'Apply to all items in array',
+      label: 'All elements (default)',
+      description: 'FHIRPath implicit traversal',
     },
     {
       value: 'index',
-      label: 'Index [n]',
+      label: 'Specific index [n]',
       description: 'Select specific array index',
     },
     {
       value: 'filter',
-      label: 'Filter (where)',
-      description: 'Apply where condition',
+      label: 'Filter (where condition)',
+      description: 'Apply where(...) condition',
     },
   ];
 

@@ -70,13 +70,10 @@ export function buildRefinedFhirPath(
 
   switch (mode) {
     case 'first':
-      // Default mode - no modification
-      return basePath;
-
     case 'all':
-      // Apply [*] to the nearest array segment
-      // Strategy: Insert [*] after the first segment before any dot
-      return applyAllElements(basePath);
+      // Default mode - implicit traversal
+      // Remove any existing array indices for implicit traversal
+      return removeArrayIndices(basePath);
 
     case 'index':
       // Apply [index] to the nearest array segment
@@ -96,31 +93,12 @@ export function buildRefinedFhirPath(
 }
 
 /**
- * Apply [*] to the nearest array segment
- * Example: "identifier.value" → "identifier[*].value"
- * Example: "name[0].family" → "name[*].family"
+ * Remove array indices from path for implicit traversal
+ * Example: "telecom[0].system" → "telecom.system"
+ * Example: "name[1].given" → "name.given"
  */
-function applyAllElements(basePath: string): string {
-  const segments = basePath.split('.');
-  if (segments.length === 0) return basePath;
-
-  // Apply [*] to the first segment (most common array location)
-  let firstSegment = segments[0];
-  const restSegments = segments.slice(1);
-
-  // Remove existing [n] index if present and replace with [*]
-  firstSegment = firstSegment.replace(/\[\d+\]/, '[*]');
-  
-  // If no index was present, add [*]
-  if (!firstSegment.includes('[*]')) {
-    firstSegment = `${firstSegment}[*]`;
-  }
-
-  if (restSegments.length === 0) {
-    return firstSegment;
-  }
-
-  return `${firstSegment}.${restSegments.join('.')}`;
+function removeArrayIndices(path: string): string {
+  return path.replace(/\[\d+\]/g, '');
 }
 
 /**
@@ -235,8 +213,10 @@ export function buildNestedArrayRefinedPath(
 
     // Apply refinement based on mode
     switch (layer.mode) {
+      case 'first':
       case 'all':
-        result += '[*]';
+        // Implicit traversal - no modification to path
+        // FHIRPath automatically traverses collections
         break;
       
       case 'index':
@@ -253,11 +233,6 @@ export function buildNestedArrayRefinedPath(
             result += `.where(${property}.contains('${value}'))`;
           }
         }
-        break;
-      
-      case 'first':
-      default:
-        // No modification for 'first' mode
         break;
     }
 
@@ -278,10 +253,10 @@ export function buildNestedArrayRefinedPath(
 /**
  * Generate human-readable intent description for nested array refinement
  * 
- * Example outputs:
- * - "Applies to all address lines for home addresses"
- * - "Applies to first line of all addresses"
- * - "Applies to second address only"
+ * FHIRPath-correct intent examples:
+ * - "Applies to line values across all address elements"
+ * - "Applies to line values of address[0]"
+ * - "Applies to line values of addresses matching filter"
  * 
  * @param config - Nested array refinement config
  * @returns Human-readable description
@@ -300,14 +275,17 @@ export function generateNestedArrayIntent(config: NestedArrayRefinementConfig): 
     let desc = '';
 
     switch (layer.mode) {
+      case 'first':
       case 'all':
-        desc = isChildLayer ? `all ${layer.segment}` : `all ${layer.segment}`;
+        // Implicit traversal - use language that reflects this
+        desc = isChildLayer 
+          ? `${layer.segment} values across all elements` 
+          : `all ${layer.segment} elements`;
         break;
       
       case 'index':
         const idx = layer.indexValue ?? 0;
-        const ordinal = getOrdinal(idx);
-        desc = isChildLayer ? `${ordinal} ${layer.segment}` : `${ordinal} ${layer.segment}`;
+        desc = `${layer.segment}[${idx}]`;
         break;
       
       case 'filter':
@@ -319,13 +297,8 @@ export function generateNestedArrayIntent(config: NestedArrayRefinementConfig): 
             desc = `${layer.segment} where ${property} contains '${value}'`;
           }
         } else {
-          desc = `first ${layer.segment}`;
+          desc = `${layer.segment} values across all elements`;
         }
-        break;
-      
-      case 'first':
-      default:
-        desc = `first ${layer.segment}`;
         break;
     }
 
@@ -338,7 +311,6 @@ export function generateNestedArrayIntent(config: NestedArrayRefinementConfig): 
   }
 
   // Reverse to get child-to-parent order for natural reading
-  // Example: "all lines" + "for home addresses" = "Applies to all lines for home addresses"
   const childDesc = descriptions[0];
   const parentDescs = descriptions.slice(1);
 
@@ -346,7 +318,7 @@ export function generateNestedArrayIntent(config: NestedArrayRefinementConfig): 
     return `Applies to ${childDesc}`;
   }
 
-  return `Applies to ${childDesc} for ${parentDescs.join(' of ')}`;
+  return `Applies to ${childDesc} of ${parentDescs.join(' of ')}`;
 }
 
 /**

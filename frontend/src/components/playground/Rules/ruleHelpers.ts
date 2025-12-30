@@ -12,7 +12,7 @@ export type AdvisoryIconType = 'info' | 'warning' | 'internal';
  * Uses path-based heuristics to identify advanced/technical rules
  */
 export function isInternalRule(rule: Rule): boolean {
-  const path = rule.path.toLowerCase();
+  const path = (rule.path || '').toLowerCase();
   
   // Check for internal FHIR structural elements
   const hasInternalKeywords = 

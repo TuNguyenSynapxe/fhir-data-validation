@@ -1,17 +1,21 @@
 import type { Rule } from '../../../../../types/rightPanelProps';
 import type { InstanceScope } from '../../common/InstanceScope.types';
 import { composeInstanceScopedPath } from '../../common/InstanceScope.utils';
+import { validateFieldPath } from '../../../../../utils/fieldPathValidator';
 
 /**
  * ALLOWED VALUES RULE HELPERS
  * 
  * Build and parse AllowedValues rules for the unified RuleForm architecture.
  * 
+ * PHASE 4: Stores instanceScope and fieldPath as structured properties
  * FIXED ERROR CODE: VALUE_NOT_ALLOWED (cannot be changed by user)
  * 
  * Rule Structure:
  * - type: "AllowedValues"
- * - path: Full FHIRPath (e.g., "Patient[*].gender")
+ * - instanceScope: Structured instance scope object
+ * - fieldPath: Resource-relative field path
+ * - path: Legacy composed path (backward compat)
  * - params.values: Array of allowed values
  * - errorCode: "VALUE_NOT_ALLOWED" (fixed)
  */
@@ -28,7 +32,7 @@ interface BuildAllowedValuesRuleParams {
 
 /**
  * Compose full FHIRPath from components.
- * Handles both full paths like "Patient[*].gender" and relative paths like "gender".
+ * Used for backward compatibility with legacy path field.
  */
 function composeFhirPath(
   resourceType: string,
@@ -36,27 +40,12 @@ function composeFhirPath(
   fieldPath: string
 ): string {
   const scopePath = composeInstanceScopedPath(resourceType, instanceScope);
-  
-  // Extract relative path if fieldPath starts with resource type
-  let relativePath = fieldPath;
-  
-  if (fieldPath.startsWith(resourceType + '[')) {
-    // Handle "Patient[*].gender" → extract "gender"
-    const afterBracket = fieldPath.indexOf('].', resourceType.length);
-    if (afterBracket > -1) {
-      relativePath = fieldPath.substring(afterBracket + 2);
-    }
-  } else if (fieldPath.startsWith(resourceType + '.')) {
-    // Handle "Patient.gender" → extract "gender"
-    const resourceDotPrefix = resourceType + '.';
-    relativePath = fieldPath.substring(resourceDotPrefix.length);
-  }
-  
-  return `${scopePath}.${relativePath}`;
+  return `${scopePath}.${fieldPath}`;
 }
 
 /**
  * Build an AllowedValues rule from form data.
+ * PHASE 4: Stores instanceScope and fieldPath as separate properties
  */
 export function buildAllowedValuesRule(params: BuildAllowedValuesRuleParams): Rule {
   const {
@@ -69,13 +58,28 @@ export function buildAllowedValuesRule(params: BuildAllowedValuesRuleParams): Ru
     userHint,
   } = params;
 
-  const absolutePath = composeFhirPath(resourceType, instanceScope, fieldPath);
+  // Validate field path (should be resource-relative)
+  const validation = validateFieldPath(fieldPath);
+  if (!validation.isValid) {
+    throw new Error(`Invalid field path: ${validation.errorMessage}`);
+  }
+
+  // ✅ NEW: Store structured fields
+  // ⚠️ Also compose legacy path for backward compatibility
+  const legacyPath = composeFhirPath(resourceType, instanceScope, fieldPath);
 
   return {
     id: `rule-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     type: 'AllowedValues',
     resourceType,
-    path: absolutePath,
+    
+    // ✅ NEW STRUCTURED FIELDS (PHASE 4)
+    instanceScope,
+    fieldPath,
+    
+    // ⚠️ DEPRECATED: Legacy path for backward compatibility
+    path: legacyPath,
+    
     severity,
     errorCode,
     params: {

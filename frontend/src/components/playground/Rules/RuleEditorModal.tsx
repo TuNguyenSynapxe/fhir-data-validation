@@ -133,7 +133,7 @@ export const RuleEditorModal: React.FC<RuleEditorModalProps> = ({
         isMessageCustomized: rule.isMessageCustomized ?? false
       });
       prevRuleTypeRef.current = rule.type;
-      prevPathRef.current = rule.path;
+      prevPathRef.current = rule.path || '';
       prevParamsRef.current = rule.params || {};
     }
   }, [rule]);
@@ -652,7 +652,7 @@ export const RuleEditorModal: React.FC<RuleEditorModalProps> = ({
                 }}
                 ruleContext={{
                   resourceType: formData.resourceType,
-                  path: formData.path,
+                  path: formData.path || '',
                   ruleType: formData.type,
                   severity: formData.severity,
                   params: formData.params

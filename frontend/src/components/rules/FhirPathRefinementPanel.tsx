@@ -78,14 +78,25 @@ const FhirPathRefinementPanel: React.FC<FhirPathRefinementPanelProps> = ({
   const exceedsDepthLimit = exceedsMaxNestingDepth(basePath);
   const nestingDepth = getArrayNestingDepth(basePath);
 
+  // Extract initial index from base path if present
+  const initialIndexValue = React.useMemo(() => {
+    const match = basePath.match(/\[(\d+)\]/);
+    return match ? parseInt(match[1], 10) : 0;
+  }, [basePath]);
+
   // Single array refinement state (legacy)
   const [mode, setMode] = useState<RefinementMode>('first');
-  const [indexValue, setIndexValue] = useState<number>(0);
+  const [indexValue, setIndexValue] = useState<number>(initialIndexValue);
   const [filterCondition, setFilterCondition] = useState<FilterCondition>({
     property: '',
     operator: 'equals',
     value: '',
   });
+
+  // Update indexValue when basePath changes
+  useEffect(() => {
+    setIndexValue(initialIndexValue);
+  }, [initialIndexValue]);
 
   // Nested array refinement state
   const [nestedArrayLayers, setNestedArrayLayers] = useState<ArrayLayerRefinement[]>([]);
