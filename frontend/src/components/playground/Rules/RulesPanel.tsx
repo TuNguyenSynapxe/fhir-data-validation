@@ -675,6 +675,7 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
         onSave={handleSaveRule}
         projectBundle={projectBundle}
         hl7Samples={hl7Samples}
+        projectId={projectId}
       />
 
       {/* Add Rule Modal - Rule Type First UX */}

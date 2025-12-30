@@ -24,6 +24,20 @@ export const PathInfoTooltip: React.FC<PathInfoTooltipProps> = ({
   const [copiedFhir, setCopiedFhir] = useState(false);
   const [copiedJson, setCopiedJson] = useState(false);
 
+  // Remove duplicate resource type prefix if present
+  // e.g., "Patient.Patient[*].gender" → "Patient[*].gender"
+  const cleanedFhirPath = React.useMemo(() => {
+    if (!fhirPath) return fhirPath;
+    
+    // Match pattern: ResourceType.ResourceType[...].rest
+    const duplicateMatch = fhirPath.match(/^([A-Z][a-zA-Z]+)\.(\1(?:\[|$).*)/);
+    if (duplicateMatch) {
+      return duplicateMatch[2]; // Return the deduplicated path
+    }
+    
+    return fhirPath;
+  }, [fhirPath]);
+
   const handleCopy = async (text: string, type: 'fhir' | 'json') => {
     try {
       await navigator.clipboard.writeText(text);
@@ -66,11 +80,11 @@ export const PathInfoTooltip: React.FC<PathInfoTooltipProps> = ({
             </div>
             <div className="bg-gray-50 border border-gray-200 rounded p-2 mb-2">
               <code className="text-xs font-mono text-gray-800 break-all">
-                {fhirPath}
+                {cleanedFhirPath}
               </code>
             </div>
             <button
-              onClick={() => handleCopy(fhirPath, 'fhir')}
+              onClick={() => handleCopy(cleanedFhirPath, 'fhir')}
               className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 rounded transition-colors"
             >
               {copiedFhir ? (

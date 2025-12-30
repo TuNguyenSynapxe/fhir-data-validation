@@ -223,7 +223,15 @@ public static class TestHelper
         var modelResolver = CreateModelResolver();
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
         var mockTerminologyService = new Mock<ITerminologyService>();
-        return new FhirPathRuleEngine(modelResolver, logger, mockTerminologyService.Object);
+        var mockResourceSelector = new Mock<IResourceSelector>();
+        var mockFieldPathValidator = new Mock<IFieldPathValidator>();
+        
+        return new FhirPathRuleEngine(
+            modelResolver, 
+            logger, 
+            mockTerminologyService.Object,
+            mockResourceSelector.Object,
+            mockFieldPathValidator.Object);
     }
 
     public static ICodeMasterEngine CreateCodeMasterEngine()

@@ -327,10 +327,18 @@ export default function PlaygroundPage() {
         const loadedRules = parsed.rules || [];
         
         // MIGRATION: Add default errorCode to rules that don't have one (backward compatibility)
-        const migratedRules = loadedRules.map((rule: Rule) => ({
-          ...rule,
-          errorCode: rule.errorCode || rule.message || 'LEGACY_RULE', // Use message or generic code
-        }));
+        // QuestionAnswer rules should NOT have errorCode (runtime-determined)
+        const migratedRules = loadedRules.map((rule: Rule) => {
+          // Skip errorCode for QuestionAnswer - it's runtime-determined
+          if (rule.type === 'QuestionAnswer') {
+            const { errorCode, ...ruleWithoutErrorCode } = rule;
+            return ruleWithoutErrorCode;
+          }
+          return {
+            ...rule,
+            errorCode: rule.errorCode || rule.message || 'LEGACY_RULE', // Use message or generic code
+          };
+        });
         
         console.log('[PlaygroundPage:Init] Loaded rules from project:', migratedRules.length, 'rules');
         console.log('[PlaygroundPage:Init] Rules:', migratedRules.map((r: any) => ({ id: r.id, path: r.path, type: r.type })));
@@ -372,10 +380,18 @@ export default function PlaygroundPage() {
   const handleSaveRules = async () => {
     try {
       // MIGRATION: Ensure all rules have errorCode before saving
-      const migratedRules = rules.map(rule => ({
-        ...rule,
-        errorCode: rule.errorCode || rule.message || 'LEGACY_RULE',
-      }));
+      // QuestionAnswer rules should NOT have errorCode (runtime-determined)
+      const migratedRules = rules.map(rule => {
+        // Skip errorCode for QuestionAnswer - it's runtime-determined
+        if (rule.type === 'QuestionAnswer') {
+          const { errorCode, ...ruleWithoutErrorCode } = rule;
+          return ruleWithoutErrorCode;
+        }
+        return {
+          ...rule,
+          errorCode: rule.errorCode || rule.message || 'LEGACY_RULE',
+        };
+      });
       
       // Reconstruct the full rules JSON with metadata
       const rulesObject = {

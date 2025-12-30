@@ -27,7 +27,9 @@ public class FhirPathRuleEngineTests
         var modelResolver = new FhirR4ModelResolverService(logger);
         var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
         var mockTerminologyService = new Mock<ITerminologyService>();
-        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object);
+        var mockResourceSelector = new Mock<IResourceSelector>();
+        var mockFieldPathValidator = new Mock<IFieldPathValidator>();
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object, mockResourceSelector.Object, mockFieldPathValidator.Object);
         
         var bundle = new Bundle
         {
@@ -103,7 +105,9 @@ public class FhirPathRuleEngineTests
         var modelResolver = new FhirR4ModelResolverService(logger);
         var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
         var mockTerminologyService = new Mock<ITerminologyService>();
-        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object);
+        var mockResourceSelector = new Mock<IResourceSelector>();
+        var mockFieldPathValidator = new Mock<IFieldPathValidator>();
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object, mockResourceSelector.Object, mockFieldPathValidator.Object);
         
         var bundle = new Bundle
         {
@@ -182,7 +186,9 @@ public class FhirPathRuleEngineTests
         var modelResolver = new FhirR4ModelResolverService(logger);
         var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
         var mockTerminologyService = new Mock<ITerminologyService>();
-        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object);
+        var mockResourceSelector = new Mock<IResourceSelector>();
+        var mockFieldPathValidator = new Mock<IFieldPathValidator>();
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object, mockResourceSelector.Object, mockFieldPathValidator.Object);
         
         var bundle = new Bundle
         {
@@ -241,7 +247,9 @@ public class FhirPathRuleEngineTests
         var modelResolver = new FhirR4ModelResolverService(logger);
         var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
         var mockTerminologyService = new Mock<ITerminologyService>();
-        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object);
+        var mockResourceSelector = new Mock<IResourceSelector>();
+        var mockFieldPathValidator = new Mock<IFieldPathValidator>();
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object, mockResourceSelector.Object, mockFieldPathValidator.Object);
 
         var bundle = new Bundle
         {
@@ -300,7 +308,9 @@ public class FhirPathRuleEngineTests
         var modelResolver = new FhirR4ModelResolverService(logger);
         var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
         var mockTerminologyService = new Mock<ITerminologyService>();
-        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object);
+        var mockResourceSelector = new Mock<IResourceSelector>();
+        var mockFieldPathValidator = new Mock<IFieldPathValidator>();
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object, mockResourceSelector.Object, mockFieldPathValidator.Object);
 
         var bundle = new Bundle
         {
@@ -359,7 +369,9 @@ public class FhirPathRuleEngineTests
         var modelResolver = new FhirR4ModelResolverService(logger);
         var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
         var mockTerminologyService = new Mock<ITerminologyService>();
-        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object);
+        var mockResourceSelector = new Mock<IResourceSelector>();
+        var mockFieldPathValidator = new Mock<IFieldPathValidator>();
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object, mockResourceSelector.Object, mockFieldPathValidator.Object);
 
         var bundle = new Bundle
         {
@@ -421,7 +433,9 @@ public class FhirPathRuleEngineTests
         var modelResolver = new FhirR4ModelResolverService(logger);
         var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
         var mockTerminologyService = new Mock<ITerminologyService>();
-        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object);
+        var mockResourceSelector = new Mock<IResourceSelector>();
+        var mockFieldPathValidator = new Mock<IFieldPathValidator>();
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object, mockResourceSelector.Object, mockFieldPathValidator.Object);
 
         var bundle = new Bundle
         {
@@ -483,7 +497,9 @@ public class FhirPathRuleEngineTests
         var modelResolver = new FhirR4ModelResolverService(logger);
         var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
         var mockTerminologyService = new Mock<ITerminologyService>();
-        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object);
+        var mockResourceSelector = new Mock<IResourceSelector>();
+        var mockFieldPathValidator = new Mock<IFieldPathValidator>();
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object, mockResourceSelector.Object, mockFieldPathValidator.Object);
 
         var bundle = new Bundle
         {
@@ -548,7 +564,9 @@ public class FhirPathRuleEngineTests
         var modelResolver = new FhirR4ModelResolverService(logger);
         var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
         var mockTerminologyService = new Mock<ITerminologyService>();
-        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object);
+        var mockResourceSelector = new Mock<IResourceSelector>();
+        var mockFieldPathValidator = new Mock<IFieldPathValidator>();
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object, mockResourceSelector.Object, mockFieldPathValidator.Object);
 
         var bundle = new Bundle
         {
@@ -618,7 +636,9 @@ public class FhirPathRuleEngineTests
         var modelResolver = new FhirR4ModelResolverService(logger);
         var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
         var mockTerminologyService = new Mock<ITerminologyService>();
-        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object);
+        var mockResourceSelector = new Mock<IResourceSelector>();
+        var mockFieldPathValidator = new Mock<IFieldPathValidator>();
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object, mockResourceSelector.Object, mockFieldPathValidator.Object);
 
         var bundle = new Bundle
         {
@@ -689,7 +709,9 @@ public class FhirPathRuleEngineTests
         var modelResolver = new FhirR4ModelResolverService(logger);
         var engineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirPathRuleEngine>.Instance;
         var mockTerminologyService = new Mock<ITerminologyService>();
-        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object);
+        var mockResourceSelector = new Mock<IResourceSelector>();
+        var mockFieldPathValidator = new Mock<IFieldPathValidator>();
+        var engine = new FhirPathRuleEngine(modelResolver, engineLogger, mockTerminologyService.Object, mockResourceSelector.Object, mockFieldPathValidator.Object);
 
         var bundle = new Bundle
         {

@@ -72,7 +72,7 @@ export const RequiredConfigSection: React.FC<RequiredConfigSectionProps> = ({
     const params: RequiredFieldParams = { path: fieldPath };
     onParamsChange(params, isValid);
     setErrors(newErrors);
-  }, [fieldPath, onParamsChange]);
+  }, [fieldPath]); // Removed onParamsChange from deps to prevent infinite loop
 
   // ========== HANDLERS ==========
 

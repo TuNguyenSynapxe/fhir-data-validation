@@ -44,10 +44,28 @@ public class RuleDefinition
     public required string ResourceType { get; set; }
     
     /// <summary>
-    /// FHIRPath expression
+    /// STRUCTURED: Defines which instances of the resource type to validate.
+    /// Replaces legacy string-based [*], [0], .where() notation.
+    /// </summary>
+    [JsonPropertyName("instanceScope")]
+    public InstanceScope? InstanceScope { get; set; }
+    
+    /// <summary>
+    /// STRUCTURED: FHIRPath expression relative to a single resource instance.
+    /// Must NOT contain resource type prefix, [*], [0], or resource-level .where()
+    /// Examples: "gender", "name.family", "identifier.value"
+    /// </summary>
+    [JsonPropertyName("fieldPath")]
+    public string? FieldPath { get; set; }
+    
+    /// <summary>
+    /// LEGACY: Combined FHIRPath with instance scope encoded in string.
+    /// Examples: "Patient[*].gender", "Observation.where(code='X').value[x]"
+    /// DEPRECATED: Use InstanceScope + FieldPath instead.
+    /// Kept for backward compatibility during migration.
     /// </summary>
     [JsonPropertyName("path")]
-    public required string Path { get; set; }
+    public string? Path { get; set; }
     
     /// <summary>
     /// Severity: error, warning, info

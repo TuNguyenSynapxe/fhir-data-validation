@@ -140,7 +140,17 @@ export function formatSmartPath(path: string, resourceType?: string): FormattedP
 
   // Phase 6: Strip ALL where() clauses to get structural path only
   // This handles multiple where() at any position in the path
-  const structuralPath = path.replace(/\.where\([^)]+\)/g, '');
+  let structuralPath = path.replace(/\.where\([^)]+\)/g, '');
+  
+  // Fix duplicate resource type prefix (e.g., "Patient.Patient[*].gender" → "Patient[*].gender")
+  // This happens when backend constructs paths incorrectly
+  if (resourceType) {
+    const duplicatePattern = new RegExp(`^${resourceType}\\.${resourceType}(\\[|\\.|$)`);
+    if (duplicatePattern.test(structuralPath)) {
+      // Remove the first occurrence of "ResourceType."
+      structuralPath = structuralPath.substring(resourceType.length + 1);
+    }
+  }
   
   // Split by dots and handle array indices
   const parts = structuralPath.split('.').filter(p => p);
@@ -148,12 +158,12 @@ export function formatSmartPath(path: string, resourceType?: string): FormattedP
 
   parts.forEach((part, index) => {
     // Check for array index notation (e.g., "extension[2]")
-    const match = part.match(/^(.+?)\[(\d+)\]$/);
+    const match = part.match(/^(.+?)\[(\d+|\*)\]$/);
     
     if (match) {
       segments.push({
         name: match[1],
-        index: parseInt(match[2], 10),
+        index: match[2] === '*' ? undefined : parseInt(match[2], 10),
         isLast: index === parts.length - 1
       });
     } else {
@@ -165,9 +175,9 @@ export function formatSmartPath(path: string, resourceType?: string): FormattedP
   });
 
   // Create scoped path (remove resource name if it matches)
-  let scopedPath = path;
-  if (resourceType && path.startsWith(`${resourceType}.`)) {
-    scopedPath = path.substring(resourceType.length + 1);
+  let scopedPath = structuralPath;
+  if (resourceType && structuralPath.startsWith(`${resourceType}.`)) {
+    scopedPath = structuralPath.substring(resourceType.length + 1);
   }
 
   return {

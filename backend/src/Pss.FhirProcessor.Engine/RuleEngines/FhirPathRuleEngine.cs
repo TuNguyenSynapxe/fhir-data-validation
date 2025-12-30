@@ -22,12 +22,21 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
     private readonly FhirPathCompiler _compiler;
     private readonly ILogger<FhirPathRuleEngine> _logger;
     private readonly ITerminologyService _terminologyService;
+    private readonly IResourceSelector _resourceSelector;
+    private readonly IFieldPathValidator _fieldPathValidator;
     
-    public FhirPathRuleEngine(IFhirModelResolverService modelResolver, ILogger<FhirPathRuleEngine> logger, ITerminologyService terminologyService)
+    public FhirPathRuleEngine(
+        IFhirModelResolverService modelResolver, 
+        ILogger<FhirPathRuleEngine> logger, 
+        ITerminologyService terminologyService,
+        IResourceSelector resourceSelector,
+        IFieldPathValidator fieldPathValidator)
     {
         _compiler = new FhirPathCompiler();
         _logger = logger;
         _terminologyService = terminologyService;
+        _resourceSelector = resourceSelector;
+        _fieldPathValidator = fieldPathValidator;
     }
     
     public async Task<List<RuleValidationError>> ValidateAsync(Bundle bundle, RuleSet ruleSet, CancellationToken cancellationToken = default)
@@ -52,7 +61,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             errors.AddRange(bundleErrors);
         }
         
-        // Step 2: Validate resource-level rules
+        // Step 2: Validate resource-level rules using structured InstanceScope
         // Group rules by resource type (exclude bundle-level rules)
         var rulesByType = ruleSet.Rules
             .Where(r => !r.Type.Equals("RequiredResources", StringComparison.OrdinalIgnoreCase))
@@ -63,26 +72,65 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             var resourceType = resourceGroup.Key;
             var rules = resourceGroup.ToList();
             
-            // Find all matching resources in bundle
-            var matchingEntries = bundle.Entry
-                .Where(e => e.Resource != null && e.Resource.TypeName == resourceType)
-                .Select((entry, index) => new { Entry = entry, Index = index })
-                .ToList();
-            
-            foreach (var item in matchingEntries)
+            foreach (var rule in rules)
             {
-                var resource = item.Entry.Resource;
-                var entryIndex = item.Index;
+                // Use new structured InstanceScope if present, otherwise fall back to legacy Path parsing
+                IEnumerable<(Resource Resource, int EntryIndex)> selectedResources;
                 
-                foreach (var rule in rules)
+                if (rule.InstanceScope != null && rule.FieldPath != null)
                 {
-                    // Check if this resource matches the rule's instance scope filter
-                    if (!ShouldValidateResourcePoco(resource, rule, resourceType))
+                    // NEW: Use explicit InstanceScope-based selection
+                    try
                     {
-                        _logger.LogTrace("ValidateAsync: Resource at entry {EntryIndex} doesn't match filter for rule {RuleId}, skipping", entryIndex, rule.Id);
+                        // Validate field path before processing
+                        _fieldPathValidator.ValidateFieldPath(rule.FieldPath, resourceType);
+                        
+                        // Select resources using structured InstanceScope
+                        selectedResources = _resourceSelector.SelectResources(bundle, resourceType, rule.InstanceScope);
+                        
+                        _logger.LogTrace("ValidateAsync: Selected {Count} resources for rule {RuleId} using InstanceScope {ScopeType}",
+                            selectedResources.Count(), rule.Id, rule.InstanceScope.GetType().Name);
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        // Field path validation failed - report as error
+                        _logger.LogError(ex, "Invalid field path in rule {RuleId}: {Message}", rule.Id, ex.Message);
+                        errors.Add(new RuleValidationError
+                        {
+                            RuleId = rule.Id,
+                            RuleType = rule.Type,
+                            ResourceType = rule.ResourceType,
+                            Path = rule.FieldPath ?? rule.Path,
+                            ErrorCode = "INVALID_FIELD_PATH",
+                            Details = new Dictionary<string, object>
+                            {
+                                ["message"] = $"Rule configuration error: {ex.Message}",
+                                ["source"] = "FieldPathValidation"
+                            },
+                            Severity = "error"
+                        });
                         continue;
                     }
+                }
+                else
+                {
+                    // LEGACY: Fall back to regex-based selection for backward compatibility
+                    // Find all matching resources and filter with legacy ShouldValidateResourcePoco
+                    var matchingEntries = bundle.Entry
+                        .Where(e => e.Resource != null && e.Resource.TypeName == resourceType)
+                        .Select((entry, index) => (Resource: entry.Resource, Index: index))
+                        .ToList();
                     
+                    selectedResources = matchingEntries
+                        .Where(item => ShouldValidateResourcePoco(item.Resource, rule, resourceType))
+                        .Select(item => (item.Resource, item.Index));
+                    
+                    _logger.LogTrace("ValidateAsync: Using legacy Path-based selection for rule {RuleId}", rule.Id);
+                }
+                
+                // Validate each selected resource against the rule
+                foreach (var (resource, entryIndex) in selectedResources)
+                {
                     var ruleErrors = await ValidateRuleAsync(resource, rule, entryIndex, projectId, cancellationToken);
                     errors.AddRange(ruleErrors);
                 }
@@ -265,9 +313,8 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             var idNode = resource.Children("id").FirstOrDefault();
             var resourceId = idNode?.Text;
             
-            // Extract the field path portion, removing instance scope prefix if present
-            // Example: "Observation.where(code.coding.code='HS').performer.display" -> "performer.display"
-            var fieldPath = ExtractFieldPathFromRulePath(rule.Path, resourceType);
+            // Get field path (prefers new FieldPath, falls back to extracting from Path)
+            var fieldPath = GetFieldPathForRule(rule);
             
             switch (rule.Type.ToUpperInvariant())
             {
@@ -584,8 +631,8 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
     {
         var errors = new List<RuleValidationError>();
         
-        // Extract field path, removing instance scope prefix
-        var fieldPath = ExtractFieldPathFromRulePath(rule.Path, rule.ResourceType);
+        // Get field path (prefers new FieldPath, falls back to extracting from Path)
+        var fieldPath = GetFieldPathForRule(rule);
         
         var result = EvaluateFhirPath(resource, fieldPath, rule, entryIndex, errors);
         
@@ -773,7 +820,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         }
         
         // Extract field path, removing instance scope prefix
-        var fieldPath = ExtractFieldPathFromRulePath(rule.Path, rule.ResourceType);
+        var fieldPath = GetFieldPathForRule(rule);
         var result = EvaluateFhirPath(resource, fieldPath, rule, entryIndex, errors);
         
         if (!errors.Any(e => e.ErrorCode == "RULE_DEFINITION_ERROR"))
@@ -844,7 +891,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         }
         
         // Extract field path, removing instance scope prefix
-        var fieldPath = ExtractFieldPathFromRulePath(rule.Path, rule.ResourceType);
+        var fieldPath = GetFieldPathForRule(rule);
         var result = EvaluateFhirPath(resource, fieldPath, rule, entryIndex, errors);
         
         if (!errors.Any(e => e.ErrorCode == "RULE_DEFINITION_ERROR"))
@@ -949,7 +996,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         }
         
         // Extract field path, removing instance scope prefix
-        var fieldPath = ExtractFieldPathFromRulePath(rule.Path, rule.ResourceType);
+        var fieldPath = GetFieldPathForRule(rule);
         var result = EvaluateFhirPath(resource, fieldPath, rule, entryIndex, errors);
         
         if (!errors.Any(e => e.ErrorCode == "RULE_DEFINITION_ERROR"))
@@ -1170,7 +1217,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         }
         
         // Extract field path, removing instance scope prefix
-        var fieldPath = ExtractFieldPathFromRulePath(rule.Path, rule.ResourceType);
+        var fieldPath = GetFieldPathForRule(rule);
         var result = EvaluateFhirPath(resource, fieldPath, rule, entryIndex, errors);
         
         _logger.LogInformation("ValidateCodeSystem: FhirPath evaluation returned {Count} items for path {FieldPath}", 
@@ -1328,7 +1375,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         }
         
         // Extract field path, removing instance scope prefix
-        var fieldPath = ExtractFieldPathFromRulePath(rule.Path, rule.ResourceType);
+        var fieldPath = GetFieldPathForRule(rule);
         var result = EvaluateFhirPath(resource, fieldPath, rule, entryIndex, errors);
         
         if (!errors.Any(e => e.ErrorCode == "RULE_DEFINITION_ERROR"))
@@ -1959,6 +2006,30 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             _logger.LogWarning("ShouldValidateResource: Error evaluating filter for rule {RuleId}: {ErrorMessage}. Proceeding with validation.", rule.Id, ex.Message);
             return true;
         }
+    }
+    
+    /// <summary>
+    /// Gets the field path for evaluation from a rule, preferring the new FieldPath property
+    /// over legacy Path parsing. This provides backward compatibility during migration.
+    /// </summary>
+    /// <param name="rule">The rule definition</param>
+    /// <returns>The field path for FHIRPath evaluation relative to the resource</returns>
+    private string GetFieldPathForRule(RuleDefinition rule)
+    {
+        // Prefer new structured FieldPath if available
+        if (!string.IsNullOrWhiteSpace(rule.FieldPath))
+        {
+            return rule.FieldPath;
+        }
+        
+        // Fall back to extracting from legacy Path format
+        if (!string.IsNullOrWhiteSpace(rule.Path))
+        {
+            return ExtractFieldPathFromRulePath(rule.Path, rule.ResourceType);
+        }
+        
+        // Should not happen if rule definition is valid
+        throw new ArgumentException($"Rule {rule.Id} has neither FieldPath nor Path defined");
     }
     
     /// <summary>

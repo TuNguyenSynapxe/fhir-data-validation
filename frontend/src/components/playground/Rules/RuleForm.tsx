@@ -213,7 +213,17 @@ export const RuleForm: React.FC<RuleFormProps> = ({
       }
 
       if (ruleType === 'QuestionAnswer' && initialRule.params) {
-        setIterationScope(initialRule.params.iterationScope || '');
+        // Extract iterationScope from path
+        // Path format: Observation[*].component[*] or Observation[0].component[*]
+        // We need to extract: component[*]
+        if (initialRule.path) {
+          const pathParts = initialRule.path.split('.');
+          // Remove the first part (resourceType with scope like "Observation[*]")
+          const iterationScopeParts = pathParts.slice(1);
+          const extractedIterationScope = iterationScopeParts.join('.');
+          setIterationScope(extractedIterationScope);
+        }
+        
         setQuestionPath(initialRule.params.questionPath || '');
         setQuestionSetId(initialRule.params.questionSetId || '');
       }

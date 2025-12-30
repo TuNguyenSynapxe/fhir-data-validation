@@ -61,6 +61,10 @@ public static class EngineServiceCollectionExtensions
         services.AddScoped<ICodeMasterEngine, CodeMasterEngine>();
         services.AddScoped<IReferenceResolver, ReferenceResolver>();
         
+        // PHASE 4: Structured Instance Scope (refactored from string-based parsing)
+        services.AddScoped<IResourceSelector, ResourceSelector>();
+        services.AddScoped<IFieldPathValidator, FieldPathValidator>();
+        
         // PHASE 7: Rule governance and quality enforcement
         services.AddScoped<Governance.IRuleReviewEngine, Governance.RuleReviewEngine>();
         
