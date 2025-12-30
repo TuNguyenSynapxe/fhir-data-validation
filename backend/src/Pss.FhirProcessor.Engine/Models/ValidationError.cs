@@ -15,9 +15,36 @@ public class ValidationError
     
     /// <summary>
     /// Severity: error, warning, info
+    /// This is the EFFECTIVE severity after any downgrade logic is applied.
     /// </summary>
     [JsonPropertyName("severity")]
     public required string Severity { get; set; }
+    
+    /// <summary>
+    /// Original configured severity before any downgrade (optional).
+    /// Only populated when severity was modified from the rule's configured value.
+    /// Useful for debugging why a severity was downgraded.
+    /// </summary>
+    [JsonPropertyName("configuredSeverity")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ConfiguredSeverity { get; set; }
+    
+    /// <summary>
+    /// Validation classification (optional).
+    /// Indicates whether this validation is Contract, Structural, or Advisory.
+    /// </summary>
+    [JsonPropertyName("validationClass")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ValidationClass? ValidationClass { get; set; }
+    
+    /// <summary>
+    /// Reason for severity downgrade (optional).
+    /// Only populated for Advisory validations when severity was downgraded.
+    /// Examples: "Low confidence heuristic", "SpecHint advisory"
+    /// </summary>
+    [JsonPropertyName("downgradeReason")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? DowngradeReason { get; set; }
     
     /// <summary>
     /// Resource type being validated

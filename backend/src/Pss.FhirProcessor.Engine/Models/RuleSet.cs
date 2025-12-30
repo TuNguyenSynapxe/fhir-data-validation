@@ -56,6 +56,16 @@ public class RuleDefinition
     public string Severity { get; set; } = "error";
     
     /// <summary>
+    /// Validation classification to control severity downgrade behavior.
+    /// Defaults to Advisory to preserve existing behavior for rules that don't specify this field.
+    /// - Contract: Never downgrade (e.g., QuestionAnswer system/code mapping)
+    /// - Structural: Never downgrade (e.g., FHIR required fields)
+    /// - Advisory: May downgrade for low-confidence or heuristic validations
+    /// </summary>
+    [JsonPropertyName("validationClass")]
+    public ValidationClass ValidationClass { get; set; } = ValidationClass.Advisory;
+    
+    /// <summary>
     /// REQUIRED: Error code for frontend message mapping
     /// Frontend uses this to render user-facing messages
     /// </summary>

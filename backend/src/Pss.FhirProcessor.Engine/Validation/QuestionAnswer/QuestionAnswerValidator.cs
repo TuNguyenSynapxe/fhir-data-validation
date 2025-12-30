@@ -15,6 +15,11 @@ namespace Pss.FhirProcessor.Engine.Validation.QuestionAnswer;
 /// <summary>
 /// Validates Question/Answer constraints at runtime
 /// Enforces answer type-specific rules defined in Question definitions
+/// 
+/// IMPORTANT: QuestionAnswer validations are classified as ValidationClass.Contract
+/// This means system/code mismatches are HARD ERRORS that are never downgraded to warnings.
+/// Intent: These validations enforce explicit data mapping contracts between observations
+/// and question definitions. A mismatch indicates broken mappings, not uncertain heuristics.
 /// </summary>
 public class QuestionAnswerValidator
 {
@@ -22,6 +27,7 @@ public class QuestionAnswerValidator
     private readonly ITerminologyService _terminologyService;
     private readonly IQuestionAnswerContextProvider _contextProvider;
     private readonly QuestionAnswerValueExtractor _valueExtractor;
+    private readonly ISeverityResolver _severityResolver;
     private readonly ILogger<QuestionAnswerValidator> _logger;
 
     public QuestionAnswerValidator(
@@ -29,12 +35,14 @@ public class QuestionAnswerValidator
         ITerminologyService terminologyService,
         IQuestionAnswerContextProvider contextProvider,
         QuestionAnswerValueExtractor valueExtractor,
+        ISeverityResolver severityResolver,
         ILogger<QuestionAnswerValidator> logger)
     {
         _questionService = questionService;
         _terminologyService = terminologyService;
         _contextProvider = contextProvider;
         _valueExtractor = valueExtractor;
+        _severityResolver = severityResolver;
         _logger = logger;
     }
 
@@ -196,10 +204,21 @@ public class QuestionAnswerValidator
                     Code: context.QuestionCoding.Code,
                     Display: context.QuestionCoding.Display);
                 var identifierType = QuestionAnswerContext.GetQuestionIdentifierType(questionPath);
+                
+                // CRITICAL: QuestionAnswer validations are Contract-level validations.
+                // System/code mismatches are HARD ERRORS that enforce data mapping contracts.
+                // They are NEVER downgraded regardless of confidence or heuristics.
+                var effectiveSeverity = _severityResolver.ResolveSeverity(
+                    configuredSeverity: rule.Severity,
+                    validationClass: ValidationClass.Contract,
+                    downgradeReason: out var downgradeReason,
+                    isHeuristic: false,
+                    isSpecHint: false);
+                
                 errors.Add(QuestionAnswerErrorFactory.QuestionNotFound(
                     ruleId: rule.Id,
                     resourceType: rule.ResourceType,
-                    severity: "warning",
+                    severity: effectiveSeverity,
                     system: context.QuestionCoding.System,
                     code: context.QuestionCoding.Code,
                     location: location,

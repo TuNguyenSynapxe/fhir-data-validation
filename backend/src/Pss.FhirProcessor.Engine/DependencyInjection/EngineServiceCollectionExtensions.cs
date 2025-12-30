@@ -78,6 +78,9 @@ public static class EngineServiceCollectionExtensions
         services.AddScoped<ISmartPathNavigationService, SmartPathNavigationService>();
         services.AddScoped<IUnifiedErrorModelBuilder, UnifiedErrorModelBuilder>();
         
+        // Register severity resolver for validation class-aware severity resolution
+        services.AddScoped<Validation.ISeverityResolver, Validation.SeverityResolver>();
+        
         // Register System Rule Suggestion Service (deterministic pattern analysis)
         services.AddScoped<ISystemRuleSuggestionService, SystemRuleSuggestionService>();
 
