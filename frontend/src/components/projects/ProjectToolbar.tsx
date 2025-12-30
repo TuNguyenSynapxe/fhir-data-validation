@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useCreateProject } from '../../hooks/useProjects';
 import { Plus, Loader2 } from 'lucide-react';
+import { message } from 'antd';
 
 export default function ProjectToolbar() {
   const [name, setName] = useState('');
@@ -25,9 +26,11 @@ export default function ProjectToolbar() {
       setName('');
       setDescription('');
       setShowForm(false);
+      message.success('Project created successfully');
       // TanStack Query auto-invalidates projects list
     } catch (error) {
       console.error('Failed to create project:', error);
+      // Error notification already shown by httpClient interceptor
     }
   };
 

@@ -9,7 +9,6 @@ import {
   InstanceScopeDrawer,
   type InstanceScope,
 } from './common';
-import { composeInstanceScopedPath } from './common/InstanceScope.utils';
 import { RequiredConfigSection, type RequiredParams } from './rule-types/required/RequiredConfigSection';
 import { PatternConfigSection } from './rule-types/pattern/PatternConfigSection';
 import { QuestionAnswerConfigSection } from './rule-types/question-answer/QuestionAnswerConfigSection';
@@ -123,7 +122,7 @@ export const RuleForm: React.FC<RuleFormProps> = ({
   // === SHARED STATE (ALL RULES) ===
   const [resourceType, setResourceType] = useState<string>(initialRule?.resourceType || 'Patient');
   const [instanceScope, setInstanceScope] = useState<InstanceScope>(
-    initialRule?.instanceScope === 'first' ? { kind: 'first' } : { kind: 'all' }
+    initialRule?.instanceScope || { kind: 'all' }
   );
   const [severity, setSeverity] = useState<'error' | 'warning' | 'information'>(
     (initialRule?.severity as 'error' | 'warning' | 'information') || 'error'
@@ -184,7 +183,7 @@ export const RuleForm: React.FC<RuleFormProps> = ({
     if (mode === 'edit' && initialRule) {
       // Shared fields
       setResourceType(initialRule.resourceType || 'Patient');
-      setInstanceScope(initialRule.instanceScope === 'first' ? { kind: 'first' } : { kind: 'all' });
+      setInstanceScope(initialRule.instanceScope || { kind: 'all' });
       setSeverity((initialRule.severity as 'error' | 'warning' | 'information') || 'error');
       setUserHint(initialRule.userHint || '');
 
@@ -294,6 +293,16 @@ export const RuleForm: React.FC<RuleFormProps> = ({
 
   // === VALIDATION & SAVE ===
   const handleSave = () => {
+    console.log('[RuleForm:handleSave] Called', { 
+      ruleType, 
+      mode, 
+      requiredParams,
+      requiredParamsValid,
+      fieldPath,
+      resourceType,
+      instanceScope
+    });
+    
     const newErrors: Record<string, string> = {};
 
     // Validate shared fields
@@ -301,7 +310,16 @@ export const RuleForm: React.FC<RuleFormProps> = ({
 
     // Validate rule-specific fields
     if (ruleType === 'Required') {
-      if (!fieldPath) newErrors.fieldPath = 'Please select a field';
+      console.log('[RuleForm:handleSave] Validating Required rule...');
+      if (!requiredParams) {
+        console.log('[RuleForm:handleSave] ERROR: requiredParams is null/undefined');
+        newErrors.requiredParams = 'Please configure the required rule parameters';
+      } else if (!requiredParamsValid) {
+        console.log('[RuleForm:handleSave] ERROR: requiredParamsValid is false');
+        newErrors.requiredParams = 'Please complete all required fields';
+      } else {
+        console.log('[RuleForm:handleSave] Required validation passed', { requiredParams });
+      }
     }
 
     if (ruleType === 'Regex') {
@@ -389,20 +407,25 @@ export const RuleForm: React.FC<RuleFormProps> = ({
     }
 
     if (Object.keys(newErrors).length > 0) {
+      console.log('[RuleForm:handleSave] Validation failed with errors:', newErrors);
       setErrors(newErrors);
       return;
     }
 
+    console.log('[RuleForm:handleSave] Validation passed, building rule...');
+    
     // Build rule based on type
     let rule: Rule;
 
     if (ruleType === 'Required') {
+      console.log('[RuleForm:handleSave] Building Required rule...');
       if (!requiredParams) {
         throw new Error('Required params not set');
       }
       
       // Check if field mode or resource mode
       if ('path' in requiredParams) {
+        console.log('[RuleForm:handleSave] Field mode - building with buildRequiredRule');
         // Field mode - use existing buildRequiredRule
         rule = buildRequiredRule({
           resourceType,
@@ -412,14 +435,14 @@ export const RuleForm: React.FC<RuleFormProps> = ({
           errorCode: computedErrorCode,
           userHint: userHint || undefined,
         });
+        console.log('[RuleForm:handleSave] Rule built:', rule);
       } else {
         // Resource mode - store resourceRequirement in params
-        const fullPath = composeInstanceScopedPath(resourceType, instanceScope);
         rule = {
           id: mode === 'edit' && initialRule?.id ? initialRule.id : `rule-${Date.now()}`,
           type: 'Required',
           resourceType,
-          path: fullPath,
+          instanceScope,
           severity,
           errorCode: computedErrorCode,
           userHint: userHint || undefined,
@@ -512,6 +535,7 @@ export const RuleForm: React.FC<RuleFormProps> = ({
       });
     } else {
       // Other types - not yet implemented
+      console.log('[RuleForm:handleSave] ERROR: Rule type not implemented:', ruleType);
       return;
     }
 
@@ -520,7 +544,9 @@ export const RuleForm: React.FC<RuleFormProps> = ({
       rule = { ...rule, id: initialRule.id };
     }
 
+    console.log('[RuleForm:handleSave] Final rule built, calling onSave:', rule);
     onSave(rule);
+    console.log('[RuleForm:handleSave] onSave completed');
   };
 
   // === RENDER ===

@@ -18,6 +18,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import { message } from 'antd';
 
 export interface ValidationIssueExplanation {
   what: string;
@@ -153,6 +154,12 @@ export function useProjectValidation(projectId: string): ProjectValidationState 
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
       setResult(null);
+      
+      // Show user-visible error notification
+      message.error({
+        content: `Validation failed: ${errorMessage}`,
+        duration: 6,
+      });
     } finally {
       setIsValidating(false);
     }

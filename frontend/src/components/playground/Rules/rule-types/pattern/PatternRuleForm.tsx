@@ -19,8 +19,8 @@ import { X, Check, AlertCircle, HelpCircle, Lightbulb } from 'lucide-react';
 import FhirPathSelectorDrawer from '../../../../rules/FhirPathSelectorDrawer';
 import { UserHintInput, RuleErrorPreview } from '../../common';
 import { InstanceScopeDrawer } from '../../common/InstanceScopeDrawer';
+import { InstanceScopePreview } from '../../common/InstanceScopePreview';
 import type { InstanceScope } from '../../common/InstanceScope.types';
-import { getInstanceScopeSummary } from '../../common/InstanceScope.utils';
 import type { Rule } from '../../../../../types/rightPanelProps';
 import {
   buildPatternRule,
@@ -201,8 +201,11 @@ export const PatternRuleForm: React.FC<PatternRuleFormProps> = ({
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-gray-900 break-words">{getInstanceScopeSummary(resourceType, instanceScope).text}</div>
-                <div className="text-xs font-mono text-gray-500 mt-0.5 break-all">{getInstanceScopeSummary(resourceType, instanceScope).fhirPath}</div>
+                <InstanceScopePreview
+                  resourceType={resourceType}
+                  instanceScope={instanceScope}
+                  variant="inline"
+                />
               </div>
               <Check size={16} className="text-green-600 flex-shrink-0 mt-0.5" />
             </div>

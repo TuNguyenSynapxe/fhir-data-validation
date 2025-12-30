@@ -1,6 +1,6 @@
 import React from 'react';
 import type { InstanceScope } from './InstanceScope.types';
-import { getInstanceScopeSummary } from './InstanceScope.utils';
+import { InstanceScopePreview } from './InstanceScopePreview';
 
 /**
  * SHARED RULE SCOPE SELECTOR
@@ -10,6 +10,8 @@ import { getInstanceScopeSummary } from './InstanceScope.utils';
  * 
  * RULE: This component is the SINGLE source of truth for scope selection UI.
  * DO NOT create rule-specific scope selector variants.
+ * 
+ * PHASE 4: NO FHIRPath syntax display - semantic descriptions only.
  */
 
 interface RuleScopeSelectorProps {
@@ -29,8 +31,6 @@ export const RuleScopeSelector: React.FC<RuleScopeSelectorProps> = ({
   className = '',
   disabled = false,
 }) => {
-  const scopeSummary = getInstanceScopeSummary(resourceType, value);
-
   return (
     <div className={className}>
       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -51,8 +51,12 @@ export const RuleScopeSelector: React.FC<RuleScopeSelectorProps> = ({
         `}
       >
         <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-medium text-gray-900">{scopeSummary.text}</div>
+          <div className="flex-1">
+            <InstanceScopePreview
+              resourceType={resourceType}
+              instanceScope={value}
+              variant="inline"
+            />
             <div className="text-xs text-gray-500 mt-0.5">
               Click to configure instance filtering
             </div>

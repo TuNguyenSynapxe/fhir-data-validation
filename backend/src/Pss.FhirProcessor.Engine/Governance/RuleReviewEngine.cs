@@ -4,7 +4,8 @@ namespace Pss.FhirProcessor.Engine.Governance;
 
 /// <summary>
 /// Rule review engine interface for governance and quality enforcement.
-/// Phase 7: Deterministic linting based ONLY on rule metadata
+/// Phase 2A-3: Path-free governance - uses FieldPath + InstanceScope for all checks.
+/// Deterministic linting based ONLY on rule metadata (no validation, no data access).
 /// </summary>
 public interface IRuleReviewEngine
 {
@@ -12,18 +13,24 @@ public interface IRuleReviewEngine
     /// Review a single rule for governance issues.
     /// CRITICAL: MUST NOT access FHIR bundle, MUST NOT run validation,
     /// MUST NOT inspect sample data. ONLY inspect rule metadata.
+    /// Phase 2A-3: All checks use FieldPath + InstanceScope (no Path parsing).
     /// </summary>
     RuleReviewResult Review(RuleDefinition rule);
     
     /// <summary>
     /// Review multiple rules and detect duplicates.
+    /// Phase 2A-3: Duplicate detection uses FieldPath + InstanceScope.ToStableKey().
     /// </summary>
     IReadOnlyList<RuleReviewResult> ReviewRuleSet(IEnumerable<RuleDefinition> rules);
 }
 
 /// <summary>
 /// Rule review engine implementation.
-/// Phase 7: Pure rule-linting engine (no validation, no data access)
+/// Phase 2A-3: Path-free governance engine.
+/// - Duplicate detection: Type + FieldPath + InstanceScope.ToStableKey()
+/// - Conflict detection: FieldPath + InstanceScope + ErrorCode
+/// - Removed heuristic checks requiring Path string parsing
+/// - Execution layer handles type/cardinality validation
 /// </summary>
 public class RuleReviewEngine : IRuleReviewEngine
 {
@@ -190,41 +197,28 @@ public class RuleReviewEngine : IRuleReviewEngine
     }
     
     /// <summary>
-    /// BLOCKED: Rule path is empty or root-level only
+    /// BLOCKED: Rule FieldPath is empty (Phase 2A: Path-free governance)
+    /// Path-based checks removed - execution layer enforces FieldPath requirement
     /// </summary>
     private void CheckEmptyOrRootPath(RuleDefinition rule, List<RuleReviewIssue> issues)
     {
-        if (string.IsNullOrWhiteSpace(rule.Path))
+        // Phase 2A: Only check FieldPath presence (execution layer will enforce this)
+        if (string.IsNullOrWhiteSpace(rule.FieldPath))
         {
             issues.Add(new RuleReviewIssue(
-                Code: "EMPTY_PATH",
+                Code: "EMPTY_FIELD_PATH",
                 Severity: RuleReviewStatus.BLOCKED,
                 RuleId: rule.Id,
                 Facts: new Dictionary<string, object>
                 {
-                    ["ruleType"] = rule.Type
+                    ["ruleType"] = rule.Type,
+                    ["reason"] = "FieldPath is required for all rules"
                 }
             ));
-            return;
         }
         
-        // Check if path is just resource type with no navigation
-        var trimmedPath = rule.Path.Trim();
-        if (trimmedPath == rule.ResourceType || 
-            trimmedPath == $"{rule.ResourceType}.where(true)" ||
-            trimmedPath == $"{rule.ResourceType}[*]")
-        {
-            issues.Add(new RuleReviewIssue(
-                Code: "ROOT_LEVEL_PATH",
-                Severity: RuleReviewStatus.BLOCKED,
-                RuleId: rule.Id,
-                Facts: new Dictionary<string, object>
-                {
-                    ["path"] = rule.Path,
-                    ["resourceType"] = rule.ResourceType
-                }
-            ));
-        }
+        // Note: Root-level path checks removed (require string parsing)
+        // Execution layer handles path validation via FieldPath structure
     }
     
     /// <summary>
@@ -247,7 +241,7 @@ public class RuleReviewEngine : IRuleReviewEngine
                 Facts: new Dictionary<string, object>
                 {
                     ["ruleType"] = rule.Type,
-                    ["path"] = rule.Path
+                    ["fieldPath"] = rule.FieldPath ?? "(not set)"
                 }
             ));
         }
@@ -906,66 +900,23 @@ public class RuleReviewEngine : IRuleReviewEngine
     }
     
     /// <summary>
-    /// BLOCKED: Pattern/Regex rule targeting non-string type (heuristic check)
+    /// REMOVED: CheckPatternOnNonString (Phase 2A: Path-free governance)
+    /// Rationale: Requires string parsing of Path. Type validation belongs in execution layer.
     /// </summary>
     private void CheckPatternOnNonString(RuleDefinition rule, List<RuleReviewIssue> issues)
     {
-        if (rule.Type != "Regex" && rule.Type != "Pattern")
-            return;
-        
-        // Heuristic: check if path ends with known non-string field
-        var pathLower = rule.Path.ToLowerInvariant();
-        
-        // Common non-string fields
-        if (pathLower.Contains(".active") ||      // boolean
-            pathLower.Contains(".multipleBirth") || // boolean/integer
-            pathLower.Contains(".deceasedBoolean") ||
-            pathLower.Contains(".birthDate") ||    // date
-            pathLower.Contains(".period") ||       // Period (complex type)
-            pathLower.Contains(".quantity") ||     // Quantity (complex type)
-            pathLower.Contains(".address") ||      // Address (complex type)
-            pathLower.Contains(".contact"))        // ContactPoint (complex type)
-        {
-            issues.Add(new RuleReviewIssue(
-                Code: "PATTERN_ON_NON_STRING",
-                Severity: RuleReviewStatus.BLOCKED,
-                RuleId: rule.Id,
-                Facts: new Dictionary<string, object>
-                {
-                    ["ruleType"] = rule.Type,
-                    ["path"] = rule.Path,
-                    ["reason"] = "Path likely targets non-string field"
-                }
-            ));
-        }
+        // Phase 2A: Removed Path-based heuristic check
+        // Execution layer will handle type validation via Firely SDK
     }
     
     /// <summary>
-    /// BLOCKED: ArrayLength rule targeting non-array path (heuristic check)
+    /// REMOVED: CheckArrayLengthOnNonArray (Phase 2A: Path-free governance)
+    /// Rationale: Requires string parsing of Path. Cardinality validation belongs in execution layer.
     /// </summary>
     private void CheckArrayLengthOnNonArray(RuleDefinition rule, List<RuleReviewIssue> issues)
     {
-        if (rule.Type != "ArrayLength")
-            return;
-        
-        // Heuristic: check if path contains known array patterns
-        var pathLower = rule.Path.ToLowerInvariant();
-        var looksLikeArray = ArrayFieldPatterns.Any(pattern => pathLower.Contains(pattern));
-        
-        if (!looksLikeArray)
-        {
-            issues.Add(new RuleReviewIssue(
-                Code: "ARRAY_LENGTH_ON_NON_ARRAY",
-                Severity: RuleReviewStatus.WARNING, // Downgrade to WARNING (might be valid)
-                RuleId: rule.Id,
-                Facts: new Dictionary<string, object>
-                {
-                    ["ruleType"] = rule.Type,
-                    ["path"] = rule.Path,
-                    ["reason"] = "Path does not contain common array field patterns"
-                }
-            ));
-        }
+        // Phase 2A: Removed Path-based heuristic check
+        // Execution layer will detect array cardinality issues via Firely SDK
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -973,47 +924,23 @@ public class RuleReviewEngine : IRuleReviewEngine
     // ═══════════════════════════════════════════════════════════
     
     /// <summary>
-    /// WARNING: Path ends at resource root without specific field navigation
+    /// REMOVED: CheckPathEndsAtResourceRoot (Phase 2A: Path-free governance)
+    /// Rationale: Requires string parsing of Path. Advisory check only.
     /// </summary>
     private void CheckPathEndsAtResourceRoot(RuleDefinition rule, List<RuleReviewIssue> issues)
     {
-        var pathSegments = rule.Path.Split('.');
-        
-        // If path is just ResourceType.field (2 segments) or less, might be too broad
-        if (pathSegments.Length <= 2 && !rule.Path.Contains("where(") && !rule.Path.Contains("["))
-        {
-            issues.Add(new RuleReviewIssue(
-                Code: "BROAD_PATH",
-                Severity: RuleReviewStatus.WARNING,
-                RuleId: rule.Id,
-                Facts: new Dictionary<string, object>
-                {
-                    ["path"] = rule.Path,
-                    ["segmentCount"] = pathSegments.Length,
-                    ["reason"] = "Path may be too broad without specific field navigation"
-                }
-            ));
-        }
+        // Phase 2A: Removed Path-based advisory check
+        // FieldPath structure naturally documents field depth
     }
     
     /// <summary>
-    /// WARNING: Overly generic wildcard paths ([*] without narrowing)
+    /// REMOVED: CheckGenericWildcardPaths (Phase 2A: Path-free governance)
+    /// Rationale: Requires string parsing of Path. Advisory check only.
     /// </summary>
     private void CheckGenericWildcardPaths(RuleDefinition rule, List<RuleReviewIssue> issues)
     {
-        if (rule.Path.Contains("[*]") && !rule.Path.Contains("where("))
-        {
-            issues.Add(new RuleReviewIssue(
-                Code: "GENERIC_WILDCARD",
-                Severity: RuleReviewStatus.WARNING,
-                RuleId: rule.Id,
-                Facts: new Dictionary<string, object>
-                {
-                    ["path"] = rule.Path,
-                    ["reason"] = "Wildcard [*] without where() filter may match too broadly"
-                }
-            ));
-        }
+        // Phase 2A: Removed Path-based advisory check
+        // InstanceScope (AllInstances vs FilteredInstances) naturally documents scope
     }
     
     /// <summary>
@@ -1049,41 +976,35 @@ public class RuleReviewEngine : IRuleReviewEngine
     }
     
     /// <summary>
-    /// WARNING: FixedValue rule without system constraint (might be ambiguous)
+    /// REMOVED: CheckFixedValueWithoutConstraints (Phase 2A: Path-free governance)
+    /// Rationale: Requires string parsing of Path. Advisory check only.
     /// </summary>
     private void CheckFixedValueWithoutConstraints(RuleDefinition rule, List<RuleReviewIssue> issues)
     {
-        if (rule.Type != "FixedValue")
-            return;
-        
-        // Check if path targets a coding/code field but has no system constraint
-        var pathLower = rule.Path.ToLowerInvariant();
-        if ((pathLower.Contains(".code") || pathLower.Contains(".coding")) &&
-            !rule.Path.Contains("system"))
-        {
-            issues.Add(new RuleReviewIssue(
-                Code: "FIXED_VALUE_WITHOUT_SYSTEM",
-                Severity: RuleReviewStatus.WARNING,
-                RuleId: rule.Id,
-                Facts: new Dictionary<string, object>
-                {
-                    ["path"] = rule.Path,
-                    ["reason"] = "FixedValue on code/coding without system constraint may be ambiguous"
-                }
-            ));
-        }
+        // Phase 2A: Removed Path-based advisory check
+        // System constraint validation belongs in execution layer
     }
     
     /// <summary>
-    /// WARNING: Detect duplicate rules (same type + path)
+    /// WARNING: Detect duplicate rules (Phase 2A: FieldPath + InstanceScope identity)
+    /// Two rules are duplicates if they have:
+    /// - Same Type
+    /// - Same FieldPath
+    /// - Same InstanceScope (structural equality via ToStableKey())
     /// </summary>
     private void CheckDuplicateRules(List<RuleDefinition> rules, List<RuleReviewResult> results)
     {
-        var seen = new Dictionary<string, string>(); // key: type+path, value: ruleId
+        var seen = new Dictionary<string, string>(); // key: type|fieldPath|scopeKey, value: ruleId
         
         foreach (var rule in rules)
         {
-            var key = $"{rule.Type}|{rule.Path}";
+            // Phase 2A: Require FieldPath for duplicate detection
+            if (string.IsNullOrWhiteSpace(rule.FieldPath))
+                continue; // Will be caught by CheckEmptyOrRootPath
+                
+            // Phase 2A: Use ToStableKey() for InstanceScope structural identity
+            var scopeKey = rule.InstanceScope?.ToStableKey() ?? "none";
+            var key = $"{rule.Type}|{rule.FieldPath}|{scopeKey}";
             
             if (seen.TryGetValue(key, out var existingRuleId))
             {
@@ -1100,7 +1021,8 @@ public class RuleReviewEngine : IRuleReviewEngine
                         {
                             ["duplicateOf"] = existingRuleId,
                             ["ruleType"] = rule.Type,
-                            ["path"] = rule.Path
+                            ["fieldPath"] = rule.FieldPath,
+                            ["instanceScope"] = scopeKey
                         }
                     ));
                     
@@ -1175,39 +1097,46 @@ public class RuleReviewEngine : IRuleReviewEngine
     }
     
     /// <summary>
-    /// WARNING: Detect path conflicts with different errorCodes (RULE_SEMANTIC_STABILITY)
-    /// Multiple rules targeting the same path with different errorCodes is allowed but flagged
+    /// WARNING: Detect field conflicts with different errorCodes (Phase 2A: FieldPath + InstanceScope)
+    /// Multiple rules targeting the same FieldPath+InstanceScope with different errorCodes is allowed but flagged
     /// </summary>
     private void CheckPathErrorCodeConflicts(List<RuleDefinition> rules, List<RuleReviewResult> results)
     {
-        var pathErrorCodeMap = new Dictionary<string, Dictionary<string, List<string>>>(); // path -> errorCode -> [ruleIds]
+        // Phase 2A: Use FieldPath + InstanceScope for conflict detection
+        var fieldErrorCodeMap = new Dictionary<string, Dictionary<string, List<string>>>(); // fieldKey -> errorCode -> [ruleIds]
         
         foreach (var rule in rules)
         {
             if (string.IsNullOrWhiteSpace(rule.ErrorCode))
                 continue; // Skip rules without errorCode
             
-            var path = rule.Path;
+            // Phase 2A: Require FieldPath for conflict detection
+            if (string.IsNullOrWhiteSpace(rule.FieldPath))
+                continue;
             
-            if (!pathErrorCodeMap.ContainsKey(path))
+            // Phase 2A: Build key from FieldPath + InstanceScope
+            var scopeKey = rule.InstanceScope?.ToStableKey() ?? "none";
+            var fieldKey = $"{rule.FieldPath}|{scopeKey}";
+            
+            if (!fieldErrorCodeMap.ContainsKey(fieldKey))
             {
-                pathErrorCodeMap[path] = new Dictionary<string, List<string>>();
+                fieldErrorCodeMap[fieldKey] = new Dictionary<string, List<string>>();
             }
             
-            if (!pathErrorCodeMap[path].ContainsKey(rule.ErrorCode))
+            if (!fieldErrorCodeMap[fieldKey].ContainsKey(rule.ErrorCode))
             {
-                pathErrorCodeMap[path][rule.ErrorCode] = new List<string>();
+                fieldErrorCodeMap[fieldKey][rule.ErrorCode] = new List<string>();
             }
             
-            pathErrorCodeMap[path][rule.ErrorCode].Add(rule.Id);
+            fieldErrorCodeMap[fieldKey][rule.ErrorCode].Add(rule.Id);
         }
         
-        // Check for conflicts (same path, different errorCodes)
-        foreach (var (path, errorCodeMap) in pathErrorCodeMap)
+        // Check for conflicts (same FieldPath+InstanceScope, different errorCodes)
+        foreach (var (fieldKey, errorCodeMap) in fieldErrorCodeMap)
         {
             if (errorCodeMap.Count > 1)
             {
-                // Multiple errorCodes for same path - add WARNING to all affected rules
+                // Multiple errorCodes for same field+scope - add WARNING to all affected rules
                 foreach (var (errorCode, ruleIds) in errorCodeMap)
                 {
                     foreach (var ruleId in ruleIds)
@@ -1217,19 +1146,19 @@ public class RuleReviewEngine : IRuleReviewEngine
                         {
                             var updatedIssues = currentResult.Issues.ToList();
                             
-                            // Collect all other errorCodes for this path
+                            // Collect all other errorCodes for this field+scope
                             var otherErrorCodes = errorCodeMap.Keys.Where(ec => ec != errorCode).ToList();
                             
                             updatedIssues.Add(new RuleReviewIssue(
-                                Code: "PATH_ERROR_CODE_CONFLICT",
+                                Code: "FIELD_ERROR_CODE_CONFLICT",
                                 Severity: RuleReviewStatus.WARNING,
                                 RuleId: ruleId,
                                 Facts: new Dictionary<string, object>
                                 {
-                                    ["path"] = path,
+                                    ["fieldKey"] = fieldKey,
                                     ["thisErrorCode"] = errorCode,
                                     ["conflictingErrorCodes"] = string.Join(", ", otherErrorCodes),
-                                    ["reason"] = "multiple rules target same path with different errorCodes"
+                                    ["reason"] = "multiple rules target same FieldPath+InstanceScope with different errorCodes"
                                 }
                             ));
                             

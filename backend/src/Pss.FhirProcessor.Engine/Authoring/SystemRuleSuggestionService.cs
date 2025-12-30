@@ -888,6 +888,7 @@ public class SystemRuleSuggestionService : ISystemRuleSuggestionService
 
     /// <summary>
     /// Checks if a path is already covered by existing rules
+    /// Phase 2A-5: Uses FieldPath instead of Path for matching
     /// </summary>
     private bool IsPathCoveredByExistingRule(
         string resourceType,
@@ -905,8 +906,18 @@ public class SystemRuleSuggestionService : ISystemRuleSuggestionService
             return false;
         }
 
+        // Phase 2A-5: Use FieldPath for matching (skip rules without FieldPath)
         return rules.Any(rule =>
-            rule.Path != null &&
-            (rule.Path == path || path.StartsWith(rule.Path + ".")));
+        {
+            if (string.IsNullOrWhiteSpace(rule.FieldPath))
+            {
+                // Graceful degradation: skip rules without FieldPath
+                _logger.LogDebug("Skipping rule {RuleId} without FieldPath in coverage check", rule.Id);
+                return false;
+            }
+            
+            // Match if FieldPath equals path or path is a child of FieldPath
+            return rule.FieldPath == path || path.StartsWith(rule.FieldPath + ".");
+        });
     }
 }

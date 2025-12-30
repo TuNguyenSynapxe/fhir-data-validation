@@ -23,5 +23,8 @@ export { RulePreviewPanel } from './RulePreviewPanel';
 
 // Re-export instance scope types for convenience
 export type { InstanceScope } from './InstanceScope.types';
-export { getInstanceScopeSummary } from './InstanceScope.utils';
 export { InstanceScopeDrawer } from './InstanceScopeDrawer';
+export { InstanceScopePreview } from './InstanceScopePreview';
+
+// @deprecated Use InstanceScopePreview component instead of formatting manually
+export { getInstanceScopeSummary } from './InstanceScope.utils';

@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Hl7.Fhir.Model;
 using Pss.FhirProcessor.Engine.Models;
 
@@ -7,6 +6,7 @@ namespace Pss.FhirProcessor.Engine.RuleEngines;
 
 /// <summary>
 /// Builds evaluation plans for Project Rules, determining whether Firely or custom evaluator should be used.
+/// Phase 1: Path-free implementation using FieldPath + InstanceScope.
 /// Implements the SAFE dual-lane evaluation strategy where Firely is preferred but fallback is always available.
 /// </summary>
 public class RuleEvaluationPlanner
@@ -14,6 +14,7 @@ public class RuleEvaluationPlanner
     /// <summary>
     /// Build an evaluation plan for a rule BEFORE execution.
     /// Returns plan with preferFirely = true ONLY if ALL safety conditions are met.
+    /// Phase 1: Uses FieldPath and InstanceScope for all decisions.
     /// </summary>
     public RuleEvaluationPlan BuildPlan(
         RuleDefinition rule,
@@ -35,7 +36,14 @@ public class RuleEvaluationPlanner
             return plan;
         }
         
-        // CONDITION 2: Rule type must NOT be CustomFHIRPath
+        // CONDITION 2: Rule must have FieldPath (Phase 1 requirement)
+        if (string.IsNullOrWhiteSpace(rule.FieldPath))
+        {
+            plan.FallbackReasons.Add("Rule missing FieldPath - cannot evaluate");
+            return plan;
+        }
+        
+        // CONDITION 3: Rule type must NOT be CustomFHIRPath
         // CustomFHIRPath rules are explicitly designed for best-effort semantics
         if (rule.Type.Equals("CustomFHIRPath", StringComparison.OrdinalIgnoreCase))
         {
@@ -43,27 +51,19 @@ public class RuleEvaluationPlanner
             return plan;
         }
         
-        // CONDITION 3: Path must NOT touch extension fields
+        // CONDITION 4: FieldPath must NOT navigate extensions
         // Extensions have complex, dynamic structure that may not map cleanly to POCOs
-        if (PathTouchesExtensions(rule.Path))
+        if (FieldPathTouchesExtensions(rule.FieldPath))
         {
-            plan.FallbackReasons.Add("Path navigates FHIR extensions which may have structural discrepancies");
+            plan.FallbackReasons.Add("FieldPath navigates FHIR extensions which may have structural discrepancies");
             return plan;
         }
         
-        // CONDITION 4: Path must NOT touch potential structural mismatches
-        // Check if raw JSON has structures that might not exist in POCO
-        if (!string.IsNullOrEmpty(rawJson) && HasStructuralMismatchRisk(rule.Path, rawJson))
+        // CONDITION 5: Check for structural mismatch risk
+        // Complex instance scopes or deep field paths may benefit from JSON evaluation
+        if (HasStructuralMismatchRisk(rule, rawJson))
         {
             plan.FallbackReasons.Add("Potential structural mismatch between JSON and POCO representation");
-            return plan;
-        }
-        
-        // CONDITION 5: Path should be navigable in both POCO and JSON
-        // If we can't confidently navigate in both, use custom evaluator
-        if (!IsPathSafeForFirely(rule.Path))
-        {
-            plan.FallbackReasons.Add("Path contains complex navigation that may behave inconsistently");
             return plan;
         }
         
@@ -73,18 +73,19 @@ public class RuleEvaluationPlanner
     }
     
     /// <summary>
-    /// Check if path navigates FHIR extension fields
+    /// Check if FieldPath navigates FHIR extension fields.
+    /// Phase 1: Uses FieldPath instead of Path.
     /// </summary>
-    private bool PathTouchesExtensions(string path)
+    private bool FieldPathTouchesExtensions(string fieldPath)
     {
         // Check for explicit extension navigation
-        if (path.Contains("extension", StringComparison.OrdinalIgnoreCase))
+        if (fieldPath.Contains("extension", StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }
         
         // Check for modifierExtension
-        if (path.Contains("modifierExtension", StringComparison.OrdinalIgnoreCase))
+        if (fieldPath.Contains("modifierExtension", StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }
@@ -93,50 +94,60 @@ public class RuleEvaluationPlanner
     }
     
     /// <summary>
-    /// Check if raw JSON might have structural differences from POCO
-    /// Examples:
-    /// - Empty objects {} in JSON that don't exist in POCO
-    /// - Array length differences
-    /// - Unexpected nesting
+    /// Check if raw JSON might have structural differences from POCO.
+    /// Phase 1: Uses FieldPath depth and InstanceScope complexity.
     /// </summary>
-    private bool HasStructuralMismatchRisk(string path, string rawJson)
+    private bool HasStructuralMismatchRisk(RuleDefinition rule, string? rawJson)
     {
-        try
+        // Heuristic 1: Deep FieldPaths (3+ segments) may have POCO/JSON differences
+        var fieldPathDepth = rule.FieldPath!.Split('.').Length;
+        if (fieldPathDepth >= 3)
         {
-            // Parse JSON to check structure
-            using var doc = JsonDocument.Parse(rawJson);
-            var root = doc.RootElement;
-            
-            // Navigate to the relevant part based on path
-            // This is a heuristic check - if we can't navigate cleanly, assume risk
-            var pathParts = path.Split('.');
-            
-            // Check if path involves array indexing
-            // Arrays can have length mismatches between JSON and POCO
-            if (Regex.IsMatch(path, @"\[\d+\]"))
-            {
-                // Array indexing detected - check if indices are safe
-                // This is conservative: we prefer custom evaluator for indexed access
-                return true;
-            }
-            
-            // Check for empty objects in JSON
-            if (HasEmptyObjects(root))
+            // Deep navigation increases risk of structural mismatches
+            // Prefer JSON evaluation for safety
+            return true;
+        }
+        
+        // Heuristic 2: FilteredInstances with complex conditions
+        if (rule.InstanceScope is FilteredInstances filtered)
+        {
+            // Filtered scopes involve complex FHIRPath evaluation
+            // POCO navigation may not handle all edge cases
+            if (filtered.ConditionFhirPath.Length > 20 || 
+                filtered.ConditionFhirPath.Contains("where", StringComparison.OrdinalIgnoreCase) ||
+                filtered.ConditionFhirPath.Contains("exists", StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
         }
-        catch
+        
+        // Heuristic 3: Check JSON structure if available
+        if (!string.IsNullOrEmpty(rawJson))
         {
-            // If we can't parse or navigate JSON, assume risk
-            return true;
+            try
+            {
+                using var doc = JsonDocument.Parse(rawJson);
+                var root = doc.RootElement;
+                
+                // Check for empty objects {} that might not exist in POCO
+                if (HasEmptyObjects(root))
+                {
+                    return true;
+                }
+            }
+            catch
+            {
+                // If we can't parse JSON, assume risk
+                return true;
+            }
         }
         
         return false;
     }
     
     /// <summary>
-    /// Check if JSON contains empty objects {} that might not exist in POCO
+    /// Check if JSON contains empty objects {} that might not exist in POCO.
+    /// Unchanged from original - not Path-dependent.
     /// </summary>
     private bool HasEmptyObjects(JsonElement element)
     {
@@ -170,34 +181,5 @@ public class RuleEvaluationPlanner
         }
         
         return false;
-    }
-    
-    /// <summary>
-    /// Check if path is safe for Firely evaluation
-    /// Safe paths are simple property navigation without complex expressions
-    /// </summary>
-    private bool IsPathSafeForFirely(string path)
-    {
-        // Paths with these patterns are potentially unsafe:
-        
-        // 1. Complex FHIRPath functions (other than basic navigation)
-        if (Regex.IsMatch(path, @"\b(where|select|all|any|exists|count|first|last|tail|skip|take)\s*\("))
-        {
-            // These are actually fine - Firely handles them well
-            // But if they fail, we want to be able to fall back
-            // For now, consider them safe but we'll catch failures
-            return true;
-        }
-        
-        // 2. Complex predicates with comparisons
-        if (Regex.IsMatch(path, @"[<>=!]+") && path.Contains("where"))
-        {
-            // Complex filtering might have edge cases
-            // But Firely should handle these - we'll catch failures
-            return true;
-        }
-        
-        // Most paths are safe - we'll rely on try-catch to detect actual failures
-        return true;
     }
 }

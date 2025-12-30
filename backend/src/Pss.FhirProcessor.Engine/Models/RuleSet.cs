@@ -65,6 +65,7 @@ public class RuleDefinition
     /// Kept for backward compatibility during migration.
     /// </summary>
     [JsonPropertyName("path")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Path { get; set; }
     
     /// <summary>

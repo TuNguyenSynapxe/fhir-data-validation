@@ -6,11 +6,12 @@ namespace Pss.FhirProcessor.Engine.Validation.QuestionAnswer;
 
 /// <summary>
 /// Default implementation of Question/Answer context resolution.
+/// Phase 2A: Uses InstanceScope and FieldPath for iteration.
 /// Handles deterministic traversal of Bundle entries and iteration nodes.
 /// 
 /// INTENTIONALLY MINIMAL:
 /// - Only supports Observation.component iteration
-/// - No heuristics or guessing
+/// - No heuristics or string parsing
 /// - Deterministic FHIRPath generation
 /// </summary>
 public class DefaultQuestionAnswerContextProvider : IQuestionAnswerContextProvider
@@ -24,6 +25,7 @@ public class DefaultQuestionAnswerContextProvider : IQuestionAnswerContextProvid
 
     /// <summary>
     /// Resolve all validation contexts for a rule.
+    /// Phase 2A: Uses InstanceScope to determine iteration behavior.
     /// </summary>
     public IEnumerable<QuestionAnswerContextSeed> Resolve(Bundle bundle, RuleDefinition rule)
     {
@@ -37,8 +39,9 @@ public class DefaultQuestionAnswerContextProvider : IQuestionAnswerContextProvid
 
         foreach (var (resource, entryIndex) in matchingEntries)
         {
-            // Determine if we need to iterate over repeating nodes
-            var iterationNodes = GetIterationNodes(resource, rule.Path);
+            // Phase 2A: Determine iteration based on FieldPath structure
+            // Only Observation.component fields require iteration
+            var iterationNodes = GetIterationNodes(resource, rule.FieldPath);
 
             if (iterationNodes.Count == 0)
             {
@@ -60,7 +63,7 @@ public class DefaultQuestionAnswerContextProvider : IQuestionAnswerContextProvid
                         Resource: resource,
                         IterationNode: iterationNodes[i],
                         EntryIndex: entryIndex,
-                        CurrentFhirPath: BuildIterationNodePath(resource.TypeName, entryIndex, i, rule.Path),
+                        CurrentFhirPath: BuildIterationNodePath(resource.TypeName, entryIndex, i, rule.FieldPath),
                         IterationIndex: i
                     );
                 }
@@ -85,16 +88,22 @@ public class DefaultQuestionAnswerContextProvider : IQuestionAnswerContextProvid
 
     /// <summary>
     /// Get iteration nodes from resource.
+    /// Phase 2A: Uses FieldPath to detect component iteration.
     /// MINIMAL IMPLEMENTATION: Only supports Observation.component.
     /// </summary>
-    private List<Base> GetIterationNodes(Resource resource, string rulePath)
+    private List<Base> GetIterationNodes(Resource resource, string? fieldPath)
     {
         var nodes = new List<Base>();
+
+        if (string.IsNullOrWhiteSpace(fieldPath))
+        {
+            return nodes;
+        }
 
         try
         {
             // Intentionally minimal: only handle known iteration pattern
-            if (ShouldIterateComponents(resource, rulePath))
+            if (ShouldIterateComponents(resource, fieldPath))
             {
                 if (resource is Observation obs && obs.Component?.Any() == true)
                 {
@@ -113,12 +122,13 @@ public class DefaultQuestionAnswerContextProvider : IQuestionAnswerContextProvid
 
     /// <summary>
     /// Determine if we should iterate over components.
-    /// Minimal heuristic: path contains ".component" and resource is Observation.
+    /// Phase 2A: Uses FieldPath structure instead of Path string.
+    /// Minimal heuristic: FieldPath starts with "component" and resource is Observation.
     /// </summary>
-    private bool ShouldIterateComponents(Resource resource, string rulePath)
+    private bool ShouldIterateComponents(Resource resource, string fieldPath)
     {
         return resource is Observation &&
-               rulePath.Contains(".component", StringComparison.OrdinalIgnoreCase);
+               fieldPath.StartsWith("component", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -131,13 +141,16 @@ public class DefaultQuestionAnswerContextProvider : IQuestionAnswerContextProvid
 
     /// <summary>
     /// Build FHIRPath for iteration node validation.
+    /// Phase 2A: Uses FieldPath to construct deterministic path.
     /// Deterministic: Bundle.entry[{entryIndex}].resource.component[{nodeIndex}]
     /// </summary>
-    private string BuildIterationNodePath(string resourceType, int entryIndex, int nodeIndex, string rulePath)
+    private string BuildIterationNodePath(string resourceType, int entryIndex, int nodeIndex, string? fieldPath)
     {
-        // Extract iteration element name from rule path
+        // Phase 2A: Extract iteration element from FieldPath structure
         // For now, hardcode "component" since that's our only supported case
-        if (resourceType == "Observation" && rulePath.Contains(".component", StringComparison.OrdinalIgnoreCase))
+        if (resourceType == "Observation" && 
+            !string.IsNullOrWhiteSpace(fieldPath) && 
+            fieldPath.StartsWith("component", StringComparison.OrdinalIgnoreCase))
         {
             return $"Bundle.entry[{entryIndex}].resource.component[{nodeIndex}]";
         }

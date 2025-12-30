@@ -11,6 +11,7 @@ public class MessageTokenResolver
 {
     /// <summary>
     /// Resolves all tokens in a message template
+    /// Phase 1: Prefers FieldPath over legacy Path
     /// </summary>
     public static string ResolveTokens(string template, RuleDefinition rule, Dictionary<string, object>? runtimeContext = null)
     {
@@ -19,14 +20,19 @@ public class MessageTokenResolver
         
         var resolved = template;
         
-        // Global tokens
-        var fullPath = !string.IsNullOrEmpty(rule.Path) 
-            ? $"{rule.ResourceType}.{rule.Path}" 
+        // Global tokens - prefer FieldPath over Path
+        var displayPath = !string.IsNullOrEmpty(rule.FieldPath) 
+            ? rule.FieldPath 
+            : rule.Path ?? "";
+            
+        var fullPath = !string.IsNullOrEmpty(displayPath) 
+            ? $"{rule.ResourceType}.{displayPath}" 
             : rule.ResourceType;
         
         // Support both single braces {} and double braces {{}} for backward compatibility
         resolved = ReplaceToken(resolved, "resource", rule.ResourceType ?? "");
-        resolved = ReplaceToken(resolved, "path", rule.Path ?? "");
+        resolved = ReplaceToken(resolved, "path", displayPath);
+        resolved = ReplaceToken(resolved, "fieldPath", rule.FieldPath ?? "");
         resolved = ReplaceToken(resolved, "fullPath", fullPath);
         resolved = ReplaceToken(resolved, "ruleType", rule.Type ?? "");
         resolved = ReplaceToken(resolved, "severity", rule.Severity ?? "");

@@ -3,13 +3,15 @@
  * 
  * Reusable drawer for selecting instance scope with smart filtering.
  * Supports: first-only, all-instances, and filter-based scoping.
+ * 
+ * PHASE 4: No FHIRPath syntax rendering - semantic descriptions only.
  */
 
 import React, { useState, useEffect } from 'react';
 import { X, Check, AlertCircle, Filter as FilterIcon } from 'lucide-react';
 import type { InstanceScope, DetectedFilterOption } from './InstanceScope.types';
 import { detectFilterOptions } from './BundleAnalysis.utils';
-import { getInstanceScopeSummary, formatFhirPathForDisplay } from './InstanceScope.utils';
+import { InstanceScopePreview } from './InstanceScopePreview';
 import { FhirPathPicker } from '../../../common/FhirPathPicker';
 import type { FhirPathPickerResult } from '../../../common/FhirPathPicker';
 
@@ -115,7 +117,6 @@ export const InstanceScopeDrawer: React.FC<InstanceScopeDrawerProps> = ({
   };
 
   const previewScope = getPreviewScope();
-  const summary = getInstanceScopeSummary(resourceType, previewScope);
 
   if (!isOpen) return null;
 
@@ -173,9 +174,6 @@ export const InstanceScopeDrawer: React.FC<InstanceScopeDrawerProps> = ({
                   <div className="text-xs text-gray-600 mt-0.5">
                     Apply to all {resourceType} resources in the bundle
                   </div>
-                  <div className="text-xs text-gray-500 font-mono mt-1">
-                    {resourceType}[*]
-                  </div>
                 </div>
               </label>
 
@@ -198,9 +196,6 @@ export const InstanceScopeDrawer: React.FC<InstanceScopeDrawerProps> = ({
                   </div>
                   <div className="text-xs text-gray-600 mt-0.5">
                     Apply to the first {resourceType} resource only
-                  </div>
-                  <div className="text-xs text-gray-500 font-mono mt-1">
-                    {resourceType}[0]
                   </div>
                 </div>
               </label>
@@ -306,18 +301,16 @@ export const InstanceScopeDrawer: React.FC<InstanceScopeDrawerProps> = ({
 
           {/* Preview */}
           {(selectedKind !== 'filter' || selectedFilter) && (
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-              <div className="text-xs font-medium text-blue-900 mb-2">Preview:</div>
-              <div className="text-sm text-blue-900 mb-1">{summary.text}</div>
-              <pre className="text-xs font-mono text-blue-700 whitespace-pre-wrap break-all">
-                {formatFhirPathForDisplay(summary.fhirPath)}
-              </pre>
-            </div>
+            <InstanceScopePreview
+              resourceType={resourceType}
+              instanceScope={previewScope}
+              variant="card"
+            />
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200">
           <button
             onClick={onClose}
             className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"

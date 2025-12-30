@@ -4,6 +4,7 @@ namespace Pss.FhirProcessor.Playground.Api.Models;
 
 /// <summary>
 /// Rule intent from frontend - user's intention to create a rule
+/// Phase 2A-4: Added FieldPath and InstanceScope for structured rule identity
 /// </summary>
 public class RuleIntent
 {
@@ -11,7 +12,13 @@ public class RuleIntent
     public required string Type { get; set; } // REQUIRED, ARRAY_LENGTH, CODE_SYSTEM, ALLOWED_CODES
     
     [JsonPropertyName("path")]
-    public required string Path { get; set; }
+    public string? Path { get; set; } // Legacy - to be deprecated
+    
+    [JsonPropertyName("fieldPath")]
+    public string? FieldPath { get; set; }
+    
+    [JsonPropertyName("instanceScope")]
+    public object? InstanceScope { get; set; } // Serialized InstanceScope (AllInstances, FirstInstance, FilteredInstances)
     
     [JsonPropertyName("resourceType")]
     public required string ResourceType { get; set; }
@@ -67,6 +74,7 @@ public class BulkCreateRulesRequest
 
 /// <summary>
 /// Created rule (returned to frontend)
+/// Phase 2A-4: Added FieldPath and InstanceScope for structured rule identity
 /// </summary>
 public class DraftRule
 {
@@ -80,7 +88,13 @@ public class DraftRule
     public required string ResourceType { get; set; }
     
     [JsonPropertyName("path")]
-    public required string Path { get; set; }
+    public string? Path { get; set; } // Legacy - to be deprecated
+    
+    [JsonPropertyName("fieldPath")]
+    public string? FieldPath { get; set; }
+    
+    [JsonPropertyName("instanceScope")]
+    public object? InstanceScope { get; set; } // Serialized InstanceScope
     
     [JsonPropertyName("severity")]
     public string Severity { get; set; } = "error";

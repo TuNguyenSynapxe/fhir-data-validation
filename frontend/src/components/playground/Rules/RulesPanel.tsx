@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Plus, Download, FileJson, Info, CheckCircle, ChevronDown, ChevronUp, Filter, AlertTriangle, Maximize, Minimize } from 'lucide-react';
+import { message } from 'antd';
 import { RuleFilters, type RuleFilterState } from './RuleFilters';
 import { RuleNavigator } from './RuleNavigator';
 import { RuleList } from './RuleList';
@@ -74,6 +75,7 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
   const [allGroupsExpanded, setAllGroupsExpanded] = useState<boolean | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedRulesRef = useRef<string>('');
+  const lastSuccessfulRulesRef = useRef<Rule[]>([]); // Track last successfully saved rules for rollback
   const isInitialMount = useRef(true);
 
   // Auto-save: Trigger save when rules change (content only, not save state)
@@ -83,6 +85,7 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
       console.log('[RulesPanel:AutoSave] Initial mount, setting baseline');
       const rulesWithoutSaveState = rules.map(({ saveState, ...rule }) => rule);
       lastSavedRulesRef.current = JSON.stringify(rulesWithoutSaveState);
+      lastSuccessfulRulesRef.current = [...rules]; // Store initial rules for rollback
       isInitialMount.current = false;
       return;
     }
@@ -134,6 +137,9 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
         if (onSave) {
           await onSave();
           console.log('[RulesPanel:AutoSave] Backend save successful, setting to "saved"');
+          
+          // Store successful state for potential rollback
+          lastSuccessfulRulesRef.current = [...rules];
         } else {
           console.log('[RulesPanel:AutoSave] No onSave callback, simulating save');
         }
@@ -153,13 +159,25 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
         }, 2000);
       } catch (error) {
         console.error('[RulesPanel:AutoSave] Backend save failed:', error);
-        // Mark as error
-        const errorStates = new Map<string, SaveState>();
-        rules.forEach(rule => {
-          errorStates.set(rule.id, 'error');
-        });
-        setRuleSaveStates(errorStates);
+        
+        // ROLLBACK: Revert to last successfully saved state
+        console.log('[RulesPanel:AutoSave] Rolling back to last successful state');
+        onRulesChange(lastSuccessfulRulesRef.current);
+        
+        // Reset comparison baseline to match rollback
+        const rulesWithoutSaveState = lastSuccessfulRulesRef.current.map(({ saveState, ...rule }) => rule);
+        lastSavedRulesRef.current = JSON.stringify(rulesWithoutSaveState);
+        
+        // Clear error states since we rolled back
+        setRuleSaveStates(new Map());
         saveTimeoutRef.current = null;
+        
+        // Show user notification with context
+        message.error({
+          content: 'Failed to save rule. The rule was not created. Please fix the validation errors and try again.',
+          duration: 8,
+          key: 'rules-autosave-error',
+        });
       }
     }, 500);
   }, [rules, onSave]);
@@ -300,7 +318,13 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
   };
 
   const handleSaveRule = (updatedRule: Rule) => {
-    console.log('[RulesPanel:handleSaveRule] Saving rule:', { id: updatedRule.id, path: updatedRule.path, type: updatedRule.type });
+    console.log('[RulesPanel:handleSaveRule] Called with rule:', { 
+      id: updatedRule.id, 
+      path: updatedRule.path, 
+      fieldPath: updatedRule.fieldPath,
+      type: updatedRule.type,
+      instanceScope: updatedRule.instanceScope
+    });
     
     // Don't add saveState here - let the auto-save effect handle it
     const ruleWithoutSaveState = { ...updatedRule };

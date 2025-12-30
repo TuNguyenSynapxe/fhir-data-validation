@@ -5,6 +5,7 @@ using Pss.FhirProcessor.Engine.Models;
 using Pss.FhirProcessor.Playground.Api.Models;
 using Pss.FhirProcessor.Playground.Api.Services;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Pss.FhirProcessor.Playground.Api.Controllers;
 
@@ -129,10 +130,14 @@ public class ProjectsController : ControllerBase
             RuleSet? ruleSet;
             try
             {
-                ruleSet = JsonSerializer.Deserialize<RuleSet>(request.RulesJson, new JsonSerializerOptions
+                var options = new JsonSerializerOptions
                 {
-                    PropertyNameCaseInsensitive = true
-                });
+                    PropertyNameCaseInsensitive = true,
+                    // PHASE 4: Path field is now optional (replaced by InstanceScope + FieldPath)
+                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                };
+                
+                ruleSet = JsonSerializer.Deserialize<RuleSet>(request.RulesJson, options);
                 
                 if (ruleSet == null || ruleSet.Rules == null)
                 {

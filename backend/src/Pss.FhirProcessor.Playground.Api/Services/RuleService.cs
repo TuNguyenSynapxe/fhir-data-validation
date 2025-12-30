@@ -323,16 +323,51 @@ public class RuleService : IRuleService
     }
 
     /// <summary>
-    /// Check if rule already exists
+    /// Check if rule already exists (Phase 2A-4: FieldPath + InstanceScope identity)
+    /// Two rules are duplicates if they have:
+    /// - Same Type
+    /// - Same FieldPath
+    /// - Same InstanceScope (structural equality)
     /// </summary>
     private bool IsDuplicateRule(List<DraftRule> existingRules, RuleIntent intent)
     {
         var ruleType = MapIntentTypeToRuleType(intent.Type);
-        return existingRules.Any(r => r.Path == intent.Path && r.Type == ruleType);
+        
+        // Phase 2A-4: Use FieldPath + InstanceScope for duplicate detection
+        // Skip rules without FieldPath (legacy rules)
+        if (string.IsNullOrWhiteSpace(intent.FieldPath))
+            return false;
+        
+        return existingRules.Any(r => 
+            r.Type == ruleType && 
+            r.FieldPath == intent.FieldPath &&
+            InstanceScopeEquals(r.InstanceScope, intent.InstanceScope));
+    }
+    
+    /// <summary>
+    /// Compare two InstanceScope objects for structural equality (Phase 2A-4)
+    /// Uses JSON serialization for comparison since InstanceScope may be deserialized as JsonElement
+    /// </summary>
+    private bool InstanceScopeEquals(object? scope1, object? scope2)
+    {
+        // Both null = equal
+        if (scope1 == null && scope2 == null)
+            return true;
+        
+        // One null, one not = not equal
+        if (scope1 == null || scope2 == null)
+            return false;
+        
+        // Serialize both to JSON and compare strings
+        // This handles both InstanceScope objects and JsonElement deserialization
+        var json1 = JsonSerializer.Serialize(scope1);
+        var json2 = JsonSerializer.Serialize(scope2);
+        
+        return json1 == json2;
     }
 
     /// <summary>
-    /// Create a rule entity from intent
+    /// Create a rule entity from intent (Phase 2A-4: Copy FieldPath + InstanceScope)
     /// </summary>
     private DraftRule CreateRuleFromIntent(RuleIntent intent)
     {
@@ -341,7 +376,9 @@ public class RuleService : IRuleService
             Id = Guid.NewGuid().ToString(),
             Type = MapIntentTypeToRuleType(intent.Type),
             ResourceType = intent.ResourceType,
-            Path = intent.Path,
+            Path = intent.Path, // Legacy field (optional)
+            FieldPath = intent.FieldPath, // Phase 2A-4: Copy structured field
+            InstanceScope = intent.InstanceScope, // Phase 2A-4: Copy scope
             Severity = "error",
             Status = "draft",
             Message = GenerateMessage(intent),

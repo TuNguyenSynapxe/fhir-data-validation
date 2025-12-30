@@ -19,8 +19,8 @@ import { X, Check, AlertCircle, User, FileText, Activity, Building, MapPin, Brie
 import FhirPathSelectorDrawer from '../../../../rules/FhirPathSelectorDrawer';
 import { UserHintInput, RuleErrorPreview } from '../../common';
 import { InstanceScopeDrawer } from '../../common/InstanceScopeDrawer';
+import { InstanceScopePreview } from '../../common/InstanceScopePreview';
 import type { InstanceScope } from '../../common/InstanceScope.types';
-import { getInstanceScopeSummary } from '../../common/InstanceScope.utils';
 import type { Rule } from '../../../../../types/rightPanelProps';
 import {
   buildRequiredRule,
@@ -113,6 +113,8 @@ export const RequiredRuleForm: React.FC<RequiredRuleFormProps> = ({
   };
 
   const handleSave = () => {
+    console.log('[RequiredRuleForm] handleSave called', { fieldPath, instanceScope, resourceType });
+    
     // PHASE X: Only validate fieldPath (errorCode is auto-set)
     const newErrors: { instanceScope?: string; fieldPath?: string } = {};
     
@@ -121,12 +123,14 @@ export const RequiredRuleForm: React.FC<RequiredRuleFormProps> = ({
     }
 
     if (Object.keys(newErrors).length > 0) {
+      console.log('[RequiredRuleForm] Validation errors:', newErrors);
       setErrors(newErrors);
       return;
     }
 
     // PHASE X: Build rule with auto-set errorCode (FIELD_REQUIRED)
     try {
+      console.log('[RequiredRuleForm] Building rule...');
       const rule = buildRequiredRule({
         resourceType,
         instanceScope,
@@ -136,20 +140,20 @@ export const RequiredRuleForm: React.FC<RequiredRuleFormProps> = ({
         userHint: userHint || undefined,
       });
 
+      console.log('[RequiredRuleForm] Rule built successfully:', rule);
+      console.log('[RequiredRuleForm] Calling onSave...');
       // Save and close
       onSave(rule);
     } catch (error) {
       // Handle field path validation errors
+      console.error('[RequiredRuleForm] Error building rule:', error);
       const errorMessage = error instanceof Error ? error.message : 'Invalid field path';
       setErrors({ fieldPath: errorMessage });
     }
   };
 
-  const scopeSummary = getInstanceScopeSummary(resourceType, instanceScope);
-
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
+    <div className="flex flex-col h-full">{/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Create Required Field Rule</h2>
@@ -209,7 +213,13 @@ export const RequiredRuleForm: React.FC<RequiredRuleFormProps> = ({
             className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md text-sm transition-colors"
           >
             <span className="text-gray-600">Applies to:</span>
-            <span className="font-medium text-gray-900">{scopeSummary.text}</span>
+            <div className="flex-1">
+              <InstanceScopePreview
+                resourceType={resourceType}
+                instanceScope={instanceScope}
+                variant="inline"
+              />
+            </div>
             <ChevronDown size={14} className="text-gray-500" />
           </button>
           <p className="text-xs text-gray-500 mt-1">

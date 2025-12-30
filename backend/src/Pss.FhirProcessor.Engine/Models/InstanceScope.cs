@@ -16,6 +16,12 @@ public abstract record InstanceScope
     /// Validates that this InstanceScope configuration is valid.
     /// </summary>
     public abstract void Validate();
+    
+    /// <summary>
+    /// Returns a stable string key for duplicate detection.
+    /// Phase 1: Used to distinguish rules with different instance scopes.
+    /// </summary>
+    public abstract string ToStableKey();
 }
 
 /// <summary>
@@ -28,6 +34,8 @@ public record AllInstances : InstanceScope
     {
         // Always valid
     }
+    
+    public override string ToStableKey() => "all";
 }
 
 /// <summary>
@@ -40,6 +48,8 @@ public record FirstInstance : InstanceScope
     {
         // Always valid
     }
+    
+    public override string ToStableKey() => "first";
 }
 
 /// <summary>
@@ -74,4 +84,6 @@ public record FilteredInstances : InstanceScope
                 $"Filter condition must not reference Bundle structure. Got: {ConditionFhirPath}");
         }
     }
+    
+    public override string ToStableKey() => $"filter:{ConditionFhirPath}";
 }

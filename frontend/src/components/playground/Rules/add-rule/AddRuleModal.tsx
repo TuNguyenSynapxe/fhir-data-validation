@@ -47,7 +47,9 @@ export const AddRuleModal: React.FC<AddRuleModalProps> = ({
   };
 
   const handleSave = (rule: Rule) => {
+    console.log('[AddRuleModal:handleSave] Called with rule:', rule);
     onSaveRule(rule);
+    console.log('[AddRuleModal:handleSave] After onSaveRule, resetting and closing');
     setSelectedRuleType(null);
     onClose();
   };

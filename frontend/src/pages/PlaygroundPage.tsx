@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Loader2, AlertCircle, Download } from 'lucide-react';
+import { message } from 'antd';
 import dayjs from 'dayjs';
 import {
   useProject,
@@ -372,8 +373,10 @@ export default function PlaygroundPage() {
     try {
       await saveBundleMutation.mutateAsync(bundleJson);
       setOriginalBundleJson(bundleJson);
+      message.success('Bundle saved successfully');
     } catch (error) {
       console.error('Failed to save bundle:', error);
+      // Error notification already shown by httpClient interceptor
     }
   };
 
@@ -427,6 +430,12 @@ export default function PlaygroundPage() {
         setGovernanceModalOpen(true);
       } else {
         console.error('Failed to save rules:', error);
+        // Error notification already shown by httpClient interceptor
+        // Add specific context for rule save failures
+        message.error({
+          content: 'Failed to save rules. Please check rule configuration and try again.',
+          duration: 6,
+        });
       }
     }
   };
@@ -434,8 +443,10 @@ export default function PlaygroundPage() {
     try {
       await saveCodeMasterMutation.mutateAsync(codeMasterJson);
       setOriginalCodeMasterJson(codeMasterJson);
+      message.success('Code Master saved successfully');
     } catch (error) {
       console.error('Failed to save code master:', error);
+      // Error notification already shown by httpClient interceptor
     }
   };
   
@@ -444,8 +455,10 @@ export default function PlaygroundPage() {
       const settingsJson = JSON.stringify(validationSettings, null, 2);
       await saveValidationSettingsMutation.mutateAsync(settingsJson);
       setOriginalValidationSettings(validationSettings);
+      message.success('Validation settings saved successfully');
     } catch (error) {
       console.error('Failed to save validation settings:', error);
+      // Error notification already shown by httpClient interceptor
     }
   };
 
