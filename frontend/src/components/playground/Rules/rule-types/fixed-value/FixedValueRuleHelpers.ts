@@ -25,7 +25,6 @@ interface BuildFixedValueRuleParams {
   fieldPath: string;
   expectedValue: string;
   severity: 'error' | 'warning' | 'information';
-  errorCode: string;
   userHint?: string;
 }
 
@@ -40,7 +39,6 @@ export function buildFixedValueRule(params: BuildFixedValueRuleParams): Rule {
     fieldPath,
     expectedValue,
     severity,
-    errorCode,
     userHint,
   } = params;
 
@@ -57,7 +55,7 @@ export function buildFixedValueRule(params: BuildFixedValueRuleParams): Rule {
     instanceScope,
     fieldPath,
     severity,
-    errorCode,
+    // errorCode removed - backend-owned
     params: {
       value: expectedValue,
     },

@@ -55,19 +55,14 @@ public class RuleReviewEngine : IRuleReviewEngine
         var issues = new List<RuleReviewIssue>();
         
         // BLOCKED checks (cannot save/export)
-        CheckMissingErrorCode(rule, issues);
-        CheckSemanticStability(rule, issues);
+        // NOTE: ErrorCode is now backend-owned. Frontend does not supply errorCode during authoring.
+        // Removed: CheckMissingErrorCode - no longer required
+        // Removed: CheckSemanticStability - errorCode validation removed
+        // Removed: CheckPatternErrorCode, CheckAllowedValuesErrorCode, CheckCodeSystemErrorCode, etc.
         CheckEmptyOrRootPath(rule, issues);
         CheckQuestionAnswerWithoutQuestionSetId(rule, issues);
-        CheckPatternErrorCode(rule, issues);
-        CheckAllowedValuesErrorCode(rule, issues);
-        CheckArrayLengthErrorCode(rule, issues);
-        CheckFixedValueErrorCode(rule, issues);
-        CheckCodeSystemErrorCode(rule, issues);
         CheckCodeSystemParams(rule, issues);
-        CheckRequiredResourcesErrorCode(rule, issues);
         CheckRequiredResourcesConfiguration(rule, issues);
-        CheckCustomFhirPathErrorCodeIsKnown(rule, issues);
         CheckReferenceRuleNotSupported(rule, issues);
         CheckFullUrlIdMatchRuleNotSupported(rule, issues);
         CheckPatternOnNonString(rule, issues);
@@ -113,38 +108,21 @@ public class RuleReviewEngine : IRuleReviewEngine
     // ═══════════════════════════════════════════════════════════
     
     /// <summary>
-    /// BLOCKED: Missing or empty errorCode (defensive check, even if already enforced)
-    /// EXCEPTION: QuestionAnswer rule type allows missing errorCode (constraint-driven, runtime determines code)
+    /// REMOVED: CheckMissingErrorCode
+    /// ErrorCode is now backend-owned. Frontend does not supply errorCode during rule authoring.
+    /// Backend execution determines errorCode based on rule type at runtime.
     /// </summary>
-    private void CheckMissingErrorCode(RuleDefinition rule, List<RuleReviewIssue> issues)
-    {
-        // QuestionAnswer is constraint-driven: errorCode is determined at runtime based on validation outcome
-        if (rule.Type == "QuestionAnswer")
-            return;
-        
-        if (string.IsNullOrWhiteSpace(rule.ErrorCode))
-        {
-            issues.Add(new RuleReviewIssue(
-                Code: "MISSING_ERROR_CODE",
-                Severity: RuleReviewStatus.BLOCKED,
-                RuleId: rule.Id,
-                Facts: new Dictionary<string, object>
-                {
-                    ["ruleType"] = rule.Type
-                }
-            ));
-        }
-    }
     
     /// <summary>
-    /// BLOCKED: RULE_SEMANTIC_STABILITY - Prevent semantic ambiguity
-    /// Enforces that every rule declares exactly one semantic meaning via errorCode,
-    /// and that runtime data never determines semantic classification.
-    /// EXCEPTION: QuestionAnswer is exempt (constraint-driven, runtime emits appropriate errorCode)
+    /// BLOCKED: RULE_SEMANTIC_STABILITY - Prevent semantic ambiguity from runtime data
+    /// Enforces that runtime data never determines semantic classification via dynamic errorCode mapping.
+    /// 
+    /// NOTE: ErrorCode is now backend-owned. This check only validates forbidden properties.
+    /// Removed errorCode presence validation - backend determines errorCode at runtime based on rule type.
     /// </summary>
     private void CheckSemanticStability(RuleDefinition rule, List<RuleReviewIssue> issues)
     {
-        // Rule types in scope for this check (QuestionAnswer removed - see CheckQuestionAnswerProvidedErrorCode)
+        // Rule types in scope for this check
         var scopedTypes = new HashSet<string>
         {
             "Reference", "CustomFHIRPath",
@@ -154,22 +132,6 @@ public class RuleReviewEngine : IRuleReviewEngine
         // Skip if not in scope
         if (!scopedTypes.Contains(rule.Type))
             return;
-        
-        // BLOCKED: errorCode is null, empty, or whitespace (already caught by CheckMissingErrorCode, but double-check for scoped types)
-        if (string.IsNullOrWhiteSpace(rule.ErrorCode))
-        {
-            issues.Add(new RuleReviewIssue(
-                Code: "RULE_SEMANTIC_STABILITY",
-                Severity: RuleReviewStatus.BLOCKED,
-                RuleId: rule.Id,
-                Facts: new Dictionary<string, object>
-                {
-                    ["ruleType"] = rule.Type,
-                    ["reason"] = "errorCode is required for semantic stability"
-                }
-            ));
-            return;
-        }
         
         // BLOCKED: Forbidden properties that imply runtime semantic selection
         var forbiddenKeys = new[] { "errorCodeMap", "onFail", "conditionalError", "errorSwitch" };
@@ -282,66 +244,14 @@ public class RuleReviewEngine : IRuleReviewEngine
     }
     
     /// <summary>
-    /// BLOCKED: Pattern/Regex rule with incorrect errorCode (must be PATTERN_MISMATCH)
+    /// REMOVED: CheckPatternErrorCode
+    /// ErrorCode is backend-owned. Backend determines PATTERN_MISMATCH at runtime.
     /// </summary>
-    private void CheckPatternErrorCode(RuleDefinition rule, List<RuleReviewIssue> issues)
-    {
-        if (rule.Type != "Regex" && rule.Type != "Pattern")
-            return;
-        
-        if (!string.IsNullOrWhiteSpace(rule.ErrorCode) && rule.ErrorCode != "PATTERN_MISMATCH")
-        {
-            issues.Add(new RuleReviewIssue(
-                Code: "PATTERN_ERROR_CODE_MISMATCH",
-                Severity: RuleReviewStatus.BLOCKED,
-                RuleId: rule.Id,
-                Facts: new Dictionary<string, object>
-                {
-                    ["ruleType"] = rule.Type,
-                    ["currentErrorCode"] = rule.ErrorCode,
-                    ["requiredErrorCode"] = "PATTERN_MISMATCH",
-                    ["reason"] = "Pattern rules must use errorCode PATTERN_MISMATCH"
-                }
-            ));
-        }
-    }
     
     /// <summary>
-    /// Enforces that AllowedValues rules use errorCode = "VALUE_NOT_ALLOWED".
-    /// 
-    /// GOVERNANCE CONTRACT:
-    /// - Blocks AllowedValues rules with errorCode != "VALUE_NOT_ALLOWED"
-    /// - Returns BLOCKED status with ALLOWEDVALUES_ERROR_CODE_MISMATCH code
-    /// 
-    /// UX CONTRACT (Future Implementation):
-    /// - Frontend should prevent user from setting invalid errorCode
-    /// - Rule authoring UI should hide errorCode dropdown for AllowedValues
-    /// - Display static "Error Code: VALUE_NOT_ALLOWED" label
-    /// - If governance error occurs, show clear message:
-    ///   "AllowedValues rules must use VALUE_NOT_ALLOWED error code. 
-    ///    Current: {currentErrorCode}. Please remove or change errorCode."
+    /// REMOVED: CheckAllowedValuesErrorCode
+    /// ErrorCode is backend-owned. Backend determines VALUE_NOT_ALLOWED at runtime.
     /// </summary>
-    private void CheckAllowedValuesErrorCode(RuleDefinition rule, List<RuleReviewIssue> issues)
-    {
-        if (rule.Type != "AllowedValues")
-            return;
-        
-        if (!string.IsNullOrWhiteSpace(rule.ErrorCode) && rule.ErrorCode != "VALUE_NOT_ALLOWED")
-        {
-            issues.Add(new RuleReviewIssue(
-                Code: "ALLOWEDVALUES_ERROR_CODE_MISMATCH",
-                Severity: RuleReviewStatus.BLOCKED,
-                RuleId: rule.Id,
-                Facts: new Dictionary<string, object>
-                {
-                    ["ruleType"] = rule.Type,
-                    ["currentErrorCode"] = rule.ErrorCode,
-                    ["requiredErrorCode"] = "VALUE_NOT_ALLOWED",
-                    ["reason"] = "AllowedValues rules must use errorCode VALUE_NOT_ALLOWED"
-                }
-            ));
-        }
-    }
     
     /// <summary>
     /// Enforces that ArrayLength rules use errorCode = "ARRAY_LENGTH_VIOLATION".
@@ -357,67 +267,15 @@ public class RuleReviewEngine : IRuleReviewEngine
     /// - If governance error occurs, show clear message:
     ///   "ArrayLength rules must use ARRAY_LENGTH_VIOLATION error code. 
     ///    Current: {currentErrorCode}. Please remove or change errorCode."
+    /// <summary>
+    /// REMOVED: CheckArrayLengthErrorCode
+    /// ErrorCode is backend-owned. Backend determines ARRAY_LENGTH_VIOLATION at runtime.
     /// </summary>
-    private void CheckArrayLengthErrorCode(RuleDefinition rule, List<RuleReviewIssue> issues)
-    {
-        if (rule.Type != "ArrayLength")
-            return;
-        
-        if (!string.IsNullOrWhiteSpace(rule.ErrorCode) && rule.ErrorCode != "ARRAY_LENGTH_VIOLATION")
-        {
-            issues.Add(new RuleReviewIssue(
-                Code: "ARRAYLENGTH_ERROR_CODE_MISMATCH",
-                Severity: RuleReviewStatus.BLOCKED,
-                RuleId: rule.Id,
-                Facts: new Dictionary<string, object>
-                {
-                    ["ruleType"] = rule.Type,
-                    ["currentErrorCode"] = rule.ErrorCode,
-                    ["requiredErrorCode"] = "ARRAY_LENGTH_VIOLATION",
-                    ["reason"] = "ArrayLength rules must use errorCode ARRAY_LENGTH_VIOLATION"
-                }
-            ));
-        }
-    }
     
     /// <summary>
-    /// Enforces that CodeSystem rules use errorCode = "CODESYSTEM_VIOLATION".
-    /// 
-    /// GOVERNANCE CONTRACT:
-    /// - Blocks CodeSystem rules with errorCode != "CODESYSTEM_VIOLATION"
-    /// - Returns BLOCKED status with CODESYSTEM_ERROR_CODE_MISMATCH code
-    /// 
-    /// UX CONTRACT (Implementation Required):
-    /// - Frontend should treat CodeSystem errorCode as read-only
-    /// - Rule authoring UI should display static label: "Error Code: CODESYSTEM_VIOLATION (fixed)"
-    /// - ErrorCodeSelector should not show dropdown for CodeSystem rules
-    /// - If governance error occurs, show clear message:
-    ///   "CodeSystem rules have a fixed error code: CODESYSTEM_VIOLATION. 
-    ///    Current: {currentErrorCode}. Please update the rule."
+    /// REMOVED: CheckCodeSystemErrorCode
+    /// ErrorCode is backend-owned. Backend determines CODESYSTEM_VIOLATION at runtime.
     /// </summary>
-    private void CheckCodeSystemErrorCode(RuleDefinition rule, List<RuleReviewIssue> issues)
-    {
-        if (rule.Type != "CodeSystem")
-            return;
-        
-        if (string.IsNullOrWhiteSpace(rule.ErrorCode) || rule.ErrorCode != "CODESYSTEM_VIOLATION")
-        {
-            issues.Add(new RuleReviewIssue(
-                Code: "CODESYSTEM_ERROR_CODE_MISMATCH",
-                Severity: RuleReviewStatus.BLOCKED,
-                RuleId: rule.Id,
-                Facts: new Dictionary<string, object>
-                {
-                    ["ruleType"] = rule.Type,
-                    ["currentErrorCode"] = rule.ErrorCode ?? "(missing)",
-                    ["requiredErrorCode"] = "CODESYSTEM_VIOLATION",
-                    ["reason"] = "CodeSystem rules have a fixed semantic errorCode and must use CODESYSTEM_VIOLATION.",
-                    ["explanation"] = "CodeSystem validation has one fixed meaning: system or code validation failed. " +
-                                    "Use Details['violation'] to distinguish 'system' vs 'code' failure, not custom errorCodes."
-                }
-            ));
-        }
-    }
     
     /// <summary>
     /// BLOCKED: CodeSystem rules must have codeSetId and system params (Tier-1 Validation).
@@ -525,32 +383,10 @@ public class RuleReviewEngine : IRuleReviewEngine
     /// - Allowing custom errorCodes creates semantic drift
     /// - Mode and count details belong in Details, not errorCode
     /// </summary>
-    private void CheckRequiredResourcesErrorCode(RuleDefinition rule, List<RuleReviewIssue> issues)
-    {
-        if (rule.Type != "RequiredResources" && rule.Type != "Resource")
-            return;
-        
-        // errorCode must be absent (will default to RESOURCE_REQUIREMENT_VIOLATION at runtime) or explicitly RESOURCE_REQUIREMENT_VIOLATION
-        if (!string.IsNullOrWhiteSpace(rule.ErrorCode) && 
-            rule.ErrorCode != "RESOURCE_REQUIREMENT_VIOLATION" && 
-            rule.ErrorCode != "REQUIRED_RESOURCE_MISSING") // Legacy support
-        {
-            issues.Add(new RuleReviewIssue(
-                Code: "REQUIRED_RESOURCES_ERROR_CODE_NOT_ALLOWED",
-                Severity: RuleReviewStatus.BLOCKED,
-                RuleId: rule.Id,
-                Facts: new Dictionary<string, object>
-                {
-                    ["ruleType"] = rule.Type,
-                    ["currentErrorCode"] = rule.ErrorCode,
-                    ["requiredErrorCode"] = "RESOURCE_REQUIREMENT_VIOLATION",
-                    ["reason"] = "Resource rules have a fixed semantic errorCode and must use RESOURCE_REQUIREMENT_VIOLATION.",
-                    ["explanation"] = "Resource validation has one fixed meaning: bundle resource requirements violated (min/max cardinality or undeclared resource). " +
-                                    "Use Details['violations'] to provide specific violation information, not custom errorCodes."
-                }
-            ));
-        }
-    }
+    /// <summary>
+    /// REMOVED: CheckRequiredResourcesErrorCode
+    /// ErrorCode is backend-owned. Backend determines RESOURCE_REQUIREMENT_VIOLATION at runtime.
+    /// </summary>
     
     /// <summary>
     /// BLOCKED: RequiredResources rules must have valid configuration.
@@ -776,73 +612,15 @@ public class RuleReviewEngine : IRuleReviewEngine
     /// - User selects appropriate errorCode based on expression semantics
     /// - Governance ensures no typos or invented codes
     /// </summary>
-    private void CheckCustomFhirPathErrorCodeIsKnown(RuleDefinition rule, List<RuleReviewIssue> issues)
-    {
-        if (!rule.Type.Equals("CustomFHIRPath", StringComparison.OrdinalIgnoreCase))
-            return;
-        
-        // BLOCKED: Missing or empty errorCode
-        if (string.IsNullOrWhiteSpace(rule.ErrorCode))
-        {
-            issues.Add(new RuleReviewIssue(
-                Code: "CUSTOMFHIRPATH_ERROR_CODE_MISSING",
-                Severity: RuleReviewStatus.BLOCKED,
-                RuleId: rule.Id,
-                Facts: new Dictionary<string, object>
-                {
-                    ["ruleType"] = rule.Type,
-                    ["reason"] = "CustomFHIRPath rules require explicit errorCode"
-                }
-            ));
-            return;
-        }
-        
-        // BLOCKED: Unknown errorCode (not in ValidationErrorCodes)
-        if (!KnownErrorCodes.Value.Contains(rule.ErrorCode))
-        {
-            issues.Add(new RuleReviewIssue(
-                Code: "CUSTOMFHIRPATH_ERROR_CODE_UNKNOWN",
-                Severity: RuleReviewStatus.BLOCKED,
-                RuleId: rule.Id,
-                Facts: new Dictionary<string, object>
-                {
-                    ["ruleType"] = rule.Type,
-                    ["currentErrorCode"] = rule.ErrorCode,
-                    ["reason"] = "errorCode must be a known ValidationErrorCode constant",
-                    ["hint"] = "Check Pss.FhirProcessor.Engine.Validation.ValidationErrorCodes for valid codes"
-                }
-            ));
-        }
-    }
+    /// <summary>
+    /// REMOVED: CheckCustomFhirPathErrorCodeIsKnown
+    /// ErrorCode is backend-owned. Backend determines CUSTOMFHIRPATH_CONDITION_FAILED at runtime.
+    /// </summary>
     
     /// <summary>
-    /// Cached set of all known errorCode constants from ValidationErrorCodes.
-    /// Built via reflection once and reused.
+    /// REMOVED: KnownErrorCodes cache (no longer used)
+    /// ErrorCode is backend-owned. Frontend does not need to validate against known error codes.
     /// </summary>
-    private static readonly Lazy<HashSet<string>> KnownErrorCodes = new(() =>
-    {
-        var errorCodesType = typeof(Pss.FhirProcessor.Engine.Validation.ValidationErrorCodes);
-        var fields = errorCodesType.GetFields(
-            System.Reflection.BindingFlags.Public | 
-            System.Reflection.BindingFlags.Static | 
-            System.Reflection.BindingFlags.FlattenHierarchy
-        );
-        
-        var codes = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var field in fields)
-        {
-            if (field.IsLiteral && !field.IsInitOnly && field.FieldType == typeof(string))
-            {
-                var value = field.GetValue(null) as string;
-                if (!string.IsNullOrWhiteSpace(value))
-                {
-                    codes.Add(value);
-                }
-            }
-        }
-        
-        return codes;
-    });
     
     /// <summary>
     /// BLOCKED: Reference rules are not supported as user-defined business rules.
@@ -957,29 +735,10 @@ public class RuleReviewEngine : IRuleReviewEngine
     /// - Custom errorCodes create semantic drift and UI confusion
     /// - Granularity belongs in Details (expected/actual), not ErrorCode
     /// </summary>
-    private void CheckFixedValueErrorCode(RuleDefinition rule, List<RuleReviewIssue> issues)
-    {
-        if (rule.Type != "FixedValue")
-            return;
-        
-        if (string.IsNullOrWhiteSpace(rule.ErrorCode) || rule.ErrorCode != "FIXED_VALUE_MISMATCH")
-        {
-            issues.Add(new RuleReviewIssue(
-                Code: "FIXEDVALUE_ERROR_CODE_MISMATCH",
-                Severity: RuleReviewStatus.BLOCKED,
-                RuleId: rule.Id,
-                Facts: new Dictionary<string, object>
-                {
-                    ["ruleType"] = "FixedValue",
-                    ["currentErrorCode"] = rule.ErrorCode ?? "(missing)",
-                    ["requiredErrorCode"] = "FIXED_VALUE_MISMATCH",
-                    ["reason"] = "FixedValue rules have a fixed error meaning and must use FIXED_VALUE_MISMATCH.",
-                    ["explanation"] = "The errorCode field is semantically fixed for FixedValue rules. " +
-                                    "Use the Details payload (expected/actual) for granular context, not custom errorCodes."
-                }
-            ));
-        }
-    }
+    /// <summary>
+    /// REMOVED: CheckFixedValueErrorCode
+    /// ErrorCode is backend-owned. Backend determines FIXED_VALUE_MISMATCH at runtime.
+    /// </summary>
     
     /// <summary>
     /// REMOVED: CheckFixedValueWithoutConstraints (Phase 2A: Path-free governance)

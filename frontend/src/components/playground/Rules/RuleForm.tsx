@@ -159,7 +159,6 @@ export const RuleForm: React.FC<RuleFormProps> = ({
 
   // CustomFHIRPath
   const [customExpression, setCustomExpression] = useState<string>('');
-  const [customErrorCode, setCustomErrorCode] = useState<string>('');
 
   // Resource (new unified bundle rule)
   const [requirements, setRequirements] = useState<ResourceRequirement[]>([]);
@@ -258,8 +257,6 @@ export const RuleForm: React.FC<RuleFormProps> = ({
       if (ruleType === 'CustomFHIRPath' && initialRule) {
         const parsed = parseCustomFHIRPathRule(initialRule as Rule);
         setCustomExpression(parsed.expression);
-        setCustomErrorCode(parsed.errorCode);
-        setGovernedErrorCode(parsed.errorCode);
       }
 
       if (ruleType === 'Resource' && initialRule) {
@@ -365,7 +362,6 @@ export const RuleForm: React.FC<RuleFormProps> = ({
 
     if (ruleType === 'CustomFHIRPath') {
       if (!customExpression) newErrors.expression = 'FHIRPath expression is required';
-      if (!customErrorCode) newErrors.errorCode = 'Error code is required';
     }
 
     if (ruleType === 'Terminology') {
@@ -432,7 +428,6 @@ export const RuleForm: React.FC<RuleFormProps> = ({
           instanceScope,
           fieldPath: requiredParams.path,
           severity,
-          errorCode: computedErrorCode,
           userHint: userHint || undefined,
         });
         console.log('[RuleForm:handleSave] Rule built:', rule);
@@ -444,7 +439,6 @@ export const RuleForm: React.FC<RuleFormProps> = ({
           resourceType,
           instanceScope,
           severity,
-          errorCode: computedErrorCode,
           userHint: userHint || undefined,
           params: requiredParams,
           origin: 'manual',
@@ -461,7 +455,6 @@ export const RuleForm: React.FC<RuleFormProps> = ({
         negate,
         caseSensitive,
         severity,
-        errorCode: computedErrorCode,
         userHint: userHint || undefined,
       });
     } else if (ruleType === 'QuestionAnswer') {
@@ -482,7 +475,6 @@ export const RuleForm: React.FC<RuleFormProps> = ({
         fieldPath,
         expectedValue,
         severity,
-        errorCode: computedErrorCode,
         userHint: userHint || undefined,
       });
     } else if (ruleType === 'AllowedValues') {
@@ -492,7 +484,6 @@ export const RuleForm: React.FC<RuleFormProps> = ({
         fieldPath,
         allowedValues,
         severity,
-        errorCode: computedErrorCode,
         userHint: userHint || undefined,
       });
     } else if (ruleType === 'ArrayLength') {
@@ -503,7 +494,6 @@ export const RuleForm: React.FC<RuleFormProps> = ({
         min: minLength,
         max: maxLength,
         severity,
-        errorCode: computedErrorCode,
         userHint: userHint || undefined,
       });
     } else if (ruleType === 'CustomFHIRPath') {
@@ -511,7 +501,6 @@ export const RuleForm: React.FC<RuleFormProps> = ({
         resourceType,
         instanceScope,
         expression: customExpression,
-        errorCode: customErrorCode,
         severity,
         userHint: userHint || undefined,
       });
@@ -739,19 +728,12 @@ export const RuleForm: React.FC<RuleFormProps> = ({
         {ruleType === 'CustomFHIRPath' && (
           <CustomFHIRPathConfigSection
             expression={customExpression}
-            errorCode={customErrorCode}
             onExpressionChange={(expr) => {
               setCustomExpression(expr);
               setErrors({ ...errors, expression: undefined });
             }}
-            onErrorCodeChange={(code) => {
-              setCustomErrorCode(code);
-              setGovernedErrorCode(code);
-              setErrors({ ...errors, errorCode: undefined });
-            }}
             errors={{
               expression: errors.expression,
-              errorCode: errors.errorCode,
             }}
             resourceType={resourceType}
           />

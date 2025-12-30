@@ -333,7 +333,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                             Severity = rule.Severity,
                             ResourceType = resourceType ?? rule.ResourceType,
                             FieldPath = rule.FieldPath,
-                            ErrorCode = rule.ErrorCode ?? ValidationErrorCodes.FIELD_REQUIRED,
+                            ErrorCode = ValidationErrorCodes.FIELD_REQUIRED,
                             Details = new Dictionary<string, object>
                             {
                                 ["source"] = "ProjectRule",
@@ -487,7 +487,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 Severity = rule.Severity,
                 ResourceType = resourceType ?? rule.ResourceType,
                 FieldPath = rule.FieldPath,
-                ErrorCode = rule.ErrorCode ?? "ARRAY_LENGTH_VIOLATION",
+                ErrorCode = "ARRAY_LENGTH_VIOLATION",
                 Details = details,
                 EntryIndex = entryIndex,
                 ResourceId = resourceId ?? "unknown"
@@ -620,7 +620,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 ["isAllEmpty"] = isAllEmpty
             };
             
-            details["explanation"] = GetExplanation(rule.Type, rule.ErrorCode ?? ValidationErrorCodes.FIELD_REQUIRED, details);
+            details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.FIELD_REQUIRED, details);
             
             errors.Add(new RuleValidationError
             {
@@ -629,7 +629,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 Severity = rule.Severity,
                 ResourceType = rule.ResourceType,
                 FieldPath = rule.FieldPath,
-                ErrorCode = rule.ErrorCode ?? ValidationErrorCodes.FIELD_REQUIRED,
+                ErrorCode = ValidationErrorCodes.FIELD_REQUIRED,
                 Details = details,
                 EntryIndex = entryIndex,
                 ResourceId = resource.Id
@@ -1283,44 +1283,20 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
     /// <summary>
     /// Validates CustomFHIRPath rules.
     /// 
-    /// GOVERNANCE CONTRACT:
-    /// - errorCode is REQUIRED and user-defined (no default fallback)
-    /// - Runtime never invents or chooses errorCode
-    /// - Governance enforces errorCode exists and is a known ValidationErrorCode
-    /// - CustomFHIRPath emits advisory WARNING due to semantic complexity
+    /// ERROR CODE CONTRACT (BACKEND-OWNED):
+    /// - Always emits ValidationErrorCodes.CUSTOMFHIRPATH_CONDITION_FAILED
+    /// - rule.ErrorCode is NOT read during execution
+    /// - Backend owns semantic error code determination
     /// 
-    /// UX CONTRACT:
-    /// - Frontend must provide errorCode selector for CustomFHIRPath
-    /// - Only known errorCodes from ValidationErrorCodes can be used
-    /// - User is responsible for selecting appropriate semantic errorCode
+    /// EXECUTION CONTRACT:
+    /// - Evaluates FHIRPath expression in FieldPath
+    /// - Expression must return boolean true for validation to pass
+    /// - InstanceScope determines which resources to evaluate (handled by outer loop)
+    /// - FieldPath contains the FHIRPath expression relative to resource root
     /// </summary>
     private List<RuleValidationError> ValidateCustomFhirPath(Resource resource, RuleDefinition rule, int entryIndex)
     {
         var errors = new List<RuleValidationError>();
-        
-        // Defensive guard: errorCode must be present (governance + ParseRuleSet should prevent this)
-        if (string.IsNullOrWhiteSpace(rule.ErrorCode))
-        {
-            errors.Add(new RuleValidationError
-            {
-                RuleId = rule.Id,
-                RuleType = rule.Type,
-                Severity = "error",
-                ResourceType = rule.ResourceType,
-                FieldPath = rule.FieldPath,
-                ErrorCode = "RULE_DEFINITION_ERROR",
-                Details = new Dictionary<string, object>
-                {
-                    ["source"] = "ProjectRule",
-                    ["ruleType"] = rule.Type,
-                    ["ruleId"] = rule.Id,
-                    ["reason"] = "CustomFHIRPath rules require explicit errorCode"
-                },
-                EntryIndex = entryIndex,
-                ResourceId = resource.Id
-            });
-            return errors;
-        }
         
         // Phase 1: Use FieldPath for evaluation
         // InstanceScope determines which resources (handled by outer loop)
@@ -1353,7 +1329,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                     ["evaluationResult"] = "false"
                 };
                 
-                details["explanation"] = GetExplanation(rule.Type, rule.ErrorCode!, details);
+                details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.CUSTOMFHIRPATH_CONDITION_FAILED, details);
                 
                 errors.Add(new RuleValidationError
                 {
@@ -1362,7 +1338,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                     Severity = rule.Severity,
                     ResourceType = rule.ResourceType,
                     FieldPath = rule.FieldPath,
-                    ErrorCode = rule.ErrorCode!,
+                    ErrorCode = ValidationErrorCodes.CUSTOMFHIRPATH_CONDITION_FAILED,
                     Details = details,
                     EntryIndex = entryIndex,
                     ResourceId = resource.Id

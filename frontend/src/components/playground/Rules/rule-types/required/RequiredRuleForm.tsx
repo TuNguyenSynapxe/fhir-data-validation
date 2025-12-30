@@ -76,8 +76,7 @@ export const RequiredRuleForm: React.FC<RequiredRuleFormProps> = ({
   const [fieldPath, setFieldPath] = useState<string>('');
   const [severity, setSeverity] = useState<'error' | 'warning' | 'information'>('error');
   
-  // PHASE X: errorCode is AUTO-SET to FIELD_REQUIRED (not user-selectable)
-  const errorCode = 'FIELD_REQUIRED';
+  // errorCode is backend-owned (not sent by frontend)
   const [userHint, setUserHint] = useState<string>('');
   
   // PHASE X: Error preview is collapsed by default
@@ -128,7 +127,7 @@ export const RequiredRuleForm: React.FC<RequiredRuleFormProps> = ({
       return;
     }
 
-    // PHASE X: Build rule with auto-set errorCode (FIELD_REQUIRED)
+    // Build rule with backend-owned errorCode
     try {
       console.log('[RequiredRuleForm] Building rule...');
       const rule = buildRequiredRule({
@@ -136,7 +135,6 @@ export const RequiredRuleForm: React.FC<RequiredRuleFormProps> = ({
         instanceScope,
         fieldPath,
         severity,
-        errorCode, // Auto-set to 'FIELD_REQUIRED'
         userHint: userHint || undefined,
       });
 
@@ -330,7 +328,7 @@ export const RequiredRuleForm: React.FC<RequiredRuleFormProps> = ({
           {showPreview && fieldPath && (
             <div className="mt-3">
               <RuleErrorPreview
-                errorCode={errorCode}
+                errorCode="FIELD_REQUIRED"
                 userHint={userHint}
                 severity={severity}
                 resourceType={resourceType}

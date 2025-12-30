@@ -561,20 +561,9 @@ public class ValidationPipeline : IValidationPipeline
                 PropertyNameCaseInsensitive = true
             });
             
-            // PHASE 4: Enforce ErrorCode presence on all rules
-            if (ruleSet?.Rules != null)
-            {
-                foreach (var rule in ruleSet.Rules)
-                {
-                    if (string.IsNullOrWhiteSpace(rule.ErrorCode))
-                    {
-                        throw new InvalidOperationException(
-                            $"Rule '{rule.Id}' is invalid: errorCode is required. " +
-                            "Legacy message-based rules are no longer supported."
-                        );
-                    }
-                }
-            }
+            // REMOVED: ErrorCode enforcement (backend-owned, not authoring requirement)
+            // Rules may now deserialize without errorCode field
+            // Backend execution determines appropriate errorCode at runtime
             
             return ruleSet;
         }

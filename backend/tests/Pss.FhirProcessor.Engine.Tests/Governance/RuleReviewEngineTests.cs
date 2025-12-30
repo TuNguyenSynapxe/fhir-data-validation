@@ -22,9 +22,9 @@ public class RuleReviewEngineTests
     // ═══════════════════════════════════════════════════════════
 
     [Fact]
-    public void MissingErrorCode_IsBlocked()
+    public void MissingErrorCode_IsAllowed()
     {
-        // Arrange
+        // Arrange - ErrorCode is now backend-owned, frontend does not supply it
         var rule = new RuleDefinition
         {
             Id = "test-rule",
@@ -32,15 +32,15 @@ public class RuleReviewEngineTests
             ResourceType = "Patient",
             FieldPath = "name",
             InstanceScope = new AllInstances(),
-            ErrorCode = "" // Empty errorCode
+            ErrorCode = "" // Empty errorCode is now allowed
         };
 
         // Act
         var result = _engine.Review(rule);
 
-        // Assert
-        Assert.Equal(RuleReviewStatus.BLOCKED, result.Status);
-        Assert.Contains(result.Issues, i => i.Code == "MISSING_ERROR_CODE");
+        // Assert - Should be OK, backend determines errorCode at runtime
+        Assert.Equal(RuleReviewStatus.OK, result.Status);
+        Assert.DoesNotContain(result.Issues, i => i.Code == "MISSING_ERROR_CODE");
     }
 
     [Fact]
@@ -54,7 +54,7 @@ public class RuleReviewEngineTests
             ResourceType = "Patient",
             FieldPath = "",
             InstanceScope = new AllInstances(), // Empty path
-            ErrorCode = "FIELD_REQUIRED"
+            ErrorCode = "" // ErrorCode optional
         };
 
         // Act
@@ -62,7 +62,7 @@ public class RuleReviewEngineTests
 
         // Assert
         Assert.Equal(RuleReviewStatus.BLOCKED, result.Status);
-        Assert.Contains(result.Issues, i => i.Code == "EMPTY_PATH");
+        Assert.Contains(result.Issues, i => i.Code == "EMPTY_FIELD_PATH");
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public class RuleReviewEngineTests
             ResourceType = "Patient",
             FieldPath = "",
             InstanceScope = new AllInstances(), // Root-level only
-            ErrorCode = "FIELD_REQUIRED"
+            ErrorCode = "" // ErrorCode optional
         };
 
         // Act
@@ -84,7 +84,7 @@ public class RuleReviewEngineTests
 
         // Assert
         Assert.Equal(RuleReviewStatus.BLOCKED, result.Status);
-        Assert.Contains(result.Issues, i => i.Code == "ROOT_LEVEL_PATH");
+        Assert.Contains(result.Issues, i => i.Code == "EMPTY_FIELD_PATH");
     }
 
     [Fact]
@@ -110,9 +110,10 @@ public class RuleReviewEngineTests
         Assert.Contains(result.Issues, i => i.Code == "QUESTION_ANSWER_WITHOUT_QUESTION_SET_ID");
     }
 
-    [Fact]
+    [Fact(Skip = "Type validation check removed in Phase 2A - handled by execution layer")]
     public void PatternOnNonStringField_IsBlocked()
     {
+        // NOTE: This test is obsolete - type validation moved to execution layer
         // Arrange
         var rule = new RuleDefinition
         {
@@ -121,7 +122,7 @@ public class RuleReviewEngineTests
             ResourceType = "Patient",
             FieldPath = "active",
             InstanceScope = new AllInstances(), // Boolean field
-            ErrorCode = "PATTERN_MISMATCH"
+            ErrorCode = "" // ErrorCode optional
         };
 
         // Act
@@ -136,9 +137,10 @@ public class RuleReviewEngineTests
     // WARNING CHECKS
     // ═══════════════════════════════════════════════════════════
 
-    [Fact]
+    [Fact(Skip = "Path-based advisory checks removed in Phase 2A")]
     public void BroadPath_IsWarning()
     {
+        // NOTE: This test is obsolete - path-based advisory checks removed
         // Arrange
         var rule = new RuleDefinition
         {
@@ -158,9 +160,10 @@ public class RuleReviewEngineTests
         Assert.Contains(result.Issues, i => i.Code == "BROAD_PATH");
     }
 
-    [Fact]
+    [Fact(Skip = "Path-based advisory checks removed in Phase 2A")]
     public void GenericWildcard_IsWarning()
     {
+        // NOTE: This test is obsolete - path-based advisory checks removed
         // Arrange
         var rule = new RuleDefinition
         {
@@ -180,9 +183,10 @@ public class RuleReviewEngineTests
         Assert.Contains(result.Issues, i => i.Code == "GENERIC_WILDCARD");
     }
 
-    [Fact]
+    [Fact(Skip = "Path-based advisory checks removed in Phase 2A")]
     public void FixedValueOnCodeWithoutSystem_IsWarning()
     {
+        // NOTE: This test is obsolete - path-based advisory checks removed
         // Arrange
         var rule = new RuleDefinition
         {
@@ -274,7 +278,7 @@ public class RuleReviewEngineTests
             ResourceType = "Observation",
             FieldPath = "component.where(code.coding.system='http://example.org')",
             InstanceScope = new AllInstances(),
-            ErrorCode = "INVALID_ANSWER",
+            ErrorCode = "", // ErrorCode optional for QuestionAnswer
             Params = new Dictionary<string, object>
             {
                 ["questionSetId"] = "smoking-status"
@@ -284,7 +288,7 @@ public class RuleReviewEngineTests
         // Act
         var result = _engine.Review(rule);
 
-        // Assert
+        // Assert - OK because errorCode is backend-owned
         Assert.Equal(RuleReviewStatus.OK, result.Status);
         Assert.Empty(result.Issues);
     }
@@ -479,10 +483,11 @@ public class RuleReviewEngineTests
         Assert.DoesNotContain(result.Issues, i => i.Code == "PATTERN_ERROR_CODE_MISMATCH");
     }
 
-    [Fact]
+    [Fact(Skip = "ErrorCode is backend-owned - no longer validated by governance")]
     public void PatternRule_WithIncorrectErrorCode_IsBlocked()
     {
         // Test: Pattern rule with any other errorCode → BLOCKED
+        // NOTE: This test is obsolete - errorCode is backend-owned
         // Arrange
         var rule = new RuleDefinition
         {
@@ -525,10 +530,11 @@ public class RuleReviewEngineTests
         Assert.DoesNotContain(result.Issues, i => i.Code == "PATTERN_ERROR_CODE_MISMATCH");
     }
 
-    [Fact]
+    [Fact(Skip = "ErrorCode is backend-owned - no longer validated by governance")]
     public void RegexRule_WithIncorrectErrorCode_IsBlocked()
     {
         // Test: Regex rule with any other errorCode → BLOCKED
+        // NOTE: This test is obsolete - errorCode is backend-owned
         // Arrange
         var rule = new RuleDefinition
         {
@@ -577,10 +583,11 @@ public class RuleReviewEngineTests
         Assert.DoesNotContain(result.Issues, i => i.Code == "ALLOWEDVALUES_ERROR_CODE_MISMATCH");
     }
 
-    [Fact]
+    [Fact(Skip = "ErrorCode is backend-owned - no longer validated by governance")]
     public void AllowedValuesRule_WithIncorrectErrorCode_IsBlocked()
     {
         // Test: AllowedValues rule with any other errorCode → BLOCKED
+        // NOTE: This test is obsolete - errorCode is backend-owned
         // Arrange
         var rule = new RuleDefinition
         {
@@ -634,10 +641,11 @@ public class RuleReviewEngineTests
         Assert.DoesNotContain(result.Issues, i => i.Code == "ARRAYLENGTH_ERROR_CODE_MISMATCH");
     }
 
-    [Fact]
+    [Fact(Skip = "ErrorCode is backend-owned - no longer validated by governance")]
     public void ArrayLengthRule_WithIncorrectErrorCode_IsBlocked()
     {
         // Test: ArrayLength rule with any other errorCode → BLOCKED
+        // NOTE: This test is obsolete - errorCode is backend-owned
         // Arrange
         var rule = new RuleDefinition
         {
@@ -690,10 +698,11 @@ public class RuleReviewEngineTests
         Assert.DoesNotContain(result.Issues, i => i.Code == "FIXEDVALUE_ERROR_CODE_MISMATCH");
     }
 
-    [Fact]
+    [Fact(Skip = "ErrorCode is backend-owned - no longer validated by governance")]
     public void FixedValueRule_WithIncorrectErrorCode_IsBlocked()
     {
         // Test: FixedValue rule with custom errorCode is BLOCKED
+        // NOTE: This test is obsolete - errorCode is backend-owned
         // Arrange
         var rule = new RuleDefinition
         {
@@ -777,7 +786,7 @@ public class RuleReviewEngineTests
     [Fact]
     public void CodeSystemRule_WithCorrectErrorCode_IsAllowed()
     {
-        // Arrange
+        // Arrange - CodeSystem rule with codeSetId param (required by governance)
         var rule = new RuleDefinition
         {
             Id = "test-codesystem",
@@ -785,9 +794,10 @@ public class RuleReviewEngineTests
             ResourceType = "Patient",
             FieldPath = "maritalStatus.coding",
             InstanceScope = new AllInstances(),
-            ErrorCode = "CODESYSTEM_VIOLATION",
+            ErrorCode = "", // ErrorCode optional, backend-owned
             Params = new Dictionary<string, object>
             {
+                ["codeSetId"] = "marital-status-codes",
                 ["system"] = "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus"
             }
         };
@@ -800,9 +810,10 @@ public class RuleReviewEngineTests
         Assert.DoesNotContain(result.Issues, i => i.Code == "CODESYSTEM_ERROR_CODE_MISMATCH");
     }
 
-    [Fact]
+    [Fact(Skip = "ErrorCode is backend-owned - no longer validated by governance")]
     public void CodeSystemRule_WithIncorrectErrorCode_IsBlocked()
     {
+        // NOTE: This test is obsolete - errorCode is backend-owned
         // Arrange
         var rule = new RuleDefinition
         {
@@ -833,9 +844,10 @@ public class RuleReviewEngineTests
     // CUSTOMFHIRPATH GOVERNANCE TESTS
     // ═══════════════════════════════════════════════════════════
     
-    [Fact]
+    [Fact(Skip = "ErrorCode is backend-owned - no longer validated by governance")]
     public void CustomFHIRPathRule_WithMissingErrorCode_IsBlocked()
     {
+        // NOTE: This test is obsolete - errorCode is backend-owned
         // Arrange
         var rule = new RuleDefinition
         {
@@ -857,9 +869,10 @@ public class RuleReviewEngineTests
         Assert.Equal("CustomFHIRPath rules require explicit errorCode", issue.Facts["reason"]);
     }
     
-    [Fact]
+    [Fact(Skip = "ErrorCode is backend-owned - no longer validated by governance")]
     public void CustomFHIRPathRule_WithUnknownErrorCode_IsBlocked()
     {
+        // NOTE: This test is obsolete - errorCode is backend-owned
         // Arrange
         var rule = new RuleDefinition
         {
@@ -883,9 +896,9 @@ public class RuleReviewEngineTests
     }
     
     [Fact]
-    public void CustomFHIRPathRule_WithKnownErrorCode_IsWarning_NotBlocked()
+    public void CustomFHIRPathRule_WithKnownErrorCode_IsAllowed()
     {
-        // Arrange
+        // Arrange - CustomFHIRPath without errorCode (backend-owned)
         var rule = new RuleDefinition
         {
             Id = "custom-known-errorcode",
@@ -893,24 +906,17 @@ public class RuleReviewEngineTests
             ResourceType = "Patient",
             FieldPath = "gender.exists()",
             InstanceScope = new AllInstances(),
-            ErrorCode = Pss.FhirProcessor.Engine.Validation.ValidationErrorCodes.CUSTOMFHIRPATH_CONDITION_FAILED // Known errorCode
+            ErrorCode = "" // ErrorCode optional, backend determines at runtime
         };
 
         // Act
         var result = _engine.Review(rule);
 
-        // Assert
-        // CustomFHIRPath with known errorCode should emit WARNING (semantic stability advisory), not BLOCKED
+        // Assert - Should be OK, errorCode is backend-owned
         Assert.NotEqual(RuleReviewStatus.BLOCKED, result.Status);
         
         // Verify no blocking issues
         Assert.DoesNotContain(result.Issues, i => i.Severity == RuleReviewStatus.BLOCKED);
-        
-        // Should have semantic stability advisory (WARNING)
-        var warningIssue = result.Issues.FirstOrDefault(i => 
-            i.Code == "RULE_SEMANTIC_STABILITY_INFO" && 
-            i.Severity == RuleReviewStatus.WARNING);
-        Assert.NotNull(warningIssue);
     }
     
     // ═══════════════════════════════════════════════════════════

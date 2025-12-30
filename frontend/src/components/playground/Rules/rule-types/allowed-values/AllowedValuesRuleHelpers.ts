@@ -25,7 +25,6 @@ interface BuildAllowedValuesRuleParams {
   fieldPath: string;
   allowedValues: string[];
   severity: 'error' | 'warning' | 'information';
-  errorCode: string;
   userHint?: string;
 }
 
@@ -40,7 +39,6 @@ export function buildAllowedValuesRule(params: BuildAllowedValuesRuleParams): Ru
     fieldPath,
     allowedValues,
     severity,
-    errorCode,
     userHint,
   } = params;
 
@@ -57,7 +55,7 @@ export function buildAllowedValuesRule(params: BuildAllowedValuesRuleParams): Ru
     instanceScope,
     fieldPath,
     severity,
-    errorCode,
+    // errorCode removed - backend-owned
     params: {
       values: allowedValues,
     },

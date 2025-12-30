@@ -6,20 +6,19 @@ import type { InstanceScope } from '../../common/InstanceScope.types';
  * 
  * Build and parse CustomFHIRPath rules for the unified RuleForm architecture.
  * 
- * GOVERNED ERROR CODE: User must select from validated dropdown list.
+ * BACKEND-OWNED ERROR CODE: Backend determines CUSTOMFHIRPATH_CONDITION_FAILED at runtime.
  * 
  * Rule Structure:
  * - type: "CustomFHIRPath"
  * - path: Full FHIRPath with instance scope (e.g., "Patient[*]")
  * - params.expression: FHIRPath boolean expression
- * - errorCode: Selected from governed list (REQUIRED)
+ * - errorCode: Backend-owned (frontend does not send)
  */
 
 interface BuildCustomFHIRPathRuleParams {
   resourceType: string;
   instanceScope: InstanceScope;
   expression: string;
-  errorCode: string;
   severity: 'error' | 'warning' | 'information';
   userHint?: string;
 }
@@ -32,7 +31,6 @@ export function buildCustomFHIRPathRule(params: BuildCustomFHIRPathRuleParams): 
     resourceType,
     instanceScope,
     expression,
-    errorCode,
     severity,
     userHint,
   } = params;
@@ -44,7 +42,7 @@ export function buildCustomFHIRPathRule(params: BuildCustomFHIRPathRuleParams): 
     fieldPath: '',
     instanceScope,
     severity,
-    errorCode,
+    // errorCode removed - backend-owned
     params: {
       expression,
     },
@@ -56,17 +54,14 @@ export function buildCustomFHIRPathRule(params: BuildCustomFHIRPathRuleParams): 
 
 /**
  * Parse a CustomFHIRPath rule for editing.
- * Extracts expression and errorCode from rule definition.
+ * Extracts expression from rule definition.
  */
 export function parseCustomFHIRPathRule(rule: Rule): {
   expression: string;
-  errorCode: string;
 } {
   const expression = rule.params?.expression?.toString() || '';
-  const errorCode = rule.errorCode || '';
 
   return {
     expression,
-    errorCode,
   };
 }

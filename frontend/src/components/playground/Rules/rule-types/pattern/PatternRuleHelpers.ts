@@ -20,8 +20,7 @@ interface PatternRuleData {
   negate: boolean;
   caseSensitive: boolean;
   severity: 'error' | 'warning' | 'information';
-  errorCode: string;            // PHASE 3: errorCode is now primary
-  userHint?: string;            // PHASE 3: optional short hint
+  userHint?: string;            // Optional short hint
   message?: string;             // DEPRECATED: backward compat only
 }
 
@@ -38,7 +37,6 @@ export function buildPatternRule(data: PatternRuleData): Rule {
     negate,
     caseSensitive,
     severity,
-    errorCode,
     userHint,
     message,
   } = data;
@@ -56,8 +54,8 @@ export function buildPatternRule(data: PatternRuleData): Rule {
     instanceScope,
     fieldPath,
     severity,
-    errorCode,                    // PHASE 3: errorCode is primary
-    userHint: userHint || undefined, // PHASE 3: optional short hint
+    // errorCode removed - backend-owned
+    userHint: userHint || undefined,
     message: message || undefined,   // DEPRECATED: backward compat only
     params: {
       pattern,

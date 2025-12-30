@@ -89,7 +89,7 @@ export function buildTerminologyRule(data: BuildTerminologyRuleData): Rule {
     type: 'CodeSystem',
     resourceType,
     fieldPath,
-    errorCode: 'CODESYSTEM_VIOLATION',
+    // errorCode removed - backend-owned
     severity,
     userHint,
     enabled: true,

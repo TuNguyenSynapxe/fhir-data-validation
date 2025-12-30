@@ -9,42 +9,24 @@ import { Code, AlertTriangle } from 'lucide-react';
  * 
  * Responsibilities:
  * - FHIRPath expression input
- * - Error code selection (GOVERNED - must select from validated list)
  * 
  * The parent RuleForm handles: resource, scope (instance), severity, userHint, preview, save/cancel.
  * 
- * NOTE: errorCode is GOVERNED - user must select from dropdown of known ValidationErrorCodes.
+ * NOTE: errorCode is backend-owned (CUSTOMFHIRPATH_CONDITION_FAILED determined at runtime).
  */
 
 interface CustomFHIRPathConfigSectionProps {
   expression: string;
-  errorCode: string;
   onExpressionChange: (expression: string) => void;
-  onErrorCodeChange: (errorCode: string) => void;
   errors?: {
     expression?: string;
-    errorCode?: string;
   };
   resourceType: string;
 }
 
-// Governed list of error codes that can be used with CustomFHIRPath rules
-const GOVERNED_ERROR_CODES = [
-  { value: 'FIELD_REQUIRED', label: 'FIELD_REQUIRED', description: 'Field is missing or empty' },
-  { value: 'PATTERN_MISMATCH', label: 'PATTERN_MISMATCH', description: 'Value does not match expected pattern' },
-  { value: 'FIXED_VALUE_MISMATCH', label: 'FIXED_VALUE_MISMATCH', description: 'Value does not match fixed value' },
-  { value: 'VALUE_NOT_ALLOWED', label: 'VALUE_NOT_ALLOWED', description: 'Value is not in allowed set' },
-  { value: 'INVALID_REFERENCE', label: 'INVALID_REFERENCE', description: 'Reference is invalid or broken' },
-  { value: 'INVALID_CODE', label: 'INVALID_CODE', description: 'Code is invalid or not in value set' },
-  { value: 'ARRAY_LENGTH_VIOLATION', label: 'ARRAY_LENGTH_VIOLATION', description: 'Array length constraint violated' },
-  { value: 'CUSTOM_VALIDATION_FAILED', label: 'CUSTOM_VALIDATION_FAILED', description: 'Custom validation logic failed' },
-];
-
 export const CustomFHIRPathConfigSection: React.FC<CustomFHIRPathConfigSectionProps> = ({
   expression,
-  errorCode,
   onExpressionChange,
-  onErrorCodeChange,
   errors = {},
   resourceType,
 }) => {
@@ -89,56 +71,16 @@ export const CustomFHIRPathConfigSection: React.FC<CustomFHIRPathConfigSectionPr
         </p>
       </div>
 
-      {/* Error Code Dropdown (GOVERNED) */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Error Code <span className="text-red-500">*</span>
-        </label>
-        <select
-          value={errorCode}
-          onChange={(e) => onErrorCodeChange(e.target.value)}
-          className={`
-            w-full px-3 py-2 border rounded-md text-sm
-            ${errors.errorCode ? 'border-red-300 bg-red-50' : 'border-gray-300'}
-          `}
-        >
-          <option value="">-- Select Error Code --</option>
-          {GOVERNED_ERROR_CODES.map((code) => (
-            <option key={code.value} value={code.value}>
-              {code.label}
-            </option>
-          ))}
-        </select>
-        {errors.errorCode && (
-          <p className="mt-1 text-sm text-red-600">{errors.errorCode}</p>
-        )}
-        
-        {/* Error Code Description */}
-        {errorCode && (
-          <div className="mt-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md">
-            <p className="text-xs text-gray-700">
-              <strong>{errorCode}:</strong>{' '}
-              {GOVERNED_ERROR_CODES.find(c => c.value === errorCode)?.description}
-            </p>
-          </div>
-        )}
-        
-        <p className="mt-1 text-xs text-gray-500">
-          Error code that will be used when the FHIRPath expression evaluates to false
-        </p>
-      </div>
-
-      {/* Governance Notice */}
-      <div className="px-4 py-3 border border-yellow-200 bg-yellow-50 rounded-md">
+      {/* Backend-Owned Error Code Notice */}
+      <div className="px-4 py-3 border border-green-200 bg-green-50 rounded-md">
         <div className="flex items-start gap-3">
-          <AlertTriangle className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
+          <AlertTriangle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
-            <div className="text-xs font-medium text-yellow-900">
-              Governed Error Code
+            <div className="text-xs font-medium text-green-900">
+              Error Code: <code className="bg-white px-1 rounded">CUSTOMFHIRPATH_CONDITION_FAILED</code>
             </div>
-            <div className="text-xs text-yellow-800 mt-1">
-              Error code must be selected from the validated list above.
-              Unknown or custom error codes are not allowed to ensure consistent error handling.
+            <div className="text-xs text-green-800 mt-1">
+              Error code is automatically determined by the backend when the FHIRPath expression evaluates to false.
             </div>
           </div>
         </div>

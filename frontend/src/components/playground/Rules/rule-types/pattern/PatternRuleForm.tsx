@@ -124,7 +124,7 @@ export const PatternRuleForm: React.FC<PatternRuleFormProps> = ({
       return;
     }
 
-    // PHASE 3: Build rule with fixed errorCode PATTERN_MISMATCH + userHint (NO message)
+    // Build rule with backend-owned errorCode + userHint (NO message)
     try {
       const rule = buildPatternRule({
         resourceType,
@@ -134,7 +134,6 @@ export const PatternRuleForm: React.FC<PatternRuleFormProps> = ({
         negate,
         caseSensitive,
         severity,
-        errorCode: 'PATTERN_MISMATCH',
         userHint: userHint || undefined,
       });
 

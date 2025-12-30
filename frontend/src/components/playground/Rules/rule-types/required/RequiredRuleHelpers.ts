@@ -18,8 +18,7 @@ interface RequiredRuleData {
   instanceScope: InstanceScope; // Structured instance scope (first/all/filter)
   fieldPath: string;
   severity: 'error' | 'warning' | 'information';
-  errorCode: string;            // PHASE 3: errorCode is now primary
-  userHint?: string;            // PHASE 3: optional short hint
+  userHint?: string;            // Optional short hint
   message?: string;             // DEPRECATED: backward compat only
 }
 
@@ -29,7 +28,7 @@ interface RequiredRuleData {
  * Legacy path field removed - backend uses structured fields only
  */
 export function buildRequiredRule(data: RequiredRuleData): Rule {
-  const { resourceType, instanceScope, fieldPath, severity, errorCode, userHint } = data;
+  const { resourceType, instanceScope, fieldPath, severity, userHint } = data;
   
   // Validate field path (should be resource-relative)
   const validation = validateFieldPath(fieldPath);
@@ -47,7 +46,7 @@ export function buildRequiredRule(data: RequiredRuleData): Rule {
     fieldPath,
     
     severity,
-    errorCode,
+    // errorCode removed - backend-owned
     userHint: userHint || undefined,
     origin: 'manual',
     enabled: true,

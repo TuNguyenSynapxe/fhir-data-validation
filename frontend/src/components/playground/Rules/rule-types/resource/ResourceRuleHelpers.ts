@@ -6,14 +6,14 @@ import type { ResourceRequirement, WhereFilter } from './ResourceConfigSection';
  * 
  * Build and parse Resource rules for the unified RuleForm architecture.
  * 
- * FIXED ERROR CODE: RESOURCE_REQUIREMENT_VIOLATION (cannot be overridden)
+ * BACKEND-OWNED ERROR CODE: Backend determines RESOURCE_REQUIREMENT_VIOLATION at runtime.
  * 
  * Rule Structure:
  * - type: "Resource"
  * - path: "Bundle" (bundle-level validation)
  * - params.requirements: Array<{ resourceType, min, max?, where? }>
  * - params.rejectUndeclaredResources: true (always enforced)
- * - errorCode: RESOURCE_REQUIREMENT_VIOLATION (fixed)
+ * - errorCode: Backend-owned (frontend does not send)
  * 
  * Semantics:
  * - mode: "min" → { min: count } → "At least count"
@@ -76,7 +76,7 @@ export function buildResourceRule(params: BuildResourceRuleParams): Rule {
     resourceType: 'Bundle',
     fieldPath: '',
     severity,
-    errorCode: 'RESOURCE_REQUIREMENT_VIOLATION', // Fixed errorCode
+    // errorCode removed - backend-owned
     params: {
       requirements: backendRequirements,
       rejectUndeclaredResources: true, // Always enforced

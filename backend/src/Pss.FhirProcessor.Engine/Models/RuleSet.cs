@@ -75,11 +75,18 @@ public class RuleDefinition
     public ValidationClass ValidationClass { get; set; } = ValidationClass.Advisory;
     
     /// <summary>
-    /// REQUIRED: Error code for frontend message mapping
-    /// Frontend uses this to render user-facing messages
+    /// OPTIONAL: Error code for backend-determined error classification.
+    /// This field is backend-owned and determined at runtime based on rule type.
+    /// Frontend does NOT need to supply this during rule authoring.
+    /// 
+    /// BACKWARD COMPATIBILITY: Existing rules.json files with errorCode will continue to work.
+    /// The value is ignored by execution - backend assigns appropriate errorCode based on rule type.
+    /// 
+    /// NOTE: This field will be removed in a future version after frontend migration.
     /// </summary>
     [JsonPropertyName("errorCode")]
-    public required string ErrorCode { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ErrorCode { get; set; }
     
     /// <summary>
     /// OPTIONAL: Short contextual hint (max 60 chars, NOT a sentence)

@@ -29,7 +29,7 @@ interface QuestionAnswerRuleData {
  * 
  * CRITICAL CONTRACT v2 (Contract-Safe):
  * - questionPath and answerPath MUST be in rule.params
- * - Backend ignores rule.errorCode (runtime-determined only)
+ * - Backend determines errorCode at runtime (constraint-driven)
  * - QuestionSet is the single source of truth for constraints
  */
 export function buildQuestionAnswerRule(data: QuestionAnswerRuleData): Rule {
@@ -51,7 +51,7 @@ export function buildQuestionAnswerRule(data: QuestionAnswerRuleData): Rule {
     resourceType,
     fieldPath: iterationScope,
     severity,
-    errorCode: 'INVALID_ANSWER_VALUE', // Required for deserialization, runtime overrides
+    // errorCode removed - backend determines at runtime based on constraint
     userHint: userHint || undefined,
     message: message || undefined,   // DEPRECATED: backward compat only
     // CRITICAL: questionPath and answerPath MUST be in params (backend contract)
