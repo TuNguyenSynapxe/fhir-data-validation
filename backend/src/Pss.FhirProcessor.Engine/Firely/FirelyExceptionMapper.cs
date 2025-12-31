@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Pss.FhirProcessor.Engine.Models;
+using Pss.FhirProcessor.Engine.Validation;
 
 namespace Pss.FhirProcessor.Engine.Firely;
 
@@ -91,18 +92,6 @@ public static class FirelyExceptionMapper
             var invalidValue = invalidPrimitiveMatch.Groups[1].Value;
             var expectedType = invalidPrimitiveMatch.Groups[2].Value;
             return CreateInvalidPrimitiveError(invalidValue, expectedType, exceptionMessage, rawBundleJson);
-        }
-        
-        // Pattern 6: Array expected but received non-array
-        // Example: "Expected array for property 'identifier' but received object"
-        var arrayExpectedMatch = Regex.Match(exceptionMessage,
-            @"Expected array.*but received (\w+)",
-            RegexOptions.IgnoreCase);
-        
-        if (arrayExpectedMatch.Success)
-        {
-            var actualType = arrayExpectedMatch.Groups[1].Value;
-            return CreateArrayExpectedError(actualType, exceptionMessage, rawBundleJson);
         }
         
         // Fallback: Generic FHIR deserialization error
@@ -406,34 +395,15 @@ public static class FirelyExceptionMapper
             ["reason"] = $"Cannot parse '{invalidValue}' as {expectedType}"
         };
         
+        // CRITICAL: Enforce canonical schema at runtime
+        ValidationErrorDetailsValidator.Validate("FHIR_INVALID_PRIMITIVE", details);
+        
         return new ValidationError
         {
             Source = "FHIR",
             Severity = "error",
             ErrorCode = "FHIR_INVALID_PRIMITIVE",
             Message = $"Invalid {expectedType} value: '{invalidValue}'",
-            Details = details
-        };
-    }
-    
-    /// <summary>
-    /// Creates a ValidationError when array was expected but received different type
-    /// Canonical schema: { expectedType: "array", actualType: string }
-    /// </summary>
-    private static ValidationError CreateArrayExpectedError(string actualType, string exceptionMessage, string? rawBundleJson)
-    {
-        var details = new Dictionary<string, object>
-        {
-            ["expectedType"] = "array",
-            ["actualType"] = actualType
-        };
-        
-        return new ValidationError
-        {
-            Source = "FHIR",
-            Severity = "error",
-            ErrorCode = "FHIR_ARRAY_EXPECTED",
-            Message = $"Expected array but received {actualType}",
             Details = details
         };
     }

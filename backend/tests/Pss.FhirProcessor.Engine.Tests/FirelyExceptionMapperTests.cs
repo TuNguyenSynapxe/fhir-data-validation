@@ -241,27 +241,4 @@ public class FirelyExceptionMapperTests
         Assert.Equal("abc123", error.Details["actual"]);
         Assert.Equal("decimal", error.Details["expectedType"]);
     }
-    
-    [Fact]
-    public void MapToValidationError_ArrayExpected_ExtractsDetails()
-    {
-        // Arrange
-        var exceptionMessage = "Expected array for property 'identifier' but received object";
-        var exception = new Exception(exceptionMessage);
-        
-        // Act
-        var error = FirelyExceptionMapper.MapToValidationError(exception, null);
-        
-        // Assert
-        Assert.Equal("FHIR", error.Source);
-        Assert.Equal("error", error.Severity);
-        Assert.Equal("FHIR_ARRAY_EXPECTED", error.ErrorCode);
-        Assert.Contains("Expected array", error.Message);
-        Assert.Contains("received object", error.Message);
-        
-        // Check canonical schema: { expectedType: "array", actualType }
-        Assert.NotNull(error.Details);
-        Assert.Equal("array", error.Details["expectedType"]);
-        Assert.Equal("object", error.Details["actualType"]);
-    }
 }

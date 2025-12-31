@@ -384,48 +384,6 @@ const explainInvalidEnumValue: ExplanationFn = (details) => {
 };
 
 /**
- * FHIR_INVALID_PRIMITIVE
- * Schema: { actual: string, expectedType: string, reason: string }
- */
-const explainFhirInvalidPrimitive: ExplanationFn = (details) => {
-  if (!isRecord(details)) {
-    return {
-      title: "Invalid primitive value",
-      description: "The value cannot be parsed as the expected FHIR primitive type.",
-    };
-  }
-
-  const actual = safeString(details.actual);
-  const expectedType = safeString(details.expectedType);
-  const reason = isRecord(details) && details.reason ? safeString(details.reason) : null;
-
-  return {
-    title: `Invalid ${expectedType} value`,
-    description: reason || `The value '${actual}' cannot be parsed as ${expectedType}.`,
-  };
-};
-
-/**
- * FHIR_ARRAY_EXPECTED
- * Schema: { expectedType: "array", actualType: string }
- */
-const explainFhirArrayExpected: ExplanationFn = (details) => {
-  if (!isRecord(details)) {
-    return {
-      title: "Expected array",
-      description: "This field expects an array of values, but received a different type.",
-    };
-  }
-
-  const actualType = safeString(details.actualType);
-
-  return {
-    title: "Expected array",
-    description: `This field expects an array of values, but received ${actualType}.`,
-  };
-};
-
-/**
  * Error Explanation Registry
  * 
  * Maps errorCode → explanation function
@@ -451,10 +409,6 @@ export const errorExplanationRegistry: Record<string, ExplanationFn> = {
   TYPE_MISMATCH: explainTypeMismatch,
   MANDATORY_MISSING: explainMandatoryMissing,
   INVALID_ENUM_VALUE: explainInvalidEnumValue,
-  
-  // Phase 8: Firely structural validation normalization
-  FHIR_INVALID_PRIMITIVE: explainFhirInvalidPrimitive,
-  FHIR_ARRAY_EXPECTED: explainFhirArrayExpected,
 };
 
 /**
