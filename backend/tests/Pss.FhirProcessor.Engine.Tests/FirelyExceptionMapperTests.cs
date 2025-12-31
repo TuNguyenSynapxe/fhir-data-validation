@@ -171,4 +171,97 @@ public class FirelyExceptionMapperTests
         Assert.Equal("InvalidOperationException", error.Details["exceptionType"]);
         Assert.Equal(exceptionMessage, error.Details["fullMessage"]);
     }
+    
+    [Fact]
+    public void MapToValidationError_InvalidPrimitive_Date_ExtractsDetails()
+    {
+        // Arrange
+        var exceptionMessage = "Literal '1960-05-15x' cannot be parsed as a date";
+        var exception = new Exception(exceptionMessage);
+        
+        // Act
+        var error = FirelyExceptionMapper.MapToValidationError(exception, null);
+        
+        // Assert
+        Assert.Equal("FHIR", error.Source);
+        Assert.Equal("error", error.Severity);
+        Assert.Equal("FHIR_INVALID_PRIMITIVE", error.ErrorCode);
+        Assert.Contains("Invalid date value", error.Message);
+        Assert.Contains("1960-05-15x", error.Message);
+        
+        // Check canonical schema: { actual, expectedType, reason }
+        Assert.NotNull(error.Details);
+        Assert.Equal("1960-05-15x", error.Details["actual"]);
+        Assert.Equal("date", error.Details["expectedType"]);
+        Assert.Contains("Cannot parse", error.Details["reason"].ToString());
+    }
+    
+    [Fact]
+    public void MapToValidationError_InvalidPrimitive_Boolean_ExtractsDetails()
+    {
+        // Arrange
+        var exceptionMessage = "Literal 'invalid' cannot be parsed as a boolean";
+        var exception = new Exception(exceptionMessage);
+        
+        // Act
+        var error = FirelyExceptionMapper.MapToValidationError(exception, null);
+        
+        // Assert
+        Assert.Equal("FHIR", error.Source);
+        Assert.Equal("error", error.Severity);
+        Assert.Equal("FHIR_INVALID_PRIMITIVE", error.ErrorCode);
+        Assert.Contains("Invalid boolean value", error.Message);
+        Assert.Contains("invalid", error.Message);
+        
+        // Check canonical schema
+        Assert.NotNull(error.Details);
+        Assert.Equal("invalid", error.Details["actual"]);
+        Assert.Equal("boolean", error.Details["expectedType"]);
+        Assert.Contains("Cannot parse", error.Details["reason"].ToString());
+    }
+    
+    [Fact]
+    public void MapToValidationError_InvalidPrimitive_Decimal_ExtractsDetails()
+    {
+        // Arrange
+        var exceptionMessage = "Literal 'abc123' cannot be parsed as a decimal";
+        var exception = new Exception(exceptionMessage);
+        
+        // Act
+        var error = FirelyExceptionMapper.MapToValidationError(exception, null);
+        
+        // Assert
+        Assert.Equal("FHIR", error.Source);
+        Assert.Equal("error", error.Severity);
+        Assert.Equal("FHIR_INVALID_PRIMITIVE", error.ErrorCode);
+        Assert.Contains("Invalid decimal value", error.Message);
+        
+        // Check canonical schema
+        Assert.NotNull(error.Details);
+        Assert.Equal("abc123", error.Details["actual"]);
+        Assert.Equal("decimal", error.Details["expectedType"]);
+    }
+    
+    [Fact]
+    public void MapToValidationError_ArrayExpected_ExtractsDetails()
+    {
+        // Arrange
+        var exceptionMessage = "Expected array for property 'identifier' but received object";
+        var exception = new Exception(exceptionMessage);
+        
+        // Act
+        var error = FirelyExceptionMapper.MapToValidationError(exception, null);
+        
+        // Assert
+        Assert.Equal("FHIR", error.Source);
+        Assert.Equal("error", error.Severity);
+        Assert.Equal("FHIR_ARRAY_EXPECTED", error.ErrorCode);
+        Assert.Contains("Expected array", error.Message);
+        Assert.Contains("received object", error.Message);
+        
+        // Check canonical schema: { expectedType: "array", actualType }
+        Assert.NotNull(error.Details);
+        Assert.Equal("array", error.Details["expectedType"]);
+        Assert.Equal("object", error.Details["actualType"]);
+    }
 }

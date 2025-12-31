@@ -8,22 +8,8 @@ import { ScopeSelectorChip } from './ScopeSelectorChip';
 import { PathInfoTooltip } from './PathInfoTooltip';
 import { getBlockingStatusDisplay } from '../../../utils/validationOverrides';
 import { ExplanationPanel } from './ExplanationPanel';
-
-interface ValidationError {
-  source: string;
-  severity: string;
-  resourceType?: string;
-  path?: string;
-  jsonPointer?: string;
-  errorCode?: string;
-  message: string;
-  details?: Record<string, any>;
-  navigation?: {
-    jsonPointer?: string;
-    breadcrumb?: string;
-    resourceIndex?: number;
-  };
-}
+import { ValidationErrorExplanation } from './ValidationErrorExplanation';
+import type { ValidationError } from '../../../validation';
 
 interface GroupedErrorCardProps {
   errors: ValidationError[];

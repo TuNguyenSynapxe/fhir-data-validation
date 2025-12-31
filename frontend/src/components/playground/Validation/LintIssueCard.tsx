@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
 import { HelpTooltip } from '../../common/HelpTooltip';
+import { explainError } from '../../../validation';
 
 interface ValidationIssueExplanation {
   what: string;
@@ -51,36 +52,12 @@ const EXTENSION_TOOLTIP = {
 };
 
 /**
- * Extract readable headline from LINT message
+ * Extension tooltip content
  */
-const extractHeadline = (message: string, details?: Record<string, any>): string => {
-  const propertyName = details?.propertyName || details?.property;
-  
-  if (propertyName && (message.includes('does not exist') || message.includes('is not defined'))) {
-    return `Unknown field: ${propertyName}`;
-  } else if (message.includes('expected') && message.includes('array')) {
-    return `Field should be an array${propertyName ? `: ${propertyName}` : ''}`;
-  } else if (message.includes('expected') && message.includes('object')) {
-    return `Field should be an object${propertyName ? `: ${propertyName}` : ''}`;
-  }
-  
-  return message.split('.')[0];
-};
-
-/**
- * Generate plain English explanation based on error code
- */
-const getExplanation = (errorCode?: string): string => {
-  switch (errorCode) {
-    case 'UNKNOWN_ELEMENT':
-      return 'This field is not defined in the FHIR R4 specification.';
-    case 'LINT_EXPECTED_ARRAY':
-      return 'According to the FHIR specification, this field should contain multiple values (array).';
-    case 'LINT_EXPECTED_OBJECT':
-      return 'According to the FHIR specification, this field should contain a single value (object).';
-    default:
-      return 'This may cause portability issues across different FHIR servers.';
-  }
+const EXTENSION_TOOLTIP = {
+  title: 'Extension-related issue',
+  body: `Extensions often require profiles to validate correctly.\nWithout profiles, only the base FHIR schema is checked.`,
+  footer: '',
 };
 
 /**
@@ -94,8 +71,8 @@ const isExtensionRelated = (path?: string): boolean => {
 export const LintIssueCard: React.FC<LintIssueCardProps> = ({ error, onClick }) => {
   const [showDetails, setShowDetails] = React.useState(false);
   
-  const headline = extractHeadline(error.message, error.details);
-  const explanation = getExplanation(error.errorCode);
+  // Phase 7: Use canonical explanation system
+  const { title, description } = explainError(error);
   const fhirPath = error.details?.fhirPath || error.path;
   const isExtension = isExtensionRelated(error.path);
 
@@ -110,9 +87,9 @@ export const LintIssueCard: React.FC<LintIssueCardProps> = ({ error, onClick }) 
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          {/* Headline */}
+          {/* Phase 7: Title from canonical explanation */}
           <p className="text-sm font-medium text-gray-900 mb-1">
-            {headline}
+            {title}
           </p>
 
           {/* FHIR Path - secondary line */}
@@ -122,9 +99,9 @@ export const LintIssueCard: React.FC<LintIssueCardProps> = ({ error, onClick }) 
             </p>
           )}
 
-          {/* Plain English explanation */}
+          {/* Phase 7: Description from canonical explanation */}
           <p className="text-xs text-gray-600 mb-2 italic">
-            {explanation}
+            {description}
           </p>
 
           {/* Structured explanation - HIDDEN */}

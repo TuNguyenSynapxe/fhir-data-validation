@@ -9,6 +9,7 @@ import { formatSmartPath, getScopedSegments, convertToJsonPath } from '../../../
 import { isIssueBlocking } from '../../../types/validationIssues';
 import type { ValidationIssue } from '../../../types/validationIssues';
 import { ExplanationPanel } from './ExplanationPanel';
+import { explainError } from '../../../validation';
 
 interface IssueCardProps {
   issue: ValidationIssue;
@@ -100,8 +101,13 @@ export const IssueCard: React.FC<IssueCardProps> = ({
             <span className="text-xs text-gray-500 italic">Location not available</span>
           )}
 
-          {/* Message */}
-          <p className="text-sm text-gray-900 mt-2 leading-6">{issue.message}</p>
+          {/* Phase 7: Use canonical explanation instead of issue.message */}
+          <p className="text-sm text-gray-900 mt-2 leading-6">
+            {explainError({ 
+              errorCode: issue.code || '', 
+              details: issue.details 
+            }).title}
+          </p>
 
           {/* Optional: Rule path for Project Rules */}
           {issue.rulePath && issue.source === 'PROJECT' && (

@@ -106,7 +106,10 @@ export default function ErrorTable({ errors, onSelectError }: ErrorTableProps) {
                 </div>
               </td>
               <td className="px-3 py-2">
-                <div className="text-sm text-gray-900">{error.message}</div>
+                {/* Phase 7: Use canonical explanation */}
+                <div className="text-sm text-gray-900">
+                  {explainError(error).title}
+                </div>
                 {(() => {
                   // Phase 1 Audit (Dec 2025): Derive breadcrumbs from path, not navigation.breadcrumbs
                   const breadcrumbs = pathToBreadcrumbs(error.path);

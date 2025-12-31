@@ -222,6 +222,16 @@ public static class ValidationErrorCodes
     public const string QUESTIONSET_DATA_MISSING = "QUESTIONSET_DATA_MISSING";
 
     // =========================================================================
+    // FHIR STRUCTURAL VALIDATION (Firely SDK errors)
+    // =========================================================================
+    
+    /// <summary>FHIR primitive type value cannot be parsed</summary>
+    public const string FHIR_INVALID_PRIMITIVE = "FHIR_INVALID_PRIMITIVE";
+    
+    /// <summary>Expected array but received non-array value</summary>
+    public const string FHIR_ARRAY_EXPECTED = "FHIR_ARRAY_EXPECTED";
+
+    // =========================================================================
     // SYSTEM / ENGINE
     // =========================================================================
     

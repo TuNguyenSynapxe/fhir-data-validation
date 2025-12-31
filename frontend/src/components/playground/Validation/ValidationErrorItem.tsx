@@ -5,29 +5,8 @@ import { SmartPathBreadcrumb } from './SmartPathBreadcrumb';
 import { ScopeSelectorChip } from './ScopeSelectorChip';
 import { PathInfoTooltip } from './PathInfoTooltip';
 import { ExplanationPanel } from './ExplanationPanel';
-
-interface ValidationIssueExplanation {
-  what: string;
-  how?: string;
-  confidence: 'high' | 'medium' | 'low';
-}
-
-interface ValidationError {
-  source: string; // FHIR, Business, CodeMaster, Reference
-  severity: string; // error, warning, info
-  resourceType?: string;
-  path?: string;
-  jsonPointer?: string;
-  errorCode?: string;
-  message: string;
-  details?: Record<string, any>;
-  navigation?: {
-    jsonPointer?: string;
-    breadcrumb?: string;
-    resourceIndex?: number;
-  };
-  explanation?: ValidationIssueExplanation;
-}
+import { ValidationErrorExplanation } from './ValidationErrorExplanation';
+import type { ValidationError } from '../../../validation';
 
 interface ValidationErrorItemProps {
   error: ValidationError;
@@ -118,10 +97,13 @@ export const ValidationErrorItem: React.FC<ValidationErrorItemProps> = ({
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          {/* Message */}
-          <p className="text-sm font-medium text-gray-900 mb-1">
-            {error.message}
-          </p>
+          {/* Phase 7: Use canonical explanation instead of error.message */}
+          <ValidationErrorExplanation 
+            error={error}
+            showTitle={true}
+            showDescription={false}
+            className="mb-1"
+          />
 
           {/* Location and source */}
           <div className="flex items-center gap-2 flex-wrap">

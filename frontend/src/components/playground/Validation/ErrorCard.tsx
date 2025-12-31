@@ -7,22 +7,8 @@ import { ScopeSelectorChip } from './ScopeSelectorChip';
 import { PathInfoTooltip } from './PathInfoTooltip';
 import { getBlockingStatusDisplay } from '../../../utils/validationOverrides';
 import { ExplanationPanel } from './ExplanationPanel';
-
-interface ValidationError {
-  source: string;
-  severity: string;
-  resourceType?: string;
-  path?: string;
-  jsonPointer?: string;
-  errorCode?: string;
-  message: string;
-  details?: Record<string, any>;
-  navigation?: {
-    jsonPointer?: string;
-    breadcrumb?: string;
-    resourceIndex?: number;
-  };
-}
+import { ValidationErrorExplanation } from './ValidationErrorExplanation';
+import type { ValidationError } from '../../../validation';
 
 interface ErrorCardProps {
   error: ValidationError;
@@ -84,10 +70,13 @@ export const ErrorCard: React.FC<ErrorCardProps> = ({ error, allErrors = [], onC
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          {/* Error message */}
-          <p className="text-sm font-medium text-gray-900 mb-2">
-            {error.message}
-          </p>
+          {/* Phase 7: Use canonical explanation instead of error.message */}
+          <ValidationErrorExplanation 
+            error={error}
+            showTitle={true}
+            showDescription={false}
+            className="mb-2"
+          />
 
           {/* Badges row */}
           <div className="flex items-center gap-2 flex-wrap mb-2">

@@ -79,6 +79,32 @@ public static class FirelyExceptionMapper
             return CreateMandatoryMissingError(missingElement, exceptionMessage, rawBundleJson);
         }
         
+        // Pattern 5: Invalid primitive value
+        // Example: "Literal '1960-05-15x' cannot be parsed as a date"
+        // Example: "Literal 'invalid' cannot be parsed as a boolean"
+        var invalidPrimitiveMatch = Regex.Match(exceptionMessage,
+            @"Literal '([^']+)' cannot be parsed as an? (\w+)",
+            RegexOptions.IgnoreCase);
+        
+        if (invalidPrimitiveMatch.Success)
+        {
+            var invalidValue = invalidPrimitiveMatch.Groups[1].Value;
+            var expectedType = invalidPrimitiveMatch.Groups[2].Value;
+            return CreateInvalidPrimitiveError(invalidValue, expectedType, exceptionMessage, rawBundleJson);
+        }
+        
+        // Pattern 6: Array expected but received non-array
+        // Example: "Expected array for property 'identifier' but received object"
+        var arrayExpectedMatch = Regex.Match(exceptionMessage,
+            @"Expected array.*but received (\w+)",
+            RegexOptions.IgnoreCase);
+        
+        if (arrayExpectedMatch.Success)
+        {
+            var actualType = arrayExpectedMatch.Groups[1].Value;
+            return CreateArrayExpectedError(actualType, exceptionMessage, rawBundleJson);
+        }
+        
         // Fallback: Generic FHIR deserialization error
         return CreateGenericDeserializationError(exceptionType, exceptionMessage, rawBundleJson);
     }
@@ -365,5 +391,50 @@ public static class FirelyExceptionMapper
         
         return $"Allowed values: {string.Join(", ", allowedValues.Take(5))}" +
                (allowedValues.Count > 5 ? $" (and {allowedValues.Count - 5} more)" : "");
+    }
+    
+    /// <summary>
+    /// Creates a ValidationError for invalid FHIR primitive values
+    /// Canonical schema: { actual: string, expectedType: string, reason: string }
+    /// </summary>
+    private static ValidationError CreateInvalidPrimitiveError(string invalidValue, string expectedType, string exceptionMessage, string? rawBundleJson)
+    {
+        var details = new Dictionary<string, object>
+        {
+            ["actual"] = invalidValue,
+            ["expectedType"] = expectedType,
+            ["reason"] = $"Cannot parse '{invalidValue}' as {expectedType}"
+        };
+        
+        return new ValidationError
+        {
+            Source = "FHIR",
+            Severity = "error",
+            ErrorCode = "FHIR_INVALID_PRIMITIVE",
+            Message = $"Invalid {expectedType} value: '{invalidValue}'",
+            Details = details
+        };
+    }
+    
+    /// <summary>
+    /// Creates a ValidationError when array was expected but received different type
+    /// Canonical schema: { expectedType: "array", actualType: string }
+    /// </summary>
+    private static ValidationError CreateArrayExpectedError(string actualType, string exceptionMessage, string? rawBundleJson)
+    {
+        var details = new Dictionary<string, object>
+        {
+            ["expectedType"] = "array",
+            ["actualType"] = actualType
+        };
+        
+        return new ValidationError
+        {
+            Source = "FHIR",
+            Severity = "error",
+            ErrorCode = "FHIR_ARRAY_EXPECTED",
+            Message = $"Expected array but received {actualType}",
+            Details = details
+        };
     }
 }
