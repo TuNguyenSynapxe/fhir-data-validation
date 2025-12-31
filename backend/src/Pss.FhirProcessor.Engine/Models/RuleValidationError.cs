@@ -27,7 +27,27 @@ public class RuleValidationError
     /// </summary>
     public string? UserHint { get; set; }
     
-    public Dictionary<string, object>? Details { get; set; }
+    private Dictionary<string, object>? _details;
+    
+    /// <summary>
+    /// CANONICAL SCHEMA ENFORCEMENT:
+    /// Details must match schema for ErrorCode per /docs/validation-error-details-schema.md
+    /// Validator runs automatically on set.
+    /// </summary>
+    public Dictionary<string, object>? Details
+    {
+        get => _details;
+        set
+        {
+            _details = value;
+            // Validate schema if both ErrorCode and Details are present
+            if (!string.IsNullOrEmpty(ErrorCode) && _details != null)
+            {
+                ValidationErrorDetailsValidator.Validate(ErrorCode, _details);
+            }
+        }
+    }
+    
     public int? EntryIndex { get; set; }
     public string? ResourceId { get; set; }
     

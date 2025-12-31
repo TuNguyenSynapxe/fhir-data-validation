@@ -607,8 +607,6 @@ public class FhirPathRuleEngineTests
         Assert.Equal("AL-MIN-VIOLATION", errors[0].RuleId);
         Assert.True(errors[0].Details.ContainsKey("min"));
         Assert.True(errors[0].Details.ContainsKey("actual"));
-        Assert.True(errors[0].Details.ContainsKey("violation"));
-        Assert.Equal("min", errors[0].Details["violation"]);
         Assert.Equal(0, errors[0].Details["actual"]);
     }
 
@@ -669,8 +667,6 @@ public class FhirPathRuleEngineTests
         Assert.Equal("AL-MAX-VIOLATION", errors[0].RuleId);
         Assert.True(errors[0].Details.ContainsKey("max"));
         Assert.True(errors[0].Details.ContainsKey("actual"));
-        Assert.True(errors[0].Details.ContainsKey("violation"));
-        Assert.Equal("max", errors[0].Details["violation"]);
         Assert.Equal(3, errors[0].Details["actual"]);
     }
 

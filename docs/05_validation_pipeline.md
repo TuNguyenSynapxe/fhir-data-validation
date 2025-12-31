@@ -94,7 +94,10 @@ Each error is normalized into a common intermediate structure:
 SmartPathNavigationService converts:
 - Firely issue “Expression” → JSON Pointer
 - Rule DSL “path” → JSON Pointer
-
+**Array Element Precision (Phase 2 Complete):**
+- POCO validation: Tracks array indices via `ITypedElement.Location`
+- JSON fallback: Navigates ISourceNode tree with recursive indexing
+- Both paths produce identical index-aware pointers (e.g., `/entry/0/resource/identifier/1/system`)
 Adds:
 - breadcrumbs[]
 - missingParents[]

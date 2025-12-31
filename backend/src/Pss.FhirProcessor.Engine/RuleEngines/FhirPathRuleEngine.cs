@@ -439,6 +439,15 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                                 
                                 if (!string.IsNullOrWhiteSpace(actualValue) && !allowedValues.Contains(actualValue))
                                 {
+                                    // PILOT: VALUE_NOT_ALLOWED canonical schema
+                                    var details = new Dictionary<string, object>
+                                    {
+                                        ["actual"] = actualValue,
+                                        ["allowed"] = allowedValues,
+                                        ["valueType"] = "string",
+                                        ["_precomputedJsonPointer"] = jsonPointer  // Internal hint
+                                    };
+                                    
                                     errors.Add(new RuleValidationError
                                     {
                                         RuleId = rule.Id,
@@ -447,17 +456,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                                         ResourceType = resourceType ?? rule.ResourceType,
                                         FieldPath = rule.FieldPath,
                                         ErrorCode = ValidationErrorCodes.VALUE_NOT_ALLOWED,
-                                        Details = new Dictionary<string, object>
-                                        {
-                                            ["source"] = "ProjectRule",
-                                            ["resourceType"] = resourceType ?? rule.ResourceType,
-                                            ["path"] = rule.FieldPath,
-                                            ["ruleId"] = rule.Id,
-                                            ["actualValue"] = actualValue,
-                                            ["allowedValues"] = allowedValues,
-                                            ["entryIndex"] = entryIndex,
-                                            ["_precomputedJsonPointer"] = jsonPointer  // Index-aware pointer
-                                        },
+                                        Details = details,
                                         EntryIndex = entryIndex,
                                         ResourceId = resourceId ?? "unknown"
                                     });
@@ -790,15 +789,10 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
     private void ValidateArrayLengthForNode(int count, RuleDefinition rule, string? resourceType, string? resourceId, int entryIndex, List<RuleValidationError> errors, string fieldPath)
     {
         bool hasError = false;
-        var details = new Dictionary<string, object>
-        {
-            ["source"] = "ProjectRule",
-            ["resourceType"] = resourceType ?? rule.ResourceType,
-            ["path"] = fieldPath,
-            ["ruleId"] = rule.Id,
-            ["count"] = count,
-            ["actual"] = count
-        };
+        
+        // Canonical schema: { min, max, actual }
+        int? min = null;
+        int? max = null;
         
         _logger.LogTrace("ArrayLength validation: Count={Count}, Params={Params}", count, rule.Params != null ? string.Join(", ", rule.Params.Select(kv => $"{kv.Key}={kv.Value}")) : "null");
         
@@ -807,8 +801,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             if (rule.Params.ContainsKey("min"))
             {
                 var minValue = rule.Params["min"];
-                int min = minValue is JsonElement jsonMin ? jsonMin.GetInt32() : Convert.ToInt32(minValue);
-                details["min"] = min;
+                min = minValue is JsonElement jsonMin ? jsonMin.GetInt32() : Convert.ToInt32(minValue);
                 _logger.LogTrace("ArrayLength: Min constraint {Min}, Count {Count}, Violation: {Violation}", min, count, count < min);
                 
                 if (count < min)
@@ -820,8 +813,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             if (rule.Params.ContainsKey("max"))
             {
                 var maxValue = rule.Params["max"];
-                int max = maxValue is JsonElement jsonMax ? jsonMax.GetInt32() : Convert.ToInt32(maxValue);
-                details["max"] = max;
+                max = maxValue is JsonElement jsonMax ? jsonMax.GetInt32() : Convert.ToInt32(maxValue);
                 _logger.LogTrace("ArrayLength: Max constraint {Max}, Count {Count}, Violation: {Violation}", max, count, count > max);
                 
                 if (count > max)
@@ -835,13 +827,22 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         
         if (hasError)
         {
-            // Add field path info to details for navigation
-            details["arrayPath"] = fieldPath;
-            details["entryIndex"] = entryIndex;
+            // Canonical schema: { min, max, actual }
+            var details = new Dictionary<string, object>
+            {
+                ["min"] = min,
+                ["max"] = max,
+                ["actual"] = count
+            };
             
-            // Construct jsonPointer for SmartPath navigation
+            // Internal hint: Construct jsonPointer for SmartPath navigation
             var jsonPointer = $"/entry/{entryIndex}/resource/{fieldPath.Replace(".", "/")}";
             details["_precomputedJsonPointer"] = jsonPointer;
+            
+            // Use rule's errorCode if specified, otherwise default to ARRAY_LENGTH_OUT_OF_RANGE
+            var errorCode = !string.IsNullOrEmpty(rule.ErrorCode) 
+                ? rule.ErrorCode 
+                : "ARRAY_LENGTH_OUT_OF_RANGE";
             
             errors.Add(new RuleValidationError
             {
@@ -850,7 +851,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 Severity = rule.Severity,
                 ResourceType = resourceType ?? rule.ResourceType,
                 FieldPath = rule.FieldPath,
-                ErrorCode = "ARRAY_LENGTH_VIOLATION",
+                ErrorCode = errorCode,
                 Details = details,
                 EntryIndex = entryIndex,
                 ResourceId = resourceId ?? "unknown"
@@ -972,18 +973,16 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         
         if (!errors.Any(e => e.ErrorCode == "RULE_DEFINITION_ERROR") && (isMissing || isAllEmpty))
         {
+            // Canonical schema: { required: true }
             var details = new Dictionary<string, object>
             {
-                ["source"] = "ProjectRule",
-                ["resourceType"] = rule.ResourceType,
-                ["path"] = rule.FieldPath,
-                ["ruleType"] = rule.Type,
-                ["ruleId"] = rule.Id,
-                ["isMissing"] = isMissing,
-                ["isAllEmpty"] = isAllEmpty
+                ["required"] = true
             };
             
-            details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.FIELD_REQUIRED, details);
+            // Use rule's errorCode if specified, otherwise default to REQUIRED_FIELD_MISSING
+            var errorCode = !string.IsNullOrEmpty(rule.ErrorCode) 
+                ? rule.ErrorCode 
+                : "REQUIRED_FIELD_MISSING";
             
             errors.Add(new RuleValidationError
             {
@@ -992,7 +991,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 Severity = rule.Severity,
                 ResourceType = rule.ResourceType,
                 FieldPath = rule.FieldPath,
-                ErrorCode = ValidationErrorCodes.FIELD_REQUIRED,
+                ErrorCode = errorCode,
                 Details = details,
                 EntryIndex = entryIndex,
                 ResourceId = resource.Id
@@ -1165,19 +1164,14 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         arrayIndex = ExtractArrayIndexFromLocation(typedElement.Location);
                     }
                     
+                    // PILOT: VALUE_NOT_ALLOWED canonical schema
                     var details = new Dictionary<string, object>
                     {
-                        ["source"] = "ProjectRule",
-                        ["resourceType"] = rule.ResourceType,
-                        ["path"] = rule.FieldPath,
-                        ["ruleType"] = rule.Type,
-                        ["ruleId"] = rule.Id,
                         ["actual"] = actualValue,
                         ["allowed"] = allowedValues,
-                        ["arrayIndex"] = arrayIndex ?? i  // Phase 2: Fallback to iteration index
+                        ["valueType"] = "string",
+                        ["arrayIndex"] = arrayIndex ?? i  // Internal hint for Phase 2
                     };
-                    
-                    details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.VALUE_NOT_ALLOWED, details);
                     
                     errors.Add(new RuleValidationError
                     {
@@ -1352,20 +1346,18 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 
                 if (count < min)
                 {
+                    // Canonical schema: { min, max, actual }
                     var details = new Dictionary<string, object>
                     {
-                        ["source"] = "ProjectRule",
-                        ["resourceType"] = rule.ResourceType,
-                        ["path"] = rule.FieldPath,
-                        ["ruleType"] = rule.Type,
-                        ["ruleId"] = rule.Id,
-                        ["count"] = count,
-                        ["actual"] = count,
                         ["min"] = min,
-                        ["violation"] = "min"
+                        ["max"] = null,
+                        ["actual"] = count
                     };
                     
-                    details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.ARRAY_LENGTH_VIOLATION, details);
+                    // Use rule's errorCode if specified, otherwise default to ARRAY_LENGTH_OUT_OF_RANGE
+                    var errorCode = !string.IsNullOrEmpty(rule.ErrorCode) 
+                        ? rule.ErrorCode 
+                        : "ARRAY_LENGTH_OUT_OF_RANGE";
                     
                     errors.Add(new RuleValidationError
                     {
@@ -1374,7 +1366,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         Severity = rule.Severity,
                         ResourceType = rule.ResourceType,
                         FieldPath = rule.FieldPath,
-                        ErrorCode = ValidationErrorCodes.ARRAY_LENGTH_VIOLATION,
+                        ErrorCode = errorCode,
                         Details = details,
                         EntryIndex = entryIndex,
                         ResourceId = resource.Id
@@ -1398,20 +1390,18 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 
                 if (count > max)
                 {
+                    // Canonical schema: { min, max, actual }
                     var details = new Dictionary<string, object>
                     {
-                        ["source"] = "ProjectRule",
-                        ["resourceType"] = rule.ResourceType,
-                        ["path"] = rule.FieldPath,
-                        ["ruleType"] = rule.Type,
-                        ["ruleId"] = rule.Id,
-                        ["count"] = count,
-                        ["actual"] = count,
+                        ["min"] = null,
                         ["max"] = max,
-                        ["violation"] = "max"
+                        ["actual"] = count
                     };
                     
-                    details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.ARRAY_LENGTH_VIOLATION, details);
+                    // Use rule's errorCode if specified, otherwise default to ARRAY_LENGTH_OUT_OF_RANGE
+                    var errorCode = !string.IsNullOrEmpty(rule.ErrorCode) 
+                        ? rule.ErrorCode 
+                        : "ARRAY_LENGTH_OUT_OF_RANGE";
                     
                     errors.Add(new RuleValidationError
                     {
@@ -1420,7 +1410,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         Severity = rule.Severity,
                         ResourceType = rule.ResourceType,
                         FieldPath = rule.FieldPath,
-                        ErrorCode = ValidationErrorCodes.ARRAY_LENGTH_VIOLATION,
+                        ErrorCode = errorCode,
                         Details = details,
                         EntryIndex = entryIndex,
                         ResourceId = resource.Id

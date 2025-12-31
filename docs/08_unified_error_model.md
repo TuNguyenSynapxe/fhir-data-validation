@@ -55,7 +55,7 @@ All validation engines must output errors using this format.
 
 ## 4. Path vs jsonPointer
 - `path` = human-readable (FHIRPath-like)
-- `jsonPointer` = machine-navigable
+- `jsonPointer` = machine-navigable (RFC-6901 JSON Pointer format)
 
 Example:
 ```
@@ -65,6 +65,41 @@ Observation.component[0].valueString
 ```
 /entry/2/resource/component/0/valueString
 ```
+
+### 4.1 Array Element Precision (Phase 2 Complete)
+**Status:** ✅ Implemented December 2025
+
+Both POCO and JSON fallback validation now emit **index-aware** JSON pointers for array elements:
+
+**Example: Patient with multiple identifiers**
+```json
+{
+  "identifier": [
+    { "system": "http://valid.com" },     // index 0
+    { "system": "http://INVALID.com" }    // index 1 ← fails validation
+  ]
+}
+```
+
+**Error produced:**
+```json
+{
+  "path": "identifier.system",
+  "jsonPointer": "/entry/0/resource/identifier/1/system",
+  "errorCode": "VALUE_NOT_ALLOWED",
+  "details": {
+    "actual": "http://INVALID.com",
+    "allowed": ["http://valid.com"]
+  }
+}
+```
+
+**Implementation:**
+- POCO validation: Tracks array indices during FHIRPath evaluation (`ITypedElement.Location`)
+- JSON fallback: Navigates ISourceNode tree with recursive index tracking
+- Both paths produce identical `jsonPointer` values
+
+See: `backend/PHASE_2_POCO_PARITY_COMPLETE.md` for technical details
 
 ---
 

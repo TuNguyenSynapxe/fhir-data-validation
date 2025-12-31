@@ -239,11 +239,12 @@ export const AllowedValuesErrorMessages: Record<string, ErrorMessageDefinition> 
     title: 'Value Not Allowed',
     summary: 'The value is not in the list of allowed values.',
     details: (issue) => {
-      const allowed = issue.details?.expected?.allowedValues;
-      const value = issue.details?.actual?.value;
+      // Canonical schema: { actual, allowed, valueType }
+      const actual = issue.details?.actual;
+      const allowed = issue.details?.allowed;
       return [
-        allowed ? `Allowed: ${JSON.stringify(allowed)}` : '',
-        value ? `Actual: ${JSON.stringify(value)}` : ''
+        actual !== undefined ? `Actual: ${JSON.stringify(actual)}` : '',
+        allowed ? `Allowed: ${JSON.stringify(allowed)}` : ''
       ].filter(Boolean);
     },
     remediation: () => 'Select a value from the allowed list'
@@ -832,23 +833,21 @@ export const SystemErrorMessages: Record<string, ErrorMessageDefinition> = {
 
 /**
  * DEFAULT MESSAGE for unknown error codes
+ * 
+ * GLOBAL FRONTEND FALLBACK RULE:
+ * - If errorCode is unknown → show generic validation message
+ * - If details are missing or invalid → show generic validation message
+ * - UI MUST NEVER throw, render empty panel, or depend on backend message text
+ * 
+ * Fallback Message:
+ * - Title: "Validation error"
+ * - Description: "This item does not meet validation requirements."
  */
 export const DEFAULT_ERROR_MESSAGE: ErrorMessageDefinition = {
-  title: 'Validation Error',
-  summary: 'A validation error occurred.',
-  details: (issue) => {
-    const details: string[] = [];
-    
-    if (issue.path) {
-      details.push(`Path: ${issue.path}`);
-    }
-    if (issue.errorCode) {
-      details.push(`Error code: ${issue.errorCode}`);
-    }
-    
-    return details;
-  },
-  remediation: () => 'Review the error details and correct the issue'
+  title: 'Validation error',
+  summary: 'This item does not meet validation requirements.',
+  details: () => [],
+  remediation: () => 'Review the validation requirements and correct the issue'
 };
 
 // ============================================================================
@@ -902,9 +901,21 @@ export const ERROR_MESSAGE_MAP: Record<string, ErrorMessageDefinition> = {
 
 /**
  * Get error message definition for an error code
+ * 
+ * GLOBAL FRONTEND FALLBACK RULE:
+ * - If errorCode is unknown, log warning and return safe fallback
+ * - Never throw, never render empty, never depend on backend text
  */
 export function getErrorMessage(errorCode: string): ErrorMessageDefinition {
-  return ERROR_MESSAGE_MAP[errorCode] || DEFAULT_ERROR_MESSAGE;
+  const message = ERROR_MESSAGE_MAP[errorCode];
+  
+  if (!message) {
+    // Log warning for unknown errorCode (development aid)
+    console.warn(`[ValidationError] Unknown errorCode: "${errorCode}". Using fallback message.`);
+    return DEFAULT_ERROR_MESSAGE;
+  }
+  
+  return message;
 }
 
 /**
