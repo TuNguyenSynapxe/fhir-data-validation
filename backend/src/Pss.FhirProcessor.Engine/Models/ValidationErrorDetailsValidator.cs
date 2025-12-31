@@ -76,12 +76,15 @@ public static class ValidationErrorDetailsValidator
             case "REFERENCE_TYPE_MISMATCH":
                 ValidateReferenceTypeMismatch(details, errors);
                 break;
+            // Reserved for future Firely enhancements — not currently emitted
             case "FHIR_INVALID_PRIMITIVE":
                 ValidateFhirInvalidPrimitive(details, errors);
                 break;
             case "FHIR_ARRAY_EXPECTED":
                 ValidateFhirArrayExpected(details, errors);
                 break;
+            // Reserved but not emitted — QuestionAnswer uses specific codes
+            // (ANSWER_REQUIRED, INVALID_ANSWER_VALUE, ANSWER_OUT_OF_RANGE, etc.)
             case "QUESTIONANSWER_VIOLATION":
                 ValidateQuestionAnswerViolation(details, errors);
                 break;
@@ -197,6 +200,10 @@ public static class ValidationErrorDetailsValidator
         }
     }
     
+    /// <summary>
+    /// Reserved for future Firely SDK integration.
+    /// Canonical schema: { actual: string, expectedType: string, reason: string }
+    /// </summary>
     private static void ValidateFhirInvalidPrimitive(IDictionary<string, object> details, List<string> errors)
     {
         RequireKey(details, "actual", errors);
@@ -204,6 +211,10 @@ public static class ValidationErrorDetailsValidator
         RequireKey(details, "reason", errors);
     }
     
+    /// <summary>
+    /// Reserved for future Firely SDK integration.
+    /// Canonical schema: { expectedType: "array", actualType: string }
+    /// </summary>
     private static void ValidateFhirArrayExpected(IDictionary<string, object> details, List<string> errors)
     {
         RequireKey(details, "expectedType", errors);
@@ -216,6 +227,14 @@ public static class ValidationErrorDetailsValidator
         }
     }
     
+    /// <summary>
+    /// Reserved but not currently emitted.
+    /// QuestionAnswer rules use specific errorCodes instead:
+    /// ANSWER_REQUIRED, INVALID_ANSWER_VALUE, ANSWER_OUT_OF_RANGE,
+    /// ANSWER_NOT_IN_VALUESET, QUESTION_NOT_FOUND, QUESTIONSET_DATA_MISSING.
+    /// Canonical schema: { violation: "question" | "answer" | "cardinality",
+    ///                     questionCode?: string, answerCode?: string, expectedCardinality?: string }
+    /// </summary>
     private static void ValidateQuestionAnswerViolation(IDictionary<string, object> details, List<string> errors)
     {
         RequireKey(details, "violation", errors);
