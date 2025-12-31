@@ -489,6 +489,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                                     
                                     if (!string.IsNullOrWhiteSpace(actualValue) && !regex.IsMatch(actualValue))
                                     {
+                                        // Canonical schema: {actual, pattern}
                                         errors.Add(new RuleValidationError
                                         {
                                             RuleId = rule.Id,
@@ -499,14 +500,9 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                                             ErrorCode = ValidationErrorCodes.PATTERN_MISMATCH,
                                             Details = new Dictionary<string, object>
                                             {
-                                                ["source"] = "ProjectRule",
-                                                ["resourceType"] = resourceType ?? rule.ResourceType,
-                                                ["path"] = rule.FieldPath,
-                                                ["ruleId"] = rule.Id,
-                                                ["actualValue"] = actualValue,
-                                                ["expectedPattern"] = pattern,
-                                                ["entryIndex"] = entryIndex,
-                                                ["_precomputedJsonPointer"] = jsonPointer  // Index-aware pointer
+                                                ["actual"] = actualValue,
+                                                ["pattern"] = pattern,
+                                                ["_precomputedJsonPointer"] = jsonPointer  // Internal hint
                                             },
                                             EntryIndex = entryIndex,
                                             ResourceId = resourceId ?? "unknown"
@@ -540,6 +536,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                                 
                                 if (actualValue != expectedValue)
                                 {
+                                    // Canonical schema: {actual, expected}
                                     errors.Add(new RuleValidationError
                                     {
                                         RuleId = rule.Id,
@@ -550,14 +547,9 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                                         ErrorCode = ValidationErrorCodes.FIXED_VALUE_MISMATCH,
                                         Details = new Dictionary<string, object>
                                         {
-                                            ["source"] = "ProjectRule",
-                                            ["resourceType"] = resourceType ?? rule.ResourceType,
-                                            ["path"] = rule.FieldPath,
-                                            ["ruleId"] = rule.Id,
-                                            ["actualValue"] = actualValue,
-                                            ["expectedValue"] = expectedValue,
-                                            ["entryIndex"] = entryIndex,
-                                            ["_precomputedJsonPointer"] = jsonPointer  // Index-aware pointer
+                                            ["actual"] = actualValue,
+                                            ["expected"] = expectedValue,
+                                            ["_precomputedJsonPointer"] = jsonPointer  // Internal hint
                                         },
                                         EntryIndex = entryIndex,
                                         ResourceId = resourceId ?? "unknown"
@@ -1067,19 +1059,13 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         arrayIndex = ExtractArrayIndexFromLocation(typedElement.Location);
                     }
                     
+                    // Canonical schema: {actual, expected}
                     var details = new Dictionary<string, object>
                     {
-                        ["source"] = "ProjectRule",
-                        ["resourceType"] = rule.ResourceType,
-                        ["path"] = rule.FieldPath,
-                        ["ruleType"] = rule.Type,
-                        ["ruleId"] = rule.Id,
+                        ["actual"] = actualValue,
                         ["expected"] = expectedValue ?? "",
-                        ["actual"] = actualValue ?? "",
-                        ["arrayIndex"] = arrayIndex ?? i  // Phase 2: Fallback to iteration index
+                        ["arrayIndex"] = arrayIndex ?? i  // Internal hint for Phase 2
                     };
-                    
-                    details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.FIXED_VALUE_MISMATCH, details);
                     
                     errors.Add(new RuleValidationError
                     {
@@ -1236,18 +1222,12 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 
                 if (!string.IsNullOrEmpty(actualValue) && !regex.IsMatch(actualValue))
                 {
+                    // Canonical schema: {actual, pattern}
                     var details = new Dictionary<string, object>
                     {
-                        ["source"] = "ProjectRule",
-                        ["resourceType"] = rule.ResourceType,
-                        ["path"] = rule.FieldPath,
-                        ["ruleType"] = rule.Type,
-                        ["ruleId"] = rule.Id,
                         ["actual"] = actualValue,
                         ["pattern"] = pattern
                     };
-                    
-                    details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.PATTERN_MISMATCH, details);
                     
                     errors.Add(new RuleValidationError
                     {
