@@ -80,6 +80,9 @@ public static class ValidationErrorCodes
     
     /// <summary>CodeSystem rule violation (system mismatch or code not allowed)</summary>
     public const string CODESYSTEM_VIOLATION = "CODESYSTEM_VIOLATION";
+    
+    /// <summary>Code system URL does not match expected system</summary>
+    public const string CODESYSTEM_MISMATCH = "CODESYSTEM_MISMATCH";
 
     // =========================================================================
     // TERMINOLOGY / VALUESET

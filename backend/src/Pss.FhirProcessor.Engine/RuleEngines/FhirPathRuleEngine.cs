@@ -1573,23 +1573,13 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 // Validate system URL
                 if (coding.System != expectedSystem)
                 {
+                    // Canonical schema: {expectedSystem, actualSystem}
                     var details = new Dictionary<string, object>
                     {
-                        ["source"] = "ProjectRule",
-                        ["resourceType"] = rule.ResourceType,
-                        ["path"] = rule.FieldPath,
-                        ["ruleType"] = rule.Type,
-                        ["ruleId"] = rule.Id,
-                        ["violation"] = "system",
-                        ["arrayIndex"] = arrayIndex ?? i,
-                        ["codeSetId"] = codeSetId,
                         ["expectedSystem"] = expectedSystem,
-                        ["actualSystem"] = coding.System ?? "",
-                        ["actualCode"] = coding.Code ?? "",
-                        ["actualDisplay"] = coding.Display ?? ""
+                        ["actualSystem"] = coding.System,
+                        ["arrayIndex"] = arrayIndex ?? i  // Internal hint
                     };
-                    
-                    details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.CODESYSTEM_VIOLATION, details);
                     
                     errors.Add(new RuleValidationError
                     {
@@ -1598,7 +1588,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         Severity = rule.Severity,
                         ResourceType = rule.ResourceType,
                         FieldPath = rule.FieldPath,
-                        ErrorCode = ValidationErrorCodes.CODESYSTEM_VIOLATION,
+                        ErrorCode = "CODESYSTEM_MISMATCH",
                         Details = details,
                         EntryIndex = entryIndex,
                         ResourceId = resource.Id
@@ -1607,25 +1597,14 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 // Validate code against CodeSet concepts (closed-world validation)
                 else if (!validCodes.Contains(coding.Code))
                 {
+                    // Canonical schema: {system, code, valueSet}
                     var details = new Dictionary<string, object>
                     {
-                        ["source"] = "ProjectRule",
-                        ["resourceType"] = rule.ResourceType,
-                        ["path"] = rule.FieldPath,
-                        ["ruleType"] = rule.Type,
-                        ["ruleId"] = rule.Id,
-                        ["violation"] = "code",
-                        ["arrayIndex"] = arrayIndex ?? i,
-                        ["codeSetId"] = codeSetId,
-                        ["expectedSystem"] = expectedSystem,
-                        ["actualSystem"] = coding.System ?? "",
-                        ["actualCode"] = coding.Code ?? "",
-                        ["actualDisplay"] = coding.Display ?? "",
-                        ["validCodes"] = validCodes,
-                        ["validationMode"] = "codeset"
+                        ["system"] = coding.System ?? expectedSystem,
+                        ["code"] = coding.Code ?? "",
+                        ["valueSet"] = codeSetId,
+                        ["arrayIndex"] = arrayIndex ?? i  // Internal hint
                     };
-                    
-                    details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.CODESYSTEM_VIOLATION, details);
                     
                     errors.Add(new RuleValidationError
                     {
@@ -1634,7 +1613,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         Severity = rule.Severity,
                         ResourceType = rule.ResourceType,
                         FieldPath = rule.FieldPath,
-                        ErrorCode = ValidationErrorCodes.CODESYSTEM_VIOLATION,
+                        ErrorCode = ValidationErrorCodes.CODE_NOT_IN_VALUESET,
                         Details = details,
                         EntryIndex = entryIndex,
                         ResourceId = resource.Id
