@@ -166,19 +166,20 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
         
         foreach (var error in errors)
         {
-            // Check if JSON fallback precomputed the jsonPointer (when Bundle is null)
+            // MVP: ALWAYS trust backend-computed pointer first
             string? jsonPointer = null;
             
             if (error.Details?.ContainsKey("_precomputedJsonPointer") == true)
             {
-                // Use precomputed jsonPointer from JSON fallback
+                // Use precomputed jsonPointer from JSON fallback (index-aware)
                 jsonPointer = error.Details["_precomputedJsonPointer"]?.ToString();
                 // Remove it from details so it doesn't appear in API response
                 error.Details.Remove("_precomputedJsonPointer");
             }
             else if (rawJson.ValueKind != JsonValueKind.Undefined)
             {
-                // Normal path: resolve using SmartPathNavigation on raw JSON
+                // Fallback: resolve using SmartPathNavigation on raw JSON
+                // Note: This path may not be index-aware (Phase 2 work)
                 jsonPointer = await _navigationService.ResolvePathAsync(rawJson, bundle, error.FieldPath, error.ResourceType, null, cancellationToken);
             }
             

@@ -186,8 +186,28 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "ValidateJsonAsync: Failed to parse Bundle for RequiredResources validation");
-                    // Continue without bundle-level validation - structural errors already captured by Firely
+                    _logger.LogWarning(ex, "ValidateJsonAsync: Failed to parse Bundle for RequiredResources validation, using JSON fallback");
+                    
+                    // JSON fallback: Validate RequiredResources without POCO
+                    using var bundleDocForBundleRules = System.Text.Json.JsonDocument.Parse(bundleJson);
+                    var rootForBundleRules = bundleDocForBundleRules.RootElement;
+                    
+                    if (rootForBundleRules.TryGetProperty("entry", out var entriesForBundleRules))
+                    {
+                        foreach (var rule in bundleLevelRules)
+                        {
+                            try
+                            {
+                                var bundleRuleErrors = ValidateRequiredResourcesOnJson(bundleJson, entriesForBundleRules, rule);
+                                _logger.LogTrace("ValidateJsonAsync: RequiredResources rule {RuleId} (JSON fallback) produced {ErrorCount} errors", rule.Id, bundleRuleErrors.Count);
+                                errors.AddRange(bundleRuleErrors);
+                            }
+                            catch (Exception ruleEx)
+                            {
+                                _logger.LogError("ValidateJsonAsync: Error validating RequiredResources rule {RuleId}: {ErrorMessage}", rule.Id, ruleEx.Message);
+                            }
+                        }
+                    }
                 }
             }
             
@@ -319,11 +339,12 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             switch (rule.Type.ToUpperInvariant())
             {
                 case "REQUIRED":
-                    // Navigate to the field path and check if it exists
-                    var valueNode = NavigateToPathInSourceNode(resource, fieldPath);
-                    if (valueNode == null || string.IsNullOrWhiteSpace(valueNode.Text))
+                    // MVP: Use NavigateToPathInSourceNodeAll to check if field exists
+                    var matches = NavigateToPathInSourceNodeAll(resource, fieldPath, entryIndex);
+                    
+                    if (!matches.Any())
                     {
-                        // Construct jsonPointer for SmartPath navigation (since we don't have a valid Bundle object)
+                        // Field doesn't exist at all
                         var jsonPointer = $"/entry/{entryIndex}/resource/{fieldPath.Replace(".", "/")}";
                         
                         errors.Add(new RuleValidationError
@@ -341,7 +362,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                                 ["path"] = rule.FieldPath,
                                 ["ruleId"] = rule.Id,
                                 ["entryIndex"] = entryIndex,
-                                ["_precomputedJsonPointer"] = jsonPointer  // Special key for UnifiedErrorModelBuilder
+                                ["_precomputedJsonPointer"] = jsonPointer
                             },
                             EntryIndex = entryIndex,
                             ResourceId = resourceId ?? "unknown"
@@ -383,8 +404,179 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                     }
                     break;
                     
-                // For other rule types, we'd need more complex logic
-                // For now, skip them when using JSON fallback
+                case "ALLOWEDVALUES":
+                    // MVP: Navigate to ALL matching nodes and validate each
+                    var allowedMatches = NavigateToPathInSourceNodeAll(resource, fieldPath, entryIndex);
+                    
+                    if (rule.Params != null && rule.Params.ContainsKey("values"))
+                    {
+                        var allowedValuesParam = rule.Params["values"];
+                        List<string>? allowedValues = null;
+                        
+                        if (allowedValuesParam is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.Array)
+                        {
+                            allowedValues = jsonElement.EnumerateArray()
+                                .Select(e => e.GetString())
+                                .Where(s => s != null)
+                                .Cast<string>()
+                                .ToList();
+                        }
+                        else if (allowedValuesParam is string[] strArray)
+                        {
+                            allowedValues = strArray.ToList();
+                        }
+                        else if (allowedValuesParam is IEnumerable<object> objList)
+                        {
+                            allowedValues = objList.Select(o => o?.ToString()).Where(s => s != null).Cast<string>().ToList();
+                        }
+                        
+                        if (allowedValues != null)
+                        {
+                            // MVP: Emit one error per invalid array element
+                            foreach (var (node, jsonPointer) in allowedMatches)
+                            {
+                                var actualValue = node.Text;
+                                
+                                if (!string.IsNullOrWhiteSpace(actualValue) && !allowedValues.Contains(actualValue))
+                                {
+                                    errors.Add(new RuleValidationError
+                                    {
+                                        RuleId = rule.Id,
+                                        RuleType = rule.Type,
+                                        Severity = rule.Severity,
+                                        ResourceType = resourceType ?? rule.ResourceType,
+                                        FieldPath = rule.FieldPath,
+                                        ErrorCode = ValidationErrorCodes.VALUE_NOT_ALLOWED,
+                                        Details = new Dictionary<string, object>
+                                        {
+                                            ["source"] = "ProjectRule",
+                                            ["resourceType"] = resourceType ?? rule.ResourceType,
+                                            ["path"] = rule.FieldPath,
+                                            ["ruleId"] = rule.Id,
+                                            ["actualValue"] = actualValue,
+                                            ["allowedValues"] = allowedValues,
+                                            ["entryIndex"] = entryIndex,
+                                            ["_precomputedJsonPointer"] = jsonPointer  // Index-aware pointer
+                                        },
+                                        EntryIndex = entryIndex,
+                                        ResourceId = resourceId ?? "unknown"
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    break;
+                    
+                case "REGEX":
+                case "PATTERN":
+                    // MVP: Navigate to ALL matching nodes and validate each against regex
+                    var regexMatches = NavigateToPathInSourceNodeAll(resource, fieldPath, entryIndex);
+                    
+                    if (rule.Params != null && rule.Params.ContainsKey("pattern"))
+                    {
+                        var patternObj = rule.Params["pattern"];
+                        var pattern = patternObj is JsonElement jsonPattern ? jsonPattern.GetString() : patternObj?.ToString();
+                        
+                        if (!string.IsNullOrEmpty(pattern))
+                        {
+                            try
+                            {
+                                var regex = new System.Text.RegularExpressions.Regex(pattern);
+                                
+                                // MVP: Emit one error per invalid array element
+                                foreach (var (node, jsonPointer) in regexMatches)
+                                {
+                                    var actualValue = node.Text;
+                                    
+                                    if (!string.IsNullOrWhiteSpace(actualValue) && !regex.IsMatch(actualValue))
+                                    {
+                                        errors.Add(new RuleValidationError
+                                        {
+                                            RuleId = rule.Id,
+                                            RuleType = rule.Type,
+                                            Severity = rule.Severity,
+                                            ResourceType = resourceType ?? rule.ResourceType,
+                                            FieldPath = rule.FieldPath,
+                                            ErrorCode = ValidationErrorCodes.PATTERN_MISMATCH,
+                                            Details = new Dictionary<string, object>
+                                            {
+                                                ["source"] = "ProjectRule",
+                                                ["resourceType"] = resourceType ?? rule.ResourceType,
+                                                ["path"] = rule.FieldPath,
+                                                ["ruleId"] = rule.Id,
+                                                ["actualValue"] = actualValue,
+                                                ["expectedPattern"] = pattern,
+                                                ["entryIndex"] = entryIndex,
+                                                ["_precomputedJsonPointer"] = jsonPointer  // Index-aware pointer
+                                            },
+                                            EntryIndex = entryIndex,
+                                            ResourceId = resourceId ?? "unknown"
+                                        });
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError("Invalid regex pattern in rule {RuleId}: {Pattern} - {Error}", rule.Id, pattern, ex.Message);
+                            }
+                        }
+                    }
+                    break;
+                    
+                case "FIXEDVALUE":
+                    // MVP: Navigate to ALL matching nodes and validate each
+                    var fixedMatches = NavigateToPathInSourceNodeAll(resource, fieldPath, entryIndex);
+                    
+                    if (rule.Params != null && rule.Params.ContainsKey("value"))
+                    {
+                        var expectedValueObj = rule.Params["value"];
+                        var expectedValue = expectedValueObj is JsonElement jsonValue ? jsonValue.GetString() : expectedValueObj?.ToString();
+                        
+                        if (expectedValue != null)
+                        {
+                            // MVP: Emit one error per mismatched array element
+                            foreach (var (node, jsonPointer) in fixedMatches)
+                            {
+                                var actualValue = node.Text ?? "";
+                                
+                                if (actualValue != expectedValue)
+                                {
+                                    errors.Add(new RuleValidationError
+                                    {
+                                        RuleId = rule.Id,
+                                        RuleType = rule.Type,
+                                        Severity = rule.Severity,
+                                        ResourceType = resourceType ?? rule.ResourceType,
+                                        FieldPath = rule.FieldPath,
+                                        ErrorCode = ValidationErrorCodes.FIXED_VALUE_MISMATCH,
+                                        Details = new Dictionary<string, object>
+                                        {
+                                            ["source"] = "ProjectRule",
+                                            ["resourceType"] = resourceType ?? rule.ResourceType,
+                                            ["path"] = rule.FieldPath,
+                                            ["ruleId"] = rule.Id,
+                                            ["actualValue"] = actualValue,
+                                            ["expectedValue"] = expectedValue,
+                                            ["entryIndex"] = entryIndex,
+                                            ["_precomputedJsonPointer"] = jsonPointer  // Index-aware pointer
+                                        },
+                                        EntryIndex = entryIndex,
+                                        ResourceId = resourceId ?? "unknown"
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    break;
+                    
+                // POCO-dependent rule types - skip with diagnostic
+                case "QUESTIONANSWER":
+                case "CODESYSTEM":
+                case "REFERENCE":
+                    _logger.LogDebug("ValidateRuleOnSourceNode: Rule type {RuleType} skipped due to structural parsing failure (POCO unavailable)", rule.Type);
+                    break;
+                    
+                // Unknown rule types
                 default:
                     _logger.LogWarning("ValidateRuleOnSourceNode: Rule type {RuleType} not yet implemented for JSON fallback", rule.Type);
                     break;
@@ -419,6 +611,155 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         }
         
         return current;
+    }
+    
+    /// <summary>
+    /// MVP: Navigates to ALL matching nodes for a fieldPath and returns (node, jsonPointer) pairs.
+    /// Supports single-level arrays only. Nested arrays deferred to Phase 2.
+    /// </summary>
+    private List<(ISourceNode node, string jsonPointer)> NavigateToPathInSourceNodeAll(
+        ISourceNode resourceNode,
+        string fieldPath,
+        int entryIndex)
+    {
+        var results = new List<(ISourceNode, string)>();
+        var parts = fieldPath.Split('.');
+        
+        NavigateRecursive(
+            resourceNode,
+            parts,
+            0,
+            $"/entry/{entryIndex}/resource",
+            results
+        );
+        
+        return results;
+    }
+    
+    /// <summary>
+    /// Recursive helper for NavigateToPathInSourceNodeAll.
+    /// MVP: ALWAYS treats Children() as array-capable, emitting /part/index format.
+    /// </summary>
+    private void NavigateRecursive(
+        ISourceNode current,
+        string[] parts,
+        int partIndex,
+        string currentPointer,
+        List<(ISourceNode, string)> results)
+    {
+        if (partIndex >= parts.Length)
+        {
+            // Reached target, add to results
+            results.Add((current, currentPointer));
+            return;
+        }
+        
+        var part = parts[partIndex];
+        var children = current.Children(part).ToList();
+        
+        if (children.Count == 0)
+        {
+            // Path doesn't exist - return empty results
+            return;
+        }
+        
+        // MVP rule: ALWAYS treat as array-capable and emit index
+        // Even if children.Count == 1, still emit /part/0
+        for (int i = 0; i < children.Count; i++)
+        {
+            var nextPointer = $"{currentPointer}/{part}/{i}";
+            NavigateRecursive(
+                children[i],
+                parts,
+                partIndex + 1,
+                nextPointer,
+                results
+            );
+        }
+    }
+    
+    /// <summary>
+    /// Validates RequiredResources rule against bundle entries (JSON fallback)
+    /// </summary>
+    private List<RuleValidationError> ValidateRequiredResourcesOnJson(string bundleJson, JsonElement entriesArray, RuleDefinition rule)
+    {
+        var errors = new List<RuleValidationError>();
+        
+        if (rule.Params == null || !rule.Params.ContainsKey("allowedResourceTypes"))
+        {
+            _logger.LogWarning("RequiredResources rule {RuleId} missing allowedResourceTypes param", rule.Id);
+            return errors;
+        }
+        
+        var allowedTypesParam = rule.Params["allowedResourceTypes"];
+        List<string>? allowedResourceTypes = null;
+        
+        if (allowedTypesParam is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.Array)
+        {
+            allowedResourceTypes = jsonElement.EnumerateArray()
+                .Select(e => e.GetString())
+                .Where(s => s != null)
+                .Cast<string>()
+                .ToList();
+        }
+        else if (allowedTypesParam is string[] strArray)
+        {
+            allowedResourceTypes = strArray.ToList();
+        }
+        else if (allowedTypesParam is IEnumerable<object> objList)
+        {
+            allowedResourceTypes = objList.Select(o => o?.ToString()).Where(s => s != null).Cast<string>().ToList();
+        }
+        
+        if (allowedResourceTypes == null || !allowedResourceTypes.Any())
+        {
+            _logger.LogWarning("RequiredResources rule {RuleId} has empty allowedResourceTypes", rule.Id);
+            return errors;
+        }
+        
+        _logger.LogDebug("RequiredResources: Checking bundle entries against allowed types: {AllowedTypes}", string.Join(", ", allowedResourceTypes));
+        
+        int entryIndex = 0;
+        foreach (var entry in entriesArray.EnumerateArray())
+        {
+            if (entry.TryGetProperty("resource", out var resourceElement) && 
+                resourceElement.TryGetProperty("resourceType", out var resourceTypeElement))
+            {
+                var resourceType = resourceTypeElement.GetString();
+                
+                if (!string.IsNullOrEmpty(resourceType) && !allowedResourceTypes.Contains(resourceType))
+                {
+                    var jsonPointer = $"/entry/{entryIndex}/resource";
+                    
+                    errors.Add(new RuleValidationError
+                    {
+                        RuleId = rule.Id,
+                        RuleType = rule.Type,
+                        Severity = rule.Severity,
+                        ResourceType = resourceType,
+                        FieldPath = "resourceType",
+                        ErrorCode = ValidationErrorCodes.RESOURCE_REQUIREMENT_VIOLATION,
+                        Details = new Dictionary<string, object>
+                        {
+                            ["source"] = "ProjectRule",
+                            ["resourceType"] = resourceType,
+                            ["path"] = "Bundle.entry.resource",
+                            ["ruleId"] = rule.Id,
+                            ["actualResourceType"] = resourceType,
+                            ["allowedResourceTypes"] = allowedResourceTypes,
+                            ["entryIndex"] = entryIndex,
+                            ["_precomputedJsonPointer"] = jsonPointer
+                        },
+                        EntryIndex = entryIndex,
+                        ResourceId = resourceElement.TryGetProperty("id", out var idElem) ? idElem.GetString() : "unknown"
+                    });
+                }
+            }
+            
+            entryIndex++;
+        }
+        
+        return errors;
     }
     
     /// <summary>
