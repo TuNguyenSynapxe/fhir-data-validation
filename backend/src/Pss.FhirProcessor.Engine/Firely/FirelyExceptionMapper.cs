@@ -94,6 +94,19 @@ public static class FirelyExceptionMapper
             return CreateInvalidPrimitiveError(invalidValue, expectedType, exceptionMessage, rawBundleJson);
         }
         
+        // Pattern 6: Array expected but received non-array
+        // Example: "Expected array but received object"
+        // Example: "Expected array but received string"
+        var arrayExpectedMatch = Regex.Match(exceptionMessage,
+            @"Expected array.*but received (\w+)",
+            RegexOptions.IgnoreCase);
+        
+        if (arrayExpectedMatch.Success)
+        {
+            var actualType = arrayExpectedMatch.Groups[1].Value;
+            return CreateArrayExpectedError(actualType, exceptionMessage, rawBundleJson);
+        }
+        
         // Fallback: Generic FHIR deserialization error
         return CreateGenericDeserializationError(exceptionType, exceptionMessage, rawBundleJson);
     }
@@ -404,6 +417,31 @@ public static class FirelyExceptionMapper
             Severity = "error",
             ErrorCode = "FHIR_INVALID_PRIMITIVE",
             Message = $"Invalid {expectedType} value: '{invalidValue}'",
+            Details = details
+        };
+    }
+    
+    /// <summary>
+    /// Creates a ValidationError when array was expected but received different type
+    /// Canonical schema: { expectedType: "array", actualType: string }
+    /// </summary>
+    private static ValidationError CreateArrayExpectedError(string actualType, string exceptionMessage, string? rawBundleJson)
+    {
+        var details = new Dictionary<string, object>
+        {
+            ["expectedType"] = "array",
+            ["actualType"] = actualType
+        };
+        
+        // CRITICAL: Enforce canonical schema at runtime
+        ValidationErrorDetailsValidator.Validate("FHIR_ARRAY_EXPECTED", details);
+        
+        return new ValidationError
+        {
+            Source = "FHIR",
+            Severity = "error",
+            ErrorCode = "FHIR_ARRAY_EXPECTED",
+            Message = $"Expected array but received {actualType}",
             Details = details
         };
     }

@@ -241,4 +241,67 @@ public class FirelyExceptionMapperTests
         Assert.Equal("abc123", error.Details["actual"]);
         Assert.Equal("decimal", error.Details["expectedType"]);
     }
+    
+    [Fact]
+    public void MapToValidationError_ArrayExpected_Object_ExtractsDetails()
+    {
+        // Arrange
+        var exceptionMessage = "Expected array for property 'identifier' but received object";
+        var exception = new Exception(exceptionMessage);
+        
+        // Act
+        var error = FirelyExceptionMapper.MapToValidationError(exception, null);
+        
+        // Assert
+        Assert.Equal("FHIR", error.Source);
+        Assert.Equal("error", error.Severity);
+        Assert.Equal("FHIR_ARRAY_EXPECTED", error.ErrorCode);
+        Assert.Contains("Expected array", error.Message);
+        Assert.Contains("received object", error.Message);
+        
+        // Check canonical schema: { expectedType: "array", actualType }
+        Assert.NotNull(error.Details);
+        Assert.Equal("array", error.Details["expectedType"]);
+        Assert.Equal("object", error.Details["actualType"]);
+    }
+    
+    [Fact]
+    public void MapToValidationError_ArrayExpected_String_ExtractsDetails()
+    {
+        // Arrange
+        var exceptionMessage = "Expected array but received string";
+        var exception = new Exception(exceptionMessage);
+        
+        // Act
+        var error = FirelyExceptionMapper.MapToValidationError(exception, null);
+        
+        // Assert
+        Assert.Equal("FHIR", error.Source);
+        Assert.Equal("error", error.Severity);
+        Assert.Equal("FHIR_ARRAY_EXPECTED", error.ErrorCode);
+        Assert.Contains("Expected array", error.Message);
+        Assert.Contains("received string", error.Message);
+        
+        // Check canonical schema
+        Assert.NotNull(error.Details);
+        Assert.Equal("array", error.Details["expectedType"]);
+        Assert.Equal("string", error.Details["actualType"]);
+    }
+    
+    [Fact]
+    public void MapToValidationError_UnrelatedError_FallsBackToGeneric()
+    {
+        // Arrange
+        var exceptionMessage = "Some completely unrelated Firely error";
+        var exception = new Exception(exceptionMessage);
+        
+        // Act
+        var error = FirelyExceptionMapper.MapToValidationError(exception, null);
+        
+        // Assert - should fall back to generic deserialization error
+        Assert.Equal("FHIR", error.Source);
+        Assert.Equal("error", error.Severity);
+        Assert.Equal("FHIR_DESERIALIZATION_ERROR", error.ErrorCode);
+        Assert.Contains("deserialization failed", error.Message);
+    }
 }
