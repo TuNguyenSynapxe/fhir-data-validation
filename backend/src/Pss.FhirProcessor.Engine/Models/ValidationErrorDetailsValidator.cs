@@ -83,6 +83,9 @@ public static class ValidationErrorDetailsValidator
             case "FHIR_ARRAY_EXPECTED":
                 ValidateFhirArrayExpected(details, errors);
                 break;
+            case "INVALID_ENUM_VALUE":
+                ValidateInvalidEnumValue(details, errors);
+                break;
             // Reserved but not emitted — QuestionAnswer uses specific codes
             // (ANSWER_REQUIRED, INVALID_ANSWER_VALUE, ANSWER_OUT_OF_RANGE, etc.)
             case "QUESTIONANSWER_VIOLATION":
@@ -116,6 +119,25 @@ public static class ValidationErrorDetailsValidator
         {
             if (allowedObj is not System.Collections.IEnumerable)
                 errors.Add("'allowed' must be an array");
+        }
+    }
+    
+    private static void ValidateInvalidEnumValue(IDictionary<string, object> details, List<string> errors)
+    {
+        RequireKey(details, "actual", errors, allowNull: true);
+        RequireKey(details, "allowed", errors);
+        RequireKey(details, "valueType", errors);
+        
+        if (details.TryGetValue("allowed", out var allowedObj))
+        {
+            if (allowedObj is not System.Collections.IEnumerable)
+                errors.Add("'allowed' must be an array");
+        }
+        
+        if (details.TryGetValue("valueType", out var valueTypeObj))
+        {
+            if (valueTypeObj is not string || (string)valueTypeObj != "enum")
+                errors.Add("'valueType' must be 'enum'");
         }
     }
     

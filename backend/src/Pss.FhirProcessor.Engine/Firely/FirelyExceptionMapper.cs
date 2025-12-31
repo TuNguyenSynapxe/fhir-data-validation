@@ -122,24 +122,19 @@ public static class FirelyExceptionMapper
         // Try to extract possible values from common patterns
         var allowedValues = ExtractAllowedEnumValues(enumType);
         
+        // Canonical schema: { actual: string | null, allowed: string[], valueType: "enum" }
         var details = new Dictionary<string, object>
         {
-            ["actualValue"] = invalidValue,
-            ["enumType"] = enumType,
-            ["exceptionType"] = "InvalidEnumValue"
+            ["actual"] = invalidValue,
+            ["allowed"] = allowedValues ?? new List<string>(),
+            ["valueType"] = "enum"
         };
         
-        if (allowedValues != null)
-        {
-            details["allowedValues"] = allowedValues;
-        }
+        // Enforce schema
+        ValidationErrorDetailsValidator.Validate("INVALID_ENUM_VALUE", details);
         
         // Attempt to find location in JSON
         var jsonPointer = TryFindJsonPointer(rawBundleJson, fieldName, invalidValue);
-        if (jsonPointer != null)
-        {
-            details["jsonPointer"] = jsonPointer;
-        }
         
         return new ValidationError
         {

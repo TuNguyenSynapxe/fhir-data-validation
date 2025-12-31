@@ -43,19 +43,18 @@ public class FirelyExceptionMapperTests
         Assert.Contains("completed", error.Message);
         Assert.Contains("Invalid value", error.Message);
         
-        // Check details
+        // Check canonical schema: { actual, allowed, valueType: "enum" }
         Assert.NotNull(error.Details);
-        Assert.Equal("completed", error.Details["actualValue"]);
-        Assert.Equal("Encounter.StatusCode", error.Details["enumType"]);
+        Assert.Equal("completed", error.Details["actual"]);
+        Assert.Equal("enum", error.Details["valueType"]);
         
-        // Should contain allowed values if known
-        if (error.Details.ContainsKey("allowedValues"))
-        {
-            var allowedValues = error.Details["allowedValues"] as List<string>;
-            Assert.NotNull(allowedValues);
-            Assert.Contains("planned", allowedValues);
-            Assert.Contains("in-progress", allowedValues);
-        }
+        // Should contain allowed values array
+        Assert.True(error.Details.ContainsKey("allowed"));
+        var allowedValues = error.Details["allowed"] as List<string>;
+        Assert.NotNull(allowedValues);
+        Assert.Contains("planned", allowedValues);
+        Assert.Contains("in-progress", allowedValues);
+        Assert.Contains("finished", allowedValues);
     }
     
     [Fact]
@@ -303,5 +302,65 @@ public class FirelyExceptionMapperTests
         Assert.Equal("error", error.Severity);
         Assert.Equal("FHIR_DESERIALIZATION_ERROR", error.ErrorCode);
         Assert.Contains("deserialization failed", error.Message);
+    }
+    
+    [Fact]
+    public void MapToValidationError_InvalidEnumValue_UnknownEnum_EmptyAllowedList()
+    {
+        // Arrange - enum not in known list
+        var exceptionMessage = "Literal 'invalid' is not a valid value for enumeration 'SomeUnknown.EnumType'";
+        var exception = new Exception(exceptionMessage);
+        
+        // Act
+        var error = FirelyExceptionMapper.MapToValidationError(exception, null);
+        
+        // Assert - should still return canonical schema with empty allowed array
+        Assert.Equal("INVALID_ENUM_VALUE", error.ErrorCode);
+        Assert.NotNull(error.Details);
+        Assert.Equal("invalid", error.Details["actual"]);
+        Assert.Equal("enum", error.Details["valueType"]);
+        
+        var allowedValues = error.Details["allowed"] as List<string>;
+        Assert.NotNull(allowedValues);
+        Assert.Empty(allowedValues); // Unknown enum → empty list
+    }
+    
+    [Fact]
+    public void MapToValidationError_InvalidEnumValue_EnforcesSchema()
+    {
+        // Arrange
+        var exceptionMessage = "Literal 'male' is not a valid value for enumeration 'AdministrativeGender'";
+        var exception = new Exception(exceptionMessage);
+        
+        // Act
+        var error = FirelyExceptionMapper.MapToValidationError(exception, null);
+        
+        // Assert - schema enforcement should have validated without throwing
+        Assert.Equal("INVALID_ENUM_VALUE", error.ErrorCode);
+        Assert.NotNull(error.Details);
+        
+        // Canonical schema keys present
+        Assert.True(error.Details.ContainsKey("actual"));
+        Assert.True(error.Details.ContainsKey("allowed"));
+        Assert.True(error.Details.ContainsKey("valueType"));
+        
+        // Exactly 3 keys (no legacy keys)
+        Assert.Equal(3, error.Details.Count);
+    }
+    
+    [Fact]
+    public void MapToValidationError_TypeMismatch_StillWorks()
+    {
+        // Arrange - regression test: TYPE_MISMATCH unchanged
+        var exceptionMessage = "Cannot convert value 'abc' to type 'integer'";
+        var exception = new Exception(exceptionMessage);
+        
+        // Act
+        var error = FirelyExceptionMapper.MapToValidationError(exception, null);
+        
+        // Assert - existing patterns unchanged
+        Assert.Equal("TYPE_MISMATCH", error.ErrorCode);
+        Assert.NotNull(error.Details);
+        Assert.Contains("expectedType", error.Details.Keys);
     }
 }
