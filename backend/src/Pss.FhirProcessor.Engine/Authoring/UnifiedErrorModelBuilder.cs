@@ -166,21 +166,36 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
         
         foreach (var error in errors)
         {
-            // MVP: ALWAYS trust backend-computed pointer first
+            // Phase 2: Pointer precedence order
             string? jsonPointer = null;
             
+            // Priority 1: JSON fallback precomputed pointer (MVP)
             if (error.Details?.ContainsKey("_precomputedJsonPointer") == true)
             {
-                // Use precomputed jsonPointer from JSON fallback (index-aware)
                 jsonPointer = error.Details["_precomputedJsonPointer"]?.ToString();
-                // Remove it from details so it doesn't appear in API response
                 error.Details.Remove("_precomputedJsonPointer");
             }
+            // Priority 2: POCO array index hint (Phase 2)
+            else if (error.Details?.ContainsKey("arrayIndex") == true)
+            {
+                var arrayIndex = Convert.ToInt32(error.Details["arrayIndex"]);
+                error.Details.Remove("arrayIndex");
+                
+                // Use enhanced navigation with explicit array index
+                jsonPointer = await _navigationService.ResolvePathWithIndexAsync(
+                    rawJson,
+                    bundle,
+                    error.FieldPath,
+                    error.ResourceType,
+                    error.EntryIndex,
+                    arrayIndex,
+                    cancellationToken
+                );
+            }
+            // Priority 3: Best-effort fallback (legacy)
             else if (rawJson.ValueKind != JsonValueKind.Undefined)
             {
-                // Fallback: resolve using SmartPathNavigation on raw JSON
-                // Note: This path may not be index-aware (Phase 2 work)
-                jsonPointer = await _navigationService.ResolvePathAsync(rawJson, bundle, error.FieldPath, error.ResourceType, null, cancellationToken);
+                jsonPointer = await _navigationService.ResolvePathAsync(rawJson, bundle, error.FieldPath, error.ResourceType, error.EntryIndex, cancellationToken);
             }
             
             // Include engine metadata in details for Firely-preferred with safe fallback strategy

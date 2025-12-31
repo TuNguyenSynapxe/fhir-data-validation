@@ -143,6 +143,58 @@ public class SmartPathNavigationService : ISmartPathNavigationService
         return await ResolvePathAsync(jsonElement, bundle, path, resourceType, entryIndex, cancellationToken);
     }
     
+    /// <summary>
+    /// Phase 2: Resolves path with explicit array index hint from POCO validation.
+    /// Generates precise JSON pointer for array elements during POCO evaluation.
+    /// Example: path="identifier.system", arrayIndex=1, entryIndex=0 → "/entry/0/resource/identifier/1/system"
+    /// </summary>
+    public async Task<string?> ResolvePathWithIndexAsync(
+        JsonElement rawBundleJson,
+        Bundle? bundle,
+        string path,
+        string? resourceType,
+        int? entryIndex,
+        int arrayIndex,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Step 1: Navigate to entry resource
+            if (!entryIndex.HasValue)
+            {
+                _logger.LogWarning("ResolvePathWithIndexAsync: entryIndex required for array index resolution");
+                return null;
+            }
+            
+            // Step 2: Split path into array field and leaf property
+            // Example: "identifier.system" → arrayField="identifier", leafProperty="system"
+            var normalizedPath = NormalizePath(path);
+            var parts = normalizedPath.Split('.');
+            
+            if (parts.Length < 2)
+            {
+                _logger.LogWarning("ResolvePathWithIndexAsync: Path must have at least 2 segments (array.leaf): {Path}", path);
+                return null;
+            }
+            
+            var arrayField = parts[0];
+            var leafProperty = parts[1];
+            
+            // Step 3: Construct pointer: /entry/{entryIndex}/resource/{arrayField}/{arrayIndex}/{leafProperty}
+            var pointer = $"/entry/{entryIndex.Value}/resource/{arrayField}/{arrayIndex}/{leafProperty}";
+            
+            _logger.LogDebug("ResolvePathWithIndexAsync: Generated pointer {Pointer} for path {Path} with arrayIndex {ArrayIndex}", 
+                pointer, path, arrayIndex);
+            
+            return pointer;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to resolve path with array index: {Path}, arrayIndex: {ArrayIndex}", path, arrayIndex);
+            return null;
+        }
+    }
+    
     // ============================================================================
     // AUTHORING-ONLY HELPERS (POCO-dependent)
     // ============================================================================

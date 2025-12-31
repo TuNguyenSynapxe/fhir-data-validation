@@ -32,4 +32,17 @@ public interface ISmartPathNavigationService
     /// Finds the entry index for a resource by type and id
     /// </summary>
     int? FindEntryIndexByResourceId(Bundle bundle, string resourceType, string resourceId);
+    
+    /// <summary>
+    /// Phase 2: Resolves path with explicit array index hint from POCO validation.
+    /// Example: path="identifier.system", arrayIndex=1 → "/entry/0/resource/identifier/1/system"
+    /// </summary>
+    Task<string?> ResolvePathWithIndexAsync(
+        JsonElement rawBundleJson,
+        Bundle? bundle,
+        string path,
+        string? resourceType,
+        int? entryIndex,
+        int arrayIndex,
+        CancellationToken cancellationToken = default);
 }

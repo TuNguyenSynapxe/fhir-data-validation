@@ -614,6 +614,28 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
     }
     
     /// <summary>
+    /// Phase 2: Extracts array index from ITypedElement.Location if available.
+    /// Example: "Patient.identifier[2].system" → returns 2
+    /// Returns the LAST index found (most specific for nested arrays).
+    /// </summary>
+    private int? ExtractArrayIndexFromLocation(string? location)
+    {
+        if (string.IsNullOrEmpty(location))
+            return null;
+        
+        var matches = System.Text.RegularExpressions.Regex.Matches(location, @"\[(\d+)\]");
+        if (matches.Count == 0)
+            return null;
+        
+        // Use the LAST index (most specific)
+        var lastMatch = matches[matches.Count - 1];
+        if (int.TryParse(lastMatch.Groups[1].Value, out var index))
+            return index;
+        
+        return null;
+    }
+    
+    /// <summary>
     /// MVP: Navigates to ALL matching nodes for a fieldPath and returns (node, jsonPointer) pairs.
     /// Supports single-level arrays only. Nested arrays deferred to Phase 2.
     /// </summary>
@@ -1030,12 +1052,22 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         {
             var expectedValue = rule.Params["value"]?.ToString();
             
-            foreach (var item in result)
+            // Phase 2: Track array indices during POCO evaluation
+            var resultList = result.ToList();
+            for (int i = 0; i < resultList.Count; i++)
             {
+                var item = resultList[i];
                 var actualValue = GetValueAsString(item);
                 
                 if (actualValue != expectedValue)
                 {
+                    // Phase 2: Extract precise index from ITypedElement if available
+                    int? arrayIndex = null;
+                    if (item is Hl7.Fhir.ElementModel.ITypedElement typedElement)
+                    {
+                        arrayIndex = ExtractArrayIndexFromLocation(typedElement.Location);
+                    }
+                    
                     var details = new Dictionary<string, object>
                     {
                         ["source"] = "ProjectRule",
@@ -1044,7 +1076,8 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         ["ruleType"] = rule.Type,
                         ["ruleId"] = rule.Id,
                         ["expected"] = expectedValue ?? "",
-                        ["actual"] = actualValue ?? ""
+                        ["actual"] = actualValue ?? "",
+                        ["arrayIndex"] = arrayIndex ?? i  // Phase 2: Fallback to iteration index
                     };
                     
                     details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.FIXED_VALUE_MISMATCH, details);
@@ -1116,12 +1149,22 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         {
             var allowedValues = GetAllowedValues(rule.Params["values"]);
             
-            foreach (var item in result)
+            // Phase 2: Track array indices during POCO evaluation
+            var resultList = result.ToList();
+            for (int i = 0; i < resultList.Count; i++)
             {
+                var item = resultList[i];
                 var actualValue = GetValueAsString(item);
                 
                 if (!string.IsNullOrEmpty(actualValue) && !allowedValues.Contains(actualValue))
                 {
+                    // Phase 2: Extract precise index from ITypedElement if available
+                    int? arrayIndex = null;
+                    if (item is Hl7.Fhir.ElementModel.ITypedElement typedElement)
+                    {
+                        arrayIndex = ExtractArrayIndexFromLocation(typedElement.Location);
+                    }
+                    
                     var details = new Dictionary<string, object>
                     {
                         ["source"] = "ProjectRule",
@@ -1130,7 +1173,8 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         ["ruleType"] = rule.Type,
                         ["ruleId"] = rule.Id,
                         ["actual"] = actualValue,
-                        ["allowed"] = allowedValues
+                        ["allowed"] = allowedValues,
+                        ["arrayIndex"] = arrayIndex ?? i  // Phase 2: Fallback to iteration index
                     };
                     
                     details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.VALUE_NOT_ALLOWED, details);
@@ -1514,9 +1558,15 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         
         if (!errors.Any(e => e.ErrorCode == "RULE_DEFINITION_ERROR"))
         {
-            foreach (var item in result)
+            // Phase 2: Track array indices during POCO evaluation
+            var resultList = result.ToList();
+            for (int i = 0; i < resultList.Count; i++)
             {
+                var item = resultList[i];
                 _logger.LogInformation("ValidateCodeSystem: Evaluating item of type {ItemType}", item?.GetType().Name ?? "null");
+                
+                // Phase 2: Extract precise index from ITypedElement if available
+                int? arrayIndex = null;
                 
                 // Extract the actual Coding object from the FhirPath result
                 Coding? coding = null;
@@ -1527,6 +1577,9 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 }
                 else if (item is Hl7.Fhir.ElementModel.ITypedElement typedElement)
                 {
+                    // Phase 2: Extract array index from Location
+                    arrayIndex = ExtractArrayIndexFromLocation(typedElement.Location);
+                    
                     // Convert ITypedElement to POCO
                     try
                     {
@@ -1558,6 +1611,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         ["ruleType"] = rule.Type,
                         ["ruleId"] = rule.Id,
                         ["violation"] = "system",
+                        ["arrayIndex"] = arrayIndex ?? i,
                         ["codeSetId"] = codeSetId,
                         ["expectedSystem"] = expectedSystem,
                         ["actualSystem"] = coding.System ?? "",
@@ -1591,6 +1645,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         ["ruleType"] = rule.Type,
                         ["ruleId"] = rule.Id,
                         ["violation"] = "code",
+                        ["arrayIndex"] = arrayIndex ?? i,
                         ["codeSetId"] = codeSetId,
                         ["expectedSystem"] = expectedSystem,
                         ["actualSystem"] = coding.System ?? "",
