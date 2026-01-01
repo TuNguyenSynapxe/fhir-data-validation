@@ -1,0 +1,586 @@
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using Hl7.Fhir.Model;
+using Microsoft.Extensions.Logging;
+using Pss.FhirProcessor.Engine.Interfaces;
+using Pss.FhirProcessor.Engine.Models;
+
+namespace Pss.FhirProcessor.Engine.Validation;
+
+/// <summary>
+/// Phase A: JSON Node-based Structural Validation (Primary Authority)
+/// 
+/// Validates JSON nodes BEFORE Firely POCO parsing.
+/// Catches structural errors that would cause parsing failures.
+/// 
+/// Validation Order (MANDATORY):
+/// 1. JSON Syntax
+/// 2. JSON Node Structural Validation ← THIS SERVICE
+/// 3. Project / Business Rules
+/// 4. Firely POCO Validation (LAST)
+/// 
+/// Scope (Phase A ONLY):
+/// - Enum validation
+/// - Primitive format validation
+/// - Array vs object shape validation
+/// - Cardinality validation (min/max)
+/// - Required field presence
+/// 
+/// All errors emitted are STRUCTURE authority with ERROR severity.
+/// </summary>
+public interface IJsonNodeStructuralValidator
+{
+    /// <summary>
+    /// Validates JSON structure against FHIR schema metadata.
+    /// Returns ALL validation errors in one pass (does NOT stop at first error).
+    /// </summary>
+    /// <param name="bundleJson">Raw JSON bundle string</param>
+    /// <param name="fhirVersion">FHIR version (R4 or R5)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of structural validation errors</returns>
+    Task<List<ValidationError>> ValidateAsync(
+        string bundleJson,
+        string fhirVersion,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// Implementation of JSON node-based structural validator.
+/// Uses FhirSchemaNode metadata from StructureDefinition registry.
+/// </summary>
+public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
+{
+    private readonly IFhirSchemaService _schemaService;
+    private readonly ILogger<JsonNodeStructuralValidator> _logger;
+
+    // Known FHIR R4 enums - keyed by element name for easier matching
+    // TODO: Phase B - Load dynamically from StructureDefinition bindings
+    private static readonly Dictionary<string, List<string>> KnownEnumsByElementName = new()
+    {
+        ["gender"] = new List<string> { "male", "female", "other", "unknown" },
+        ["status"] = new List<string> { "registered", "preliminary", "final", "amended", "corrected", "cancelled", "entered-in-error", "unknown", "planned", "arrived", "triaged", "in-progress", "onleave", "finished" }
+    };
+
+    private static readonly Dictionary<string, List<string>> KnownEnumsByPath = new()
+    {
+        ["Bundle.type"] = new List<string> { "document", "message", "transaction", "transaction-response", "batch", "batch-response", "history", "searchset", "collection" }
+    };
+
+    // Primitive type validators
+    private static readonly Dictionary<string, Func<string, bool>> PrimitiveValidators = new()
+    {
+        ["boolean"] = value => value == "true" || value == "false",
+        ["integer"] = value => int.TryParse(value, out _),
+        ["decimal"] = value => decimal.TryParse(value, out _),
+        ["date"] = ValidateDate,
+        ["dateTime"] = ValidateDateTime
+    };
+
+    public JsonNodeStructuralValidator(
+        IFhirSchemaService schemaService,
+        ILogger<JsonNodeStructuralValidator> logger)
+    {
+        _schemaService = schemaService;
+        _logger = logger;
+    }
+
+    public async Task<List<ValidationError>> ValidateAsync(
+        string bundleJson,
+        string fhirVersion,
+        CancellationToken cancellationToken = default)
+    {
+        var errors = new List<ValidationError>();
+
+        try
+        {
+            // Parse JSON document
+            using var doc = JsonDocument.Parse(bundleJson);
+            var root = doc.RootElement;
+
+            // Validate Bundle structure
+            if (!root.TryGetProperty("resourceType", out var resourceTypeElement) || 
+                resourceTypeElement.GetString() != "Bundle")
+            {
+                // Not our concern - let earlier validation handle this
+                return errors;
+            }
+
+            // Get Bundle schema
+            var bundleSchema = await _schemaService.GetResourceSchemaAsync("Bundle", cancellationToken);
+            if (bundleSchema == null)
+            {
+                _logger.LogWarning("Bundle schema not found for FHIR version {FhirVersion}", fhirVersion);
+                return errors;
+            }
+
+            // Validate Bundle properties
+            ValidateElement(root, bundleSchema, "", "/", errors);
+
+            // Validate each entry
+            if (root.TryGetProperty("entry", out var entryArray) && entryArray.ValueKind == JsonValueKind.Array)
+            {
+                var entryIndex = 0;
+                foreach (var entry in entryArray.EnumerateArray())
+                {
+                    if (entry.TryGetProperty("resource", out var resource))
+                    {
+                        if (resource.TryGetProperty("resourceType", out var resTypeElement))
+                        {
+                            var resourceType = resTypeElement.GetString();
+                            if (!string.IsNullOrEmpty(resourceType))
+                            {
+                                var resourceSchema = await _schemaService.GetResourceSchemaAsync(resourceType, cancellationToken);
+                                if (resourceSchema != null)
+                                {
+                                    var resourcePath = $"Bundle.entry[{entryIndex}].resource";
+                                    var resourceJsonPointer = $"/entry/{entryIndex}/resource";
+                                    ValidateElement(resource, resourceSchema, resourcePath, resourceJsonPointer, errors);
+                                }
+                            }
+                        }
+                    }
+                    entryIndex++;
+                }
+            }
+
+            _logger.LogInformation("JSON node structural validation completed: {ErrorCount} errors found", errors.Count);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON parsing failed in structural validator");
+            // Let earlier JSON validation handle this
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error in JSON node structural validation");
+        }
+
+        return errors;
+    }
+
+    /// <summary>
+    /// Recursively validates a JSON element against its schema node.
+    /// Collects ALL errors (does not stop at first error).
+    /// </summary>
+    private void ValidateElement(
+        JsonElement element,
+        FhirSchemaNode schema,
+        string fhirPath,
+        string jsonPointer,
+        List<ValidationError> errors)
+    {
+        // Validate each child element defined in schema
+        foreach (var childSchema in schema.Children)
+        {
+            var propertyName = childSchema.ElementName;
+            var childFhirPath = string.IsNullOrEmpty(fhirPath) 
+                ? propertyName 
+                : $"{fhirPath}.{propertyName}";
+
+            if (element.TryGetProperty(propertyName, out var propertyValue))
+            {
+                // Property exists - validate it
+                ValidateProperty(
+                    propertyValue,
+                    childSchema,
+                    childFhirPath,
+                    $"{jsonPointer}/{propertyName}",
+                    errors);
+            }
+            else
+            {
+                // Property missing - check if required
+                ValidateRequiredField(
+                    childSchema,
+                    childFhirPath,
+                    $"{jsonPointer}/{propertyName}",
+                    errors);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Validates a single property value against its schema.
+    /// </summary>
+    private void ValidateProperty(
+        JsonElement value,
+        FhirSchemaNode schema,
+        string fhirPath,
+        string jsonPointer,
+        List<ValidationError> errors)
+    {
+        // 1. Array vs Object Shape Validation
+        if (schema.IsArray && value.ValueKind != JsonValueKind.Array)
+        {
+            errors.Add(CreateArrayExpectedError(fhirPath, jsonPointer, value.ValueKind));
+            return; // Can't continue validation on wrong shape
+        }
+
+        if (!schema.IsArray && value.ValueKind == JsonValueKind.Array)
+        {
+            // Array provided but object expected - report for first item
+            var arrayLength = value.GetArrayLength();
+            if (arrayLength > 0)
+            {
+                _logger.LogWarning("Array provided for non-array field {Path}, validating first element only", fhirPath);
+                ValidateProperty(value[0], schema, fhirPath, $"{jsonPointer}/0", errors);
+            }
+            return;
+        }
+
+        // 2. Array Validation (if array)
+        if (schema.IsArray && value.ValueKind == JsonValueKind.Array)
+        {
+            ValidateArrayCardinality(value, schema, fhirPath, jsonPointer, errors);
+
+            // Validate each array element
+            var index = 0;
+            foreach (var arrayElement in value.EnumerateArray())
+            {
+                ValidateSingleValue(
+                    arrayElement,
+                    schema,
+                    $"{fhirPath}[{index}]",
+                    $"{jsonPointer}/{index}",
+                    errors);
+                index++;
+            }
+        }
+        else
+        {
+            // 3. Single Value Validation
+            ValidateSingleValue(value, schema, fhirPath, jsonPointer, errors);
+        }
+    }
+
+    /// <summary>
+    /// Validates a single value (not an array).
+    /// Checks enum, primitive format, and recursively validates complex types.
+    /// </summary>
+    private void ValidateSingleValue(
+        JsonElement value,
+        FhirSchemaNode schema,
+        string fhirPath,
+        string jsonPointer,
+        List<ValidationError> errors)
+    {
+        // Skip null values
+        if (value.ValueKind == JsonValueKind.Null)
+        {
+            return;
+        }
+
+        // Enum Validation
+        // Check by full path first, then by element name
+        List<string>? allowedValues = null;
+        if (KnownEnumsByPath.TryGetValue(fhirPath, out allowedValues) || 
+            KnownEnumsByElementName.TryGetValue(schema.ElementName, out allowedValues))
+        {
+            if (value.ValueKind == JsonValueKind.String)
+            {
+                var actualValue = value.GetString();
+                if (!string.IsNullOrEmpty(actualValue) && !allowedValues.Contains(actualValue))
+                {
+                    errors.Add(CreateInvalidEnumError(fhirPath, jsonPointer, actualValue, allowedValues));
+                }
+            }
+        }
+
+        // Primitive Format Validation
+        if (IsPrimitiveType(schema.Type))
+        {
+            ValidatePrimitiveFormat(value, schema, fhirPath, jsonPointer, errors);
+        }
+        else if (value.ValueKind == JsonValueKind.Object && schema.Children.Any())
+        {
+            // Recursively validate complex types
+            ValidateElement(value, schema, fhirPath, jsonPointer, errors);
+        }
+    }
+
+    /// <summary>
+    /// Validates primitive format (boolean, integer, decimal, date, dateTime).
+    /// </summary>
+    private void ValidatePrimitiveFormat(
+        JsonElement value,
+        FhirSchemaNode schema,
+        string fhirPath,
+        string jsonPointer,
+        List<ValidationError> errors)
+    {
+        var primitiveType = schema.Type.ToLowerInvariant();
+        
+        // Special handling for boolean - check JSON type
+        if (primitiveType == "boolean")
+        {
+            if (value.ValueKind != JsonValueKind.True && value.ValueKind != JsonValueKind.False)
+            {
+                var actual = value.ValueKind == JsonValueKind.String ? value.GetString() : value.ToString();
+                errors.Add(CreateInvalidPrimitiveError(fhirPath, jsonPointer, actual ?? "null", "boolean", "Must be JSON boolean true or false"));
+            }
+            return;
+        }
+
+        // For other primitives, validate string representation
+        if (value.ValueKind == JsonValueKind.String)
+        {
+            var textValue = value.GetString();
+            if (string.IsNullOrEmpty(textValue))
+            {
+                return; // Empty strings are handled by required field validation
+            }
+
+            if (PrimitiveValidators.TryGetValue(primitiveType, out var validator))
+            {
+                if (!validator(textValue))
+                {
+                    var reason = GetValidationReason(primitiveType);
+                    errors.Add(CreateInvalidPrimitiveError(fhirPath, jsonPointer, textValue, primitiveType, reason));
+                }
+            }
+        }
+        else if (primitiveType == "integer" || primitiveType == "decimal")
+        {
+            // Allow JSON numbers for numeric types
+            if (value.ValueKind != JsonValueKind.Number)
+            {
+                var actual = value.ToString();
+                errors.Add(CreateInvalidPrimitiveError(fhirPath, jsonPointer, actual, primitiveType, $"Must be a valid {primitiveType}"));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Validates array cardinality (min/max constraints).
+    /// </summary>
+    private void ValidateArrayCardinality(
+        JsonElement arrayValue,
+        FhirSchemaNode schema,
+        string fhirPath,
+        string jsonPointer,
+        List<ValidationError> errors)
+    {
+        var actualCount = arrayValue.GetArrayLength();
+        var min = schema.Min;
+        var max = schema.Max == "*" ? int.MaxValue : int.Parse(schema.Max);
+
+        if (actualCount < min || actualCount > max)
+        {
+            errors.Add(CreateCardinalityError(fhirPath, jsonPointer, min, max, actualCount));
+        }
+    }
+
+    /// <summary>
+    /// Validates required field presence (min >= 1).
+    /// </summary>
+    private void ValidateRequiredField(
+        FhirSchemaNode schema,
+        string fhirPath,
+        string jsonPointer,
+        List<ValidationError> errors)
+    {
+        if (schema.Min >= 1)
+        {
+            errors.Add(CreateRequiredFieldMissingError(fhirPath, jsonPointer));
+        }
+    }
+
+    // =========================================================================
+    // ERROR FACTORY METHODS (Following unified error model)
+    // =========================================================================
+
+    private ValidationError CreateInvalidEnumError(
+        string fhirPath,
+        string jsonPointer,
+        string actualValue,
+        List<string> allowedValues)
+    {
+        var details = new Dictionary<string, object>
+        {
+            ["actual"] = actualValue,
+            ["allowed"] = allowedValues,
+            ["valueType"] = "enum"
+        };
+
+        Models.ValidationErrorDetailsValidator.Validate("INVALID_ENUM_VALUE", details);
+
+        return new ValidationError
+        {
+            Source = "STRUCTURE",
+            Severity = "error",
+            ErrorCode = "INVALID_ENUM_VALUE",
+            Path = fhirPath,
+            JsonPointer = jsonPointer,
+            Message = $"Invalid enum value '{actualValue}' at {fhirPath}. Allowed: {string.Join(", ", allowedValues.Take(5))}{(allowedValues.Count > 5 ? "..." : "")}",
+            Details = details
+        };
+    }
+
+    private ValidationError CreateInvalidPrimitiveError(
+        string fhirPath,
+        string jsonPointer,
+        string actualValue,
+        string expectedType,
+        string reason)
+    {
+        var details = new Dictionary<string, object>
+        {
+            ["actual"] = actualValue,
+            ["expectedType"] = expectedType,
+            ["reason"] = reason
+        };
+
+        Models.ValidationErrorDetailsValidator.Validate("FHIR_INVALID_PRIMITIVE", details);
+
+        return new ValidationError
+        {
+            Source = "STRUCTURE",
+            Severity = "error",
+            ErrorCode = "FHIR_INVALID_PRIMITIVE",
+            Path = fhirPath,
+            JsonPointer = jsonPointer,
+            Message = $"Invalid {expectedType} format at {fhirPath}: {actualValue}. {reason}",
+            Details = details
+        };
+    }
+
+    private ValidationError CreateArrayExpectedError(
+        string fhirPath,
+        string jsonPointer,
+        JsonValueKind actualKind)
+    {
+        var actualType = actualKind switch
+        {
+            JsonValueKind.Object => "object",
+            JsonValueKind.String => "string",
+            JsonValueKind.Number => "number",
+            JsonValueKind.True or JsonValueKind.False => "boolean",
+            _ => actualKind.ToString().ToLowerInvariant()
+        };
+
+        var details = new Dictionary<string, object>
+        {
+            ["expectedType"] = "array",
+            ["actualType"] = actualType
+        };
+
+        Models.ValidationErrorDetailsValidator.Validate("FHIR_ARRAY_EXPECTED", details);
+
+        return new ValidationError
+        {
+            Source = "STRUCTURE",
+            Severity = "error",
+            ErrorCode = "FHIR_ARRAY_EXPECTED",
+            Path = fhirPath,
+            JsonPointer = jsonPointer,
+            Message = $"Array expected at {fhirPath} but found {actualType}",
+            Details = details
+        };
+    }
+
+    private ValidationError CreateCardinalityError(
+        string fhirPath,
+        string jsonPointer,
+        int min,
+        int max,
+        int actual)
+    {
+        var details = new Dictionary<string, object>
+        {
+            ["min"] = min,
+            ["max"] = max == int.MaxValue ? "*" : max,
+            ["actual"] = actual
+        };
+
+        Models.ValidationErrorDetailsValidator.Validate("ARRAY_LENGTH_OUT_OF_RANGE", details);
+
+        var maxDisplay = max == int.MaxValue ? "*" : max.ToString();
+        return new ValidationError
+        {
+            Source = "STRUCTURE",
+            Severity = "error",
+            ErrorCode = "ARRAY_LENGTH_OUT_OF_RANGE",
+            Path = fhirPath,
+            JsonPointer = jsonPointer,
+            Message = $"Array length at {fhirPath} is {actual}, expected between {min} and {maxDisplay}",
+            Details = details
+        };
+    }
+
+    private ValidationError CreateRequiredFieldMissingError(
+        string fhirPath,
+        string jsonPointer)
+    {
+        var details = new Dictionary<string, object>
+        {
+            ["required"] = true
+        };
+
+        Models.ValidationErrorDetailsValidator.Validate("REQUIRED_FIELD_MISSING", details);
+
+        return new ValidationError
+        {
+            Source = "STRUCTURE",
+            Severity = "error",
+            ErrorCode = "REQUIRED_FIELD_MISSING",
+            Path = fhirPath,
+            JsonPointer = jsonPointer,
+            Message = $"Required field missing: {fhirPath}",
+            Details = details
+        };
+    }
+
+    // =========================================================================
+    // HELPER METHODS
+    // =========================================================================
+
+    private static bool IsPrimitiveType(string type)
+    {
+        return type.ToLowerInvariant() switch
+        {
+            "boolean" or "integer" or "string" or "decimal" or "uri" or "url" or
+            "canonical" or "base64binary" or "instant" or "date" or "datetime" or
+            "time" or "code" or "oid" or "id" or "markdown" or "unsignedint" or
+            "positiveint" or "uuid" or "xhtml" => true,
+            _ => false
+        };
+    }
+
+    private static bool ValidateDate(string value)
+    {
+        // FHIR date format: YYYY-MM-DD
+        var dateRegex = new Regex(@"^\d{4}(-\d{2}(-\d{2})?)?$");
+        if (!dateRegex.IsMatch(value))
+        {
+            return false;
+        }
+
+        // Try parsing full date
+        if (value.Length == 10)
+        {
+            return DateTime.TryParse(value, out _);
+        }
+
+        return true; // Partial dates (YYYY or YYYY-MM) are valid
+    }
+
+    private static bool ValidateDateTime(string value)
+    {
+        // FHIR dateTime format: ISO 8601
+        // Simplified validation - accept if parseable
+        return DateTimeOffset.TryParse(value, out _) || DateTime.TryParse(value, out _);
+    }
+
+    private static string GetValidationReason(string primitiveType)
+    {
+        return primitiveType switch
+        {
+            "date" => "Must be in format YYYY-MM-DD",
+            "dateTime" => "Must be in ISO 8601 format",
+            "integer" => "Must be a whole number",
+            "decimal" => "Must be a numeric value",
+            "boolean" => "Must be true or false",
+            _ => $"Invalid {primitiveType} format"
+        };
+    }
+}

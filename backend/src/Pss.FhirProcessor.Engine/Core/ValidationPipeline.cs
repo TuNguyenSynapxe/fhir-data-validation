@@ -8,6 +8,7 @@ using Pss.FhirProcessor.Engine.RuleEngines;
 using Pss.FhirProcessor.Engine.Firely;
 using Pss.FhirProcessor.Engine.Authoring;
 using Hl7.Fhir.Utility;
+using Pss.FhirProcessor.Engine.Validation;
 using Pss.FhirProcessor.Engine.Validation.QuestionAnswer;
 using Pss.FhirProcessor.Engine.Core.Execution;
 
@@ -23,6 +24,7 @@ namespace Pss.FhirProcessor.Engine.Core;
 /// </summary>
 public class ValidationPipeline : IValidationPipeline
 {
+    private readonly IJsonNodeStructuralValidator _structuralValidator;
     private readonly ILintValidationService _lintService;
     private readonly ISpecHintService _specHintService;
     private readonly IFirelyValidationService _firelyService;
@@ -36,6 +38,7 @@ public class ValidationPipeline : IValidationPipeline
     private readonly ILogger<ValidationPipeline> _logger;
     
     public ValidationPipeline(
+        IJsonNodeStructuralValidator structuralValidator,
         ILintValidationService lintService,
         ISpecHintService specHintService,
         IFirelyValidationService firelyService,
@@ -48,6 +51,7 @@ public class ValidationPipeline : IValidationPipeline
         QuestionAnswerValidator? questionAnswerValidator = null,
         IQuestionAnswerContextProvider? contextProvider = null)
     {
+        _structuralValidator = structuralValidator;
         _lintService = lintService;
         _specHintService = specHintService;
         _firelyService = firelyService;
@@ -140,6 +144,18 @@ public class ValidationPipeline : IValidationPipeline
             else
             {
                 _logger.LogInformation("=== SPECHINT CHECKPOINT X: Not in full analysis mode (mode={Mode}), skipping SpecHint", validationMode);
+            }
+            
+            // Step 1.9: JSON Node Structural Validation (Phase A)
+            // CRITICAL: This runs BEFORE Firely POCO parsing
+            // Primary authority for structural errors: enum, primitive format, array shape, cardinality, required fields
+            // Uses JSON nodes + StructureDefinition metadata (not POCO)
+            _logger.LogInformation("Running JSON Node Structural Validation (Phase A)");
+            var structuralErrors = await _structuralValidator.ValidateAsync(request.BundleJson, request.FhirVersion, cancellationToken);
+            if (structuralErrors.Any())
+            {
+                _logger.LogInformation("JSON Node Structural Validation found {ErrorCount} errors", structuralErrors.Count);
+                response.Errors.AddRange(structuralErrors);
             }
             
             // Step 2: Firely Structural Validation (authoritative)

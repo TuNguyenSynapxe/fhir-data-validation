@@ -10,6 +10,7 @@ using Pss.FhirProcessor.Engine.Interfaces;
 using Pss.FhirProcessor.Engine.Services;
 using Pss.FhirProcessor.Engine.Services.Terminology;
 using Pss.FhirProcessor.Engine.Services.Questions;
+using Pss.FhirProcessor.Engine.Validation;
 using Pss.FhirProcessor.Engine.Validation.QuestionAnswer;
 
 namespace Pss.FhirProcessor.Engine.DependencyInjection;
@@ -40,6 +41,7 @@ public static class EngineServiceCollectionExtensions
         // Register validation services
         services.AddScoped<IValidationPipeline, ValidationPipeline>();
         services.AddScoped<ILintValidationService, LintValidationService>(); // Pre-FHIR best-effort lint layer
+        services.AddScoped<IJsonNodeStructuralValidator, JsonNodeStructuralValidator>(); // Phase A: JSON node structural validation
         
         // Register Hl7SpecHintGenerator for auto-generating hints
         services.AddSingleton<Hl7SpecHintGenerator>(sp =>
