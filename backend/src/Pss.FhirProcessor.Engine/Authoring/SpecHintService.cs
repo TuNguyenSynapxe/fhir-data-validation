@@ -654,7 +654,14 @@ public class SpecHintService : ISpecHintService
 
     /// <summary>
     /// Determines the directory containing StructureDefinition JSON files for a given FHIR version.
-    /// Checks multiple common locations.
+    /// 
+    /// STRUCTURE-ONLY: StructureDefinitions are now in specs/fhir/r4/structuredefinitions/
+    /// - Contains: shape, cardinality, bindings from HL7 StructureDefinitions
+    /// - ValueSets: Located in specs/fhir/r4/valuesets/ (for enum validation)
+    /// - No internet resolution is used (local files only)
+    /// - Firely POCO parsing is NOT dependent on these paths
+    /// 
+    /// Checks multiple common locations for development and published builds.
     /// </summary>
     private string? GetStructureDefinitionDirectory(string fhirVersion)
     {
@@ -665,20 +672,20 @@ public class SpecHintService : ISpecHintService
         _logger?.LogDebug("BaseDirectory for StructureDefinition search: {BaseDirectory}", baseDirectory);
         
         // Try multiple potential locations
-        // UPDATED: Changed from "StructureDefinitions" to root fhir/r4 folder (contains resources/, base/, datatypes/ subdirectories)
+        // Updated paths point to structuredefinitions/ subdirectory (Phase B refactor)
         var potentialPaths = new[]
         {
-            // Development: bin/Debug/net8.0/ -> ../../../../../specs/fhir/r4/
-            Path.Combine(baseDirectory, "..", "..", "..", "..", "..", "specs", "fhir", normalizedVersion.ToLower()),
+            // Development: bin/Debug/net8.0/ -> ../../../../../specs/fhir/r4/structuredefinitions/
+            Path.Combine(baseDirectory, "..", "..", "..", "..", "..", "specs", "fhir", normalizedVersion.ToLower(), "structuredefinitions"),
             
-            // Published: /specs/fhir/r4/ (relative to bin)
-            Path.Combine(baseDirectory, "specs", "fhir", normalizedVersion.ToLower()),
+            // Published: /specs/fhir/r4/structuredefinitions/ (relative to bin)
+            Path.Combine(baseDirectory, "specs", "fhir", normalizedVersion.ToLower(), "structuredefinitions"),
             
-            // Alternative: /specs/fhir/R4/
-            Path.Combine(baseDirectory, "specs", "fhir", normalizedVersion),
+            // Alternative: /specs/fhir/R4/structuredefinitions/
+            Path.Combine(baseDirectory, "specs", "fhir", normalizedVersion, "structuredefinitions"),
             
             // Development alternate: from Engine project (4 levels up)
-            Path.Combine(baseDirectory, "..", "..", "..", "..", "specs", "fhir", normalizedVersion.ToLower())
+            Path.Combine(baseDirectory, "..", "..", "..", "..", "specs", "fhir", normalizedVersion.ToLower(), "structuredefinitions")
         };
 
         foreach (var path in potentialPaths)

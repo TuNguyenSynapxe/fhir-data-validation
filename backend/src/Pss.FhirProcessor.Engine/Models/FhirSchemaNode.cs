@@ -69,6 +69,16 @@ public class FhirSchemaNode
     public bool IsRequired { get; set; }
 
     /// <summary>
+    /// ValueSet URL for enum bindings (from ElementDefinition.binding.valueSet)
+    /// </summary>
+    public string? ValueSetUrl { get; set; }
+
+    /// <summary>
+    /// Binding strength (required, extensible, preferred, example)
+    /// </summary>
+    public string? BindingStrength { get; set; }
+
+    /// <summary>
     /// Child elements (for complex types and backbone elements)
     /// </summary>
     public List<FhirSchemaNode> Children { get; set; } = new();

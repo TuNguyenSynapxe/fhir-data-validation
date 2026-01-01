@@ -42,6 +42,7 @@ public static class EngineServiceCollectionExtensions
         services.AddScoped<IValidationPipeline, ValidationPipeline>();
         services.AddScoped<ILintValidationService, LintValidationService>(); // Pre-FHIR best-effort lint layer
         services.AddScoped<IJsonNodeStructuralValidator, JsonNodeStructuralValidator>(); // Phase A: JSON node structural validation
+        services.AddSingleton<IFhirEnumIndex, FhirEnumIndex>(); // Phase B: Dynamic enum index (singleton for caching)
         
         // Register Hl7SpecHintGenerator for auto-generating hints
         services.AddSingleton<Hl7SpecHintGenerator>(sp =>

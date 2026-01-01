@@ -51,20 +51,8 @@ public interface IJsonNodeStructuralValidator
 public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
 {
     private readonly IFhirSchemaService _schemaService;
+    private readonly IFhirEnumIndex _enumIndex;
     private readonly ILogger<JsonNodeStructuralValidator> _logger;
-
-    // Known FHIR R4 enums - keyed by element name for easier matching
-    // TODO: Phase B - Load dynamically from StructureDefinition bindings
-    private static readonly Dictionary<string, List<string>> KnownEnumsByElementName = new()
-    {
-        ["gender"] = new List<string> { "male", "female", "other", "unknown" },
-        ["status"] = new List<string> { "registered", "preliminary", "final", "amended", "corrected", "cancelled", "entered-in-error", "unknown", "planned", "arrived", "triaged", "in-progress", "onleave", "finished" }
-    };
-
-    private static readonly Dictionary<string, List<string>> KnownEnumsByPath = new()
-    {
-        ["Bundle.type"] = new List<string> { "document", "message", "transaction", "transaction-response", "batch", "batch-response", "history", "searchset", "collection" }
-    };
 
     // Primitive type validators
     private static readonly Dictionary<string, Func<string, bool>> PrimitiveValidators = new()
@@ -78,9 +66,11 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
 
     public JsonNodeStructuralValidator(
         IFhirSchemaService schemaService,
+        IFhirEnumIndex enumIndex,
         ILogger<JsonNodeStructuralValidator> logger)
     {
         _schemaService = schemaService;
+        _enumIndex = enumIndex;
         _logger = logger;
     }
 
@@ -114,7 +104,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             }
 
             // Validate Bundle properties
-            ValidateElement(root, bundleSchema, "", "/", errors);
+            ValidateElement(root, bundleSchema, "", "/", "Bundle", fhirVersion, errors);
 
             // Validate each entry
             if (root.TryGetProperty("entry", out var entryArray) && entryArray.ValueKind == JsonValueKind.Array)
@@ -134,7 +124,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
                                 {
                                     var resourcePath = $"Bundle.entry[{entryIndex}].resource";
                                     var resourceJsonPointer = $"/entry/{entryIndex}/resource";
-                                    ValidateElement(resource, resourceSchema, resourcePath, resourceJsonPointer, errors);
+                                    ValidateElement(resource, resourceSchema, resourcePath, resourceJsonPointer, resourceType, fhirVersion, errors);
                                 }
                             }
                         }
@@ -167,6 +157,8 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         FhirSchemaNode schema,
         string fhirPath,
         string jsonPointer,
+        string resourceType,
+        string fhirVersion,
         List<ValidationError> errors)
     {
         // Validate each child element defined in schema
@@ -185,6 +177,8 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
                     childSchema,
                     childFhirPath,
                     $"{jsonPointer}/{propertyName}",
+                    resourceType,
+                    fhirVersion,
                     errors);
             }
             else
@@ -207,6 +201,8 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         FhirSchemaNode schema,
         string fhirPath,
         string jsonPointer,
+        string resourceType,
+        string fhirVersion,
         List<ValidationError> errors)
     {
         // 1. Array vs Object Shape Validation
@@ -223,7 +219,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             if (arrayLength > 0)
             {
                 _logger.LogWarning("Array provided for non-array field {Path}, validating first element only", fhirPath);
-                ValidateProperty(value[0], schema, fhirPath, $"{jsonPointer}/0", errors);
+                ValidateProperty(value[0], schema, fhirPath, $"{jsonPointer}/0", resourceType, fhirVersion, errors);
             }
             return;
         }
@@ -242,6 +238,8 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
                     schema,
                     $"{fhirPath}[{index}]",
                     $"{jsonPointer}/{index}",
+                    resourceType,
+                    fhirVersion,
                     errors);
                 index++;
             }
@@ -249,7 +247,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         else
         {
             // 3. Single Value Validation
-            ValidateSingleValue(value, schema, fhirPath, jsonPointer, errors);
+            ValidateSingleValue(value, schema, fhirPath, jsonPointer, resourceType, fhirVersion, errors);
         }
     }
 
@@ -262,6 +260,8 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         FhirSchemaNode schema,
         string fhirPath,
         string jsonPointer,
+        string resourceType,
+        string fhirVersion,
         List<ValidationError> errors)
     {
         // Skip null values
@@ -270,19 +270,18 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             return;
         }
 
-        // Enum Validation
-        // Check by full path first, then by element name
-        List<string>? allowedValues = null;
-        if (KnownEnumsByPath.TryGetValue(fhirPath, out allowedValues) || 
-            KnownEnumsByElementName.TryGetValue(schema.ElementName, out allowedValues))
+        // Enum Validation (Phase B: Dynamic from StructureDefinition)
+        var allowedValues = _enumIndex.GetAllowedValues(fhirVersion, resourceType, schema.ElementName);
+        if (allowedValues != null && value.ValueKind == JsonValueKind.String)
         {
-            if (value.ValueKind == JsonValueKind.String)
+            var actualValue = value.GetString();
+            if (!string.IsNullOrEmpty(actualValue) && !allowedValues.Contains(actualValue))
             {
-                var actualValue = value.GetString();
-                if (!string.IsNullOrEmpty(actualValue) && !allowedValues.Contains(actualValue))
-                {
-                    errors.Add(CreateInvalidEnumError(fhirPath, jsonPointer, actualValue, allowedValues));
-                }
+                // Get binding strength for severity mapping
+                var bindingStrength = _enumIndex.GetBindingStrength(fhirVersion, resourceType, schema.ElementName);
+                var severity = MapBindingStrengthToSeverity(bindingStrength);
+                
+                errors.Add(CreateInvalidEnumError(fhirPath, jsonPointer, actualValue, allowedValues, severity));
             }
         }
 
@@ -294,7 +293,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         else if (value.ValueKind == JsonValueKind.Object && schema.Children.Any())
         {
             // Recursively validate complex types
-            ValidateElement(value, schema, fhirPath, jsonPointer, errors);
+            ValidateElement(value, schema, fhirPath, jsonPointer, resourceType, fhirVersion, errors);
         }
     }
 
@@ -393,12 +392,13 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         string fhirPath,
         string jsonPointer,
         string actualValue,
-        List<string> allowedValues)
+        IReadOnlyList<string> allowedValues,
+        string severity = "error")
     {
         var details = new Dictionary<string, object>
         {
             ["actual"] = actualValue,
-            ["allowed"] = allowedValues,
+            ["allowed"] = allowedValues.ToList(),
             ["valueType"] = "enum"
         };
 
@@ -407,12 +407,28 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         return new ValidationError
         {
             Source = "STRUCTURE",
-            Severity = "error",
+            Severity = severity,
             ErrorCode = "INVALID_ENUM_VALUE",
             Path = fhirPath,
             JsonPointer = jsonPointer,
             Message = $"Invalid enum value '{actualValue}' at {fhirPath}. Allowed: {string.Join(", ", allowedValues.Take(5))}{(allowedValues.Count > 5 ? "..." : "")}",
             Details = details
+        };
+    }
+
+    /// <summary>
+    /// Maps FHIR binding strength to error severity.
+    /// Follows fhirlab.net severity model.
+    /// </summary>
+    private string MapBindingStrengthToSeverity(string? bindingStrength)
+    {
+        return bindingStrength?.ToLowerInvariant() switch
+        {
+            "required" => "error",
+            "extensible" => "warning",
+            "preferred" => "info",
+            "example" => "info",
+            _ => "error" // Default to error for unknown/missing strength
         };
     }
 

@@ -18,14 +18,19 @@ namespace Pss.FhirProcessor.Engine.Tests.Validation;
 public class JsonNodeStructuralValidatorTests
 {
     private readonly Mock<IFhirSchemaService> _mockSchemaService;
+    private readonly Mock<IFhirEnumIndex> _mockEnumIndex;
     private readonly Mock<ILogger<JsonNodeStructuralValidator>> _mockLogger;
     private readonly JsonNodeStructuralValidator _validator;
 
     public JsonNodeStructuralValidatorTests()
     {
         _mockSchemaService = new Mock<IFhirSchemaService>();
+        _mockEnumIndex = new Mock<IFhirEnumIndex>();
         _mockLogger = new Mock<ILogger<JsonNodeStructuralValidator>>();
-        _validator = new JsonNodeStructuralValidator(_mockSchemaService.Object, _mockLogger.Object);
+        _validator = new JsonNodeStructuralValidator(
+            _mockSchemaService.Object,
+            _mockEnumIndex.Object,
+            _mockLogger.Object);
 
         // Setup default Patient schema
         SetupPatientSchema();
@@ -135,6 +140,15 @@ public class JsonNodeStructuralValidatorTests
             }]
         }";
 
+        // Setup enum index to return allowed values
+        _mockEnumIndex
+            .Setup(x => x.GetAllowedValues("R4", "Patient", "gender"))
+            .Returns(new List<string> { "male", "female", "other", "unknown" });
+        
+        _mockEnumIndex
+            .Setup(x => x.GetBindingStrength("R4", "Patient", "gender"))
+            .Returns("required");
+
         // Act
         var errors = await _validator.ValidateAsync(bundleJson, "R4");
 
@@ -177,6 +191,23 @@ public class JsonNodeStructuralValidatorTests
                 }
             ]
         }";
+
+        // Setup enum index mocks
+        _mockEnumIndex
+            .Setup(x => x.GetAllowedValues("R4", "Bundle", "type"))
+            .Returns(new List<string> { "document", "message", "transaction", "collection" });
+        
+        _mockEnumIndex
+            .Setup(x => x.GetBindingStrength("R4", "Bundle", "type"))
+            .Returns("required");
+
+        _mockEnumIndex
+            .Setup(x => x.GetAllowedValues("R4", "Patient", "gender"))
+            .Returns(new List<string> { "male", "female", "other", "unknown" });
+        
+        _mockEnumIndex
+            .Setup(x => x.GetBindingStrength("R4", "Patient", "gender"))
+            .Returns("required");
 
         // Act
         var errors = await _validator.ValidateAsync(bundleJson, "R4");
@@ -342,6 +373,15 @@ public class JsonNodeStructuralValidatorTests
             ]
         }";
 
+        // Setup enum index mocks
+        _mockEnumIndex
+            .Setup(x => x.GetAllowedValues("R4", "Patient", "gender"))
+            .Returns(new List<string> { "male", "female", "other", "unknown" });
+        
+        _mockEnumIndex
+            .Setup(x => x.GetBindingStrength("R4", "Patient", "gender"))
+            .Returns("required");
+
         // Act
         var errors = await _validator.ValidateAsync(bundleJson, "R4");
 
@@ -371,6 +411,15 @@ public class JsonNodeStructuralValidatorTests
                 }
             }]
         }";
+
+        // Setup enum index mock for gender validation
+        _mockEnumIndex
+            .Setup(x => x.GetAllowedValues("R4", "Patient", "gender"))
+            .Returns(new List<string> { "male", "female", "other", "unknown" });
+        
+        _mockEnumIndex
+            .Setup(x => x.GetBindingStrength("R4", "Patient", "gender"))
+            .Returns("required");
 
         // Act
         var errors = await _validator.ValidateAsync(bundleJson, "R4");
@@ -407,6 +456,15 @@ public class JsonNodeStructuralValidatorTests
                 }
             }]
         }";
+
+        // Setup enum index mock
+        _mockEnumIndex
+            .Setup(x => x.GetAllowedValues("R4", "Patient", "gender"))
+            .Returns(new List<string> { "male", "female", "other", "unknown" });
+        
+        _mockEnumIndex
+            .Setup(x => x.GetBindingStrength("R4", "Patient", "gender"))
+            .Returns("required");
 
         // Act - Should succeed without POCO parsing
         var errors = await _validator.ValidateAsync(bundleJson, "R4");

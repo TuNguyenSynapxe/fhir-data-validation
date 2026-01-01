@@ -190,7 +190,9 @@ public class SchemaExpansionService : ISchemaExpansionService
             Description = element.Definition,
             Short = element.Short,
             IsBackbone = isBackbone,
-            IsRequired = (element.Min ?? 0) >= 1
+            IsRequired = (element.Min ?? 0) >= 1,
+            ValueSetUrl = element.Binding?.ValueSet,
+            BindingStrength = element.Binding?.Strength?.ToString()
         };
 
         return node;
