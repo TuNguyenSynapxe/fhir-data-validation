@@ -185,16 +185,14 @@ public class LintCatalogIntegrationTests
             "LINT_DEPRECATED_R4_FIELD"
         };
 
-        // Assert - Bidirectional match
+        // Assert - All service codes should have catalog entries (advisory only)
         foreach (var serviceCode in lintServiceCodes)
         {
             Assert.Contains(serviceCode, catalogCodes);
         }
-
-        foreach (var catalogCode in catalogCodes)
-        {
-            Assert.Contains(catalogCode, lintServiceCodes);
-        }
+        
+        // Note: Catalog may have additional codes (e.g., MISSING_REQUIRED_FIELD is STRUCTURE/SPEC_HINT, not LINT)
+        // We only verify that actual LINT service codes are documented
     }
 
     [Fact]
