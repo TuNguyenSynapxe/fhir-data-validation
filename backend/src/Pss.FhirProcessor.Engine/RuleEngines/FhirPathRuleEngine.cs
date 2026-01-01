@@ -1748,7 +1748,19 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         var rejectUndeclaredResources = true;
         if (rule.Params.ContainsKey("rejectUndeclaredResources"))
         {
-            rejectUndeclaredResources = Convert.ToBoolean(rule.Params["rejectUndeclaredResources"]);
+            var paramValue = rule.Params["rejectUndeclaredResources"];
+            if (paramValue is JsonElement jsonElement)
+            {
+                rejectUndeclaredResources = jsonElement.GetBoolean();
+            }
+            else if (paramValue is bool boolValue)
+            {
+                rejectUndeclaredResources = boolValue;
+            }
+            else
+            {
+                rejectUndeclaredResources = Convert.ToBoolean(paramValue);
+            }
         }
         
         // Parse requirements array from params

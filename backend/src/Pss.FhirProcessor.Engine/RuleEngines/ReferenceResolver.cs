@@ -194,7 +194,20 @@ public class ReferenceResolver : IReferenceResolver
         
         foreach (var prop in properties)
         {
-            var value = prop.GetValue(resource);
+            object? value = null;
+            try
+            {
+                value = prop.GetValue(resource);
+            }
+            catch (Exception ex) when (ex.InnerException is InvalidCastException)
+            {
+                // Handle invalid enum values that were allowed during lenient parsing
+                // Skip this property and continue with others
+                _logger?.LogDebug("Skipping property {Property} due to invalid enum value: {Message}", 
+                    prop.Name, ex.InnerException.Message);
+                continue;
+            }
+            
             if (value == null)
                 continue;
             
@@ -248,7 +261,18 @@ public class ReferenceResolver : IReferenceResolver
         
         foreach (var prop in properties)
         {
-            var value = prop.GetValue(element);
+            object? value = null;
+            try
+            {
+                value = prop.GetValue(element);
+            }
+            catch (Exception ex) when (ex.InnerException is InvalidCastException)
+            {
+                // Handle invalid enum values that were allowed during lenient parsing
+                // Skip this property and continue with others
+                continue;
+            }
+            
             if (value == null)
                 continue;
             

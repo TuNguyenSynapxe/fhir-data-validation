@@ -440,16 +440,17 @@ public class ValidationPipeline : IValidationPipeline
         
         // Check 3: Firely POCO deserialization
         // This is where enum errors, type mismatches, and structural issues are caught
-        // Use lenient parser settings to allow SPEC_HINT to run even with structural errors
+        // First try STRICT parsing to catch invalid enum values
+        // Then fall back to lenient if strict fails
         try
         {
-            var parserSettings = new ParserSettings
+            // Try strict parsing first (will catch invalid enum values)
+            var strictParser = new FhirJsonParser(new ParserSettings
             {
-                AcceptUnknownMembers = true,  // Ignore unknown properties (for SPEC_HINT)
-                AllowUnrecognizedEnums = true // Allow invalid enum values
-            };
-            var parser = new FhirJsonParser(parserSettings);
-            var bundle = parser.Parse<Bundle>(bundleJson);
+                AcceptUnknownMembers = false,
+                AllowUnrecognizedEnums = false
+            });
+            var bundle = strictParser.Parse<Bundle>(bundleJson);
             
             if (bundle == null)
             {
@@ -467,29 +468,48 @@ public class ValidationPipeline : IValidationPipeline
                 return result;
             }
             
-            // Success!
+            // Success with strict parsing!
             result.Success = true;
             result.Bundle = bundle;
             return result;
         }
-        catch (Exception firelyEx)
+        catch (Exception strictEx)
         {
-            // This catches Firely-specific errors like:
-            // - Invalid enum values (e.g., "completed" for Encounter.status)
-            // - Unknown elements
-            // - Type mismatches
-            // - Mandatory fields missing
-            
-            _logger.LogInformation($"[ValidationPipeline] About to call FirelyExceptionMapper with exception: {firelyEx.Message}");
-            
-            // Use our mapper to extract detailed context
-            var detailedError = FirelyExceptionMapper.MapToValidationError(firelyEx, bundleJson);
-            
-            _logger.LogInformation($"[ValidationPipeline] Mapper returned - Path: '{detailedError.Path}', JsonPointer: '{detailedError.JsonPointer}', ErrorCode: {detailedError.ErrorCode}");
-            
-            result.Errors.Add(detailedError);
-            
-            return result;
+            // Strict parsing failed - try lenient for SPEC_HINT and better error messages
+            try
+            {
+                var parserSettings = new ParserSettings
+                {
+                    AcceptUnknownMembers = true,  // Ignore unknown properties (for SPEC_HINT)
+                    AllowUnrecognizedEnums = true // Allow invalid enum values
+                };
+                var parser = new FhirJsonParser(parserSettings);
+                var bundle = parser.Parse<Bundle>(bundleJson);
+                
+                // Lenient parsing succeeded but strict failed - capture the strict error
+                _logger.LogInformation($"[ValidationPipeline] Strict parsing failed but lenient succeeded. Capturing strict error: {strictEx.Message}");
+                
+                var detailedError = FirelyExceptionMapper.MapToValidationError(strictEx, bundleJson);
+                _logger.LogInformation($"[ValidationPipeline] Mapper returned - Path: '{detailedError.Path}', JsonPointer: '{detailedError.JsonPointer}', ErrorCode: {detailedError.ErrorCode}");
+                
+                result.Errors.Add(detailedError);
+                
+                // Still return bundle for downstream processing
+                result.Success = true;
+                result.Bundle = bundle;
+                return result;
+            }
+            catch (Exception lenientEx)
+            {
+                // Both strict and lenient failed - return the lenient error
+                _logger.LogInformation($"[ValidationPipeline] Both strict and lenient parsing failed: {lenientEx.Message}");
+                
+                var detailedError = FirelyExceptionMapper.MapToValidationError(lenientEx, bundleJson);
+                _logger.LogInformation($"[ValidationPipeline] Mapper returned - Path: '{detailedError.Path}', JsonPointer: '{detailedError.JsonPointer}', ErrorCode: {detailedError.ErrorCode}");
+                
+                result.Errors.Add(detailedError);
+                return result;
+            }
         }
     }
     

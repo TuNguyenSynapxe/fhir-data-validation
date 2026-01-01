@@ -29,16 +29,18 @@ public static class FirelyExceptionMapper
         
         // Pattern 1: Invalid enum value
         // Example: "Literal 'completed' is not a valid value for enumeration 'Encounter.StatusCode'"
+        // Example with location: "Literal 'malex' is not a valid value for enumeration 'AdministrativeGender' (at Bundle.entry[0].resource[0].gender[0])"
         var enumMatch = Regex.Match(exceptionMessage, 
-            @"Literal '([^']+)' is not a valid value for enumeration '([^']+)'",
+            @"Literal '([^']+)' is not a valid value for enumeration '([^']+)'(?:\s*\(at\s+([^\)]+)\))?",
             RegexOptions.IgnoreCase);
         
         if (enumMatch.Success)
         {
             var invalidValue = enumMatch.Groups[1].Value;
             var enumType = enumMatch.Groups[2].Value;
+            var location = enumMatch.Groups[3].Success ? enumMatch.Groups[3].Value : null;
             
-            return CreateInvalidEnumError(invalidValue, enumType, exceptionMessage, rawBundleJson);
+            return CreateInvalidEnumError(invalidValue, enumType, location, exceptionMessage, rawBundleJson);
         }
         
         // Pattern 2: Unknown element/property
@@ -111,13 +113,37 @@ public static class FirelyExceptionMapper
         return CreateGenericDeserializationError(exceptionType, exceptionMessage, rawBundleJson);
     }
     
-    private static ValidationError CreateInvalidEnumError(string invalidValue, string enumType, string exceptionMessage, string? rawBundleJson)
+    private static ValidationError CreateInvalidEnumError(string invalidValue, string enumType, string? location, string exceptionMessage, string? rawBundleJson)
     {
-        // Extract resource type and field name from enum type
+        // Extract resource type and field name from enum type OR location
         // Example: "Encounter.StatusCode" -> Resource: "Encounter", Field: "status"
-        var parts = enumType.Split('.');
-        string? resourceType = parts.Length > 0 ? parts[0] : null;
-        string? fieldName = parts.Length > 1 ? DeduceFieldName(parts[1]) : null;
+        // Example location: "Bundle.entry[0].resource[0].gender[0]" -> Field: "gender"
+        string? resourceType = null;
+        string? fieldName = null;
+        string? jsonPointer = null;
+        
+        // Try to extract from location first (more accurate)
+        if (!string.IsNullOrEmpty(location))
+        {
+            // Extract field from location path (last segment before array indices)
+            // "Bundle.entry[0].resource[0].gender[0]" -> "gender"
+            var locationMatch = Regex.Match(location, @"\.([a-zA-Z]+)\[");
+            if (locationMatch.Success)
+            {
+                fieldName = locationMatch.Groups[1].Value;
+            }
+            
+            // Convert to JSON pointer
+            jsonPointer = ConvertFhirPathToJsonPointer(location);
+        }
+        
+        // Fall back to enum type if location didn't work
+        if (string.IsNullOrEmpty(fieldName))
+        {
+            var parts = enumType.Split('.');
+            resourceType = parts.Length > 0 ? parts[0] : null;
+            fieldName = parts.Length > 1 ? DeduceFieldName(parts[1]) : null;
+        }
         
         // Try to extract possible values from common patterns
         var allowedValues = ExtractAllowedEnumValues(enumType);
@@ -133,8 +159,11 @@ public static class FirelyExceptionMapper
         // Enforce schema
         ValidationErrorDetailsValidator.Validate("INVALID_ENUM_VALUE", details);
         
-        // Attempt to find location in JSON
-        var jsonPointer = TryFindJsonPointer(rawBundleJson, fieldName, invalidValue);
+        // Attempt to find location in JSON if we don't have it yet
+        if (jsonPointer == null)
+        {
+            jsonPointer = TryFindJsonPointer(rawBundleJson, fieldName, invalidValue);
+        }
         
         return new ValidationError
         {
