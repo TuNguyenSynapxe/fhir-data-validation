@@ -48,13 +48,11 @@ public class FirelyExceptionMapperTests
         Assert.Equal("completed", error.Details["actual"]);
         Assert.Equal("enum", error.Details["valueType"]);
         
-        // Should contain allowed values array
+        // Phase B.1: Allowed values removed - STRUCTURE validation owns enum values
         Assert.True(error.Details.ContainsKey("allowed"));
         var allowedValues = error.Details["allowed"] as List<string>;
         Assert.NotNull(allowedValues);
-        Assert.Contains("planned", allowedValues);
-        Assert.Contains("in-progress", allowedValues);
-        Assert.Contains("finished", allowedValues);
+        Assert.Empty(allowedValues); // Firely no longer provides enum values
     }
     
     [Fact]
@@ -95,7 +93,7 @@ public class FirelyExceptionMapperTests
         Assert.Equal("error", error.Severity);
         Assert.Equal("UNKNOWN_ELEMENT", error.ErrorCode);
         Assert.Equal("Bundle.entry[1].resource[0].actualPeriod[0]", error.Path);
-        Assert.Equal("/entry/1/resource/actualPeriod/0", error.JsonPointer);
+        Assert.Equal("/entry/1/resource/actualPeriod", error.JsonPointer); // [0] removed from resource and actualPeriod
         Assert.Contains("Unknown element", error.Message);
         Assert.Contains("actualPeriod", error.Message);
         
