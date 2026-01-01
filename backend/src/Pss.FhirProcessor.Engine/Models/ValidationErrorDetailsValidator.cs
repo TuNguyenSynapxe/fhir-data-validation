@@ -86,6 +86,9 @@ public static class ValidationErrorDetailsValidator
             case "INVALID_ENUM_VALUE":
                 ValidateInvalidEnumValue(details, errors);
                 break;
+            case "ENUM_VALIDATION_SKIPPED":
+                ValidateEnumValidationSkipped(details, errors);
+                break;
             // Reserved but not emitted — QuestionAnswer uses specific codes
             // (ANSWER_REQUIRED, INVALID_ANSWER_VALUE, ANSWER_OUT_OF_RANGE, etc.)
             case "QUESTIONANSWER_VIOLATION":
@@ -139,8 +142,28 @@ public static class ValidationErrorDetailsValidator
             if (valueTypeObj is not string || (string)valueTypeObj != "enum")
                 errors.Add("'valueType' must be 'enum'");
         }
-    }
-    
+    }    
+    // Phase B.2 — Explicit warning when enum validation cannot be enforced
+    private static void ValidateEnumValidationSkipped(IDictionary<string, object> details, List<string> errors)
+    {
+        RequireKey(details, "valueSet", errors);
+        RequireKey(details, "bindingStrength", errors);
+        RequireKey(details, "reason", errors);
+        
+        if (details.TryGetValue("bindingStrength", out var strengthObj))
+        {
+            if (strengthObj is string strength)
+            {
+                var validStrengths = new[] { "required", "extensible", "preferred", "example" };
+                if (!validStrengths.Contains(strength))
+                    errors.Add($"'bindingStrength' must be one of: {string.Join(", ", validStrengths)}");
+            }
+            else
+            {
+                errors.Add("'bindingStrength' must be a string");
+            }
+        }
+    }    
     private static void ValidatePatternMismatch(IDictionary<string, object> details, List<string> errors)
     {
         RequireKey(details, "actual", errors, allowNull: true);

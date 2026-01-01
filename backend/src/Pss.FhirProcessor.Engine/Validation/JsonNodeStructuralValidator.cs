@@ -284,6 +284,25 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
                 errors.Add(CreateInvalidEnumError(fhirPath, jsonPointer, actualValue, allowedValues, severity));
             }
         }
+        // Phase B.2 — Explicit warning when enum validation is skipped
+        // Emit warning if element has ValueSet binding but enum values cannot be loaded
+        else if (!string.IsNullOrEmpty(schema.ValueSetUrl) &&
+                 !string.IsNullOrEmpty(schema.BindingStrength) &&
+                 schema.BindingStrength?.ToLowerInvariant() != "example" &&
+                 value.ValueKind == JsonValueKind.String)
+        {
+            // Check if enum index explicitly has no values (empty list vs null)
+            // Only warn if GetAllowedValues returned null (not supported) or empty list
+            var hasEnumValues = allowedValues != null && allowedValues.Count > 0;
+            if (!hasEnumValues)
+            {
+                _logger.LogDebug("Enum validation skipped for {JsonPointer} — unsupported ValueSet {ValueSetUrl}",
+                    jsonPointer, schema.ValueSetUrl);
+                    
+                var skipSeverity = MapBindingStrengthToSeverity(schema.BindingStrength) == "error" ? "warning" : "info";
+                errors.Add(CreateEnumValidationSkippedError(fhirPath, jsonPointer, schema.ValueSetUrl, schema.BindingStrength, skipSeverity));
+            }
+        }
 
         // Primitive Format Validation
         if (IsPrimitiveType(schema.Type))
@@ -429,6 +448,38 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             "preferred" => "info",
             "example" => "info",
             _ => "error" // Default to error for unknown/missing strength
+        };
+    }
+
+    /// <summary>
+    /// Phase B.2 — Create warning when enum validation cannot be enforced.
+    /// This improves transparency without guessing enum values.
+    /// </summary>
+    private ValidationError CreateEnumValidationSkippedError(
+        string fhirPath,
+        string jsonPointer,
+        string valueSetUrl,
+        string bindingStrength,
+        string severity)
+    {
+        var details = new Dictionary<string, object>
+        {
+            ["valueSet"] = valueSetUrl,
+            ["bindingStrength"] = bindingStrength,
+            ["reason"] = "ValueSet not supported by enum index"
+        };
+
+        Models.ValidationErrorDetailsValidator.Validate("ENUM_VALIDATION_SKIPPED", details);
+
+        return new ValidationError
+        {
+            Source = "STRUCTURE",
+            Severity = severity,
+            ErrorCode = "ENUM_VALIDATION_SKIPPED",
+            Path = fhirPath,
+            JsonPointer = jsonPointer,
+            Message = $"Enum validation skipped for {fhirPath} — ValueSet {valueSetUrl} is not supported",
+            Details = details
         };
     }
 

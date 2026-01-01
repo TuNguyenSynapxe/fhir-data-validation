@@ -336,6 +336,320 @@ public class JsonNodeStructuralValidatorPhaseBTests
     }
 
     // =========================================================================
+    // PHASE B.2 TESTS — Enum Validation Skipped Warning
+    // =========================================================================
+
+    [Fact]
+    public async Task ValidateAsync_EnumValidationSkipped_RequiredBinding_EmitsWarning()
+    {
+        // Arrange - Element with required ValueSet binding that is NOT supported
+        var bundleJson = @"{
+            ""resourceType"": ""Bundle"",
+            ""type"": ""collection"",
+            ""entry"": [{
+                ""resource"": {
+                    ""resourceType"": ""Encounter"",
+                    ""status"": ""planned"",
+                    ""class"": {
+                        ""system"": ""http://terminology.hl7.org/CodeSystem/v3-ActCode"",
+                        ""code"": ""AMB""
+                    }
+                }
+            }]
+        }";
+
+        SetupBundleSchema();
+        
+        var encounterSchema = new FhirSchemaNode
+        {
+            Path = "Encounter",
+            ElementName = "Encounter",
+            Type = "Encounter",
+            Children = new List<FhirSchemaNode>
+            {
+                new()
+                {
+                    Path = "Encounter.status",
+                    ElementName = "status",
+                    Type = "code",
+                    Min = 1,
+                    Max = "1",
+                    ValueSetUrl = "http://hl7.org/fhir/ValueSet/unsupported-custom-status",
+                    BindingStrength = "required"
+                },
+                new()
+                {
+                    Path = "Encounter.class",
+                    ElementName = "class",
+                    Type = "Coding",
+                    Min = 1,
+                    Max = "1"
+                }
+            }
+        };
+
+        _mockSchemaService
+            .Setup(x => x.GetResourceSchemaAsync("Encounter", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(encounterSchema);
+
+        // Mock: Enum index returns null (unsupported ValueSet)
+        _mockEnumIndex
+            .Setup(x => x.GetAllowedValues("R4", "Encounter", "status"))
+            .Returns((IReadOnlyList<string>?)null);
+
+        // Act
+        var errors = await _validator.ValidateAsync(bundleJson, "R4");
+
+        // Assert
+        Assert.Single(errors);
+        var error = errors[0];
+        Assert.Equal("ENUM_VALIDATION_SKIPPED", error.ErrorCode);
+        Assert.Equal("STRUCTURE", error.Source);
+        Assert.Equal("warning", error.Severity); // required binding → warning (not error)
+        Assert.Equal("/entry/0/resource/status", error.JsonPointer);
+        Assert.NotNull(error.Details);
+        Assert.Equal("http://hl7.org/fhir/ValueSet/unsupported-custom-status", error.Details["valueSet"]);
+        Assert.Equal("required", error.Details["bindingStrength"]);
+        Assert.Equal("ValueSet not supported by enum index", error.Details["reason"]);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_EnumValidationSkipped_PreferredBinding_EmitsInfo()
+    {
+        // Arrange - Element with preferred binding (not required)
+        var bundleJson = @"{
+            ""resourceType"": ""Bundle"",
+            ""type"": ""collection"",
+            ""entry"": [{
+                ""resource"": {
+                    ""resourceType"": ""Patient"",
+                    ""language"": ""en-US""
+                }
+            }]
+        }";
+
+        SetupBundleSchema();
+        
+        var patientSchema = new FhirSchemaNode
+        {
+            Path = "Patient",
+            ElementName = "Patient",
+            Type = "Patient",
+            Children = new List<FhirSchemaNode>
+            {
+                new()
+                {
+                    Path = "Patient.language",
+                    ElementName = "language",
+                    Type = "code",
+                    Min = 0,
+                    Max = "1",
+                    ValueSetUrl = "http://hl7.org/fhir/ValueSet/languages",
+                    BindingStrength = "preferred"
+                }
+            }
+        };
+
+        _mockSchemaService
+            .Setup(x => x.GetResourceSchemaAsync("Patient", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(patientSchema);
+
+        // Mock: Enum index returns null (unsupported)
+        _mockEnumIndex
+            .Setup(x => x.GetAllowedValues("R4", "Patient", "language"))
+            .Returns((IReadOnlyList<string>?)null);
+
+        // Act
+        var errors = await _validator.ValidateAsync(bundleJson, "R4");
+
+        // Assert
+        Assert.Single(errors);
+        var error = errors[0];
+        Assert.Equal("ENUM_VALIDATION_SKIPPED", error.ErrorCode);
+        Assert.Equal("info", error.Severity); // preferred → info
+    }
+
+    [Fact]
+    public async Task ValidateAsync_EnumValidationSkipped_ExampleBinding_NoWarning()
+    {
+        // Arrange - Element with example binding (should NOT emit warning)
+        var bundleJson = @"{
+            ""resourceType"": ""Bundle"",
+            ""type"": ""collection"",
+            ""entry"": [{
+                ""resource"": {
+                    ""resourceType"": ""Patient"",
+                    ""communication"": [{
+                        ""language"": {
+                            ""coding"": [{
+                                ""system"": ""urn:ietf:bcp:47"",
+                                ""code"": ""en""
+                            }]
+                        }
+                    }]
+                }
+            }]
+        }";
+
+        SetupBundleSchema();
+        
+        var patientSchema = new FhirSchemaNode
+        {
+            Path = "Patient",
+            ElementName = "Patient",
+            Type = "Patient",
+            Children = new List<FhirSchemaNode>
+            {
+                new()
+                {
+                    Path = "Patient.communication",
+                    ElementName = "communication",
+                    Type = "BackboneElement",
+                    Min = 0,
+                    Max = "*",
+                    IsArray = true,
+                    Children = new List<FhirSchemaNode>
+                    {
+                        new()
+                        {
+                            Path = "Patient.communication.language",
+                            ElementName = "language",
+                            Type = "CodeableConcept",
+                            Min = 1,
+                            Max = "1",
+                            ValueSetUrl = "http://hl7.org/fhir/ValueSet/languages",
+                            BindingStrength = "example" // Example binding
+                        }
+                    }
+                }
+            }
+        };
+
+        _mockSchemaService
+            .Setup(x => x.GetResourceSchemaAsync("Patient", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(patientSchema);
+
+        // Mock: Enum index returns null (unsupported)
+        _mockEnumIndex
+            .Setup(x => x.GetAllowedValues("R4", "Patient", "language"))
+            .Returns((IReadOnlyList<string>?)null);
+
+        // Act
+        var errors = await _validator.ValidateAsync(bundleJson, "R4");
+
+        // Assert - NO ENUM_VALIDATION_SKIPPED error for example binding
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_EnumValidationSkipped_SupportedEnum_NoSkipWarning()
+    {
+        // Arrange - Enum is supported, so INVALID_ENUM_VALUE is emitted, NOT ENUM_VALIDATION_SKIPPED
+        var bundleJson = @"{
+            ""resourceType"": ""Bundle"",
+            ""type"": ""collection"",
+            ""entry"": [{
+                ""resource"": {
+                    ""resourceType"": ""Patient"",
+                    ""gender"": ""invalid""
+                }
+            }]
+        }";
+
+        SetupBundleSchema();
+        SetupPatientSchema();
+
+        // Mock: Enum index returns values (supported)
+        _mockEnumIndex
+            .Setup(x => x.GetAllowedValues("R4", "Patient", "gender"))
+            .Returns(new List<string> { "male", "female", "other", "unknown" });
+
+        _mockEnumIndex
+            .Setup(x => x.GetBindingStrength("R4", "Patient", "gender"))
+            .Returns("required");
+
+        // Act
+        var errors = await _validator.ValidateAsync(bundleJson, "R4");
+
+        // Assert - INVALID_ENUM_VALUE emitted, NOT ENUM_VALIDATION_SKIPPED
+        Assert.Single(errors);
+        var error = errors[0];
+        Assert.Equal("INVALID_ENUM_VALUE", error.ErrorCode);
+        Assert.DoesNotContain(errors, e => e.ErrorCode == "ENUM_VALIDATION_SKIPPED");
+    }
+
+    [Fact]
+    public async Task ValidateAsync_EnumValidationSkipped_DeduplicationSafety()
+    {
+        // Arrange - Verify ENUM_VALIDATION_SKIPPED participates in deduplication
+        // If same jsonPointer, only one error should be emitted
+        var bundleJson = @"{
+            ""resourceType"": ""Bundle"",
+            ""type"": ""collection"",
+            ""entry"": [{
+                ""resource"": {
+                    ""resourceType"": ""Observation"",
+                    ""status"": ""preliminary"",
+                    ""code"": {
+                        ""coding"": [{
+                            ""system"": ""http://loinc.org"",
+                            ""code"": ""12345-6""
+                        }]
+                    }
+                }
+            }]
+        }";
+
+        SetupBundleSchema();
+        
+        var observationSchema = new FhirSchemaNode
+        {
+            Path = "Observation",
+            ElementName = "Observation",
+            Type = "Observation",
+            Children = new List<FhirSchemaNode>
+            {
+                new()
+                {
+                    Path = "Observation.status",
+                    ElementName = "status",
+                    Type = "code",
+                    Min = 1,
+                    Max = "1",
+                    ValueSetUrl = "http://hl7.org/fhir/ValueSet/unsupported-status",
+                    BindingStrength = "required"
+                },
+                new()
+                {
+                    Path = "Observation.code",
+                    ElementName = "code",
+                    Type = "CodeableConcept",
+                    Min = 1,
+                    Max = "1"
+                }
+            }
+        };
+
+        _mockSchemaService
+            .Setup(x => x.GetResourceSchemaAsync("Observation", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(observationSchema);
+
+        // Mock: Enum index returns null (unsupported)
+        _mockEnumIndex
+            .Setup(x => x.GetAllowedValues("R4", "Observation", "status"))
+            .Returns((IReadOnlyList<string>?)null);
+
+        // Act
+        var errors = await _validator.ValidateAsync(bundleJson, "R4");
+
+        // Assert - Only ONE ENUM_VALIDATION_SKIPPED error
+        Assert.Single(errors);
+        var error = errors[0];
+        Assert.Equal("ENUM_VALIDATION_SKIPPED", error.ErrorCode);
+        Assert.Equal("/entry/0/resource/status", error.JsonPointer);
+    }
+
+    // =========================================================================
     // SCHEMA SETUP HELPERS
     // =========================================================================
 

@@ -230,6 +230,9 @@ public static class ValidationErrorCodes
     
     /// <summary>Expected array but received non-array value</summary>
     public const string FHIR_ARRAY_EXPECTED = "FHIR_ARRAY_EXPECTED";
+    
+    /// <summary>Enum validation skipped because ValueSet is not supported by the engine (Phase B.2)</summary>
+    public const string ENUM_VALIDATION_SKIPPED = "ENUM_VALIDATION_SKIPPED";
 
     // =========================================================================
     // SYSTEM / ENGINE
