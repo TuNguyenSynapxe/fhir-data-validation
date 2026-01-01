@@ -307,15 +307,12 @@ public static class TestHelper
         var errorModelBuilder = CreateErrorModelBuilder();
         var suggestionService = CreateSystemRuleSuggestionService();
 
-        // Create mock structural validator
-        var mockStructuralValidator = new Mock<IJsonNodeStructuralValidator>();
-        mockStructuralValidator
-            .Setup(s => s.ValidateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<ValidationError>());
+        // Create REAL structural validator for contract tests
+        var structuralValidator = CreateJsonNodeStructuralValidator();
 
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<ValidationPipeline>.Instance;
         return new ValidationPipeline(
-            mockStructuralValidator.Object,
+            structuralValidator,
             lintService,
             specHintService,
             firelyService,
@@ -325,6 +322,21 @@ public static class TestHelper
             errorModelBuilder,
             suggestionService,
             logger);
+    }
+    
+    public static IJsonNodeStructuralValidator CreateJsonNodeStructuralValidator()
+    {
+        var schemaService = CreateFhirSchemaService();
+        var enumIndex = CreateEnumIndex();
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<JsonNodeStructuralValidator>.Instance;
+        return new JsonNodeStructuralValidator(schemaService, enumIndex, logger);
+    }
+    
+    public static IFhirEnumIndex CreateEnumIndex()
+    {
+        var modelResolver = CreateModelResolver();
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FhirEnumIndex>.Instance;
+        return new FhirEnumIndex(modelResolver, logger);
     }
     
     public static ISystemRuleSuggestionService CreateSystemRuleSuggestionService()

@@ -209,7 +209,9 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         if (schema.IsArray && value.ValueKind != JsonValueKind.Array)
         {
             errors.Add(CreateArrayExpectedError(fhirPath, jsonPointer, value.ValueKind));
-            return; // Can't continue validation on wrong shape
+            // Short-circuit THIS BRANCH only (can't validate children of wrong-shaped value)
+            // But this doesn't stop validation of sibling properties
+            return;
         }
 
         if (!schema.IsArray && value.ValueKind == JsonValueKind.Array)
