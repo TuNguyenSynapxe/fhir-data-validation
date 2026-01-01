@@ -208,10 +208,16 @@ public class ValidationPipeline : IValidationPipeline
             
             // Now build Firely errors with raw JSON for navigation
             var firelyErrors = await _errorBuilder.FromFirelyIssuesAsync(firelyOutcome, request.BundleJson, bundle, cancellationToken);
-            response.Errors.AddRange(firelyErrors);
             
-            var firelyErrorCount = firelyErrors.Count(e => e.Source == "FHIR" && e.Severity == "error");
-            _logger.LogInformation("Firely validation completed: {ErrorCount} structural errors found", firelyErrorCount);
+            // Phase B.1: Deduplicate STRUCTURE vs Firely errors
+            // If JSON Node Structural Validation already caught an error (Source=STRUCTURE),
+            // suppress the duplicate from Firely (Source=FHIR)
+            var deduplicatedFirelyErrors = DeduplicateErrors(structuralErrors, firelyErrors);
+            response.Errors.AddRange(deduplicatedFirelyErrors);
+            
+            var firelyErrorCount = deduplicatedFirelyErrors.Count(e => e.Source == "FHIR" && e.Severity == "error");
+            _logger.LogInformation("Firely validation completed: {ErrorCount} structural errors found ({SuppressedCount} duplicates suppressed)", 
+                firelyErrorCount, firelyErrors.Count - deduplicatedFirelyErrors.Count);
             
             // Note: Removed fallback lint check - Lint only runs in full analysis mode
             // In standard mode, only Firely structural validation, business rules, and reference validation run
@@ -662,5 +668,62 @@ public class ValidationPipeline : IValidationPipeline
         response.Summary.BusinessErrorCount = response.Errors.Count(e => e.Source == "Business");
         response.Summary.CodeMasterErrorCount = response.Errors.Count(e => e.Source == "CodeMaster");
         response.Summary.ReferenceErrorCount = response.Errors.Count(e => e.Source == "Reference");
+    }
+    
+    /// <summary>
+    /// Phase B.1: Deduplicates errors between STRUCTURE and Firely validation.
+    /// 
+    /// Strategy:
+    /// - Key: (errorCode, jsonPointer)
+    /// - If STRUCTURE already caught an error, suppress the Firely duplicate
+    /// - STRUCTURE errors always win (primary authority for structural issues)
+    /// 
+    /// This prevents double-reporting of enum errors and other structural issues
+    /// that both JSON Node validation and Firely catch.
+    /// </summary>
+    private List<ValidationError> DeduplicateErrors(
+        List<ValidationError> structuralErrors,
+        List<ValidationError> firelyErrors)
+    {
+        // Build a set of (errorCode, jsonPointer) keys from structural errors
+        var structuralKeys = new HashSet<string>(
+            structuralErrors
+                .Where(e => !string.IsNullOrEmpty(e.ErrorCode) && !string.IsNullOrEmpty(e.JsonPointer))
+                .Select(e => $"{e.ErrorCode}|{e.JsonPointer}")
+        );
+
+        var deduplicatedFirely = new List<ValidationError>();
+        var suppressedCount = 0;
+
+        foreach (var error in firelyErrors)
+        {
+            if (string.IsNullOrEmpty(error.ErrorCode) || string.IsNullOrEmpty(error.JsonPointer))
+            {
+                // Can't deduplicate without both keys - keep it
+                deduplicatedFirely.Add(error);
+                continue;
+            }
+
+            var key = $"{error.ErrorCode}|{error.JsonPointer}";
+            if (structuralKeys.Contains(key))
+            {
+                // Duplicate found - suppress Firely error
+                _logger.LogDebug("Suppressed duplicate Firely error: {ErrorCode} at {JsonPointer}", 
+                    error.ErrorCode, error.JsonPointer);
+                suppressedCount++;
+            }
+            else
+            {
+                // Not a duplicate - keep it
+                deduplicatedFirely.Add(error);
+            }
+        }
+
+        if (suppressedCount > 0)
+        {
+            _logger.LogInformation("Suppressed {Count} duplicate Firely errors (already caught by JSON Node validation)", suppressedCount);
+        }
+
+        return deduplicatedFirely;
     }
 }

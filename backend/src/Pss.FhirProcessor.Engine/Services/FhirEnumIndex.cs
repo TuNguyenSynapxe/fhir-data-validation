@@ -162,56 +162,195 @@ public class FhirEnumIndex : IFhirEnumIndex
 
     /// <summary>
     /// Extracts codes from ElementDefinition.Binding.
-    /// Uses well-known FHIR R4 bindings where possible.
+    /// Phase B.1: Dynamically extracts enum values from Firely SDK's ModelInfo.
+    /// This uses the SDK's built-in knowledge of FHIR enumerations without requiring
+    /// external ValueSet files or terminology servers.
     /// </summary>
     private List<string> ExtractCodesFromBinding(
         ElementDefinition.ElementDefinitionBindingComponent binding,
         string resourceType,
         string elementName)
     {
-        // Phase B: Use well-known R4 enum values
-        // In future phases, this could be enhanced to:
-        // 1. Parse ValueSet from StructureDefinition contained resources
-        // 2. Load ValueSet files from filesystem
-        // 3. Call terminology server (if needed)
-
         var valueSetUrl = binding.ValueSet;
+        if (string.IsNullOrEmpty(valueSetUrl))
+        {
+            return new List<string>();
+        }
 
-        // Map well-known ValueSets to codes
+        // Try to extract enum values from Firely SDK's type information
+        // The SDK includes enum definitions for standard FHIR value sets
+        try
+        {
+            // For elements with enum bindings, Firely SDK provides the allowed values
+            // through the StructureDefinition snapshot element constraints
+            var structureDefinition = _modelResolver.GetStructureDefinition(resourceType);
+            if (structureDefinition?.Snapshot == null)
+            {
+                return new List<string>();
+            }
+
+            // Find the element that matches our path
+            var elementPath = $"{resourceType}.{elementName}";
+            var element = structureDefinition.Snapshot.Element
+                .FirstOrDefault(e => e.Path == elementPath);
+
+            if (element?.Type == null || !element.Type.Any())
+            {
+                return new List<string>();
+            }
+
+            // For 'code' type elements, check if there's an enum constraint
+            var codeType = element.Type.FirstOrDefault(t => t.Code == "code");
+            if (codeType == null)
+            {
+                return new List<string>();
+            }
+
+            // Extract codes from fixed values or constraints if present
+            // Firely SDK includes enum values in element constraints for required bindings
+            var codes = new List<string>();
+
+            // Check for fixed value pattern (less common but possible)
+            if (element.Fixed != null)
+            {
+                if (element.Fixed is Code code && !string.IsNullOrEmpty(code.Value))
+                {
+                    codes.Add(code.Value);
+                }
+            }
+
+            // Check for pattern constraints
+            if (element.Pattern != null)
+            {
+                if (element.Pattern is Code code && !string.IsNullOrEmpty(code.Value))
+                {
+                    codes.Add(code.Value);
+                }
+            }
+
+            // For most FHIR enums, we rely on the SDK's internal enum types
+            // Try to find the corresponding C# enum type in the SDK
+            var fhirTypeName = GetFhirEnumTypeName(resourceType, elementName, valueSetUrl);
+            if (!string.IsNullOrEmpty(fhirTypeName))
+            {
+                codes = GetEnumValuesFromFirelyType(fhirTypeName);
+            }
+
+            return codes;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Could not extract enum values for {ResourceType}.{ElementName}", resourceType, elementName);
+            return new List<string>();
+        }
+    }
+
+    /// <summary>
+    /// Maps FHIR ValueSet URLs to Firely SDK enum type names.
+    /// </summary>
+    private string? GetFhirEnumTypeName(string resourceType, string elementName, string valueSetUrl)
+    {
+        // Map well-known ValueSet URLs to their Firely SDK enum type names
         return valueSetUrl switch
         {
-            "http://hl7.org/fhir/ValueSet/administrative-gender" => 
-                new List<string> { "male", "female", "other", "unknown" },
-            
-            "http://hl7.org/fhir/ValueSet/observation-status" => 
-                new List<string> { "registered", "preliminary", "final", "amended", "corrected", "cancelled", "entered-in-error", "unknown" },
-            
-            "http://hl7.org/fhir/ValueSet/encounter-status" => 
-                new List<string> { "planned", "arrived", "triaged", "in-progress", "onleave", "finished", "cancelled", "entered-in-error", "unknown" },
-            
-            "http://hl7.org/fhir/ValueSet/bundle-type" => 
-                new List<string> { "document", "message", "transaction", "transaction-response", "batch", "batch-response", "history", "searchset", "collection" },
-            
-            "http://hl7.org/fhir/ValueSet/publication-status" => 
-                new List<string> { "draft", "active", "retired", "unknown" },
-            
-            "http://hl7.org/fhir/ValueSet/request-status" => 
-                new List<string> { "draft", "active", "on-hold", "revoked", "completed", "entered-in-error", "unknown" },
-            
-            "http://hl7.org/fhir/ValueSet/medication-request-status" => 
-                new List<string> { "active", "on-hold", "cancelled", "completed", "entered-in-error", "stopped", "draft", "unknown" },
-            
-            "http://hl7.org/fhir/ValueSet/condition-clinical" => 
-                new List<string> { "active", "recurrence", "relapse", "inactive", "remission", "resolved" },
-            
-            "http://hl7.org/fhir/ValueSet/allergyintolerance-clinical" => 
-                new List<string> { "active", "inactive", "resolved" },
-            
-            "http://hl7.org/fhir/ValueSet/allergyintolerance-verification" => 
-                new List<string> { "unconfirmed", "confirmed", "refuted", "entered-in-error" },
-
-            _ => new List<string>() // Unknown ValueSet - no enum validation
+            "http://hl7.org/fhir/ValueSet/administrative-gender" => "Hl7.Fhir.Model.AdministrativeGender",
+            "http://hl7.org/fhir/ValueSet/observation-status" => "Hl7.Fhir.Model.ObservationStatus",
+            "http://hl7.org/fhir/ValueSet/encounter-status" => "Hl7.Fhir.Model.Encounter+EncounterStatus",
+            "http://hl7.org/fhir/ValueSet/bundle-type" => "Hl7.Fhir.Model.Bundle+BundleType",
+            "http://hl7.org/fhir/ValueSet/publication-status" => "Hl7.Fhir.Model.PublicationStatus",
+            "http://hl7.org/fhir/ValueSet/request-status" => "Hl7.Fhir.Model.RequestStatus",
+            "http://hl7.org/fhir/ValueSet/medication-request-status" => "Hl7.Fhir.Model.MedicationRequest+MedicationrequestStatus",
+            "http://hl7.org/fhir/ValueSet/condition-clinical" => "Hl7.Fhir.Model.Condition+ConditionClinicalStatusCodes",
+            "http://hl7.org/fhir/ValueSet/allergyintolerance-clinical" => "Hl7.Fhir.Model.AllergyIntolerance+AllergyIntoleranceClinicalStatus",
+            "http://hl7.org/fhir/ValueSet/allergyintolerance-verification" => "Hl7.Fhir.Model.AllergyIntolerance+AllergyIntoleranceVerificationStatus",
+            _ => null
         };
+    }
+
+    /// <summary>
+    /// Extracts enum string values from a Firely SDK enum type using reflection.
+    /// </summary>
+    private List<string> GetEnumValuesFromFirelyType(string typeName)
+    {
+        try
+        {
+            // Get the type from Firely SDK assembly
+            var type = Type.GetType(typeName);
+            if (type == null || !type.IsEnum)
+            {
+                return new List<string>();
+            }
+
+            // Use reflection to call EnumUtility.GetLiteral<T> for the correct enum type
+            var enumUtilityType = typeof(Hl7.Fhir.Utility.EnumUtility);
+            var getLiteralMethod = enumUtilityType.GetMethod("GetLiteral", new[] { type });
+            
+            if (getLiteralMethod == null)
+            {
+                // Fallback: convert enum names to lowercase-with-dashes
+                var names = Enum.GetNames(type);
+                return names.Select(ConvertEnumNameToFhirCode).ToList();
+            }
+
+            // Get all enum values and convert to FHIR code strings
+            var values = Enum.GetValues(type);
+            var codes = new List<string>();
+
+            foreach (var value in values)
+            {
+                try
+                {
+                    // Call GetLiteral<T>(value) via reflection
+                    var code = getLiteralMethod.Invoke(null, new[] { value }) as string;
+                    if (!string.IsNullOrEmpty(code))
+                    {
+                        codes.Add(code);
+                    }
+                }
+                catch
+                {
+                    // Fallback: convert enum name to FHIR code format
+                    var enumName = value.ToString();
+                    if (enumName != null)
+                    {
+                        codes.Add(ConvertEnumNameToFhirCode(enumName));
+                    }
+                }
+            }
+
+            return codes;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Could not extract enum values from type {TypeName}", typeName);
+            return new List<string>();
+        }
+    }
+
+    /// <summary>
+    /// Converts a C# enum name to FHIR code format.
+    /// Example: "InProgress" -> "in-progress", "EnteredInError" -> "entered-in-error"
+    /// </summary>
+    private string ConvertEnumNameToFhirCode(string enumName)
+    {
+        if (string.IsNullOrEmpty(enumName))
+        {
+            return enumName;
+        }
+
+        // Convert PascalCase to lowercase-with-dashes
+        var result = new System.Text.StringBuilder();
+        for (int i = 0; i < enumName.Length; i++)
+        {
+            var ch = enumName[i];
+            if (i > 0 && char.IsUpper(ch))
+            {
+                result.Append('-');
+            }
+            result.Append(char.ToLowerInvariant(ch));
+        }
+
+        return result.ToString();
     }
 
     /// <summary>

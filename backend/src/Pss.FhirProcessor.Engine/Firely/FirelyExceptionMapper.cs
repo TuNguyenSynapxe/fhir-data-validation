@@ -145,14 +145,15 @@ public static class FirelyExceptionMapper
             fieldName = parts.Length > 1 ? DeduceFieldName(parts[1]) : null;
         }
         
-        // Try to extract possible values from common patterns
-        var allowedValues = ExtractAllowedEnumValues(enumType);
+        // Phase B.1: No hardcoded enum values - error message is generic
+        // The actual validation is done by JsonNodeStructuralValidator which should
+        // catch enum errors BEFORE Firely. This path should rarely be hit.
         
         // Canonical schema: { actual: string | null, allowed: string[], valueType: "enum" }
         var details = new Dictionary<string, object>
         {
             ["actual"] = invalidValue,
-            ["allowed"] = allowedValues ?? new List<string>(),
+            ["allowed"] = new List<string>(), // No allowed values - use JsonNodeStructuralValidator
             ["valueType"] = "enum"
         };
         
@@ -173,7 +174,7 @@ public static class FirelyExceptionMapper
             ResourceType = resourceType,
             Path = fieldName,
             JsonPointer = jsonPointer,
-            Message = $"Invalid value '{invalidValue}' for field '{fieldName}'. {GetEnumSuggestion(allowedValues)}",
+            Message = $"Invalid value '{invalidValue}' for field '{fieldName}'. This error should have been caught earlier by structural validation.",
             Details = details
         };
     }
@@ -335,35 +336,15 @@ public static class FirelyExceptionMapper
     
     /// <summary>
     /// Returns common allowed values for known FHIR enum types
-    /// This is a partial implementation - could be expanded with full FHIR R4 value sets
+    /// Phase B.1: Removed hardcoded enum values. Enum validation is now handled
+    /// exclusively by JsonNodeStructuralValidator using IFhirEnumIndex.
+    /// This method is deprecated and returns empty list.
     /// </summary>
+    [Obsolete("Enum validation moved to JsonNodeStructuralValidator. This should not be called.")]
     private static List<string>? ExtractAllowedEnumValues(string enumType)
     {
-        // Common FHIR R4 enums - add more as needed
-        var knownEnums = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Encounter.StatusCode"] = new List<string> 
-            { 
-                "planned", "arrived", "triaged", "in-progress", 
-                "onleave", "finished", "cancelled", "entered-in-error", "unknown" 
-            },
-            ["ObservationStatus"] = new List<string>
-            {
-                "registered", "preliminary", "final", "amended",
-                "corrected", "cancelled", "entered-in-error", "unknown"
-            },
-            ["AdministrativeGender"] = new List<string>
-            {
-                "male", "female", "other", "unknown"
-            },
-            ["BundleType"] = new List<string>
-            {
-                "document", "message", "transaction", "transaction-response",
-                "batch", "batch-response", "history", "searchset", "collection"
-            }
-        };
-        
-        return knownEnums.TryGetValue(enumType, out var values) ? values : null;
+        // Phase B.1: No longer used. Enum validation happens in JSON Node phase.
+        return null;
     }
     
     /// <summary>
