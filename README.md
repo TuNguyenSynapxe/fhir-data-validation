@@ -18,6 +18,15 @@ FHIR Processor V2 is an enterprise-grade validation engine that combines:
 - **Smart navigation** with breadcrumb-based error resolution
 - **IDE-style playground** for rule authoring and testing
 
+## 📚 Documentation
+
+- **[PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md)** - Complete project structure overview
+- **[CHANGELOG.md](./CHANGELOG.md)** - Version history and changes
+- **[Backend Documentation](./backend/README.md)** - Backend architecture and implementation
+- **[Frontend Documentation](./frontend/README.md)** - Frontend architecture and guides
+- **[Specification Docs](./docs/)** - Core architecture and specifications
+- **[Implementation Archive](./archive/implementation-docs/)** - Completed cross-cutting implementations
+
 ---
 
 ## 🚀 Quick Start

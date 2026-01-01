@@ -4,13 +4,23 @@ React + TypeScript + Vite frontend for the FHIR Processor V2 Engine.
 
 ## 📚 Documentation
 
-All frontend documentation is in the `docs/` directory:
-
+### Active Documentation
 - **[docs/README.md](./docs/README.md)** - Documentation navigation index
 - **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** - Frontend architecture and structure
 - **[docs/VALIDATION_FLOW.md](./docs/VALIDATION_FLOW.md)** - Complete validation pipeline guide
 - **[docs/REFACTORING_HISTORY.md](./docs/REFACTORING_HISTORY.md)** - Chronological refactoring history
 - **[docs/features/](./docs/features/)** - Feature-specific implementation guides
+
+### Reference Guides
+- **[PHASE_4_QUICK_REFERENCE.md](./PHASE_4_QUICK_REFERENCE.md)** - Quick reference for instance scope patterns
+- **[RULE_MESSAGE_TEMPLATE_ARCHITECTURE.md](./RULE_MESSAGE_TEMPLATE_ARCHITECTURE.md)** - Message template system
+- **[SMART_PATH_NAVIGATION_NEAREST_PARENT.md](./SMART_PATH_NAVIGATION_NEAREST_PARENT.md)** - Smart path navigation
+- **[NESTED_ARRAY_REFINEMENT_GUIDE.md](./NESTED_ARRAY_REFINEMENT_GUIDE.md)** - Array navigation patterns
+- **[MINIMAL_DIFF_IMPLICIT_ARRAY_TRAVERSAL.md](./MINIMAL_DIFF_IMPLICIT_ARRAY_TRAVERSAL.md)** - Array traversal guide
+- **[EXPLANATION_UI_TESTING_GUIDE.md](./EXPLANATION_UI_TESTING_GUIDE.md)** - Testing explanations
+
+### Implementation History
+- **[archive/implementation-docs/](./archive/implementation-docs/)** - Completed feature implementations
 
 ## 🚀 Quick Start
 

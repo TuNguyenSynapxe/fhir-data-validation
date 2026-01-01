@@ -10,11 +10,16 @@ All components have been implemented according to the specifications in `/docs`.
 
 ## 📚 Quick Links
 
+### Active Documentation
 - **[Quick Start Guide](QUICK_START.md)** - Get up and running in 5 minutes
 - **[Implementation Summary](IMPLEMENTATION_SUMMARY.md)** - Detailed technical documentation
-- **[Implementation Index](docs/IMPLEMENTATION_INDEX.md)** - Complete feature implementation reference
 - **[File Structure](FILE_STRUCTURE.md)** - Complete file organization reference
+- **[JSON Node Validation Coverage Audit](JSON_NODE_VALIDATION_COVERAGE_AUDIT.md)** - Validation architecture analysis
+
+### Reference Documentation
+- **[Implementation Index](docs/IMPLEMENTATION_INDEX.md)** - Complete feature implementation reference
 - **[Final Checklist](FINAL_CHECKLIST.md)** - Implementation verification
+- **[Implementation History Archive](archive/implementation-docs/)** - Completed phase documentation
 
 ---
 
