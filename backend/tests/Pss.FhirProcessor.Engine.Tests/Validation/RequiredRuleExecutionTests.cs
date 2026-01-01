@@ -131,7 +131,8 @@ public class RequiredRuleExecutionTests
         var error = errors[0];
         error.ErrorCode.Should().Be(ValidationErrorCodes.FIELD_REQUIRED);
         error.RuleId.Should().Be("REQ_TELECOM");
-        error.Details.Should().ContainKey("isMissing");
+        error.Details.Should().ContainKey("required");
+        error.Details!["required"].Should().Be(true);
     }
 
     [Fact]
@@ -185,8 +186,8 @@ public class RequiredRuleExecutionTests
         var error = errors[0];
         error.ErrorCode.Should().Be(ValidationErrorCodes.FIELD_REQUIRED);
         error.RuleId.Should().Be("REQ_FAMILY");
-        error.Details.Should().ContainKey("isAllEmpty");
-        error.Details!["isAllEmpty"].Should().Be(true);
+        error.Details.Should().ContainKey("required");
+        error.Details!["required"].Should().Be(true);
     }
 
     [Fact]
