@@ -305,8 +305,8 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
                 {isValidating ? 'Running...' : 'Run Validation'}
               </button>
 
-              {/* Bundle Toggle Button */}
-              {onBundleToggle && (
+              {/* Bundle Toggle Button - REMOVED: Bundle now always visible */}
+              {/* {onBundleToggle && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -328,7 +328,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
                     : (isBundleOpen ? 'Hide Bundle' : 'Show Bundle')
                   }
                 </button>
-              )}
+              )} */}
 
               {/* Validation Mode Toggle */}
               <div className="flex items-center gap-1 px-2 py-1 bg-gray-100 rounded">

@@ -139,6 +139,19 @@ export const IssueCard: React.FC<IssueCardProps> = ({
                   <p className="text-sm font-medium text-gray-900">{explanation.title}</p>
                   <p className="text-sm text-gray-700">{explanation.reason}</p>
                   
+                  {/* Author-provided hint (only for Project rules) */}
+                  {issue.hint && (issue.source === 'PROJECT' || issue.source === 'Business') && (
+                    <div className="mt-2 p-2.5 bg-gray-50 border border-gray-200 rounded">
+                      <div className="flex items-start gap-2">
+                        <HelpCircle className="w-4 h-4 text-gray-500 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">Hint</p>
+                          <p className="text-sm text-gray-700">{issue.hint}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* Expandable "Why am I seeing this?" button */}
                   <button
                     onClick={(e) => {

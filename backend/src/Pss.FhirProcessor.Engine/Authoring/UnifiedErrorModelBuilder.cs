@@ -227,6 +227,7 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
                 ErrorCode = error.ErrorCode,
                 Message = string.Empty, // PHASE 4: Backend does not emit prose. Frontend uses ErrorCode.
                 Details = details,
+                Hint = error.UserHint, // Pass through author-provided hint from rule definition
                 Explanation = ValidationExplanationService.ForProjectRule(
                     error.ErrorCode ?? "UNKNOWN",
                     error.FieldPath,

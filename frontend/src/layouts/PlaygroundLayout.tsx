@@ -48,8 +48,8 @@ export const PlaygroundLayout: React.FC<PlaygroundLayoutProps> = ({
   // Detect desktop layout (>= 1280px)
   const isDesktop = useMediaQuery('(min-width: 1280px)');
   
-  // Only show bundle in Validation mode
-  const shouldShowBundle = currentMode === RightPanelMode.Validation && isBundleOpen;
+  // Only show bundle in Validation mode - ALWAYS visible (no toggle needed)
+  const shouldShowBundle = currentMode === RightPanelMode.Validation;
   
   // Desktop: Split Layout
   if (isDesktop && shouldShowBundle) {

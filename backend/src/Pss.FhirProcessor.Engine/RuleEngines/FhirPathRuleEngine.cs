@@ -364,6 +364,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                                 ["entryIndex"] = entryIndex,
                                 ["_precomputedJsonPointer"] = jsonPointer
                             },
+                            UserHint = rule.UserHint,
                             EntryIndex = entryIndex,
                             ResourceId = resourceId ?? "unknown"
                         });
@@ -457,6 +458,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                                         FieldPath = rule.FieldPath,
                                         ErrorCode = ValidationErrorCodes.VALUE_NOT_ALLOWED,
                                         Details = details,
+                                        UserHint = rule.UserHint,
                                         EntryIndex = entryIndex,
                                         ResourceId = resourceId ?? "unknown"
                                     });
@@ -504,6 +506,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                                                 ["pattern"] = pattern,
                                                 ["_precomputedJsonPointer"] = jsonPointer  // Internal hint
                                             },
+                                            UserHint = rule.UserHint,
                                             EntryIndex = entryIndex,
                                             ResourceId = resourceId ?? "unknown"
                                         });
@@ -551,6 +554,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                                             ["expected"] = expectedValue,
                                             ["_precomputedJsonPointer"] = jsonPointer  // Internal hint
                                         },
+                                        UserHint = rule.UserHint,
                                         EntryIndex = entryIndex,
                                         ResourceId = resourceId ?? "unknown"
                                     });
@@ -779,6 +783,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                             ["entryIndex"] = entryIndex,
                             ["_precomputedJsonPointer"] = jsonPointer
                         },
+                        UserHint = rule.UserHint,
                         EntryIndex = entryIndex,
                         ResourceId = resourceElement.TryGetProperty("id", out var idElem) ? idElem.GetString() : "unknown"
                     });
@@ -1001,6 +1006,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 FieldPath = rule.FieldPath,
                 ErrorCode = errorCode,
                 Details = details,
+                UserHint = rule.UserHint,
                 EntryIndex = entryIndex,
                 ResourceId = resource.Id
             });
@@ -1092,6 +1098,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         FieldPath = rule.FieldPath,
                         ErrorCode = ValidationErrorCodes.FIXED_VALUE_MISMATCH,
                         Details = details,
+                        UserHint = rule.UserHint,
                         EntryIndex = entryIndex,
                         ResourceId = resource.Id
                     });
@@ -1184,6 +1191,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         FieldPath = rule.FieldPath,
                         ErrorCode = ValidationErrorCodes.VALUE_NOT_ALLOWED,
                         Details = details,
+                        UserHint = rule.UserHint,
                         EntryIndex = entryIndex,
                         ResourceId = resource.Id
                     });
@@ -1254,6 +1262,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         FieldPath = rule.FieldPath,
                         ErrorCode = ValidationErrorCodes.PATTERN_MISMATCH,
                         Details = details,
+                        UserHint = rule.UserHint,
                         EntryIndex = entryIndex,
                         ResourceId = resource.Id
                     });
@@ -1364,6 +1373,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         FieldPath = rule.FieldPath,
                         ErrorCode = errorCode,
                         Details = details,
+                        UserHint = rule.UserHint,
                         EntryIndex = entryIndex,
                         ResourceId = resource.Id
                     });
@@ -1408,6 +1418,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         FieldPath = rule.FieldPath,
                         ErrorCode = errorCode,
                         Details = details,
+                        UserHint = rule.UserHint,
                         EntryIndex = entryIndex,
                         ResourceId = resource.Id
                     });
@@ -1631,6 +1642,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                         FieldPath = rule.FieldPath,
                         ErrorCode = ValidationErrorCodes.CODE_NOT_IN_VALUESET,
                         Details = details,
+                        UserHint = rule.UserHint,
                         EntryIndex = entryIndex,
                         ResourceId = resource.Id
                     });
@@ -1701,6 +1713,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                     FieldPath = rule.FieldPath,
                     ErrorCode = ValidationErrorCodes.CUSTOMFHIRPATH_CONDITION_FAILED,
                     Details = details,
+                    UserHint = rule.UserHint,
                     EntryIndex = entryIndex,
                     ResourceId = resource.Id
                 });
@@ -2085,6 +2098,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 FieldPath = rule.FieldPath,
                 ErrorCode = ValidationErrorCodes.RESOURCE_REQUIREMENT_VIOLATION,
                 Details = details,
+                UserHint = rule.UserHint,
                 EntryIndex = null, // Bundle-level validation
                 ResourceId = null  // No specific resource
             });

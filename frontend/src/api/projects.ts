@@ -32,6 +32,7 @@ export interface ValidationError {
     missingParents: string[];
   };
   explanation?: ValidationIssueExplanation;
+  hint?: string; // Author-provided hint for project rules only
 }
 
 export interface LintIssue {

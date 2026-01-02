@@ -88,4 +88,13 @@ public class ValidationError
     /// </summary>
     [JsonPropertyName("explanation")]
     public ValidationIssueExplanation? Explanation { get; set; }
+    
+    /// <summary>
+    /// Author-provided hint for project rules (optional).
+    /// Short contextual guidance from rule definition.
+    /// Only applicable to PROJECT/Business rules - not STRUCTURE/LINT/SPEC_HINT.
+    /// </summary>
+    [JsonPropertyName("hint")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Hint { get; set; }
 }

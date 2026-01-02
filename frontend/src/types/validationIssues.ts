@@ -27,6 +27,7 @@ export type ValidationIssue = {
   rulePath?: string; // rule FHIRPath if ProjectRule
   jsonPointer?: string | null; // Phase 1: ONLY navigation anchor (null if path doesn't exist)
   details?: Record<string, any>; // optional additional context
+  hint?: string; // Author-provided hint (PROJECT rules only)
   // Phase 1: navigation object removed - use jsonPointer directly
   explanation?: ValidationIssueExplanation; // structured explanation
 };

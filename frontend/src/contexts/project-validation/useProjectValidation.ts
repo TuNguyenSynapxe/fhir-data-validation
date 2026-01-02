@@ -41,6 +41,7 @@ export interface ValidationError {
     resourceIndex?: number;
   };
   explanation?: ValidationIssueExplanation;
+  hint?: string; // Author-provided hint (PROJECT/Business rules only)
 }
 
 export interface ValidationResult {

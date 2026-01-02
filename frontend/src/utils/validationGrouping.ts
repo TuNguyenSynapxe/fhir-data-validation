@@ -37,6 +37,7 @@ export const convertToIssue = (
     jsonPointer: error.jsonPointer,
     details: error.details,
     explanation: error.explanation, // Pass through explanation if available
+    hint: error.hint, // Pass through author-provided hint (PROJECT/Business rules only)
   };
 };
 
