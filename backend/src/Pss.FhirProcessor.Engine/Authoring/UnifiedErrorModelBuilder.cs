@@ -372,9 +372,13 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
         
         foreach (var issue in findings)
         {
+            // Determine source: JSON/Structure category rules are STRUCTURE (correctness),
+            // all other lint rules remain LINT (portability/best-practice)
+            var source = IsStructuralCorrectnessRule(issue.RuleId) ? "STRUCTURE" : "LINT";
+            
             var error = new ValidationError
             {
-                Source = "LINT", // Clearly marks this as best-effort lint check
+                Source = source,
                 Severity = issue.Severity,
                 ErrorCode = issue.RuleId,
                 Message = issue.Message,
@@ -556,5 +560,33 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
         }
         
         return path;
+    }
+    
+    /// <summary>
+    /// Determines if a LINT rule ID represents structural correctness (STRUCTURE source)
+    /// vs portability/best-practice (LINT source).
+    /// 
+    /// STRUCTURE rules: JSON/Structure category - invalid or non-parseable FHIR
+    /// LINT rules: All other categories - valid FHIR with portability concerns
+    /// </summary>
+    private static bool IsStructuralCorrectnessRule(string ruleId)
+    {
+        // JSON category rules - parse-blocking correctness issues
+        if (ruleId == "LINT_EMPTY_INPUT") return true;
+        if (ruleId == "LINT_INVALID_JSON") return true;
+        if (ruleId == "LINT_ROOT_NOT_OBJECT") return true;
+        
+        // Structure category rules - FHIR structure correctness
+        if (ruleId == "LINT_MISSING_RESOURCE_TYPE") return true;
+        if (ruleId == "LINT_NOT_BUNDLE") return true;
+        if (ruleId == "LINT_ENTRY_NOT_ARRAY") return true;
+        if (ruleId == "LINT_ENTRY_NOT_OBJECT") return true;
+        if (ruleId == "LINT_ENTRY_MISSING_RESOURCE") return true;
+        if (ruleId == "LINT_RESOURCE_NOT_OBJECT") return true;
+        if (ruleId == "LINT_RESOURCE_MISSING_TYPE") return true;
+        if (ruleId == "LINT_RESOURCE_TYPE_NOT_STRING") return true;
+        
+        // All other LINT rules remain LINT (portability/best-practice)
+        return false;
     }
 }
