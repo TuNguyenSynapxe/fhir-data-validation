@@ -54,6 +54,7 @@ export interface ValidationResult {
     warnings: number;
     information: number;
     bySource: {
+      structure: number;
       firely: number;
       businessRules: number;
       codeMaster: number;
@@ -133,6 +134,8 @@ export function useProjectValidation(projectId: string): ProjectValidationState 
           warnings: data.summary?.warningCount || errors.filter((e: ValidationError) => e.severity === 'warning').length,
           information: data.summary?.infoCount || errors.filter((e: ValidationError) => e.severity === 'info' || e.severity === 'information').length,
           bySource: {
+            structure: data.summary?.structureErrorCount || errors.filter((e: ValidationError) => 
+              e.source?.toLowerCase() === 'structure').length,
             firely: data.summary?.fhirErrorCount || errors.filter((e: ValidationError) => 
               e.source?.toLowerCase() === 'fhir' || e.source?.toLowerCase() === 'firely').length,
             businessRules: data.summary?.businessErrorCount || errors.filter((e: ValidationError) => 

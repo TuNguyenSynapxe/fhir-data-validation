@@ -33,6 +33,7 @@ export interface ValidationUICounters {
  * Source filter state (matches ValidationSourceFilter component)
  */
 export interface SourceFilterState {
+  structure: boolean;
   lint: boolean;
   reference: boolean;
   firely: boolean;
@@ -77,7 +78,7 @@ export const isGuidanceFinding = isRecommendation;
  */
 const isErrorVisible = (error: ValidationError, filters: SourceFilterState): boolean => {
   const sourceMap: Record<string, keyof SourceFilterState> = {
-    'STRUCTURE': 'firely',
+    'STRUCTURE': 'structure',
     'LINT': 'lint',
     'Reference': 'reference',
     'FHIR': 'firely',

@@ -92,10 +92,10 @@ export const getLayerMetadata = (source: string): ValidationLayerMetadata => {
       
     case 'STRUCTURE':
       return {
-        displayName: 'FHIR Structure',
-        fullName: 'FHIR Structural Validation',
+        displayName: 'FHIR Structure (Pre-Parse)',
+        fullName: 'FHIR Structural Validation - Pre-Parse',
         isBlocking: true,
-        explanation: 'Must be fixed to produce valid HL7 FHIR. This issue violates the HL7 FHIR specification and must be resolved before integration or exchange.',
+        explanation: 'This check validates the raw JSON structure before the FHIR model is parsed. It must be resolved to produce valid HL7 FHIR. Issues include invalid enum values, incorrect data types, and missing required fields.',
         badgeColor: 'bg-red-100 text-red-800 border-red-300',
         borderColor: 'border-l-red-500',
         bgColor: 'bg-red-50',

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Filter, Check } from 'lucide-react';
 
 export interface SourceFilterState {
+  structure: boolean;
   lint: boolean;
   reference: boolean;
   firely: boolean;
@@ -14,6 +15,7 @@ interface ValidationSourceFilterProps {
   filters: SourceFilterState;
   onChange: (filters: SourceFilterState) => void;
   counts: {
+    structure: number;
     lint: number;
     reference: number;
     firely: number;
@@ -49,6 +51,7 @@ export const ValidationSourceFilter: React.FC<ValidationSourceFilterProps> = ({
   const toggleAll = () => {
     const newState = !allEnabled;
     onChange({
+      structure: newState,
       lint: newState,
       reference: newState,
       firely: newState,
@@ -93,6 +96,21 @@ export const ValidationSourceFilter: React.FC<ValidationSourceFilterProps> = ({
               <div className="border-t border-gray-200 my-1" />
 
               {/* Individual sources */}
+              {counts.structure > 0 && (
+                <button
+                  onClick={() => toggleSource('structure')}
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-gray-50 rounded transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border border-gray-300 rounded flex items-center justify-center">
+                      {filters.structure && <Check className="w-3 h-3 text-red-600" />}
+                    </div>
+                    <span className="font-medium text-gray-700">FHIR Structure</span>
+                  </div>
+                  <span className="text-gray-500">({counts.structure})</span>
+                </button>
+              )}
+
               {counts.lint > 0 && (
                 <button
                   onClick={() => toggleSource('lint')}

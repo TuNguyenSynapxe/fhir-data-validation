@@ -45,6 +45,9 @@ export const IssueCard: React.FC<IssueCardProps> = ({
   // Determine if this is a non-blocking advisory source
   const isAdvisorySource = issue.source === 'LINT' || issue.source === 'HL7Advisory' || issue.source === 'Lint' || issue.source === 'HL7_SPEC_HINT';
   
+  // Determine if this is a STRUCTURE (pre-parse) validation issue
+  const isStructureSource = issue.source === 'STRUCTURE';
+  
   // Phase 8: Check path/location for navigation (not just jsonPointer)
   const canNavigate = !!(issue.location || issue.jsonPointer);
   
@@ -55,6 +58,16 @@ export const IssueCard: React.FC<IssueCardProps> = ({
     <div
       className={`border ${borderColor} rounded-lg p-4 transition-colors ${cardBgColor}`}
     >
+      {/* STRUCTURE (Pre-Parse) Notice */}
+      {isStructureSource && (
+        <div className="mb-3 p-2.5 bg-red-50 border border-red-200 rounded text-xs text-red-800">
+          <p className="font-medium">🔍 FHIR Structure (Pre-Parse)</p>
+          <p className="mt-0.5 text-gray-700">
+            This check validates the raw JSON structure before the FHIR model is parsed. It must be resolved to produce valid HL7 FHIR.
+          </p>
+        </div>
+      )}
+      
       {/* Advisory Notice */}
       {isAdvisorySource && (
         <div className="mb-3 p-2.5 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">

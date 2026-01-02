@@ -74,6 +74,7 @@ export const OverviewPanel: React.FC<OverviewPanelProps> = ({
     }
     // Use all sources visible (no filters on Overview page)
     return buildValidationUICounters(validationResult.errors, {
+      structure: true,
       lint: true,
       reference: true,
       firely: true,

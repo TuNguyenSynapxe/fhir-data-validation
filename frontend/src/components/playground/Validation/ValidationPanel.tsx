@@ -95,6 +95,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
   const [sourceFilters, setSourceFilters] = useState<SourceFilterState>(() => {
     const stored = localStorage.getItem(`validation-filters-${projectId}`);
     return stored ? JSON.parse(stored) : {
+      structure: true,
       lint: true,
       reference: true,
       firely: true,
@@ -124,6 +125,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
   const handleRunValidation = async () => {
     // Reset filters to show all sources
     const allFilters: SourceFilterState = {
+      structure: true,
       firely: true,
       business: true,
       codeMaster: true,
@@ -381,6 +383,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
                   filters={sourceFilters}
                   onChange={handleFilterChange}
                   counts={{
+                    structure: summary?.bySource?.structure || 0,
                     lint: summary?.bySource?.lint || 0,
                     reference: summary?.bySource?.reference || 0,
                     firely: summary?.bySource?.firely || 0,
