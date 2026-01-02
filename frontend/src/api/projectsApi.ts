@@ -2,6 +2,7 @@ import httpClient from './httpClient';
 import type { ProjectMetadata, ProjectDetail } from '../types/project';
 import type { ValidationResult } from '../types/validation';
 import type { RuleReviewResponse } from '../types/governance';
+import type { SuggestRulesRequest, SuggestRulesResponse } from '../types/ruleSuggestion';
 
 export async function getProjects(): Promise<ProjectMetadata[]> {
   const response = await httpClient.get<ProjectMetadata[]>('/api/projects');
@@ -91,5 +92,24 @@ export async function updateProjectFeatures(
     `/api/projects/${id}/features`,
     features
   );
+  return response.data;
+}
+
+/**
+ * Generate rule suggestions based on bundle analysis
+ * This is a deterministic pattern-based detection system (NOT AI)
+ * Analyzes the bundle and suggests rules with confidence scoring
+ */
+export async function suggestRules(
+  id: string,
+  request?: SuggestRulesRequest
+): Promise<SuggestRulesResponse> {
+  const params = new URLSearchParams();
+  if (request?.minConfidence !== undefined) {
+    params.append('minConfidence', request.minConfidence.toString());
+  }
+  
+  const url = `/api/projects/${id}/suggest-rules${params.toString() ? '?' + params.toString() : ''}`;
+  const response = await httpClient.post<SuggestRulesResponse>(url);
   return response.data;
 }

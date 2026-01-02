@@ -184,9 +184,22 @@ public class ValidationPipeline : IValidationPipeline
             if (bundleParseResult.Success)
             {
                 bundle = bundleParseResult.Bundle;
+                // Add any parsing errors captured during strict->lenient fallback (e.g., enum violations)
+                if (bundleParseResult.Errors.Any())
+                {
+                    _logger.LogInformation("ParseBundleWithContext captured {ErrorCount} errors during parsing (e.g., enum violations)", bundleParseResult.Errors.Count);
+                    response.Errors.AddRange(bundleParseResult.Errors);
+                }
             }
             else
             {
+                // Add parsing errors to response
+                if (bundleParseResult.Errors.Any())
+                {
+                    _logger.LogInformation("ParseBundleWithContext failed with {ErrorCount} errors", bundleParseResult.Errors.Count);
+                    response.Errors.AddRange(bundleParseResult.Errors);
+                }
+                
                 // Bundle couldn't be parsed to POCO
                 // Try even more lenient parsing by wrapping in try-catch and ignoring all errors
                 try

@@ -154,12 +154,18 @@ public class FhirEnumIndex : IFhirEnumIndex
             .Cast<Bundle.BundleType>()
             .Select(v => Hl7.Fhir.Utility.EnumUtility.GetLiteral(v))
             .ToList();
+        
+        var encounterStatusValues = Enum.GetValues(typeof(Encounter.EncounterStatus))
+            .Cast<Encounter.EncounterStatus>()
+            .Select(v => Hl7.Fhir.Utility.EnumUtility.GetLiteral(v))
+            .ToList();
 
         return new List<(string, string, string, List<string>)>
         {
             ("Patient.gender", "http://hl7.org/fhir/ValueSet/administrative-gender", "required", genderValues),
             ("Observation.status", "http://hl7.org/fhir/ValueSet/observation-status", "required", observationStatusValues),
             ("Bundle.type", "http://hl7.org/fhir/ValueSet/bundle-type", "required", bundleTypeValues),
+            ("Encounter.status", "http://hl7.org/fhir/ValueSet/encounter-status", "required", encounterStatusValues),
         };
     }
 

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Pss.FhirProcessor.Engine.Governance;
 using Pss.FhirProcessor.Engine.Interfaces;
 using Pss.FhirProcessor.Engine.Models;
+using Pss.FhirProcessor.Engine.RuleSuggestion.Interfaces;
 using Pss.FhirProcessor.Playground.Api.Models;
 using Pss.FhirProcessor.Playground.Api.Services;
 using System.Text.Json;
@@ -17,6 +18,7 @@ public class ProjectsController : ControllerBase
     private readonly IRuleService _ruleService;
     private readonly IRuleAdvisoryService? _ruleAdvisoryService;
     private readonly IRuleReviewEngine _ruleReviewEngine;
+    private readonly IRuleSuggestionEngine? _ruleSuggestionEngine;
     private readonly ILogger<ProjectsController> _logger;
 
     public ProjectsController(
@@ -24,12 +26,14 @@ public class ProjectsController : ControllerBase
         IRuleService ruleService,
         IRuleReviewEngine ruleReviewEngine,
         ILogger<ProjectsController> logger,
-        IRuleAdvisoryService? ruleAdvisoryService = null)
+        IRuleAdvisoryService? ruleAdvisoryService = null,
+        IRuleSuggestionEngine? ruleSuggestionEngine = null)
     {
         _projectService = projectService;
         _ruleService = ruleService;
         _ruleReviewEngine = ruleReviewEngine;
         _ruleAdvisoryService = ruleAdvisoryService;
+        _ruleSuggestionEngine = ruleSuggestionEngine;
         _logger = logger;
     }
 
@@ -416,6 +420,107 @@ public class ProjectsController : ControllerBase
         {
             _logger.LogError(ex, "Error generating terminology advisories for project {ProjectId}", id);
             return StatusCode(500, new { error = "Failed to generate advisories", message = ex.Message });
+        }
+    }
+    
+    /// <summary>
+    /// Generate rule suggestions based on bundle analysis
+    /// Analyzes the project bundle and existing rules to suggest new rules deterministically
+    /// This is NOT AI - it's pattern-based rule detection with confidence scoring
+    /// </summary>
+    [HttpPost("{id}/suggest-rules")]
+    public async Task<IActionResult> SuggestRules(
+        Guid id,
+        [FromQuery] double minConfidence = 50.0)
+    {
+        try
+        {
+            if (_ruleSuggestionEngine == null)
+            {
+                return StatusCode(501, new { error = "Rule suggestion engine is not configured" });
+            }
+
+            // Verify project exists
+            var project = await _projectService.GetProjectAsync(id);
+            if (project == null)
+            {
+                return NotFound(new { error = "Project not found" });
+            }
+
+            if (string.IsNullOrWhiteSpace(project.SampleBundleJson))
+            {
+                return BadRequest(new { error = "Project has no bundle data to analyze" });
+            }
+
+            _logger.LogInformation("Generating rule suggestions for project {ProjectId} with minConfidence={MinConfidence}", 
+                id, minConfidence);
+
+            // Debug: Log the type and first 100 chars of SampleBundleJson
+            _logger.LogInformation("SampleBundleJson type: {Type}, Length: {Length}, First 100 chars: {Preview}", 
+                project.SampleBundleJson?.GetType().Name, 
+                project.SampleBundleJson?.Length,
+                project.SampleBundleJson?[..Math.Min(100, project.SampleBundleJson.Length)]);
+
+            // Deserialize bundle from JSON
+            Hl7.Fhir.Model.Bundle bundle;
+            try
+            {
+                // Parse the JSON string as a FHIR Bundle
+                // Note: project.SampleBundleJson is already unescaped by the JSON deserializer
+                var parser = new Hl7.Fhir.Serialization.FhirJsonParser();
+                bundle = parser.Parse<Hl7.Fhir.Model.Bundle>(project.SampleBundleJson);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse bundle JSON for project {ProjectId}", id);
+                return BadRequest(new { error = "Invalid bundle JSON format", details = ex.Message });
+            }
+
+            // Deserialize existing rules from JSON (if any)
+            List<object> existingRules = new();
+            if (!string.IsNullOrWhiteSpace(project.RulesJson))
+            {
+                try
+                {
+                    // Parse the rules JSON (already unescaped by the JSON deserializer)
+                    var rulesDoc = JsonSerializer.Deserialize<JsonDocument>(project.RulesJson);
+                    // The rules are under the "rules" property
+                    if (rulesDoc?.RootElement.TryGetProperty("rules", out var rulesArray) == true 
+                        && rulesArray.ValueKind == JsonValueKind.Array)
+                    {
+                        existingRules = rulesArray.EnumerateArray()
+                            .Select(e => (object)e)
+                            .ToList();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse rules JSON for project {ProjectId}, continuing with empty rules", id);
+                }
+            }
+
+            // Generate suggestions
+            var suggestions = await _ruleSuggestionEngine.GenerateSuggestionsAsync(
+                bundle,
+                existingRules,
+                minConfidence);
+
+            _logger.LogInformation("Generated {Count} rule suggestions for project {ProjectId}", 
+                suggestions.Count, id);
+
+            return Ok(new
+            {
+                projectId = id,
+                suggestionCount = suggestions.Count,
+                suggestions,
+                minConfidenceScore = minConfidence,
+                generatedAt = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating rule suggestions for project {ProjectId}", id);
+            return StatusCode(500, new { error = "Failed to generate rule suggestions", message = ex.Message });
         }
     }
 }

@@ -12,6 +12,8 @@ using Pss.FhirProcessor.Engine.Services.Terminology;
 using Pss.FhirProcessor.Engine.Services.Questions;
 using Pss.FhirProcessor.Engine.Validation;
 using Pss.FhirProcessor.Engine.Validation.QuestionAnswer;
+using Pss.FhirProcessor.Engine.RuleSuggestion.Interfaces;
+using Pss.FhirProcessor.Engine.RuleSuggestion.Services;
 
 namespace Pss.FhirProcessor.Engine.DependencyInjection;
 
@@ -70,6 +72,11 @@ public static class EngineServiceCollectionExtensions
         
         // PHASE 7: Rule governance and quality enforcement
         services.AddScoped<Governance.IRuleReviewEngine, Governance.RuleReviewEngine>();
+        
+        // PHASE 8: Rule Suggestion Engine (deterministic, non-AI)
+        services.AddScoped<IBundleFlattener, BundleFlattener>();
+        services.AddScoped<IConfidenceScorer, ConfidenceScorer>();
+        services.AddScoped<IRuleSuggestionEngine, RuleSuggestionEngine>();
         
         // DLL-SAFE: Structural hints (default no-op for runtime safety)
         services.AddSingleton<IFhirStructureHintProvider, NullFhirStructureHintProvider>();

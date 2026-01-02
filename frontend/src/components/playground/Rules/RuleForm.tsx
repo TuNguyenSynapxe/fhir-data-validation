@@ -235,14 +235,19 @@ export const RuleForm: React.FC<RuleFormProps> = ({
       }
 
       if (ruleType === 'QuestionAnswer' && initialRule.params) {
-        // Extract iterationScope from path
-        // Path format: Observation[*].component[*] or Observation[0].component[*]
-        // We need to extract: component[*]
-        if (initialRule.path) {
+        // Extract iterationScope from fieldPath (NEW FORMAT) or path (LEGACY)
+        if (initialRule.fieldPath) {
+          // NEW FORMAT: Direct fieldPath property
+          console.log('[RuleForm] QuestionAnswer - Using fieldPath as iterationScope:', initialRule.fieldPath);
+          setIterationScope(initialRule.fieldPath);
+        } else if (initialRule.path) {
+          // LEGACY FORMAT: Extract from composed path
+          // Path format: Observation[*].component[*] or Observation[0].component[*]
+          // We need to extract: component[*]
           const pathParts = initialRule.path.split('.');
-          // Remove the first part (resourceType with scope like "Observation[*]")
           const iterationScopeParts = pathParts.slice(1);
           const extractedIterationScope = iterationScopeParts.join('.');
+          console.log('[RuleForm] QuestionAnswer - Extracted from path:', { fullPath: initialRule.path, iterationScope: extractedIterationScope });
           setIterationScope(extractedIterationScope);
         }
         

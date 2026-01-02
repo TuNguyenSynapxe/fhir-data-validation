@@ -7,6 +7,19 @@ import { formatRuleReviewMessage, formatRuleReviewTitle, formatRuleReviewSuggest
 import { isInternalRule } from './ruleHelpers';
 import type { Rule } from '../../../types/rightPanelProps';
 
+// Rule type descriptions (must match RuleCard.tsx)
+const RULE_TYPE_DESCRIPTIONS: Record<string, string> = {
+  'FixedValue': 'Enforces an exact value',
+  'AllowedValues': 'Restricts allowed values',
+  'ArrayLength': 'Enforces array cardinality',
+  'Resource': 'Restricts allowed resource types',
+  'QuestionAnswer': 'Validates questionnaire-based answers',
+  'CodeSystem': 'Enforces terminology binding',
+  'Regex': 'Validates against a pattern',
+  'Required': 'Enforces field presence',
+  'CustomFhirPath': 'Custom FHIRPath expression',
+};
+
 interface RuleCardExpandedProps {
   rule: Rule;
   onEdit?: (rule: Rule) => void;
@@ -24,6 +37,7 @@ export const RuleCardExpanded: React.FC<RuleCardExpandedProps> = ({
 }) => {
   const [showExplainability, setShowExplainability] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showTechnicalParams, setShowTechnicalParams] = useState(false);
   
   // Auto-collapse advisory by default (non-blocking, lower priority)
   const isInternal = isInternalRule(rule);
@@ -78,67 +92,240 @@ export const RuleCardExpanded: React.FC<RuleCardExpandedProps> = ({
     }
   };
 
+  // Get parameter section title based on rule type
+  const getParameterSectionTitle = (): string => {
+    const normalizedType = rule.type.toLowerCase().replace(/[^a-z]/g, '');
+    
+    switch (normalizedType) {
+      case 'allowedvalues': return 'Allowed values';
+      case 'fixedvalue': return 'Expected value';
+      case 'arraylength': return 'Cardinality';
+      case 'resource': return 'Allowed resources';
+      case 'questionanswer': return 'Questionnaire mapping';
+      case 'codesystem': return 'Terminology binding';
+      case 'regex': return 'Pattern';
+      default: return 'Parameters';
+    }
+  };
+
+  // Render parameters based on rule type (must match RuleCard.tsx)
+  const renderParameters = () => {
+    if (!rule.params || Object.keys(rule.params).length === 0) {
+      return null;
+    }
+
+    // Normalize rule type for comparison
+    const normalizedType = rule.type.toLowerCase().replace(/[^a-z]/g, '');
+
+    switch (normalizedType) {
+      case 'fixedvalue':
+        return (
+          <code className="block text-[13px] font-mono bg-gray-50 px-3 py-2 rounded text-gray-900 break-all leading-relaxed">
+            {rule.params.value}
+          </code>
+        );
+
+      case 'allowedvalues':
+        return (
+          <ul className="list-none space-y-2 pl-0">
+            {(rule.params.values || []).map((value: string, idx: number) => (
+              <li key={idx} className="flex items-start gap-2">
+                <span className="text-gray-400 mt-0.5">•</span>
+                <code className="font-mono text-[13px] bg-gray-50 px-2.5 py-1 rounded text-gray-900">{value}</code>
+              </li>
+            ))}
+          </ul>
+        );
+
+      case 'arraylength':
+        return (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Minimum</p>
+              <p className="text-[14px] text-gray-900 font-semibold">{rule.params.min ?? 0}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Maximum</p>
+              <p className="text-[14px] text-gray-900 font-semibold">
+                {rule.params.max === '*' ? 'unbounded' : rule.params.max}
+              </p>
+            </div>
+          </div>
+        );
+
+      case 'resource':
+        return (
+          <div>
+            <ul className="list-none space-y-2 pl-0">
+              {(rule.params.requirements || rule.params.resourceTypes || []).map((rt: any, idx: number) => (
+                <li key={idx} className="flex items-start gap-2">
+                  <span className="text-gray-400 mt-0.5">•</span>
+                  <div className="flex-1">
+                    <code className="font-mono text-[13px] bg-gray-50 px-2.5 py-1 rounded font-semibold text-gray-900">{rt.resourceType}</code>
+                    {(rt.min !== undefined || rt.max !== undefined) && (
+                      <span className="text-xs text-gray-500 ml-2">
+                        ({rt.min ?? 0}..{rt.max === '*' ? 'unbounded' : rt.max})
+                      </span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {(rule.params.rejectUndeclaredResources === true || rule.params.allowOtherResourceTypes === false) && (
+              <p className="text-xs text-gray-500 italic mt-3">
+                Other resource types are not allowed
+              </p>
+            )}
+          </div>
+        );
+
+      case 'questionanswer':
+        return (
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Question set</p>
+              <code className="block text-[13px] font-mono bg-gray-50 px-3 py-2 rounded text-gray-900 break-all leading-relaxed">
+                {rule.params.questionSetId || rule.params.questionnaireId}
+              </code>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Question path</p>
+              <code className="block text-[13px] font-mono bg-gray-50 px-3 py-2 rounded text-gray-900 break-all leading-relaxed">
+                {rule.params.questionPath}
+              </code>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Answer path</p>
+              <code className="block text-[13px] font-mono bg-gray-50 px-3 py-2 rounded text-gray-900 break-all leading-relaxed">
+                {rule.params.answerPath}
+              </code>
+            </div>
+          </div>
+        );
+
+      case 'codesystem':
+        return (
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Code system</p>
+              <code className="block text-[13px] font-mono bg-gray-50 px-3 py-2 rounded text-gray-900 break-all leading-relaxed">
+                {rule.params.system || rule.params.codeSystem}
+              </code>
+            </div>
+            {rule.params.bindingStrength && (
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Binding strength</p>
+                <p className="text-[13px] text-gray-900 capitalize font-semibold">{rule.params.bindingStrength}</p>
+              </div>
+            )}
+          </div>
+        );
+
+      case 'regex':
+        return (
+          <code className="block text-[13px] font-mono bg-gray-50 px-3 py-2 rounded text-gray-900 break-all leading-relaxed">
+            {rule.params.pattern}
+          </code>
+        );
+
+      default:
+        // Unknown rule type - show collapsible technical parameters
+        return (
+          <div className="space-y-2">
+            <button
+              onClick={() => setShowTechnicalParams(!showTechnicalParams)}
+              className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-800 font-medium"
+            >
+              {showTechnicalParams ? (
+                <ChevronUpIcon className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronDownIcon className="w-3.5 h-3.5" />
+              )}
+              Technical Parameters
+            </button>
+            {showTechnicalParams && (
+              <div className="mt-1.5 bg-gray-50 rounded-md border border-gray-200 p-3">
+                <pre className="text-xs text-gray-800 overflow-x-auto whitespace-pre-wrap break-words">
+                  {JSON.stringify(rule.params, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
+        );
+    }
+  };
+
+  // Enforcement label (Must Fix / Recommended)
+  const enforcementLabel = rule.severity === 'error' ? 'Must Fix' : 'Recommended';
+  const enforcementBgColor = rule.severity === 'error' ? 'bg-red-100' : 'bg-amber-100';
+  const enforcementTextColor = rule.severity === 'error' ? 'text-red-700' : 'text-amber-700';
+  const enforcementBorderColor = rule.severity === 'error' ? 'border-red-200' : 'border-amber-200';
+
+  // Strip trailing dots from path
+  const cleanPath = rule.path?.replace(/\.$/, '') || '';
+  
+  // Check if rule targets resource root (path is empty, resource name only, or just ".")
+  const isResourceRoot = !cleanPath || cleanPath === rule.resourceType;
+  
+  // Get relative path (strip resource name prefix if present)
+  const getRelativePath = () => {
+    if (isResourceRoot) return '';
+    // If path starts with resourceType., strip it
+    if (cleanPath.startsWith(rule.resourceType + '.')) {
+      return cleanPath.substring(rule.resourceType.length + 1);
+    }
+    return cleanPath;
+  };
+
   return (
     <div className="px-4 pb-4 bg-gray-50 border-t border-gray-200">
       <div className="bg-white rounded-md p-4 space-y-4">
         
-        {/* 1. FHIRPath (copyable) */}
+        {/* 1. Enforcement badge only */}
         <div>
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">FHIRPath</span>
-          <div className="mt-1.5 flex items-center gap-2">
-            <code className="flex-1 text-sm font-mono bg-gray-100 px-3 py-1.5 rounded text-gray-900 break-all">
-              {rule.resourceType}.{rule.path}
-            </code>
-            <button
-              onClick={handleCopyPath}
-              className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
-              title="Copy to clipboard"
-            >
-              {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-            </button>
-            {onNavigateToPath && (
-              <button
-                onClick={handleNavigateToField}
-                className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
-                title="Navigate to field"
-              >
-                <ExternalLink className="w-4 h-4" />
-              </button>
+          <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-semibold uppercase tracking-wide ${enforcementBgColor} ${enforcementTextColor} border ${enforcementBorderColor}`}>
+            {enforcementLabel}
+          </span>
+        </div>
+
+        {/* 2. Applies to - inline format (only for non-root paths) */}
+        {!isResourceRoot && (
+          <div className="text-sm">
+            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Applies to:</span>{' '}
+            <code className="font-mono text-[13px] text-gray-800">{getRelativePath()}</code>
+          </div>
+        )}
+
+        {/* 3. Rule Type Section */}
+        <div className="border-t border-gray-200 pt-4">
+          <p className="text-[15px] font-semibold text-gray-800 mb-2">Rule type</p>
+          <p className="text-[14px] leading-relaxed">
+            <span className="font-semibold text-gray-900">{rule.type}</span>
+            {RULE_TYPE_DESCRIPTIONS[rule.type] && (
+              <span className="text-[13px] text-gray-600 font-normal"> — {RULE_TYPE_DESCRIPTIONS[rule.type]}</span>
             )}
-          </div>
+          </p>
         </div>
 
-        {/* 2. Rule Type + Severity */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Rule Type</span>
-            <p className="text-sm text-gray-900 mt-1 font-medium">{rule.type}</p>
-          </div>
-          <div>
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Severity</span>
-            <p className="text-sm text-gray-900 mt-1 capitalize font-medium">{rule.severity}</p>
-          </div>
-        </div>
-
-        {/* 3. Message */}
-        <div>
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Message</span>
-          <p className="text-sm text-gray-900 mt-1.5 leading-relaxed">{rule.message}</p>
-        </div>
-
-        {/* 4. Parameters (if any) */}
+        {/* 4. Parameters Section - rule-type-specific title */}
         {rule.params && Object.keys(rule.params).length > 0 && (
-          <div>
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Parameters</span>
-            <div className="mt-1.5 bg-gray-50 rounded-md border border-gray-200 p-3">
-              <pre className="text-xs text-gray-800 overflow-x-auto whitespace-pre-wrap break-words">
-                {JSON.stringify(rule.params, null, 2)}
-              </pre>
+          <div className="border-t border-gray-200 pt-4">
+            <p className="text-[15px] font-semibold text-gray-800 mb-3">{getParameterSectionTitle()}</p>
+            {renderParameters()}
+          </div>
+        )}
+
+        {/* 5. Hint Section (Optional) */}
+        {rule.userHint && (
+          <div className="border-t border-gray-200 pt-4">
+            <p className="text-[15px] font-semibold text-gray-800 mb-2">Hint</p>
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+              <p className="text-[13px] text-gray-800 leading-relaxed">{rule.userHint}</p>
             </div>
           </div>
         )}
 
-        {/* 5. Rule Quality Advisory (if present) - Non-blocking, Collapsed by Default */}
+        {/* 6. Rule Quality Advisory (if present) - Non-blocking, Collapsed by Default */}
         {advisoryIssues.length > 0 && (
           <div className="pt-3 border-t border-gray-200">
             <button

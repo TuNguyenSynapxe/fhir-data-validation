@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Plus, Download, FileJson, Info, CheckCircle, ChevronDown, ChevronUp, Filter, AlertTriangle, Maximize, Minimize } from 'lucide-react';
+import { Plus, Download, FileJson, Info, CheckCircle, ChevronDown, ChevronUp, Filter, AlertTriangle, Maximize, Minimize, Sparkles } from 'lucide-react';
 import { message } from 'antd';
 import { RuleFilters, type RuleFilterState } from './RuleFilters';
 import { RuleNavigator } from './RuleNavigator';
 import { RuleList } from './RuleList';
 import { RuleEditorModal } from './RuleEditorModal';
 import { SuggestedRulesPanel } from './SuggestedRulesPanel';
+import { RuleSuggestionsDrawer } from './RuleSuggestionsDrawer';
 // RuleModeSelectorModal removed - creation uses AddRuleModal only
 import { AddRuleModal } from './add-rule/AddRuleModal';
 // RuleTypeOption import removed - no longer needed
@@ -17,6 +18,8 @@ import { analyzeFhirBundle, isRulePathObserved } from '../../../services/bundleA
 import { useRuleReview } from '../../../playground/rule-review/hooks/useRuleReview';
 import { getIssueCounts } from '../../../playground/rule-review';
 import type { Rule } from '../../../types/rightPanelProps';
+import { suggestRules } from '../../../api/projectsApi';
+import type { RuleSuggestion } from '../../../types/ruleSuggestion';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -73,6 +76,9 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
   const [ruleSaveStates, setRuleSaveStates] = useState<Map<string, SaveState>>(new Map());
   const [allGroupsExpanded, setAllGroupsExpanded] = useState<boolean | null>(null);
+  const [isSuggestionsDrawerOpen, setIsSuggestionsDrawerOpen] = useState(false);
+  const [ruleSuggestions, setRuleSuggestions] = useState<RuleSuggestion[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedRulesRef = useRef<string>('');
   const lastSuccessfulRulesRef = useRef<Rule[]>([]); // Track last successfully saved rules for rollback
@@ -305,6 +311,83 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
   
   const handleCollapseAll = () => {
     setAllGroupsExpanded(false);
+  };
+  
+  const handleSuggestRules = async () => {
+    if (!projectId) {
+      message.error('Project ID is required');
+      return;
+    }
+    
+    if (!projectBundle) {
+      message.warning('No bundle data to analyze');
+      return;
+    }
+    
+    setIsLoadingSuggestions(true);
+    try {
+      const response = await suggestRules(projectId, { minConfidence: 50 });
+      setRuleSuggestions(response.suggestions);
+      setIsSuggestionsDrawerOpen(true);
+      
+      if (response.suggestions.length === 0) {
+        message.info('No rule suggestions found. Your bundle data doesn\'t contain detectable patterns.');
+      } else {
+        message.success(`Found ${response.suggestions.length} rule suggestion(s)`);
+      }
+    } catch (error) {
+      console.error('Error generating rule suggestions:', error);
+      message.error('Failed to generate rule suggestions');
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+  
+  const handleApplyRuleSuggestion = async (suggestion: RuleSuggestion) => {
+    try {
+      // Convert suggestion to Rule format
+      const newRule: Rule = {
+        id: `rule-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        resourceType: suggestion.resourceType,
+        fieldPath: suggestion.targetPath,
+        path: `${suggestion.resourceType}.${suggestion.targetPath}`, // Legacy format
+        type: suggestion.ruleType,
+        params: suggestion.parameters,
+        severity: 'error', // Default severity
+        enabled: true,
+        origin: 'suggestion', // Mark as from suggestion engine
+      };
+      
+      // Add to rules
+      onRulesChange([...rules, newRule]);
+      message.success(`Applied ${suggestion.ruleType} rule for ${suggestion.resourceType}.${suggestion.targetPath}`);
+    } catch (error) {
+      console.error('Error applying suggestion:', error);
+      message.error('Failed to apply rule suggestion');
+    }
+  };
+  
+  const handleApplyMultipleSuggestions = async (suggestions: RuleSuggestion[]) => {
+    try {
+      const newRules: Rule[] = suggestions.map(suggestion => ({
+        id: `rule-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        resourceType: suggestion.resourceType,
+        fieldPath: suggestion.targetPath,
+        path: `${suggestion.resourceType}.${suggestion.targetPath}`,
+        type: suggestion.ruleType,
+        params: suggestion.parameters,
+        severity: 'error',
+        enabled: true,
+        origin: 'suggestion',
+      }));
+      
+      onRulesChange([...rules, ...newRules]);
+      message.success(`Applied ${suggestions.length} rule suggestion(s)`);
+      setIsSuggestionsDrawerOpen(false);
+    } catch (error) {
+      console.error('Error applying suggestions:', error);
+      message.error('Failed to apply rule suggestions');
+    }
   };
 
   // Legacy functions removed - creation now uses AddRuleModal only
@@ -621,6 +704,25 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
               Export
             </button>
             <button
+              onClick={handleSuggestRules}
+              disabled={!projectBundle || isLoadingSuggestions || (bundleSanityState && !bundleSanityState.isValid)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md transition-colors ${
+                !projectBundle || isLoadingSuggestions || (bundleSanityState && !bundleSanityState.isValid)
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-purple-600 text-white hover:bg-purple-700'
+              }`}
+              title={
+                !projectBundle
+                  ? 'No bundle data to analyze'
+                  : bundleSanityState && !bundleSanityState.isValid
+                  ? 'Fix bundle structure first'
+                  : 'Analyze bundle and suggest rules'
+              }
+            >
+              <Sparkles size={14} />
+              {isLoadingSuggestions ? 'Analyzing...' : 'Suggest Rules'}
+            </button>
+            <button
               onClick={handleAddRule}
               disabled={bundleSanityState && !bundleSanityState.isValid}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-white rounded-md transition-colors ${
@@ -718,6 +820,16 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
       />
 
       {/* Rule Mode Selector Modal - REMOVED: Creation uses AddRuleModal only */}
+
+      {/* Rule Suggestions Drawer */}
+      <RuleSuggestionsDrawer
+        isOpen={isSuggestionsDrawerOpen}
+        onClose={() => setIsSuggestionsDrawerOpen(false)}
+        suggestions={ruleSuggestions}
+        onApplySuggestion={handleApplyRuleSuggestion}
+        onApplyAll={handleApplyMultipleSuggestions}
+        isApplying={false}
+      />
 
       {/* Advanced Rules Drawer */}
       {features?.treeRuleAuthoring && projectId && (
