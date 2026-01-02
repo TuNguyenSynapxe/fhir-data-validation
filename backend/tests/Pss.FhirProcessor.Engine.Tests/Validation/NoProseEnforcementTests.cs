@@ -162,12 +162,9 @@ public class NoProseEnforcementTests
         var errorType = typeof(RuleValidationError);
         var messageProperty = errorType.GetProperty("Message");
         
-        // Act
-        var obsoleteAttribute = messageProperty?.GetCustomAttributes(typeof(ObsoleteAttribute), false).FirstOrDefault() as ObsoleteAttribute;
-        
-        // Assert
-        obsoleteAttribute.Should().NotBeNull("Message property should be marked [Obsolete]");
-        obsoleteAttribute!.Message.Should().Contain("Frontend should use ErrorCode");
+        // Assert - RuleValidationError should NOT have a Message property at all
+        // This is stronger enforcement than marking it Obsolete
+        messageProperty.Should().BeNull("RuleValidationError should not have a Message property - backend must not generate prose");
     }
 
     [Fact]
@@ -177,12 +174,9 @@ public class NoProseEnforcementTests
         var errorType = typeof(CodeMasterValidationError);
         var messageProperty = errorType.GetProperty("Message");
         
-        // Act
-        var obsoleteAttribute = messageProperty?.GetCustomAttributes(typeof(ObsoleteAttribute), false).FirstOrDefault() as ObsoleteAttribute;
-        
-        // Assert
-        obsoleteAttribute.Should().NotBeNull("Message property should be marked [Obsolete]");
-        obsoleteAttribute!.Message.Should().Contain("Frontend should use ErrorCode");
+        // Assert - CodeMasterValidationError should NOT have a Message property at all
+        // This is stronger enforcement than marking it Obsolete
+        messageProperty.Should().BeNull("CodeMasterValidationError should not have a Message property - backend must not generate prose");
     }
 
     [Fact]
@@ -192,12 +186,9 @@ public class NoProseEnforcementTests
         var errorType = typeof(ReferenceValidationError);
         var messageProperty = errorType.GetProperty("Message");
         
-        // Act
-        var obsoleteAttribute = messageProperty?.GetCustomAttributes(typeof(ObsoleteAttribute), false).FirstOrDefault() as ObsoleteAttribute;
-        
-        // Assert
-        obsoleteAttribute.Should().NotBeNull("Message property should be marked [Obsolete]");
-        obsoleteAttribute!.Message.Should().Contain("Frontend should use ErrorCode");
+        // Assert - ReferenceValidationError should NOT have a Message property at all
+        // This is stronger enforcement than marking it Obsolete
+        messageProperty.Should().BeNull("ReferenceValidationError should not have a Message property - backend must not generate prose");
     }
 
     #endregion
@@ -266,8 +257,11 @@ public class NoProseEnforcementTests
         
         // Assert
         error.ErrorCode.Should().Be(ValidationErrorCodes.QUESTION_NOT_FOUND);
-        error.Details.Should().ContainKey("system");
-        error.Details.Should().ContainKey("code");
+        error.Details.Should().ContainKey("question");
+        var questionDetails = error.Details!["question"] as Dictionary<string, object?>;
+        questionDetails.Should().NotBeNull();
+        questionDetails!.Should().ContainKey("system");
+        questionDetails.Should().ContainKey("identifier");
     }
 
     #endregion
