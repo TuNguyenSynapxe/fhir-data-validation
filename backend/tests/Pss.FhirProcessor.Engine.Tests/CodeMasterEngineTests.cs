@@ -98,7 +98,7 @@ public class CodeMasterEngineTests
         // Assert
         errors.Should().HaveCount(1);
         var error = errors[0];
-        AssertError(error, "INVALID_ANSWER_VALUE", expectedPath: "Observation.component[0].value");
+        AssertError(error, "INVALID_ANSWER_VALUE", expectedPath: "component[0].value");
         error.Details.Should().ContainKey("actualValue");
         error.Details.Should().ContainKey("allowedValues");
         error.Details!["actualValue"].Should().Be("Maybe");
@@ -219,7 +219,7 @@ public class CodeMasterEngineTests
         // Assert
         errors.Should().HaveCount(1);
         var error = errors[0];
-        AssertError(error, "UNKNOWN_SCREENING_TYPE", expectedPath: "Observation.code");
+        AssertError(error, "UNKNOWN_SCREENING_TYPE", expectedPath: "code");
         error.Details!["screeningType"].Should().Be("UNKNOWN");
     }
 
@@ -472,7 +472,7 @@ public class CodeMasterEngineTests
         // Assert
         errors.Should().HaveCount(1);
         var error = errors[0];
-        AssertError(error, "MISSING_QUESTION_CODE", expectedPath: "Observation.component[0].code");
+        AssertError(error, "MISSING_QUESTION_CODE", expectedPath: "component[0].code");
     }
 
     [Fact]
