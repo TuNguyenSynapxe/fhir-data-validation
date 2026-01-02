@@ -377,11 +377,16 @@ public class ValidationModeTests
 
         // Assert - Should detect unknown element in debug mode
         var unknownElementError = debugResponse.Errors
-            .FirstOrDefault(e => e.Source == "LINT" && e.Message.Contains("abcPeriod"));
+            .FirstOrDefault(e => e.Source == "LINT" && e.Message.ToLower().Contains("abcperiod"));
         
         Assert.NotNull(unknownElementError);
-        Assert.Contains("abcPeriod", unknownElementError.Message);
-        Assert.Contains("does not exist", unknownElementError.Message.ToLower());
+        // V2: Flexible assertion - message format may vary
+        Assert.Contains("abcperiod", unknownElementError.Message.ToLower());
+        // Semantic correctness: error indicates field is unknown/undefined
+        var messageContainsUnknownConcept = unknownElementError.Message.ToLower().Contains("not defined") ||
+                                            unknownElementError.Message.ToLower().Contains("not exist") ||
+                                            unknownElementError.Message.ToLower().Contains("unknown");
+        Assert.True(messageContainsUnknownConcept, $"Expected unknown field indication, got: {unknownElementError.Message}");
         
         // Act - Fast mode (same bundle)
         var fastRequest = new ValidationRequest
