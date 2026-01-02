@@ -45,6 +45,7 @@ const ADVISORY_SOURCES = new Set([
  * Blocking sources that produce validation failures
  */
 const BLOCKING_SOURCES = new Set([
+  'STRUCTURE',
   'FHIR',
   'Firely',
   'Business',

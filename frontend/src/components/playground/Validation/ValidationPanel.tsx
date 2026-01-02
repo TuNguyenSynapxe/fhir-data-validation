@@ -158,7 +158,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
   // Build UI counters from visible errors only
   const uiCounters = React.useMemo(() => {
     if (!validationResult?.errors) {
-      return { blocking: 0, quality: 0, guidance: 0, total: 0 };
+      return { mustFix: 0, recommendations: 0, total: 0 };
     }
     return buildValidationUICounters(validationResult.errors, sourceFilters);
   }, [validationResult?.errors, sourceFilters]);
@@ -231,31 +231,22 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
           {/* UI Counters - match visible items only */}
           {validationResult && (
             <div className="flex items-center gap-2 ml-2">
-              {uiCounters.blocking > 0 && (
+              {uiCounters.mustFix > 0 && (
                 <span 
                   className="flex items-center gap-1 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full"
-                  title="Blocking issues that prevent validation success"
+                  title="Issues that must be fixed for HL7 compliance"
                 >
                   <AlertCircle className="w-3 h-3" />
-                  {uiCounters.blocking} blocking
+                  {uiCounters.mustFix} must-fix
                 </span>
               )}
-              {uiCounters.quality > 0 && (
+              {uiCounters.recommendations > 0 && (
                 <span 
                   className="flex items-center gap-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full"
-                  title="Non-blocking quality checks (LINT)"
+                  title="Best-practice recommendations"
                 >
                   <AlertTriangle className="w-3 h-3" />
-                  {uiCounters.quality} quality
-                </span>
-              )}
-              {uiCounters.guidance > 0 && (
-                <span 
-                  className="flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full"
-                  title="Informational HL7 advisory hints (SPECHINT)"
-                >
-                  <Info className="w-3 h-3" />
-                  {uiCounters.guidance} guidance
+                  {uiCounters.recommendations} recommendations
                 </span>
               )}
               {uiCounters.total === 0 && (

@@ -4,9 +4,8 @@
  * Ensures UI counters match exactly what the user sees, not raw backend totals.
  * 
  * Categories:
- * - Blocking: Issues that prevent validation success (FHIR structural + Business rules)
- * - Quality: Non-blocking best-practice checks (LINT)
- * - Guidance: Informational HL7 advisory hints (SPECHINT)
+ * - Must-Fix: Issues that must be resolved for HL7 compliance (STRUCTURE, FHIR, PROJECT, CodeMaster, Reference)
+ * - Recommendations: Best-practice improvements (LINT, SPEC_HINT)
  * 
  * Contract:
  * - Header counters MUST equal visible list items
@@ -20,14 +19,11 @@ import type { ValidationError } from '../contexts/project-validation/useProjectV
  * Derived validation counter model for UI display
  */
 export interface ValidationUICounters {
-  /** Issues that prevent validation success (FHIR + Business + CodeMaster + Reference) */
-  blocking: number;
+  /** Issues that must be fixed for HL7 compliance (STRUCTURE + FHIR + PROJECT + CodeMaster + Reference) */
+  mustFix: number;
   
-  /** Non-blocking best-practice checks (LINT) */
-  quality: number;
-  
-  /** Informational HL7 advisory hints (SPECHINT) */
-  guidance: number;
+  /** Best-practice recommendations (LINT + SPEC_HINT) */
+  recommendations: number;
   
   /** Total visible issues */
   total: number;
@@ -46,46 +42,42 @@ export interface SourceFilterState {
 }
 
 /**
- * Sources that block validation (cause validation to fail)
+ * Sources that require fixing for HL7 compliance (correctness + policy)
  */
-const BLOCKING_SOURCES = ['FHIR', 'Business', 'CodeMaster', 'Reference'] as const;
+const MUST_FIX_SOURCES = ['STRUCTURE', 'FHIR', 'Business', 'PROJECT', 'CodeMaster', 'Reference'] as const;
 
 /**
- * Sources that provide quality guidance (non-blocking)
+ * Sources that provide recommendations (quality + advisory)
  */
-const QUALITY_SOURCES = ['LINT'] as const;
+const RECOMMENDATION_SOURCES = ['LINT', 'SPECHINT'] as const;
 
 /**
- * Sources that provide informational guidance (advisory only)
+ * Determine if an error must be fixed for HL7 compliance
  */
-const GUIDANCE_SOURCES = ['SPECHINT'] as const;
-
-/**
- * Determine if an error is from a blocking source
- */
-export const isBlockingError = (error: ValidationError): boolean => {
-  return BLOCKING_SOURCES.includes(error.source as any);
+export const isMustFixError = (error: ValidationError): boolean => {
+  const source = error.source.toUpperCase();
+  return MUST_FIX_SOURCES.some(s => s.toUpperCase() === source);
 };
 
 /**
- * Determine if an error is from a quality check source
+ * Determine if an error is a recommendation
  */
-export const isQualityFinding = (error: ValidationError): boolean => {
-  return QUALITY_SOURCES.includes(error.source as any);
+export const isRecommendation = (error: ValidationError): boolean => {
+  const source = error.source.toUpperCase();
+  return RECOMMENDATION_SOURCES.some(s => s.toUpperCase() === source);
 };
 
-/**
- * Determine if an error is from a guidance source
- */
-export const isGuidanceFinding = (error: ValidationError): boolean => {
-  return GUIDANCE_SOURCES.includes(error.source as any);
-};
+// Legacy aliases for backward compatibility
+export const isBlockingError = isMustFixError;
+export const isQualityFinding = isRecommendation;
+export const isGuidanceFinding = isRecommendation;
 
 /**
  * Check if an error should be visible based on active filters
  */
 const isErrorVisible = (error: ValidationError, filters: SourceFilterState): boolean => {
   const sourceMap: Record<string, keyof SourceFilterState> = {
+    'STRUCTURE': 'firely',
     'LINT': 'lint',
     'Reference': 'reference',
     'FHIR': 'firely',
@@ -116,14 +108,12 @@ export const buildValidationUICounters = (
   const visibleErrors = errors.filter(error => isErrorVisible(error, filters));
   
   // Categorize visible errors
-  const blocking = visibleErrors.filter(isBlockingError).length;
-  const quality = visibleErrors.filter(isQualityFinding).length;
-  const guidance = visibleErrors.filter(isGuidanceFinding).length;
+  const mustFix = visibleErrors.filter(isMustFixError).length;
+  const recommendations = visibleErrors.filter(isRecommendation).length;
   
   return {
-    blocking,
-    quality,
-    guidance,
+    mustFix,
+    recommendations,
     total: visibleErrors.length,
   };
 };
@@ -134,49 +124,50 @@ export const buildValidationUICounters = (
 export const getValidationStatusText = (counters: ValidationUICounters): {
   label: string;
   message: string;
+  subtitle?: string;
   variant: 'failed' | 'warning' | 'success';
 } => {
-  if (counters.blocking > 0) {
+  if (counters.mustFix > 0) {
     return {
-      label: 'Validation Failed',
-      message: `${counters.blocking} blocking issue${counters.blocking !== 1 ? 's' : ''} must be fixed before the bundle is valid.`,
+      label: '❌ Not HL7-Compliant',
+      subtitle: 'Correctness or policy issues must be resolved',
+      message: `${counters.mustFix} must-fix issue${counters.mustFix !== 1 ? 's' : ''} detected. These must be resolved to produce valid HL7 FHIR.`,
       variant: 'failed',
     };
   }
   
-  if (counters.quality > 0 || counters.guidance > 0) {
-    const advisoryCount = counters.quality + counters.guidance;
+  if (counters.recommendations > 0) {
     return {
-      label: 'Validation Passed with Warnings',
-      message: `${advisoryCount} advisory check${advisoryCount !== 1 ? 's' : ''} detected. These do not block validation.`,
+      label: '⚠️ HL7-Compliant with Recommendations',
+      subtitle: 'Advisory recommendations detected',
+      message: `${counters.recommendations} recommendation${counters.recommendations !== 1 ? 's' : ''} detected. The resource is valid FHIR, but addressing these may improve interoperability.`,
       variant: 'warning',
     };
   }
   
   return {
-    label: 'Validation Passed',
-    message: 'No blocking or advisory issues detected.',
+    label: '✅ HL7-Compliant',
+    subtitle: 'No issues detected',
+    message: 'No issues detected.',
     variant: 'success',
   };
 };
 
 /**
- * Filter errors to only blocking ones
+ * Filter errors to only must-fix ones
  */
-export const filterBlockingErrors = (errors: ValidationError[]): ValidationError[] => {
-  return errors.filter(isBlockingError);
+export const filterMustFixErrors = (errors: ValidationError[]): ValidationError[] => {
+  return errors.filter(isMustFixError);
 };
 
 /**
- * Filter errors to only quality findings
+ * Filter errors to only recommendations
  */
-export const filterQualityFindings = (errors: ValidationError[]): ValidationError[] => {
-  return errors.filter(isQualityFinding);
+export const filterRecommendations = (errors: ValidationError[]): ValidationError[] => {
+  return errors.filter(isRecommendation);
 };
 
-/**
- * Filter errors to only guidance findings
- */
-export const filterGuidanceFindings = (errors: ValidationError[]): ValidationError[] => {
-  return errors.filter(isGuidanceFinding);
-};
+// Legacy aliases
+export const filterBlockingErrors = filterMustFixErrors;
+export const filterQualityFindings = filterRecommendations;
+export const filterGuidanceFindings = filterRecommendations;

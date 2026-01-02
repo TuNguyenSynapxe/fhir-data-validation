@@ -70,7 +70,7 @@ export const OverviewPanel: React.FC<OverviewPanelProps> = ({
   // Build UI counters from validation result (matching visible items)
   const uiCounters = React.useMemo(() => {
     if (!validationResult?.errors) {
-      return { blocking: 0, quality: 0, guidance: 0, total: 0 };
+      return { mustFix: 0, recommendations: 0, total: 0 };
     }
     // Use all sources visible (no filters on Overview page)
     return buildValidationUICounters(validationResult.errors, {
@@ -261,24 +261,18 @@ export const OverviewPanel: React.FC<OverviewPanelProps> = ({
                         {statusText.message}
                       </p>
                       {/* Breakdown */}
-                      {(uiCounters.blocking > 0 || uiCounters.quality > 0 || uiCounters.guidance > 0) && (
+                      {(uiCounters.mustFix > 0 || uiCounters.recommendations > 0) && (
                         <div className="mt-3 flex gap-3 text-xs">
-                          {uiCounters.blocking > 0 && (
+                          {uiCounters.mustFix > 0 && (
                             <div className="flex items-center gap-1">
-                              <span className="font-semibold text-red-800">{uiCounters.blocking}</span>
-                              <span className="text-red-700">blocking</span>
+                              <span className="font-semibold text-red-800">{uiCounters.mustFix}</span>
+                              <span className="text-red-700">must-fix</span>
                             </div>
                           )}
-                          {uiCounters.quality > 0 && (
+                          {uiCounters.recommendations > 0 && (
                             <div className="flex items-center gap-1">
-                              <span className="font-semibold text-amber-800">{uiCounters.quality}</span>
-                              <span className="text-amber-700">quality</span>
-                            </div>
-                          )}
-                          {uiCounters.guidance > 0 && (
-                            <div className="flex items-center gap-1">
-                              <span className="font-semibold text-blue-800">{uiCounters.guidance}</span>
-                              <span className="text-blue-700">guidance</span>
+                              <span className="font-semibold text-amber-800">{uiCounters.recommendations}</span>
+                              <span className="text-amber-700">recommendations</span>
                             </div>
                           )}
                         </div>

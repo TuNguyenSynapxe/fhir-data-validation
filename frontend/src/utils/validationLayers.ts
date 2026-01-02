@@ -8,7 +8,7 @@
  * - Visual styling
  */
 
-export type ValidationSource = 'LINT' | 'SPEC_HINT' | 'FHIR' | 'PROJECT' | 'Firely' | 'Business' | 'BusinessRules' | 'CodeMaster' | 'Reference';
+export type ValidationSource = 'LINT' | 'SPEC_HINT' | 'FHIR' | 'STRUCTURE' | 'PROJECT' | 'Firely' | 'Business' | 'BusinessRules' | 'CodeMaster' | 'Reference';
 
 export interface ValidationLayerMetadata {
   /** Display name for badges */
@@ -38,6 +38,7 @@ export const normalizeSource = (source: string): ValidationSource => {
   if (normalized === 'lint') return 'LINT';
   if (normalized === 'spechint' || normalized === 'spec_hint') return 'SPEC_HINT';
   if (normalized === 'fhir' || normalized === 'firely') return 'FHIR';
+  if (normalized === 'structure') return 'STRUCTURE';
   if (normalized === 'business' || normalized === 'businessrules' || normalized === 'project') return 'PROJECT';
   if (normalized === 'codemaster') return 'CodeMaster';
   if (normalized === 'reference') return 'Reference';
@@ -54,10 +55,10 @@ export const getLayerMetadata = (source: string): ValidationLayerMetadata => {
   switch (normalized) {
     case 'LINT':
       return {
-        displayName: 'Lint (Best-effort)',
-        fullName: 'Lint - Best-effort Portability Check',
+        displayName: 'Best Practice',
+        fullName: 'Best Practice Recommendations',
         isBlocking: false,
-        explanation: 'Best-effort portability check. Some FHIR engines may accept this, others may reject it.',
+        explanation: 'Recommended improvement; does not invalidate FHIR. Addressing this may improve interoperability.',
         badgeColor: 'bg-yellow-100 text-yellow-800 border-yellow-300',
         borderColor: 'border-l-yellow-400',
         bgColor: 'bg-yellow-50',
@@ -69,7 +70,7 @@ export const getLayerMetadata = (source: string): ValidationLayerMetadata => {
         displayName: 'HL7 Advisory',
         fullName: 'HL7 Advisory - Guidance from FHIR Specification',
         isBlocking: false,
-        explanation: 'Guidance from the HL7 FHIR specification. Advisory only and does not block validation.',
+        explanation: 'Recommended improvement; does not invalidate FHIR. The resource is valid FHIR, but addressing this may improve interoperability.',
         badgeColor: 'bg-blue-100 text-blue-800 border-blue-300',
         borderColor: 'border-l-blue-400',
         bgColor: 'bg-blue-50',
@@ -79,10 +80,22 @@ export const getLayerMetadata = (source: string): ValidationLayerMetadata => {
     case 'FHIR':
     case 'Firely':
       return {
-        displayName: 'FHIR Structural Validation',
-        fullName: 'FHIR Structural Validation by Firely Engine',
+        displayName: 'HL7 Spec',
+        fullName: 'HL7 FHIR Specification Validation',
         isBlocking: true,
-        explanation: 'FHIR structural validation performed by the Firely engine.',
+        explanation: 'Must be fixed to produce valid HL7 FHIR. This issue violates the HL7 FHIR specification and must be resolved before integration or exchange.',
+        badgeColor: 'bg-red-100 text-red-800 border-red-300',
+        borderColor: 'border-l-red-500',
+        bgColor: 'bg-red-50',
+        textColor: 'text-red-800',
+      };
+      
+    case 'STRUCTURE':
+      return {
+        displayName: 'FHIR Structure',
+        fullName: 'FHIR Structural Validation',
+        isBlocking: true,
+        explanation: 'Must be fixed to produce valid HL7 FHIR. This issue violates the HL7 FHIR specification and must be resolved before integration or exchange.',
         badgeColor: 'bg-red-100 text-red-800 border-red-300',
         borderColor: 'border-l-red-500',
         bgColor: 'bg-red-50',
@@ -94,9 +107,9 @@ export const getLayerMetadata = (source: string): ValidationLayerMetadata => {
     case 'BusinessRules':
       return {
         displayName: 'Project Rule',
-        fullName: 'Project Rule - Defined by Your Configuration',
+        fullName: 'Project-Specific Rule',
         isBlocking: true,
-        explanation: 'Rule defined by your project configuration.',
+        explanation: 'Must be fixed to satisfy project policy. This issue violates a project-specific rule defined by your organisation.',
         badgeColor: 'bg-purple-100 text-purple-800 border-purple-300',
         borderColor: 'border-l-purple-500',
         bgColor: 'bg-purple-50',
@@ -145,9 +158,13 @@ export const getLayerMetadata = (source: string): ValidationLayerMetadata => {
  * Validation layer ordering for display
  */
 export const LAYER_ORDER: ValidationSource[] = [
+  'STRUCTURE',
+  'FHIR',
+  'PROJECT',
+  'CodeMaster',
+  'Reference',
   'LINT',
   'SPEC_HINT',
-  'FHIR',
   'PROJECT',
 ];
 

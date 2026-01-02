@@ -27,73 +27,42 @@ export const ValidationLayerInfo: React.FC = () => {
           </h3>
           
           <div className="space-y-3 text-xs">
-            {/* LINT */}
-            <div className="border-l-2 border-blue-400 pl-3">
+            {/* FHIR Structure */}
+            <div className="border-l-2 border-red-500 pl-3">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
-                  <ValidationIcon source="Lint" severity="info" className="w-4 h-4" />
-                  <span className="font-semibold text-gray-900">Lint (Best-effort)</span>
+                  <ValidationIcon source="STRUCTURE" severity="error" className="w-4 h-4" />
+                  <span className="font-semibold text-gray-900">FHIR Structure</span>
                 </div>
-                <div className="flex items-center gap-1 text-green-700">
-                  <CheckCircle className="w-3 h-3" />
-                  <span className="text-xs">Non-blocking</span>
+                <div className="flex items-center gap-1 text-red-700">
+                  <XCircle className="w-3 h-3" />
+                  <span className="text-xs font-semibold">Must fix</span>
                 </div>
               </div>
               <p className="text-gray-600 leading-relaxed">
-                Best-effort portability check. Some FHIR engines may accept this, others may reject it.
+                Must be fixed to produce valid HL7 FHIR. Violates the HL7 FHIR specification.
               </p>
             </div>
-            
-            {/* SPEC_HINT / HL7 Advisory */}
-            <div className="border-l-2 border-amber-400 pl-3">
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-2">
-                  <ValidationIcon source="HL7Advisory" severity="info" className="w-4 h-4" />
-                  <span className="font-semibold text-gray-900">HL7 Advisory</span>
-                </div>
-                <div className="flex items-center gap-1 text-green-700">
-                  <CheckCircle className="w-3 h-3" />
-                  <span className="text-xs">Non-blocking</span>
-                </div>
-              </div>
-              <p className="text-gray-600 leading-relaxed">
-                Guidance from the HL7 FHIR specification. Advisory only and does not block validation.
-              </p>
-            </div>
-            
-            {/* FHIR Validation */}
+
+            {/* HL7 Spec */}
             <div className="border-l-2 border-red-500 pl-3">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                   <ValidationIcon source="Firely" severity="error" className="w-4 h-4" />
-                  <span className="font-semibold text-gray-900">FHIR Structural Validation</span>
+                  <span className="font-semibold text-gray-900">HL7 Spec</span>
                 </div>
                 <div className="flex items-center gap-1 text-red-700">
                   <XCircle className="w-3 h-3" />
-                  <span className="text-xs font-semibold">Blocking</span>
+                  <span className="text-xs font-semibold">Must fix</span>
                 </div>
               </div>
               <p className="text-gray-600 leading-relaxed">
-                FHIR structural validation performed by the Firely engine.
-              </p>
-            </div>
-            
-            {/* Reference Validation */}
-            <div className="border-l-2 border-rose-500 pl-3">
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-semibold text-gray-900">Reference Validation</span>
-                <div className="flex items-center gap-1 text-red-700">
-                  <XCircle className="w-3 h-3" />
-                  <span className="text-xs font-semibold">Blocking</span>
-                </div>
-              </div>
-              <p className="text-gray-600 leading-relaxed">
-                Ensures referenced resources exist within the bundle. This is not a rule.
+                Must be fixed to produce valid HL7 FHIR. Violates the HL7 FHIR specification.
               </p>
             </div>
             
             {/* Project Rules */}
-            <div className="border-l-2 border-red-400 pl-3">
+            <div className="border-l-2 border-purple-500 pl-3">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                   <ValidationIcon source="ProjectRule" severity="error" className="w-4 h-4" />
@@ -101,18 +70,69 @@ export const ValidationLayerInfo: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-1 text-red-700">
                   <XCircle className="w-3 h-3" />
-                  <span className="text-xs font-semibold">Blocking</span>
+                  <span className="text-xs font-semibold">Must fix</span>
                 </div>
               </div>
               <p className="text-gray-600 leading-relaxed">
-                Rule defined by your project configuration.
+                Must be fixed to satisfy project policy. Violates project-specific rules.
+              </p>
+            </div>
+
+            {/* Reference Validation */}
+            <div className="border-l-2 border-rose-500 pl-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-semibold text-gray-900">Reference Validation</span>
+                <div className="flex items-center gap-1 text-red-700">
+                  <XCircle className="w-3 h-3" />
+                  <span className="text-xs font-semibold">Must fix</span>
+                </div>
+              </div>
+              <p className="text-gray-600 leading-relaxed">
+                Ensures referenced resources exist within the bundle.
+              </p>
+            </div>
+            
+            {/* Best Practice */}
+            <div className="border-l-2 border-amber-400 pl-3">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <ValidationIcon source="Lint" severity="warning" className="w-4 h-4" />
+                  <span className="font-semibold text-gray-900">Best Practice</span>
+                </div>
+                <div className="flex items-center gap-1 text-blue-700">
+                  <CheckCircle className="w-3 h-3" />
+                  <span className="text-xs">Recommended</span>
+                </div>
+              </div>
+              <p className="text-gray-600 leading-relaxed">
+                Recommended improvement; does not invalidate FHIR. May improve interoperability.
+              </p>
+            </div>
+
+            {/* HL7 Advisory */}
+            <div className="border-l-2 border-blue-400 pl-3">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <ValidationIcon source="HL7Advisory" severity="info" className="w-4 h-4" />
+                  <span className="font-semibold text-gray-900">HL7 Advisory</span>
+                </div>
+                <div className="flex items-center gap-1 text-blue-700">
+                  <CheckCircle className="w-3 h-3" />
+                  <span className="text-xs">Recommended</span>
+                </div>
+              </div>
+              <p className="text-gray-600 leading-relaxed">
+                Recommended improvement; does not invalidate FHIR. Guidance from HL7 specification.
               </p>
             </div>
           </div>
           
-          <div className="mt-3 pt-3 border-t border-gray-200">
-            <p className="text-xs text-gray-500">
-              <span className="font-medium">Blocking</span> errors must be fixed for the bundle to be valid.
+          <div className="mt-3 pt-3 border-t border-gray-200 space-y-1">
+            <p className="text-xs text-gray-700 leading-relaxed">
+              <span className="font-medium">Correctness issues must be fixed to produce valid HL7 FHIR.</span>
+            </p>
+            <p className="text-xs text-gray-600 leading-relaxed">
+              Recommendations improve quality but do not affect validity.
             </p>
           </div>
         </div>

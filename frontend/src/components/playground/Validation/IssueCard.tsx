@@ -58,9 +58,9 @@ export const IssueCard: React.FC<IssueCardProps> = ({
       {/* Advisory Notice */}
       {isAdvisorySource && (
         <div className="mb-3 p-2.5 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
-          <p className="font-medium">ℹ️ Advisory - Non-blocking</p>
+          <p className="font-medium">ℹ️ Recommended</p>
           <p className="mt-0.5 text-gray-700">
-            This is a recommendation that does not prevent validation or rule editing.
+            This is a best-practice recommendation. The resource is valid FHIR, but addressing this may improve interoperability.
           </p>
         </div>
       )}
@@ -293,23 +293,23 @@ export const IssueCard: React.FC<IssueCardProps> = ({
             {metadata.displayName}
           </span>
 
-          {/* Blocking indicator */}
+          {/* Must fix / Recommended indicator */}
           <div
             className={`flex items-center gap-1 text-xs px-2 py-1 rounded border ${
               blocking
                 ? 'bg-red-50 text-red-700 border-red-200'
-                : 'bg-green-50 text-green-700 border-green-200'
+                : 'bg-blue-50 text-blue-700 border-blue-200'
             }`}
           >
             {blocking ? (
               <>
                 <XCircle className="w-3 h-3" />
-                <span className="font-semibold">Blocking</span>
+                <span className="font-semibold">Must fix</span>
               </>
             ) : (
               <>
                 <CheckCircle className="w-3 h-3" />
-                <span className="font-semibold">Non-blocking</span>
+                <span className="font-semibold">Recommended</span>
               </>
             )}
           </div>

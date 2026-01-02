@@ -112,31 +112,23 @@ export const IssueGroupCard: React.FC<IssueGroupCardProps> = ({
               {metadata.displayName}
             </span>
 
-            {/* Blocking indicator - Enhanced messaging for advisory sources */}
+            {/* Must fix / Recommended indicator */}
             <div
               className={`flex items-center gap-1 text-xs px-2 py-1 rounded border ${
                 group.blocking
                   ? 'bg-red-50 text-red-700 border-red-200'
-                  : isAdvisorySource
-                  ? 'bg-blue-50 text-blue-700 border-blue-200'
-                  : 'bg-green-50 text-green-700 border-green-200'
+                  : 'bg-blue-50 text-blue-700 border-blue-200'
               }`}
-              title={!group.blocking && isAdvisorySource ? 'This does not prevent validation or rule editing' : undefined}
             >
               {group.blocking ? (
                 <>
                   <XCircle className="w-3 h-3" />
-                  <span className="font-semibold">Blocking</span>
-                </>
-              ) : isAdvisorySource ? (
-                <>
-                  <CheckCircle className="w-3 h-3" />
-                  <span className="font-semibold">Advisory</span>
+                  <span className="font-semibold">Must fix</span>
                 </>
               ) : (
                 <>
                   <CheckCircle className="w-3 h-3" />
-                  <span className="font-semibold">Non-blocking</span>
+                  <span className="font-semibold">Recommended</span>
                 </>
               )}
             </div>
@@ -164,12 +156,12 @@ export const IssueGroupCard: React.FC<IssueGroupCardProps> = ({
       {/* Expanded Item List - EACH ITEM SHOWS ITS OWN MESSAGE */}
       {isExpanded && (
         <div className="bg-white">
-          {/* Advisory Notice for Non-blocking Sources */}
+          {/* Advisory Notice */}
           {isAdvisorySource && (
             <div className="p-3 bg-blue-50 border-b border-blue-200 text-xs text-blue-700">
-              <p className="font-medium">ℹ️ Advisory Information</p>
+              <p className="font-medium">\u2139\ufe0f Recommendations</p>
               <p className="mt-1 text-gray-700">
-                These are recommendations to improve quality or portability. They do not block validation or rule editing.
+                These are best-practice recommendations. The resource is valid FHIR, but addressing these may improve interoperability.
               </p>
             </div>
           )}
