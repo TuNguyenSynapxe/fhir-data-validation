@@ -224,7 +224,9 @@ export const RuleRow = memo(RuleRowComponent, (prevProps, nextProps) => {
     prevProps.rule.enabled === nextProps.rule.enabled &&
     prevProps.rule.path === nextProps.rule.path &&
     prevProps.rule.type === nextProps.rule.type &&
-    prevProps.rule.params === nextProps.rule.params &&
+    prevProps.rule.severity === nextProps.rule.severity &&
+    prevProps.rule.saveState === nextProps.rule.saveState &&
+    JSON.stringify(prevProps.rule.params) === JSON.stringify(nextProps.rule.params) &&
     prevProps.isObserved === nextProps.isObserved &&
     prevProps.advisoryIssues?.length === nextProps.advisoryIssues?.length
   );

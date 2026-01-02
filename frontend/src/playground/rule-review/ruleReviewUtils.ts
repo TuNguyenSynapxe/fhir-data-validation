@@ -322,6 +322,10 @@ export function isPathObservedInBundle(opts: {
       segments = segments.slice(1);
     }
     
+    // FHIRPath [*] normalization: Replace [*] with implicit array traversal
+    // "component[*]" → "component" (implicit traversal of all elements)
+    segments = segments.map(seg => seg.replace(/\[\*\]$/, ''));
+    
     if (segments.length === 0) {
       return true; // Checking for resource type itself
     }
