@@ -98,7 +98,7 @@ export const ValidationResultList: React.FC<ValidationResultListProps> = ({
   // Handler to convert ValidationIssue click to ValidationError click
   const handleIssueClick = (issue: ValidationIssue) => {
     if (onErrorClick) {
-      // Convert back to ValidationError format for backward compatibility
+      // Convert ValidationIssue to ValidationError (no message field used)
       const error: ValidationError = {
         source: issue.source,
         severity: issue.severity,
@@ -106,7 +106,7 @@ export const ValidationResultList: React.FC<ValidationResultListProps> = ({
         path: issue.location,
         jsonPointer: issue.jsonPointer ?? undefined,
         errorCode: issue.code,
-        message: issue.message,
+        message: '', // Legacy field - not used for display
         details: issue.details,
       };
       onErrorClick(error);

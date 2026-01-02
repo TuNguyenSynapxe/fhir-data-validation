@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { AlertCircle, AlertTriangle, Info, ChevronDown, ChevronRight, XCircle, CheckCircle } from 'lucide-react';
 import { getLayerMetadata } from '../../../utils/validationLayers';
-import { getExplanationTemplate } from '../../../utils/validationExplanations';
 import { formatSmartPath, getScopedSegments, convertToJsonPath } from '../../../utils/smartPathFormatting';
 import { SmartPathBreadcrumb } from './SmartPathBreadcrumb';
 import { ScopeSelectorChip } from './ScopeSelectorChip';
@@ -9,6 +8,7 @@ import { PathInfoTooltip } from './PathInfoTooltip';
 import { getBlockingStatusDisplay } from '../../../utils/validationOverrides';
 import { ExplanationPanel } from './ExplanationPanel';
 import { ValidationErrorExplanation } from './ValidationErrorExplanation';
+import { explainError } from '../../../validation/explainError';
 import type { ValidationError } from '../../../contexts/project-validation/useProjectValidation';
 
 interface GroupedErrorCardProps {
@@ -18,7 +18,6 @@ interface GroupedErrorCardProps {
   allErrors?: ValidationError[]; // All errors for override detection
   onClick?: (error: ValidationError) => void;
   onNavigateToPath?: (jsonPointer: string) => void;
-  showExplanations?: boolean;
 }
 
 /**
@@ -60,8 +59,8 @@ const groupByResourceType = (errors: ValidationError[]): Map<string, ValidationE
  * - Shared explanation
  */
 /**
- * Deduplicate errors by normalized path + message
- * Use both path and message to create unique key to distinguish different validation errors
+ * Deduplicate errors by normalized path + errorCode
+ * Use both path and errorCode to create unique key to distinguish different validation errors
  */
 const deduplicateByPath = (errors: ValidationError[]): Map<string, ValidationError[]> => {
   const pathGroups = new Map<string, ValidationError[]>();
@@ -69,8 +68,8 @@ const deduplicateByPath = (errors: ValidationError[]): Map<string, ValidationErr
   errors.forEach(error => {
     // Use path from error.path (e.g., "gender", "language") as primary identifier
     const path = error.path || error.jsonPointer || 'unknown';
-    // Include message in key to distinguish different errors on same/similar paths
-    const uniqueKey = `${path}|${error.message}`;
+    // Include errorCode in key to distinguish different errors on same/similar paths
+    const uniqueKey = `${path}|${error.errorCode || 'UNKNOWN'}`;
     
     if (!pathGroups.has(uniqueKey)) {
       pathGroups.set(uniqueKey, []);
@@ -87,8 +86,7 @@ export const GroupedErrorCard: React.FC<GroupedErrorCardProps> = ({
   source,
   allErrors = [],
   onClick,
-  onNavigateToPath,
-  showExplanations = false
+  onNavigateToPath
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   
@@ -99,14 +97,6 @@ export const GroupedErrorCard: React.FC<GroupedErrorCardProps> = ({
   const blockingStatus = getBlockingStatusDisplay(firstError, allErrors);
   const SeverityIcon = getSeverityIcon(firstError.severity);
   
-  // Get explanation template for this error group
-  const explanationTemplate = getExplanationTemplate({
-    source,
-    code: errorCode,
-    path: firstError.path,
-    message: firstError.message
-  });
-  
   // Deduplicate by path, then group by resourceType
   const deduplicatedPaths = deduplicateByPath(errors);
   const resourceGroups = groupByResourceType(errors);
@@ -115,13 +105,15 @@ export const GroupedErrorCard: React.FC<GroupedErrorCardProps> = ({
   const totalCount = deduplicatedPaths.size; // Count unique paths
   const headline = `${metadata.displayName} — ${errorCode || 'Validation Issue'} (${totalCount} location${totalCount > 1 ? 's' : ''})`;
 
-  // Generate smart summary message for UNKNOWN_ELEMENT (resource-agnostic)
+  // Generate smart summary message using explainError
   const generateSmartSummary = (): { message: string; metadata?: string } => {
+    const explanation = explainError(firstError);
+    
     // Special handling for UNKNOWN_ELEMENT related to extensions
     if (errorCode === 'UNKNOWN_ELEMENT' && source === 'LINT') {
-      // Extract property name from first error
+      // Extract property name from first error details or fallback
       const propertyName = firstError.details?.propertyName || 
-                          firstError.message.match(/Property '([^']+)'/)?.[1] ||
+                          firstError.details?.element || 
                           'unknown property';
       
       // Get resource type counts
@@ -131,9 +123,9 @@ export const GroupedErrorCard: React.FC<GroupedErrorCardProps> = ({
         resourceCounts.set(resType, (resourceCounts.get(resType) || 0) + 1);
       });
 
-      // Check if it's an Extension type issue
-      const isExtensionIssue = firstError.message.includes('`Extension` type') || 
-                               firstError.details?.schemaContext === 'Extension';
+      // Check if it's an Extension type issue from details
+      const isExtensionIssue = firstError.details?.schemaContext === 'Extension' ||
+                               firstError.details?.context?.includes('Extension');
 
       if (isExtensionIssue && resourceCounts.size > 1) {
         // Multiple resources affected
@@ -156,8 +148,10 @@ export const GroupedErrorCard: React.FC<GroupedErrorCardProps> = ({
       }
     }
 
-    // Default: use first error message
-    return { message: firstError.message };
+    // Default: use explanation from registry
+    return { 
+      message: explanation.reason || explanation.title 
+    };
   };
 
   const { message: summaryMessage, metadata: summaryMetadata } = generateSmartSummary();
@@ -230,56 +224,6 @@ export const GroupedErrorCard: React.FC<GroupedErrorCardProps> = ({
               </p>
             )}
           </div>
-
-          {/* Progressive disclosure: Explanations (when enabled) */}
-          {showExplanations && (
-            <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded">
-              {/* What this means */}
-              <div className="mb-2">
-                <p className="text-xs font-semibold text-gray-900 mb-1">
-                  What this means
-                </p>
-                <p className="text-xs text-gray-700 leading-relaxed">
-                  {explanationTemplate.whatThisMeans}
-                </p>
-              </div>
-
-              {/* How to fix */}
-              {explanationTemplate.howToFix.length > 0 && (
-                <div className="mb-2">
-                  <p className="text-xs font-semibold text-gray-900 mb-1">
-                    How to fix
-                  </p>
-                  <ul className="text-xs text-gray-700 space-y-1 list-disc list-inside">
-                    {explanationTemplate.howToFix.map((step, index) => (
-                      <li key={index} className="leading-relaxed">{step}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Optional note */}
-              {explanationTemplate.note && (
-                <div className="mt-2 pt-2 border-t border-gray-300">
-                  <p className="text-xs text-gray-600 italic leading-relaxed">
-                    {explanationTemplate.note}
-                  </p>
-                </div>
-              )}
-
-              {/* Details (fallback or diagnostic info) */}
-              {explanationTemplate.details && (
-                <div className="mt-2 pt-2 border-t border-gray-300">
-                  <p className="text-xs font-semibold text-gray-700 mb-1">
-                    Details
-                  </p>
-                  <p className="text-xs text-gray-600 leading-relaxed">
-                    {explanationTemplate.details}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Resource type breakdown */}
           <div className="flex items-center gap-2 flex-wrap mb-2">
@@ -392,7 +336,6 @@ export const GroupedErrorCard: React.FC<GroupedErrorCardProps> = ({
           error={{
             path: firstError.path,
             jsonPointer: firstError.jsonPointer,
-            message: firstError.message,
             errorCode: errorCode,
             resourceType: firstError.resourceType,
             details: firstError.details

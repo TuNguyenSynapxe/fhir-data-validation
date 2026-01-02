@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import type { ReactNode } from 'react';
 import { ChevronDown, ChevronRight, HelpCircle, Wrench, AlertTriangle, XCircle, CheckCircle } from 'lucide-react';
+import { explainError } from '../../../validation/explainError';
 
 interface ExplanationPanelProps {
   error: {
     path?: string;
     jsonPointer?: string;
-    message: string;
     errorCode?: string;
     resourceType?: string;
     source?: string;
@@ -44,7 +44,8 @@ export const ExplanationPanel: React.FC<ExplanationPanelProps> = ({ error, class
 
   // Generate "Why am I seeing this?" content
   const getWhyContent = (): string => {
-    const { path, resourceType, message, errorCode } = error;
+    const { path, resourceType, errorCode } = error;
+    const explanation = explainError(error);
     
     let content = '';
     
@@ -69,7 +70,8 @@ export const ExplanationPanel: React.FC<ExplanationPanelProps> = ({ error, class
     } else if (errorCode?.includes('CODE')) {
       content += `The code value does not match the expected terminology.`;
     } else {
-      content += message;
+      // Use explanation from registry
+      content += explanation.reason || explanation.title;
     }
     
     return content;

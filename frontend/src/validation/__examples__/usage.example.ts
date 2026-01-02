@@ -22,8 +22,8 @@ const error1: ExplainableError = {
 
 const explanation1 = explainError(error1);
 console.log(explanation1.title); // "Value not allowed"
-console.log(explanation1.description);
-// "The value "invalid-status" is not permitted. Allowed values: active, inactive, pending."
+console.log(explanation1.reason);
+// "The value "invalid-status" is not permitted by project rules."
 
 // ============================================================================
 // EXAMPLE 2: VALUE_NOT_ALLOWED with null value
@@ -40,8 +40,8 @@ const error2: ExplainableError = {
 
 const explanation2 = explainError(error2);
 console.log(explanation2.title); // "Value not allowed"
-console.log(explanation2.description);
-// "A value is required. Allowed values: M, F, U."
+console.log(explanation2.reason);
+// "This value is not allowed by the project rules."
 
 // ============================================================================
 // EXAMPLE 3: PATTERN_MISMATCH with custom description
@@ -58,7 +58,7 @@ const error3: ExplainableError = {
 
 const explanation3 = explainError(error3);
 console.log(explanation3.title); // "Invalid format"
-console.log(explanation3.description);
+console.log(explanation3.reason);
 // "Must be in format XXX-XXXX (e.g., 555-1234)"
 
 // ============================================================================
@@ -75,7 +75,7 @@ const error4: ExplainableError = {
 
 const explanation4 = explainError(error4);
 console.log(explanation4.title); // "Invalid format"
-console.log(explanation4.description);
+console.log(explanation4.reason);
 // "The value "abc" does not match the required format."
 
 // ============================================================================
@@ -92,8 +92,8 @@ const error5: ExplainableError = {
 
 const explanation5 = explainError(error5);
 console.log(explanation5.title); // "Incorrect value"
-console.log(explanation5.description);
-// "Expected "required-value" but found "wrong-value"."
+console.log(explanation5.reason);
+// "This field must have a specific value."
 
 // ============================================================================
 // EXAMPLE 6: REQUIRED_FIELD_MISSING
@@ -108,7 +108,7 @@ const error6: ExplainableError = {
 
 const explanation6 = explainError(error6);
 console.log(explanation6.title); // "Missing required field"
-console.log(explanation6.description);
+console.log(explanation6.reason);
 // "This field is required but was not provided."
 
 // ============================================================================
@@ -123,7 +123,7 @@ const error7: ExplainableError = {
 const explanation7 = explainError(error7);
 // Console warning: [ErrorExplanationRegistry] Unknown errorCode: "SOME_NEW_ERROR_CODE"
 console.log(explanation7.title); // "Validation issue"
-console.log(explanation7.description);
+console.log(explanation7.reason);
 // "This field does not meet validation requirements."
 
 // ============================================================================
@@ -137,7 +137,7 @@ const error8: ExplainableError = {
 
 const explanation8 = explainError(error8);
 console.log(explanation8.title); // "Validation issue"
-console.log(explanation8.description);
+console.log(explanation8.reason);
 // "This field does not meet validation requirements."
 
 // ============================================================================
@@ -151,7 +151,7 @@ const error9: ExplainableError = {
 
 const explanation9 = explainError(error9);
 console.log(explanation9.title); // "Validation issue"
-console.log(explanation9.description);
+console.log(explanation9.reason);
 // "This field does not meet validation requirements."
 
 // ============================================================================

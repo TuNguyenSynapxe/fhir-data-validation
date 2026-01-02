@@ -191,7 +191,6 @@ export const ErrorCard: React.FC<ErrorCardProps> = ({ error, allErrors = [], onC
         error={{
           path: error.path,
           jsonPointer: error.jsonPointer,
-          message: error.message,
           errorCode: error.errorCode,
           resourceType: error.resourceType,
           details: error.details

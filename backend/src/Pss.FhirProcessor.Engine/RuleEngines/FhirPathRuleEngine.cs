@@ -651,7 +651,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
     
     /// <summary>
     /// Recursive helper for NavigateToPathInSourceNodeAll.
-    /// MVP: ALWAYS treats Children() as array-capable, emitting /part/index format.
+    /// Corrected: Only emit array indices for actual array fields (count > 1 or cardinality 0..*)
     /// </summary>
     private void NavigateRecursive(
         ISourceNode current,
@@ -676,18 +676,34 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             return;
         }
         
-        // MVP rule: ALWAYS treat as array-capable and emit index
-        // Even if children.Count == 1, still emit /part/0
-        for (int i = 0; i < children.Count; i++)
+        // Only emit array indices for actual arrays (multiple children)
+        // For single-value fields, do NOT add /0
+        if (children.Count == 1)
         {
-            var nextPointer = $"{currentPointer}/{part}/{i}";
+            // Single value - scalar field
+            var nextPointer = $"{currentPointer}/{part}";
             NavigateRecursive(
-                children[i],
+                children[0],
                 parts,
                 partIndex + 1,
                 nextPointer,
                 results
             );
+        }
+        else
+        {
+            // Multiple values - array field
+            for (int i = 0; i < children.Count; i++)
+            {
+                var nextPointer = $"{currentPointer}/{part}/{i}";
+                NavigateRecursive(
+                    children[i],
+                    parts,
+                    partIndex + 1,
+                    nextPointer,
+                    results
+                );
+            }
         }
     }
     
@@ -1855,84 +1871,192 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         // Extract declared resource types
         var declaredResourceTypes = new HashSet<string>(requirements.Select(r => r.ResourceType), StringComparer.Ordinal);
         
-        // Track violations for structured error reporting
-        var violations = new List<Dictionary<string, object>>();
+        // Build expected structure for frontend
+        var expectedStructure = requirements.Select(req =>
+        {
+            var max = req.Max.HasValue ? (object)req.Max.Value : "*";
+            var id = req.ResourceType;
+            
+            var expectedItem = new Dictionary<string, object>
+            {
+                ["id"] = id,
+                ["resourceType"] = req.ResourceType,
+                ["min"] = req.Min,
+                ["max"] = max
+            };
+            
+            // Add filter info if present
+            if (req.Where != null && req.Where.Any())
+            {
+                var filter = req.Where.First(); // Use first filter for label
+                var filterLabel = $"{req.ResourceType} ({filter.Path} {filter.Op} {filter.Value})";
+                
+                expectedItem["filter"] = new Dictionary<string, object>
+                {
+                    ["kind"] = "fhirpath",
+                    ["expression"] = filter.Path,
+                    ["label"] = filterLabel
+                };
+            }
+            
+            return expectedItem;
+        }).ToList();
         
-        // PHASE A: Cardinality validation for declared resources (with where filters applied)
+        // Build actual structure for frontend
+        var actualStructure = new List<Dictionary<string, object>>();
         foreach (var requirement in requirements)
         {
             var actualCount = matchingCounts.GetValueOrDefault(requirement.ResourceType, 0);
-            var isExactMode = requirement.Max.HasValue && requirement.Max.Value == requirement.Min;
+            var allCountForType = allResourceCounts.GetValueOrDefault(requirement.ResourceType, 0);
             
-            // Check min constraint
-            var meetsMin = actualCount >= requirement.Min;
-            
-            // Check exact constraint (if in exact mode)
-            var meetsExact = !isExactMode || actualCount == requirement.Min;
-            
-            if (!meetsMin || !meetsExact)
+            var actualItem = new Dictionary<string, object>
             {
-                var mode = isExactMode ? "exactly" : "at least";
-                var expectedCount = requirement.Min;
+                ["id"] = requirement.ResourceType,
+                ["resourceType"] = requirement.ResourceType,
+                ["count"] = actualCount
+            };
+            
+            // Add filter info if present
+            if (requirement.Where != null && requirement.Where.Any())
+            {
+                var filter = requirement.Where.First();
+                var filterLabel = $"{requirement.ResourceType} ({filter.Path} {filter.Op} {filter.Value})";
                 
-                var violation = new Dictionary<string, object>
+                actualItem["filter"] = new Dictionary<string, object>
                 {
-                    ["resourceType"] = requirement.ResourceType,
-                    ["expected"] = $"{mode} {expectedCount}",
-                    ["actual"] = actualCount,
-                    ["violation"] = "cardinality"
+                    ["kind"] = "fhirpath",
+                    ["expression"] = filter.Path,
+                    ["label"] = filterLabel
                 };
-                
-                // Add where filter info if present
-                if (requirement.Where != null && requirement.Where.Any())
-                {
-                    // Build human-readable condition string
-                    var conditions = requirement.Where.Select(w => 
-                    {
-                        var valueStr = w.Value switch
-                        {
-                            System.Text.Json.JsonElement jsonEl when jsonEl.ValueKind == System.Text.Json.JsonValueKind.Array => 
-                                $"[{string.Join(", ", jsonEl.EnumerateArray().Select(e => e.GetString()))}]",
-                            _ => w.Value?.ToString() ?? ""
-                        };
-                        return $"{w.Path} {w.Op} {valueStr}";
-                    });
-                    violation["condition"] = string.Join(" AND ", conditions);
-                    violation["whereFilters"] = requirement.Where.Select(w => new Dictionary<string, object>
-                    {
-                        ["path"] = w.Path,
-                        ["op"] = w.Op,
-                        ["value"] = w.Value ?? ""
-                    }).ToList();
-                }
-                
-                violations.Add(violation);
             }
+            
+            // Add examples for this resource type (max 3)
+            var resourcesOfType = resourcesByType.GetValueOrDefault(requirement.ResourceType, new List<Resource>());
+            if (resourcesOfType.Any())
+            {
+                var examples = resourcesOfType.Take(3).Select((r, idx) =>
+                {
+                    var entryIndex = bundle.Entry.FindIndex(e => e.Resource == r);
+                    return new Dictionary<string, object?>
+                    {
+                        ["jsonPointer"] = $"/entry/{entryIndex}/resource",
+                        ["fullUrl"] = bundle.Entry[entryIndex].FullUrl,
+                        ["resourceId"] = r.Id
+                    };
+                }).ToList();
+                
+                actualItem["examples"] = examples;
+            }
+            
+            actualStructure.Add(actualItem);
         }
         
-        // PHASE B: Closed bundle enforcement - reject undeclared resources (if enabled)
+        // Add undeclared resources to actual structure
         if (rejectUndeclaredResources)
         {
             foreach (var kvp in allResourceCounts)
             {
                 var resourceType = kvp.Key;
-                var actualCount = kvp.Value;
-                
                 if (!declaredResourceTypes.Contains(resourceType))
                 {
-                    violations.Add(new Dictionary<string, object>
+                    var resourcesOfType = resourcesByType.GetValueOrDefault(resourceType, new List<Resource>());
+                    var actualItem = new Dictionary<string, object>
+                    {
+                        ["id"] = resourceType,
+                        ["resourceType"] = resourceType,
+                        ["count"] = kvp.Value
+                    };
+                    
+                    // Add examples (max 3)
+                    if (resourcesOfType.Any())
+                    {
+                        var examples = resourcesOfType.Take(3).Select((r, idx) =>
+                        {
+                            var entryIndex = bundle.Entry.FindIndex(e => e.Resource == r);
+                            return new Dictionary<string, object?>
+                            {
+                                ["jsonPointer"] = $"/entry/{entryIndex}/resource",
+                                ["fullUrl"] = bundle.Entry[entryIndex].FullUrl,
+                                ["resourceId"] = r.Id
+                            };
+                        }).ToList();
+                        
+                        actualItem["examples"] = examples;
+                    }
+                    
+                    actualStructure.Add(actualItem);
+                }
+            }
+        }
+        
+        // Build diff structure
+        var missing = new List<Dictionary<string, object>>();
+        var unexpected = new List<Dictionary<string, object>>();
+        
+        // Check for missing/insufficient resources
+        foreach (var requirement in requirements)
+        {
+            var actualCount = matchingCounts.GetValueOrDefault(requirement.ResourceType, 0);
+            var isExactMode = requirement.Max.HasValue && requirement.Max.Value == requirement.Min;
+            var meetsMin = actualCount >= requirement.Min;
+            var meetsExact = !isExactMode || actualCount == requirement.Min;
+            
+            if (!meetsMin || !meetsExact)
+            {
+                var filterLabel = requirement.Where != null && requirement.Where.Any()
+                    ? $"{requirement.ResourceType} ({requirement.Where.First().Path} {requirement.Where.First().Op} {requirement.Where.First().Value})"
+                    : requirement.ResourceType;
+                
+                missing.Add(new Dictionary<string, object>
+                {
+                    ["expectedId"] = requirement.ResourceType,
+                    ["resourceType"] = requirement.ResourceType,
+                    ["expectedMin"] = requirement.Min,
+                    ["actualCount"] = actualCount,
+                    ["filterLabel"] = filterLabel
+                });
+            }
+        }
+        
+        // Check for unexpected resources
+        if (rejectUndeclaredResources)
+        {
+            foreach (var kvp in allResourceCounts)
+            {
+                var resourceType = kvp.Key;
+                if (!declaredResourceTypes.Contains(resourceType))
+                {
+                    var resourcesOfType = resourcesByType.GetValueOrDefault(resourceType, new List<Resource>());
+                    var unexpectedItem = new Dictionary<string, object>
                     {
                         ["resourceType"] = resourceType,
-                        ["expected"] = "not allowed",
-                        ["actual"] = actualCount,
-                        ["violation"] = "undeclared"
-                    });
+                        ["count"] = kvp.Value
+                    };
+                    
+                    // Add examples (max 3)
+                    if (resourcesOfType.Any())
+                    {
+                        var examples = resourcesOfType.Take(3).Select((r, idx) =>
+                        {
+                            var entryIndex = bundle.Entry.FindIndex(e => e.Resource == r);
+                            return new Dictionary<string, object?>
+                            {
+                                ["jsonPointer"] = $"/entry/{entryIndex}/resource",
+                                ["fullUrl"] = bundle.Entry[entryIndex].FullUrl,
+                                ["resourceId"] = r.Id
+                            };
+                        }).ToList();
+                        
+                        unexpectedItem["examples"] = examples;
+                    }
+                    
+                    unexpected.Add(unexpectedItem);
                 }
             }
         }
         
         // If any violations found, emit single consolidated error
-        if (violations.Any())
+        if (missing.Any() || unexpected.Any())
         {
             var details = new Dictionary<string, object>
             {
@@ -1941,8 +2065,13 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 ["path"] = rule.FieldPath,
                 ["ruleType"] = rule.Type,
                 ["ruleId"] = rule.Id,
-                ["violations"] = violations,
-                ["rejectUndeclaredResources"] = rejectUndeclaredResources
+                ["expected"] = expectedStructure,
+                ["actual"] = actualStructure,
+                ["diff"] = new Dictionary<string, object>
+                {
+                    ["missing"] = missing,
+                    ["unexpected"] = unexpected
+                }
             };
             
             details["explanation"] = GetExplanation(rule.Type, ValidationErrorCodes.RESOURCE_REQUIREMENT_VIOLATION, details);

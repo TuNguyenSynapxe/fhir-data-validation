@@ -63,7 +63,7 @@ export const LintIssueCard: React.FC<LintIssueCardProps> = ({ error, onClick }) 
   const [showDetails, setShowDetails] = React.useState(false);
   
   // Phase 7: Use canonical explanation system
-  const { title, description } = explainError(error);
+  const { title, reason } = explainError(error);
   const fhirPath = error.details?.fhirPath || error.path;
   const isExtension = isExtensionRelated(error.path);
 
@@ -90,9 +90,9 @@ export const LintIssueCard: React.FC<LintIssueCardProps> = ({ error, onClick }) 
             </p>
           )}
 
-          {/* Phase 7: Description from canonical explanation */}
+          {/* Phase 7: Reason from canonical explanation */}
           <p className="text-xs text-gray-600 mb-2 italic">
-            {description}
+            {reason}
           </p>
 
           {/* Structured explanation - HIDDEN */}

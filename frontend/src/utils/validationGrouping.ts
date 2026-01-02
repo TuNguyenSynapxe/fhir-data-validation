@@ -23,10 +23,10 @@ export const convertToIssue = (
   const path = error.path || error.jsonPointer || 'unknown';
 
   return {
-    id: generateIssueId(source, code, path, error.message, index),
+    id: generateIssueId(source, code, path, code, index), // Use errorCode instead of message
     source,
     code,
-    message: error.message, // PRESERVE INDIVIDUAL MESSAGE
+    message: code, // Use errorCode as message fallback
     severity: (error.severity.toLowerCase() as 'error' | 'warning' | 'info'),
     blocking: isBlockingError(error), // Use isBlockingError which checks severity + metadata
     location: path,
