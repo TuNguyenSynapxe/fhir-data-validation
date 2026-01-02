@@ -267,6 +267,26 @@ export function convertToJsonPath(jsonPointer?: string): string {
 }
 
 /**
+ * Convert JSON Pointer to FHIRPath-style display
+ * 
+ * Converts `/entry/0/resource/gender` to `entry.resource.gender`
+ * This provides consistent FHIR-style breadcrumb display for STRUCTURE errors
+ * 
+ * @param jsonPointer - JSON pointer (e.g., "/entry/0/resource/gender")
+ * @returns FHIRPath-style path (e.g., "entry.resource.gender")
+ */
+export function jsonPointerToFhirPathStyle(jsonPointer: string): string {
+  if (!jsonPointer || jsonPointer === '/') {
+    return '';
+  }
+
+  // Split by / and filter out empty strings and numeric indices
+  const parts = jsonPointer.split('/').filter(p => p && !/^\d+$/.test(p));
+  
+  return parts.join('.');
+}
+
+/**
  * Get scoped segments (with resource name removed)
  * 
  * @param segments - Full path segments

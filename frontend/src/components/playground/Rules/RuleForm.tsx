@@ -180,6 +180,13 @@ export const RuleForm: React.FC<RuleFormProps> = ({
   // === INITIALIZE FROM INITIAL RULE (EDIT MODE) ===
   useEffect(() => {
     if (mode === 'edit' && initialRule) {
+      console.log('[RuleForm] Initializing from rule:', {
+        ruleType,
+        path: initialRule.path,
+        params: initialRule.params,
+        resourceType: initialRule.resourceType
+      });
+      
       // Shared fields
       setResourceType(initialRule.resourceType || 'Patient');
       setInstanceScope(initialRule.instanceScope || { kind: 'all' });
@@ -192,22 +199,39 @@ export const RuleForm: React.FC<RuleFormProps> = ({
         if (initialRule.params && 'resourceRequirement' in initialRule.params) {
           // Resource mode
           setRequiredParams(initialRule.params as RequiredParams);
+        } else if (initialRule.fieldPath) {
+          // NEW FORMAT: Direct fieldPath property (field mode)
+          setRequiredParams({ path: initialRule.fieldPath });
         } else if (initialRule.path) {
-          // Field mode - extract field path from full path
+          // LEGACY FORMAT: Extract field path from full path (field mode)
           const pathParts = initialRule.path.split('.');
           const fieldPath = pathParts.slice(1).join('.');
           setRequiredParams({ path: fieldPath });
         }
       }
 
-      if (ruleType === 'Regex' && initialRule.params) {
-        setPattern(initialRule.params.pattern || '');
-        setNegate(initialRule.params.negate || false);
-        setCaseSensitive(initialRule.params.caseSensitive !== false);
-        // Extract field path
-        const pathParts = initialRule.path?.split('.') || [];
-        const fieldPath = pathParts.slice(1).join('.');
-        setFieldPath(fieldPath);
+      if (ruleType === 'Regex') {
+        // Extract field path - check new format first, then legacy
+        if (initialRule.fieldPath) {
+          // NEW FORMAT: Direct fieldPath property
+          console.log('[RuleForm] Regex - Using fieldPath:', initialRule.fieldPath);
+          setFieldPath(initialRule.fieldPath);
+        } else if (initialRule.path) {
+          // LEGACY FORMAT: Extract from composed path
+          const pathParts = initialRule.path.split('.');
+          const fieldPath = pathParts.slice(1).join('.');
+          console.log('[RuleForm] Regex - Extracted from path:', { fullPath: initialRule.path, fieldPath });
+          setFieldPath(fieldPath);
+        } else {
+          console.log('[RuleForm] Regex - No path or fieldPath in initialRule');
+        }
+        
+        // Extract params if available
+        if (initialRule.params) {
+          setPattern(initialRule.params.pattern || '');
+          setNegate(initialRule.params.negate || false);
+          setCaseSensitive(initialRule.params.caseSensitive !== false);
+        }
       }
 
       if (ruleType === 'QuestionAnswer' && initialRule.params) {
@@ -226,32 +250,66 @@ export const RuleForm: React.FC<RuleFormProps> = ({
         setQuestionSetId(initialRule.params.questionSetId || '');
       }
 
-      if (ruleType === 'FixedValue' && initialRule.params) {
-        setExpectedValue(initialRule.params.value?.toString() || '');
-        // Extract field path
-        const pathParts = initialRule.path?.split('.') || [];
-        const fieldPath = pathParts.slice(1).join('.');
-        setFieldPath(fieldPath);
+      if (ruleType === 'FixedValue') {
+        // Extract field path - check new format first, then legacy
+        if (initialRule.fieldPath) {
+          // NEW FORMAT: Direct fieldPath property
+          console.log('[RuleForm] FixedValue - Using fieldPath:', initialRule.fieldPath);
+          setFieldPath(initialRule.fieldPath);
+        } else if (initialRule.path) {
+          // LEGACY FORMAT: Extract from composed path
+          const pathParts = initialRule.path.split('.');
+          const fieldPath = pathParts.slice(1).join('.');
+          console.log('[RuleForm] FixedValue - Extracted from path:', { fullPath: initialRule.path, fieldPath });
+          setFieldPath(fieldPath);
+        } else {
+          console.log('[RuleForm] FixedValue - No path or fieldPath in initialRule');
+        }
+        
+        // Extract params if available
+        if (initialRule.params) {
+          setExpectedValue(initialRule.params.value?.toString() || '');
+        }
       }
 
-      if (ruleType === 'AllowedValues' && initialRule.params) {
-        const values = Array.isArray(initialRule.params.values) 
-          ? initialRule.params.values.map((v: any) => v.toString())
-          : [];
-        setAllowedValues(values);
-        // Extract field path
-        const pathParts = initialRule.path?.split('.') || [];
-        const fieldPath = pathParts.slice(1).join('.');
-        setFieldPath(fieldPath);
+      if (ruleType === 'AllowedValues') {
+        // Extract field path - check new format first, then legacy
+        if (initialRule.fieldPath) {
+          // NEW FORMAT: Direct fieldPath property
+          setFieldPath(initialRule.fieldPath);
+        } else if (initialRule.path) {
+          // LEGACY FORMAT: Extract from composed path
+          const pathParts = initialRule.path.split('.');
+          const fieldPath = pathParts.slice(1).join('.');
+          setFieldPath(fieldPath);
+        }
+        
+        // Extract params if available
+        if (initialRule.params) {
+          const values = Array.isArray(initialRule.params.values) 
+            ? initialRule.params.values.map((v: any) => v.toString())
+            : [];
+          setAllowedValues(values);
+        }
       }
 
-      if (ruleType === 'ArrayLength' && initialRule.params) {
-        setMinLength(initialRule.params.min !== undefined ? Number(initialRule.params.min) : undefined);
-        setMaxLength(initialRule.params.max !== undefined ? Number(initialRule.params.max) : undefined);
-        // Extract array path
-        const pathParts = initialRule.path?.split('.') || [];
-        const arrayPath = pathParts.slice(1).join('.');
-        setFieldPath(arrayPath);
+      if (ruleType === 'ArrayLength') {
+        // Extract field path - check new format first, then legacy
+        if (initialRule.fieldPath) {
+          // NEW FORMAT: Direct fieldPath property
+          setFieldPath(initialRule.fieldPath);
+        } else if (initialRule.path) {
+          // LEGACY FORMAT: Extract from composed path
+          const pathParts = initialRule.path.split('.');
+          const arrayPath = pathParts.slice(1).join('.');
+          setFieldPath(arrayPath);
+        }
+        
+        // Extract params if available
+        if (initialRule.params) {
+          setMinLength(initialRule.params.min !== undefined ? Number(initialRule.params.min) : undefined);
+          setMaxLength(initialRule.params.max !== undefined ? Number(initialRule.params.max) : undefined);
+        }
       }
 
       if (ruleType === 'CustomFHIRPath' && initialRule) {

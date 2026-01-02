@@ -188,6 +188,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
                     childSchema,
                     childFhirPath,
                     $"{jsonPointer}/{propertyName}",
+                    resourceType,
                     errors);
             }
         }
@@ -208,7 +209,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         // 1. Array vs Object Shape Validation
         if (schema.IsArray && value.ValueKind != JsonValueKind.Array)
         {
-            errors.Add(CreateArrayExpectedError(fhirPath, jsonPointer, value.ValueKind));
+            errors.Add(CreateArrayExpectedError(fhirPath, jsonPointer, value.ValueKind, resourceType));
             // Short-circuit THIS BRANCH only (can't validate children of wrong-shaped value)
             // But this doesn't stop validation of sibling properties
             return;
@@ -229,7 +230,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         // 2. Array Validation (if array)
         if (schema.IsArray && value.ValueKind == JsonValueKind.Array)
         {
-            ValidateArrayCardinality(value, schema, fhirPath, jsonPointer, errors);
+            ValidateArrayCardinality(value, schema, fhirPath, jsonPointer, resourceType, errors);
 
             // Validate each array element
             var index = 0;
@@ -283,7 +284,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
                 var bindingStrength = _enumIndex.GetBindingStrength(fhirVersion, resourceType, schema.ElementName);
                 var severity = MapBindingStrengthToSeverity(bindingStrength);
                 
-                errors.Add(CreateInvalidEnumError(fhirPath, jsonPointer, actualValue, allowedValues, severity));
+                errors.Add(CreateInvalidEnumError(fhirPath, jsonPointer, actualValue, allowedValues, resourceType, severity));
             }
         }
         // Phase B.2 — Explicit warning when enum validation is skipped
@@ -302,14 +303,14 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
                     jsonPointer, schema.ValueSetUrl);
                     
                 var skipSeverity = MapBindingStrengthToSeverity(schema.BindingStrength) == "error" ? "warning" : "info";
-                errors.Add(CreateEnumValidationSkippedError(fhirPath, jsonPointer, schema.ValueSetUrl, schema.BindingStrength, skipSeverity));
+                errors.Add(CreateEnumValidationSkippedError(fhirPath, jsonPointer, schema.ValueSetUrl, schema.BindingStrength, resourceType, skipSeverity));
             }
         }
 
         // Primitive Format Validation
         if (IsPrimitiveType(schema.Type))
         {
-            ValidatePrimitiveFormat(value, schema, fhirPath, jsonPointer, errors);
+            ValidatePrimitiveFormat(value, schema, fhirPath, jsonPointer, resourceType, errors);
         }
         else if (value.ValueKind == JsonValueKind.Object && schema.Children.Any())
         {
@@ -326,6 +327,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         FhirSchemaNode schema,
         string fhirPath,
         string jsonPointer,
+        string resourceType,
         List<ValidationError> errors)
     {
         var primitiveType = schema.Type.ToLowerInvariant();
@@ -336,7 +338,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             if (value.ValueKind != JsonValueKind.True && value.ValueKind != JsonValueKind.False)
             {
                 var actual = value.ValueKind == JsonValueKind.String ? value.GetString() : value.ToString();
-                errors.Add(CreateInvalidPrimitiveError(fhirPath, jsonPointer, actual ?? "null", "boolean", "Must be JSON boolean true or false"));
+                errors.Add(CreateInvalidPrimitiveError(fhirPath, jsonPointer, actual ?? "null", "boolean", "Must be JSON boolean true or false", resourceType));
             }
             return;
         }
@@ -355,7 +357,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
                 if (!validator(textValue))
                 {
                     var reason = GetValidationReason(primitiveType);
-                    errors.Add(CreateInvalidPrimitiveError(fhirPath, jsonPointer, textValue, primitiveType, reason));
+                    errors.Add(CreateInvalidPrimitiveError(fhirPath, jsonPointer, textValue, primitiveType, reason, resourceType));
                 }
             }
         }
@@ -365,7 +367,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             if (value.ValueKind != JsonValueKind.Number)
             {
                 var actual = value.ToString();
-                errors.Add(CreateInvalidPrimitiveError(fhirPath, jsonPointer, actual, primitiveType, $"Must be a valid {primitiveType}"));
+                errors.Add(CreateInvalidPrimitiveError(fhirPath, jsonPointer, actual, primitiveType, $"Must be a valid {primitiveType}", resourceType));
             }
         }
     }
@@ -378,6 +380,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         FhirSchemaNode schema,
         string fhirPath,
         string jsonPointer,
+        string resourceType,
         List<ValidationError> errors)
     {
         var actualCount = arrayValue.GetArrayLength();
@@ -386,7 +389,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
 
         if (actualCount < min || actualCount > max)
         {
-            errors.Add(CreateCardinalityError(fhirPath, jsonPointer, min, max, actualCount));
+            errors.Add(CreateCardinalityError(fhirPath, jsonPointer, min, max, actualCount, resourceType));
         }
     }
 
@@ -397,11 +400,12 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         FhirSchemaNode schema,
         string fhirPath,
         string jsonPointer,
+        string resourceType,
         List<ValidationError> errors)
     {
         if (schema.Min >= 1)
         {
-            errors.Add(CreateRequiredFieldMissingError(fhirPath, jsonPointer));
+            errors.Add(CreateRequiredFieldMissingError(fhirPath, jsonPointer, resourceType));
         }
     }
 
@@ -414,6 +418,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         string jsonPointer,
         string actualValue,
         IReadOnlyList<string> allowedValues,
+        string resourceType,
         string severity = "error")
     {
         var details = new Dictionary<string, object>
@@ -430,6 +435,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             Source = "STRUCTURE",
             Severity = severity,
             ErrorCode = "INVALID_ENUM_VALUE",
+            ResourceType = resourceType,
             Path = fhirPath,
             JsonPointer = jsonPointer,
             Message = $"Invalid enum value '{actualValue}' at {fhirPath}. Allowed: {string.Join(", ", allowedValues.Take(5))}{(allowedValues.Count > 5 ? "..." : "")}",
@@ -462,6 +468,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         string jsonPointer,
         string valueSetUrl,
         string bindingStrength,
+        string resourceType,
         string severity)
     {
         var details = new Dictionary<string, object>
@@ -478,6 +485,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             Source = "STRUCTURE",
             Severity = severity,
             ErrorCode = "ENUM_VALIDATION_SKIPPED",
+            ResourceType = resourceType,
             Path = fhirPath,
             JsonPointer = jsonPointer,
             Message = $"Enum validation skipped for {fhirPath} — ValueSet {valueSetUrl} is not supported",
@@ -490,7 +498,8 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         string jsonPointer,
         string actualValue,
         string expectedType,
-        string reason)
+        string reason,
+        string resourceType)
     {
         var details = new Dictionary<string, object>
         {
@@ -506,6 +515,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             Source = "STRUCTURE",
             Severity = "error",
             ErrorCode = "FHIR_INVALID_PRIMITIVE",
+            ResourceType = resourceType,
             Path = fhirPath,
             JsonPointer = jsonPointer,
             Message = $"Invalid {expectedType} format at {fhirPath}: {actualValue}. {reason}",
@@ -516,7 +526,8 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
     private ValidationError CreateArrayExpectedError(
         string fhirPath,
         string jsonPointer,
-        JsonValueKind actualKind)
+        JsonValueKind actualKind,
+        string resourceType)
     {
         var actualType = actualKind switch
         {
@@ -540,6 +551,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             Source = "STRUCTURE",
             Severity = "error",
             ErrorCode = "FHIR_ARRAY_EXPECTED",
+            ResourceType = resourceType,
             Path = fhirPath,
             JsonPointer = jsonPointer,
             Message = $"Array expected at {fhirPath} but found {actualType}",
@@ -552,7 +564,8 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         string jsonPointer,
         int min,
         int max,
-        int actual)
+        int actual,
+        string resourceType)
     {
         var details = new Dictionary<string, object>
         {
@@ -569,6 +582,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             Source = "STRUCTURE",
             Severity = "error",
             ErrorCode = "ARRAY_LENGTH_OUT_OF_RANGE",
+            ResourceType = resourceType,
             Path = fhirPath,
             JsonPointer = jsonPointer,
             Message = $"Array length at {fhirPath} is {actual}, expected between {min} and {maxDisplay}",
@@ -578,7 +592,8 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
 
     private ValidationError CreateRequiredFieldMissingError(
         string fhirPath,
-        string jsonPointer)
+        string jsonPointer,
+        string resourceType)
     {
         var details = new Dictionary<string, object>
         {
@@ -592,6 +607,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             Source = "STRUCTURE",
             Severity = "error",
             ErrorCode = "REQUIRED_FIELD_MISSING",
+            ResourceType = resourceType,
             Path = fhirPath,
             JsonPointer = jsonPointer,
             Message = $"Required field missing: {fhirPath}",

@@ -1,15 +1,16 @@
-import React from 'react';
-import { XCircle, CheckCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { XCircle, CheckCircle, ChevronDown, ChevronRight, HelpCircle } from 'lucide-react';
 import { ValidationIcon } from '../../../ui/icons/ValidationIcons';
 import { getLayerMetadata } from '../../../utils/validationLayers';
 import { SmartPathBreadcrumb } from './SmartPathBreadcrumb';
 import { ScopeSelectorChip } from './ScopeSelectorChip';
 import { PathInfoTooltip } from './PathInfoTooltip';
-import { formatSmartPath, getScopedSegments, convertToJsonPath } from '../../../utils/smartPathFormatting';
+import { formatSmartPath, getScopedSegments, convertToJsonPath, jsonPointerToFhirPathStyle } from '../../../utils/smartPathFormatting';
 import { isIssueBlocking } from '../../../types/validationIssues';
 import type { ValidationIssue } from '../../../types/validationIssues';
 import { ExplanationPanel } from './ExplanationPanel';
 import { explainError } from '../../../validation';
+import { BundleDiffDisplay } from './BundleDiffDisplay';
 
 interface IssueCardProps {
   issue: ValidationIssue;
@@ -31,10 +32,12 @@ export const IssueCard: React.FC<IssueCardProps> = ({
   showExplanations = false,
   bundleJson
 }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
   const metadata = getLayerMetadata(issue.source);
   const blocking = isIssueBlocking(issue);
 
-  const displayPath = issue.location || 'Unknown';
+  // Generate display path - prefer location (FHIRPath), fallback to jsonPointer converted to FHIRPath style
+  const displayPath = issue.location || (issue.jsonPointer ? jsonPointerToFhirPathStyle(issue.jsonPointer) : 'Unknown');
   const formattedPath = formatSmartPath(displayPath, issue.resourceType || '');
   const scopedSegments = getScopedSegments(formattedPath.segments, issue.resourceType || '');
   const jsonPath = convertToJsonPath(issue.jsonPointer ?? undefined);
@@ -50,15 +53,7 @@ export const IssueCard: React.FC<IssueCardProps> = ({
 
   return (
     <div
-      className={`border ${borderColor} rounded-lg p-4 transition-colors ${
-        canNavigate ? 'cursor-pointer hover:shadow-sm' : ''
-      } ${cardBgColor}`}
-      onClick={(e) => {
-        if (canNavigate) {
-          e.stopPropagation();
-          onClick?.(issue);
-        }
-      }}
+      className={`border ${borderColor} rounded-lg p-4 transition-colors ${cardBgColor}`}
     >
       {/* Advisory Notice */}
       {isAdvisorySource && (
@@ -81,33 +76,149 @@ export const IssueCard: React.FC<IssueCardProps> = ({
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Location breadcrumb + scope selectors */}
-          {issue.resourceType && issue.location && issue.location !== 'unknown' ? (
+          {(issue.resourceType && issue.location && issue.location !== 'unknown') || issue.jsonPointer ? (
             <div className="space-y-1.5">
-              {/* Structure-only breadcrumb */}
-              <SmartPathBreadcrumb
-                resourceType={issue.resourceType}
-                segments={scopedSegments}
-                fullPath={issue.location}
-                onNavigate={
-                  issue.jsonPointer ? () => onNavigateToPath?.(issue.jsonPointer!) : undefined
-                }
-                bundleJson={bundleJson}
-                jsonPointer={issue.jsonPointer ?? undefined}
-              />
+              {/* Structure-only breadcrumb - clickable */}
+              <div
+                onClick={(e) => {
+                  if (canNavigate) {
+                    e.stopPropagation();
+                    onClick?.(issue);
+                  }
+                }}
+                className={canNavigate ? 'cursor-pointer' : ''}
+              >
+                <SmartPathBreadcrumb
+                  resourceType={issue.resourceType}
+                  segments={scopedSegments}
+                  fullPath={issue.location || ''}
+                  onNavigate={
+                    issue.jsonPointer ? () => onNavigateToPath?.(issue.jsonPointer!) : undefined
+                  }
+                  bundleJson={bundleJson}
+                  jsonPointer={issue.jsonPointer ?? undefined}
+                />
+              </div>
               {/* Scope selectors (where clauses) - Phase 6 */}
-              <ScopeSelectorChip fhirPath={issue.location} />
+              {issue.location && <ScopeSelectorChip fhirPath={issue.location} />}
             </div>
           ) : (
             <span className="text-xs text-gray-500 italic">Location not available</span>
           )}
 
-          {/* Phase 7: Use canonical explanation instead of issue.message */}
-          <p className="text-sm text-gray-900 mt-2 leading-6">
-            {explainError({ 
-              errorCode: issue.code || '', 
-              details: issue.details 
-            }).title}
-          </p>
+          {/* Phase 7: Use canonical explanation - collapsed and expandable */}
+          <div className="mt-2">
+            {(() => {
+              const explanation = explainError({ 
+                errorCode: issue.code || '', 
+                details: issue.details 
+              });
+              
+              // Check if this is a bundle composition error
+              const isBundleComposition = issue.code === 'RESOURCE_REQUIREMENT_VIOLATION' && 
+                issue.details?.expected && 
+                issue.details?.actual &&
+                issue.details?.diff;
+              
+              return (
+                <div className="space-y-2">
+                  {/* Collapsed state: Title + Summary only */}
+                  <p className="text-sm font-medium text-gray-900">{explanation.title}</p>
+                  <p className="text-sm text-gray-700">{explanation.reason}</p>
+                  
+                  {/* Expandable "Why am I seeing this?" button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsExpanded(!isExpanded);
+                    }}
+                    className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 transition-colors mt-2"
+                  >
+                    {isExpanded ? (
+                      <ChevronDown className="w-4 h-4" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4" />
+                    )}
+                    <HelpCircle className="w-4 h-4" />
+                    <span>Why am I seeing this?</span>
+                  </button>
+                  
+                  {/* Expanded state: All detailed information */}
+                  {isExpanded && (
+                    <div className="mt-3 pt-3 border-t border-gray-200 space-y-4">
+                      {/* Section 1: What this rule checks */}
+                      {explanation.whatThisMeans && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-900 uppercase tracking-wide">What this rule checks</p>
+                          <p className="text-sm text-gray-700">{explanation.whatThisMeans}</p>
+                        </div>
+                      )}
+                      
+                      {/* Bundle Composition: Structured display */}
+                      {isBundleComposition && issue.details && (
+                        <>
+                          {/* Section 2: Expected resources */}
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold text-gray-900 uppercase tracking-wide">Expected resources</p>
+                            <BundleDiffDisplay
+                              expected={issue.details.expected}
+                              actual={issue.details.actual}
+                              diff={issue.details.diff}
+                            />
+                          </div>
+                        </>
+                      )}
+                      
+                      {/* Non-bundle composition: Standard fields */}
+                      {!isBundleComposition && (
+                        <>
+                          {explanation.whatWasFound && typeof explanation.whatWasFound === 'string' && (
+                            <div className="space-y-1">
+                              <p className="text-xs font-semibold text-gray-900 uppercase tracking-wide">What was found</p>
+                              <p className="text-sm text-gray-700">{explanation.whatWasFound}</p>
+                            </div>
+                          )}
+                          
+                          {explanation.expected && (
+                            <div className="space-y-1">
+                              <p className="text-xs font-semibold text-gray-900 uppercase tracking-wide">Expected</p>
+                              {Array.isArray(explanation.expected) ? (
+                                <ul className="list-disc list-inside space-y-0.5">
+                                  {explanation.expected.map((val, idx) => (
+                                    <li key={idx} className="text-sm text-gray-700">
+                                      {typeof val === 'string' ? val : JSON.stringify(val)}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : typeof explanation.expected === 'string' ? (
+                                <p className="text-sm text-gray-700">{explanation.expected}</p>
+                              ) : null}
+                            </div>
+                          )}
+                        </>
+                      )}
+                      
+                      {/* Section: How to fix */}
+                      {explanation.howToFix && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-900 uppercase tracking-wide">How to fix</p>
+                          <p className="text-sm text-gray-700">{explanation.howToFix}</p>
+                        </div>
+                      )}
+                      
+                      {/* Section: Note */}
+                      {explanation.note && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-900 uppercase tracking-wide">Note</p>
+                          <p className="text-sm text-gray-600 italic">{explanation.note}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
 
           {/* Optional: Rule path for Project Rules */}
           {issue.rulePath && issue.source === 'PROJECT' && (
@@ -207,18 +318,6 @@ export const IssueCard: React.FC<IssueCardProps> = ({
           <PathInfoTooltip fhirPath={formattedPath.fullPath} jsonPath={jsonPath} />
         </div>
       </div>
-
-      {/* Phase 7: Explanation Panel */}
-      <ExplanationPanel 
-        error={{
-          path: issue.location,
-          jsonPointer: issue.jsonPointer ?? undefined,
-          message: issue.message,
-          errorCode: issue.code,
-          resourceType: issue.resourceType,
-          details: issue.details
-        }} 
-      />
     </div>
   );
 };
