@@ -12,7 +12,8 @@
  */
 
 import React from 'react';
-import { explainError, type ValidationError } from '../../../validation';
+import { explainError } from '../../../validation';
+import type { ValidationError } from '../../../contexts/project-validation/useProjectValidation';
 
 interface ValidationErrorExplanationProps {
   error: ValidationError;

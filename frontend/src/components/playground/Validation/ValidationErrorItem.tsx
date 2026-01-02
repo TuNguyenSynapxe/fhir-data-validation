@@ -6,7 +6,7 @@ import { ScopeSelectorChip } from './ScopeSelectorChip';
 import { PathInfoTooltip } from './PathInfoTooltip';
 import { ExplanationPanel } from './ExplanationPanel';
 import { ValidationErrorExplanation } from './ValidationErrorExplanation';
-import type { ValidationError } from '../../../validation';
+import type { ValidationError } from '../../../contexts/project-validation/useProjectValidation';
 
 interface ValidationErrorItemProps {
   error: ValidationError;

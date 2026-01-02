@@ -4,10 +4,9 @@
  * Central export for validation error explanation functionality
  */
 
-export { explainError, type ValidationError } from "./explainError";
+export { explainError, type ExplainableError } from "./explainError";
 export {
   errorExplanationRegistry,
   getFallbackExplanation,
   type ErrorExplanation,
-  type ExplanationFn,
 } from "./errorExplanationRegistry";

@@ -1,417 +1,165 @@
-/**
- * Phase 6 - Validation Error Explanation Registry
- * 
- * CONTRACT-BOUND: This registry switches ONLY on errorCode + details.
- * DO NOT parse paths, jsonPointer, bundle data, ruleType, or severity.
- * 
- * All human-readable validation messages originate here.
- */
+/* ============================================
+ * Validation Error Explanation Registry
+ * --------------------------------------------
+ * Rules:
+ * - Switch ONLY on errorCode
+ * - Read ONLY from details
+ * - Never parse path / jsonPointer / FHIRPath
+ * - Never throw
+ * - Always return a valid explanation
+ * ============================================ */
 
-export type ErrorExplanation = {
+export interface ErrorExplanation {
   title: string;
   description: string;
+  expected?: string;
+}
+
+type ExplanationBuilder = (details?: Record<string, any>) => ErrorExplanation;
+
+/* ---------- helpers ---------- */
+
+const safeJoin = (values?: unknown[]): string | undefined => {
+  if (!Array.isArray(values) || values.length === 0) return undefined;
+  return values.map(String).join(", ");
 };
 
-export type ExplanationFn = (details?: unknown) => ErrorExplanation;
+const safeValue = (value: unknown): string | undefined =>
+  value === null || value === undefined ? undefined : String(value);
 
-/**
- * Fallback explanation for unknown or malformed errors
- */
-const fallbackExplanation = (errorCode?: string): ErrorExplanation => {
-  if (errorCode) {
-    console.warn(`[ErrorExplanationRegistry] Unknown errorCode: "${errorCode}"`);
-  }
-  return {
-    title: "Validation issue",
-    description: "This field does not meet validation requirements.",
-  };
-};
+/* ---------- registry ---------- */
 
-/**
- * Safe type guard for checking if value is a record
- */
-const isRecord = (value: unknown): value is Record<string, unknown> => {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-};
+export const errorExplanationRegistry: Record<string, ExplanationBuilder> = {
+  /* ============================
+   * STRUCTURE
+   * ============================ */
 
-/**
- * Safe string coercion with null handling
- */
-const safeString = (value: unknown): string => {
-  if (value === null || value === undefined) {
-    return "null";
-  }
-  return String(value);
-};
+  INVALID_ENUM_VALUE: (details) => {
+    const actual = safeValue(details?.actual);
+    const allowed = safeJoin(details?.allowed);
 
-/**
- * VALUE_NOT_ALLOWED
- * Schema: { actual: string | null, allowed: string[], valueType: string }
- */
-const explainValueNotAllowed: ExplanationFn = (details) => {
-  if (!isRecord(details)) {
-    return fallbackExplanation();
-  }
-
-  const actual = details.actual;
-  const allowed = details.allowed;
-
-  if (!Array.isArray(allowed) || allowed.length === 0) {
-    return fallbackExplanation();
-  }
-
-  const allowedList = allowed.map(safeString).join(", ");
-
-  if (actual === null || actual === undefined) {
     return {
-      title: "Value not allowed",
-      description: `A value is required. Allowed values: ${allowedList}.`,
+      title: "Invalid value",
+      description: actual
+        ? `The value “${actual}” is not allowed for this field.`
+        : "This value is not allowed for this field.",
+      expected: allowed
+        ? `Expected one of: ${allowed}`
+        : "Choose a valid value for this field."
     };
-  }
+  },
 
-  return {
-    title: "Value not allowed",
-    description: `The value "${safeString(actual)}" is not permitted. Allowed values: ${allowedList}.`,
-  };
-};
+  FIXED_VALUE_MISMATCH: (details) => {
+    const expected = safeValue(details?.expected);
+    const actual = safeValue(details?.actual);
 
-/**
- * PATTERN_MISMATCH
- * Schema: { actual: string | null, pattern: string, description?: string }
- */
-const explainPatternMismatch: ExplanationFn = (details) => {
-  if (!isRecord(details)) {
-    return fallbackExplanation();
-  }
+    return {
+      title: "Incorrect value",
+      description: "This field must have a specific value.",
+      expected: expected
+        ? actual
+          ? `Expected value: ${expected}. Provided value: ${actual}`
+          : `Expected value: ${expected}`
+        : "Use the required fixed value for this field."
+    };
+  },
 
-  const actual = details.actual;
-  const description = details.description;
+  FHIR_INVALID_PRIMITIVE: (details) => {
+    const actual = safeValue(details?.actual);
+    const expectedType = safeValue(details?.expectedType);
+    const reason = safeValue(details?.reason);
 
-  // If a description is provided, use it directly
-  if (typeof description === "string" && description.trim()) {
     return {
       title: "Invalid format",
-      description: description.trim(),
+      description: actual
+        ? `The value “${actual}” is not a valid ${expectedType ?? "value"}.`
+        : "The value has an invalid format.",
+      expected: reason
+        ? reason
+        : expectedType
+          ? `Use a valid ${expectedType} value.`
+          : "Use a valid value format."
     };
-  }
+  },
 
-  // Otherwise, use generic message with actual value
-  return {
-    title: "Invalid format",
-    description: `The value "${safeString(actual)}" does not match the required format.`,
-  };
-};
+  FHIR_ARRAY_EXPECTED: (details) => {
+    const actualType = safeValue(details?.actualType);
 
-/**
- * FIXED_VALUE_MISMATCH
- * Schema: { actual: string | null, expected: string }
- */
-const explainFixedValueMismatch: ExplanationFn = (details) => {
-  if (!isRecord(details)) {
-    return fallbackExplanation();
-  }
+    return {
+      title: "Incorrect structure",
+      description: actualType
+        ? `This field must be a list, but a ${actualType} was provided.`
+        : "This field must be a list.",
+      expected: "Provide an array (list) of values."
+    };
+  },
 
-  const actual = details.actual;
-  const expected = details.expected;
-
-  if (typeof expected !== "string") {
-    return fallbackExplanation();
-  }
-
-  return {
-    title: "Incorrect value",
-    description: `Expected "${expected}" but found "${safeString(actual)}".`,
-  };
-};
-
-/**
- * REQUIRED_FIELD_MISSING
- * Schema: { required: true }
- */
-const explainRequiredFieldMissing: ExplanationFn = (details) => {
-  if (!isRecord(details)) {
-    return fallbackExplanation();
-  }
-
-  if (details.required !== true) {
-    return fallbackExplanation();
-  }
-
-  return {
+  REQUIRED_FIELD_MISSING: () => ({
     title: "Missing required field",
     description: "This field is required but was not provided.",
-  };
-};
+    expected: "Provide a value for this field."
+  }),
 
-/**
- * ARRAY_LENGTH_OUT_OF_RANGE
- * Schema: { min: number | null, max: number | null, actual: number }
- */
-const explainArrayLengthOutOfRange: ExplanationFn = (details) => {
-  if (!isRecord(details)) {
-    return fallbackExplanation();
-  }
+  ARRAY_LENGTH_OUT_OF_RANGE: (details) => {
+    const min = safeValue(details?.min);
+    const max = safeValue(details?.max);
+    const actual = safeValue(details?.actual);
 
-  const min = details.min;
-  const max = details.max;
-  const actual = details.actual;
-
-  if (typeof actual !== "number") {
-    return fallbackExplanation();
-  }
-
-  if (min !== null && max !== null) {
     return {
-      title: "Array length out of range",
-      description: `This field contains ${actual} item${actual !== 1 ? 's' : ''}, but must contain between ${min} and ${max} items.`,
+      title: "Incorrect number of items",
+      description: "This field has an invalid number of entries.",
+      expected:
+        min && max
+          ? `Expected between ${min} and ${max} items. Provided: ${actual ?? "unknown"}`
+          : "Provide the correct number of items."
     };
-  }
+  },
 
-  if (min !== null) {
+  /* ============================
+   * BUSINESS / PROJECT
+   * ============================ */
+
+  VALUE_NOT_ALLOWED: (details) => {
+    const actual = safeValue(details?.actual);
+    const allowed = safeJoin(details?.allowed);
+
     return {
-      title: "Array too short",
-      description: `This field contains ${actual} item${actual !== 1 ? 's' : ''}, but must contain at least ${min} item${min !== 1 ? 's' : ''}.`,
+      title: "Value not permitted",
+      description: actual
+        ? `The value “${actual}” is not allowed by the project rules.`
+        : "This value is not allowed by the project rules.",
+      expected: allowed
+        ? `Allowed values: ${allowed}`
+        : "Use a value permitted by the project rules."
     };
-  }
+  },
 
-  if (max !== null) {
+  CODE_NOT_IN_VALUESET: (details) => {
+    const actual = safeValue(details?.actual);
+    const examples = safeJoin(details?.examples);
+
     return {
-      title: "Array too long",
-      description: `This field contains ${actual} item${actual !== 1 ? 's' : ''}, but must contain at most ${max} item${max !== 1 ? 's' : ''}.`,
+      title: "Invalid code",
+      description: actual
+        ? `The code “${actual}” is not allowed for this field.`
+        : "The provided code is not allowed for this field.",
+      expected: examples
+        ? `Examples of valid codes: ${examples}`
+        : "Use a code from the approved value set."
     };
-  }
+  },
 
-  return fallbackExplanation();
+  /* ============================
+   * FALLBACK
+   * ============================ */
+
+  DEFAULT: () => getFallbackExplanation()
 };
 
-/**
- * CODE_NOT_IN_VALUESET
- * Schema: { system: string, code: string, valueSet: string }
- */
-const explainCodeNotInValueSet: ExplanationFn = (details) => {
-  if (!isRecord(details)) {
-    return fallbackExplanation();
-  }
+/* ---------- exported fallback ---------- */
 
-  const code = details.code;
-  const system = details.system;
-  const valueSet = details.valueSet;
-
-  if (typeof code !== "string") {
-    return fallbackExplanation();
-  }
-
-  const codeDisplay = system ? `${safeString(system)}|${code}` : code;
-
-  return {
-    title: "Code not in value set",
-    description: `The code "${codeDisplay}" is not valid for this field. ${
-      valueSet ? `Expected a code from value set: ${valueSet}` : "Expected a code from the specified value set."
-    }`,
-  };
-};
-
-/**
- * CODESYSTEM_MISMATCH
- * Schema: { expectedSystem: string, actualSystem: string | null }
- */
-const explainCodeSystemMismatch: ExplanationFn = (details) => {
-  if (!isRecord(details)) {
-    return fallbackExplanation();
-  }
-
-  const expectedSystem = details.expectedSystem;
-  const actualSystem = details.actualSystem;
-
-  if (typeof expectedSystem !== "string") {
-    return fallbackExplanation();
-  }
-
-  if (actualSystem === null || actualSystem === undefined) {
-    return {
-      title: "Code system missing",
-      description: `Expected code system "${expectedSystem}" but no system was provided.`,
-    };
-  }
-
-  return {
-    title: "Code system mismatch",
-    description: `Expected code system "${expectedSystem}" but found "${safeString(actualSystem)}".`,
-  };
-};
-
-/**
- * REFERENCE_NOT_FOUND
- * Schema: { reference: string, expectedType?: string | null }
- */
-const explainReferenceNotFound: ExplanationFn = (details) => {
-  if (!isRecord(details)) {
-    return fallbackExplanation();
-  }
-
-  const reference = details.reference;
-  const expectedType = details.expectedType;
-
-  if (typeof reference !== "string") {
-    return fallbackExplanation();
-  }
-
-  if (expectedType && typeof expectedType === "string") {
-    return {
-      title: "Reference not found",
-      description: `The referenced ${expectedType} resource "${reference}" could not be found in the bundle.`,
-    };
-  }
-
-  return {
-    title: "Reference not found",
-    description: `The referenced resource "${reference}" could not be found in the bundle.`,
-  };
-};
-
-/**
- * REFERENCE_TYPE_MISMATCH
- * Schema: { reference: string, expectedTypes: string[], actualType: string }
- */
-const explainReferenceTypeMismatch: ExplanationFn = (details) => {
-  if (!isRecord(details)) {
-    return fallbackExplanation();
-  }
-
-  const reference = details.reference;
-  const expectedTypes = details.expectedTypes;
-  const actualType = details.actualType;
-
-  if (!Array.isArray(expectedTypes) || expectedTypes.length === 0) {
-    return fallbackExplanation();
-  }
-
-  const expectedList = expectedTypes.join(", ");
-
-  return {
-    title: "Reference type mismatch",
-    description: `The reference "${safeString(reference)}" points to a ${safeString(actualType)} resource, but expected: ${expectedList}.`,
-  };
-};
-
-/**
- * FHIR_DESERIALIZATION_ERROR
- * Schema: { exceptionType: string, fullMessage: string }
- */
-const explainFhirDeserializationError: ExplanationFn = (details) => {
-  if (!isRecord(details)) {
-    return {
-      title: "Invalid FHIR data",
-      description: "The FHIR data could not be parsed. Please check that the data is valid JSON and follows the FHIR R4 specification.",
-    };
-  }
-
-  const fullMessage = details.fullMessage;
-
-  if (typeof fullMessage === "string" && fullMessage) {
-    // Extract just the core error message, not the path
-    const cleanMessage = fullMessage.split("(at ")[0].trim();
-    return {
-      title: "Invalid FHIR data",
-      description: cleanMessage,
-    };
-  }
-
-  return {
-    title: "Invalid FHIR data",
-    description: "The FHIR data could not be parsed. Please check that the data is valid JSON and follows the FHIR R4 specification.",
-  };
-};
-
-/**
- * UNKNOWN_ELEMENT
- * Schema: varies, may have propertyName
- */
-const explainUnknownElement: ExplanationFn = (details) => {
-  if (!isRecord(details)) {
-    return {
-      title: "Unknown field",
-      description: "This field is not defined in the FHIR R4 specification.",
-    };
-  }
-
-  const propertyName = details.propertyName || details.property;
-
-  if (propertyName) {
-    return {
-      title: "Unknown field",
-      description: `The field "${safeString(propertyName)}" is not defined in the FHIR R4 specification.`,
-    };
-  }
-
-  return {
-    title: "Unknown field",
-    description: "This field is not defined in the FHIR R4 specification.",
-  };
-};
-
-/**
- * TYPE_MISMATCH
- * Schema: varies
- */
-const explainTypeMismatch: ExplanationFn = (details) => {
-  return {
-    title: "Incorrect data type",
-    description: "The value provided does not match the expected data type for this field.",
-  };
-};
-
-/**
- * MANDATORY_MISSING
- * Schema: varies
- */
-const explainMandatoryMissing: ExplanationFn = (details) => {
-  return {
-    title: "Required field missing",
-    description: "This field is mandatory in the FHIR specification and must be provided.",
-  };
-};
-
-/**
- * INVALID_ENUM_VALUE
- * Schema: varies
- */
-const explainInvalidEnumValue: ExplanationFn = (details) => {
-  return {
-    title: "Invalid value",
-    description: "The value provided is not valid for this field. Please use one of the allowed values.",
-  };
-};
-
-/**
- * Error Explanation Registry
- * 
- * Maps errorCode → explanation function
- * Add new error codes here as they are normalized in the backend
- */
-export const errorExplanationRegistry: Record<string, ExplanationFn> = {
-  // Phase 6 initial implementations (normalized business rules)
-  VALUE_NOT_ALLOWED: explainValueNotAllowed,
-  PATTERN_MISMATCH: explainPatternMismatch,
-  FIXED_VALUE_MISMATCH: explainFixedValueMismatch,
-  REQUIRED_FIELD_MISSING: explainRequiredFieldMissing,
-  
-  // Phase 7 extensions (normalized backend errorCodes)
-  ARRAY_LENGTH_OUT_OF_RANGE: explainArrayLengthOutOfRange,
-  CODE_NOT_IN_VALUESET: explainCodeNotInValueSet,
-  CODESYSTEM_MISMATCH: explainCodeSystemMismatch,
-  REFERENCE_NOT_FOUND: explainReferenceNotFound,
-  REFERENCE_TYPE_MISMATCH: explainReferenceTypeMismatch,
-  
-  // Firely/FHIR structural validation errors
-  FHIR_DESERIALIZATION_ERROR: explainFhirDeserializationError,
-  UNKNOWN_ELEMENT: explainUnknownElement,
-  TYPE_MISMATCH: explainTypeMismatch,
-  MANDATORY_MISSING: explainMandatoryMissing,
-  INVALID_ENUM_VALUE: explainInvalidEnumValue,
-};
-
-/**
- * Get fallback explanation (exported for testing)
- */
-export const getFallbackExplanation = fallbackExplanation;
+export const getFallbackExplanation = (): ErrorExplanation => ({
+  title: "Validation issue",
+  description: "This field does not meet the validation requirements.",
+  expected: "Update the value to match the expected format or allowed values."
+});

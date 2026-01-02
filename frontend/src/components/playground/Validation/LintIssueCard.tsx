@@ -52,15 +52,6 @@ const EXTENSION_TOOLTIP = {
 };
 
 /**
- * Extension tooltip content
- */
-const EXTENSION_TOOLTIP = {
-  title: 'Extension-related issue',
-  body: `Extensions often require profiles to validate correctly.\nWithout profiles, only the base FHIR schema is checked.`,
-  footer: '',
-};
-
-/**
  * Check if error is extension-related
  */
 const isExtensionRelated = (path?: string): boolean => {

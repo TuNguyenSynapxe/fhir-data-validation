@@ -8,7 +8,7 @@ import { PathInfoTooltip } from './PathInfoTooltip';
 import { getBlockingStatusDisplay } from '../../../utils/validationOverrides';
 import { ExplanationPanel } from './ExplanationPanel';
 import { ValidationErrorExplanation } from './ValidationErrorExplanation';
-import type { ValidationError } from '../../../validation';
+import type { ValidationError } from '../../../contexts/project-validation/useProjectValidation';
 
 interface ErrorCardProps {
   error: ValidationError;

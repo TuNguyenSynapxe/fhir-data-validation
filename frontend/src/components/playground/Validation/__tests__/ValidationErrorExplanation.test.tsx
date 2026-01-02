@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { ValidationErrorExplanation, ValidationErrorDescription, ValidationErrorTitle } from '../ValidationErrorExplanation';
-import type { ValidationError } from '../../../validation';
+import type { ValidationError } from '../../../../contexts/project-validation/useProjectValidation';
 
 describe('ValidationErrorExplanation', () => {
   it('renders title and description for valid error', () => {

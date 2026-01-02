@@ -5,13 +5,13 @@
  * DO NOT import this in production code - it's documentation only
  */
 
-import { explainError, type ValidationError } from "../validation";
+import { explainError, type ExplainableError } from "../index";
 
 // ============================================================================
 // EXAMPLE 1: VALUE_NOT_ALLOWED with actual value
 // ============================================================================
 
-const error1: ValidationError = {
+const error1: ExplainableError = {
   errorCode: "VALUE_NOT_ALLOWED",
   details: {
     actual: "invalid-status",
@@ -29,7 +29,7 @@ console.log(explanation1.description);
 // EXAMPLE 2: VALUE_NOT_ALLOWED with null value
 // ============================================================================
 
-const error2: ValidationError = {
+const error2: ExplainableError = {
   errorCode: "VALUE_NOT_ALLOWED",
   details: {
     actual: null,
@@ -47,7 +47,7 @@ console.log(explanation2.description);
 // EXAMPLE 3: PATTERN_MISMATCH with custom description
 // ============================================================================
 
-const error3: ValidationError = {
+const error3: ExplainableError = {
   errorCode: "PATTERN_MISMATCH",
   details: {
     actual: "abc123",
@@ -65,7 +65,7 @@ console.log(explanation3.description);
 // EXAMPLE 4: PATTERN_MISMATCH without custom description
 // ============================================================================
 
-const error4: ValidationError = {
+const error4: ExplainableError = {
   errorCode: "PATTERN_MISMATCH",
   details: {
     actual: "abc",
@@ -82,7 +82,7 @@ console.log(explanation4.description);
 // EXAMPLE 5: FIXED_VALUE_MISMATCH
 // ============================================================================
 
-const error5: ValidationError = {
+const error5: ExplainableError = {
   errorCode: "FIXED_VALUE_MISMATCH",
   details: {
     actual: "wrong-value",
@@ -99,7 +99,7 @@ console.log(explanation5.description);
 // EXAMPLE 6: REQUIRED_FIELD_MISSING
 // ============================================================================
 
-const error6: ValidationError = {
+const error6: ExplainableError = {
   errorCode: "REQUIRED_FIELD_MISSING",
   details: {
     required: true,
@@ -115,7 +115,7 @@ console.log(explanation6.description);
 // EXAMPLE 7: Unknown error code (fallback)
 // ============================================================================
 
-const error7: ValidationError = {
+const error7: ExplainableError = {
   errorCode: "SOME_NEW_ERROR_CODE",
   details: { foo: "bar" },
 };
@@ -130,9 +130,9 @@ console.log(explanation7.description);
 // EXAMPLE 8: Malformed details (fallback)
 // ============================================================================
 
-const error8: ValidationError = {
+const error8: ExplainableError = {
   errorCode: "VALUE_NOT_ALLOWED",
-  details: "invalid-format", // Should be object
+  details: { invalid: "format" }, // Invalid format triggers fallback
 };
 
 const explanation8 = explainError(error8);
@@ -144,7 +144,7 @@ console.log(explanation8.description);
 // EXAMPLE 9: Missing details (fallback)
 // ============================================================================
 
-const error9: ValidationError = {
+const error9: ExplainableError = {
   errorCode: "VALUE_NOT_ALLOWED",
   // No details provided
 };
