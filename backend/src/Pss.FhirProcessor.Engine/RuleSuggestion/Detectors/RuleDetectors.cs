@@ -1,35 +1,26 @@
 using System.Text.RegularExpressions;
 using Pss.FhirProcessor.Engine.RuleSuggestion.Interfaces;
 using Pss.FhirProcessor.Engine.RuleSuggestion.Models;
+using Pss.FhirProcessor.Engine.RuleSuggestion.Services;
 
 namespace Pss.FhirProcessor.Engine.RuleSuggestion.Detectors;
 
 /// <summary>
-/// Detects patterns that can be enforced with regex rules
-/// Triggers when ≥80% of values match a detectable pattern
+/// Detects patterns that can be enforced with regex rules.
+/// Uses RegexPatternRegistry for domain-aware, curated patterns with eligibility rules.
+/// Triggers when ≥80% of values match a detectable pattern and sampleSize ≥ 3.
 /// </summary>
 public class RegexDetector : IRuleDetector
 {
     public string DetectorName => "RegexDetector";
     
-    private static readonly List<RegexPattern> KnownPatterns = new()
-    {
-        new RegexPattern("Phone (E.164)", @"^\+[1-9]\d{1,14}$", "International phone number format"),
-        new RegexPattern("Phone (US)", @"^\d{3}-\d{3}-\d{4}$", "US phone number (###-###-####)"),
-        new RegexPattern("Email", @"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", "Email address format"),
-        new RegexPattern("Date (ISO)", @"^\d{4}-\d{2}-\d{2}$", "ISO date format (YYYY-MM-DD)"),
-        new RegexPattern("DateTime (ISO)", @"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", "ISO datetime format"),
-        new RegexPattern("UUID", @"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", "UUID format"),
-        new RegexPattern("Postal Code (US)", @"^\d{5}(-\d{4})?$", "US ZIP code"),
-        new RegexPattern("Postal Code (SG)", @"^\d{6}$", "Singapore postal code"),
-        new RegexPattern("NRIC (SG)", @"^[STFG]\d{7}[A-Z]$", "Singapore NRIC/FIN"),
-        new RegexPattern("Identifier", @"^[A-Z0-9]{6,20}$", "Uppercase alphanumeric identifier"),
-    };
+    private const double MinCoverageThreshold = 0.80; // 80%
+    private const int MinSampleSize = 3;
     
     public IEnumerable<Models.RuleSuggestion> Detect(PathClassification classification)
     {
         if (classification.PrimitiveType != Models.PrimitiveType.String) yield break;
-        if (classification.ObservedValues.Count < 3) yield break;
+        if (classification.ObservedValues.Count < MinSampleSize) yield break;
         
         var stringValues = classification.ObservedValues
             .OfType<string>()
@@ -38,13 +29,27 @@ public class RegexDetector : IRuleDetector
         
         if (stringValues.Count == 0) yield break;
         
-        foreach (var pattern in KnownPatterns)
+        // Get full path for eligibility checking
+        var fullPath = $"{classification.ResourceType}.{classification.Path}";
+        
+        // Get eligible patterns from registry
+        var eligiblePatterns = RegexPatternRegistry.GetEligiblePatterns(fullPath, classification);
+        
+        foreach (var pattern in eligiblePatterns)
         {
-            var matches = stringValues.Count(v => Regex.IsMatch(v, pattern.Pattern, RegexOptions.IgnoreCase));
+            var matches = stringValues.Count(v => pattern.Matches(v, RegexOptions.IgnoreCase));
             var coverage = (double)matches / stringValues.Count;
             
-            if (coverage >= 0.80) // 80% threshold
+            // Only emit suggestion if coverage threshold met
+            if (coverage >= MinCoverageThreshold)
             {
+                // Get matching values for evidence
+                var matchingValues = stringValues
+                    .Where(v => pattern.Matches(v, RegexOptions.IgnoreCase))
+                    .Take(3)
+                    .Cast<object>()
+                    .ToList();
+                
                 yield return new Models.RuleSuggestion
                 {
                     RuleType = "Regex",
@@ -53,10 +58,10 @@ public class RegexDetector : IRuleDetector
                     Parameters = new Dictionary<string, object>
                     {
                         { "pattern", pattern.Pattern },
-                        { "patternName", pattern.Name }
+                        { "patternName", pattern.PatternName }
                     },
-                    Rationale = $"{matches}/{stringValues.Count} values match {pattern.Description}",
-                    SampleEvidence = stringValues.Take(5).Cast<object>().ToList(),
+                    Rationale = $"{matches}/{stringValues.Count} observed values match {pattern.PatternName} format",
+                    SampleEvidence = matchingValues,
                     SampleSize = stringValues.Count,
                     Coverage = coverage
                 };
@@ -72,8 +77,6 @@ public class RegexDetector : IRuleDetector
         }
         return path;
     }
-    
-    private record RegexPattern(string Name, string Pattern, string Description);
 }
 
 /// <summary>

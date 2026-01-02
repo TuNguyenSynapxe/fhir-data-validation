@@ -59,42 +59,76 @@ public class RuleSuggestionEngine : IRuleSuggestionEngine
             var existingRuleIndex = BuildExistingRuleIndex(existingRules);
             _logger.LogInformation($"Indexed {existingRuleIndex.Count} existing rules");
             
-            // Step 2-3: Run detectors on each path classification
+            // Step 2: Run detectors on each path classification
             var candidateSuggestions = new List<Models.RuleSuggestion>();
+            var suppressedCount = 0;
             
             foreach (var classification in classifications)
             {
+                // Step 2.1: Path Classification (semantic analysis)
+                var fullPath = $"{classification.ResourceType}.{classification.Path}";
+                var pathCategory = PathCategoryResolver.Classify(fullPath);
+                
                 foreach (var detector in _detectors)
                 {
                     var suggestions = detector.Detect(classification);
                     
                     foreach (var suggestion in suggestions)
                     {
-                        // Apply exclusion guard
+                        // Step 2.2: Apply Suppression Rules (HARD RULES)
+                        if (SuppressionRules.ShouldSuppress(suggestion, pathCategory, classification.ObservedValues))
+                        {
+                            suppressedCount++;
+                            var reason = SuppressionRules.GetSuppressionReason(suggestion, pathCategory, classification.ObservedValues);
+                            _logger.LogDebug($"Suppressed {suggestion.RuleType} on {fullPath}: {reason}");
+                            continue;
+                        }
+                        
+                        // Step 2.3: Apply exclusion guard (duplicate check)
                         if (ShouldExclude(suggestion, existingRuleIndex))
                         {
                             _logger.LogDebug($"Excluded duplicate suggestion: {suggestion.RuleType} on {suggestion.TargetPath}");
                             continue;
                         }
                         
-                        // Step 4: Calculate confidence score
-                        var scoreBreakdown = _confidenceScorer.CalculateScore(
-                            suggestion,
-                            classification,
-                            existingRules);
-                        
-                        suggestion.ConfidenceScore = scoreBreakdown.TotalScore;
-                        suggestion.ConfidenceLevel = MapConfidenceLevel(scoreBreakdown.TotalScore);
-                        
                         candidateSuggestions.Add(suggestion);
                     }
                 }
             }
             
-            _logger.LogInformation($"Generated {candidateSuggestions.Count} candidate suggestions");
+            _logger.LogInformation($"Generated {candidateSuggestions.Count} candidate suggestions ({suppressedCount} suppressed)");
+            
+            // Step 3: Apply Rule Precedence Resolution
+            // Regex > AllowedValues > FixedValue
+            var precedenceResolvedSuggestions = RulePrecedenceResolver.ApplyPrecedence(candidateSuggestions);
+            var precedenceSuppressed = candidateSuggestions.Count - precedenceResolvedSuggestions.Count;
+            
+            if (precedenceSuppressed > 0)
+            {
+                _logger.LogInformation($"Precedence resolution suppressed {precedenceSuppressed} lower-precedence rules");
+            }
+            
+            // Step 4: Calculate confidence scores
+            foreach (var suggestion in precedenceResolvedSuggestions)
+            {
+                var classification = classifications.FirstOrDefault(c => 
+                    c.ResourceType == suggestion.ResourceType && 
+                    c.Path == (suggestion.ResourceType + "." + suggestion.TargetPath));
+                
+                if (classification != null)
+                {
+                    var scoreBreakdown = _confidenceScorer.CalculateScore(
+                        suggestion,
+                        classification,
+                        existingRules);
+                    
+                    suggestion.ConfidenceScore = scoreBreakdown.TotalScore;
+                    suggestion.ConfidenceLevel = MapConfidenceLevel(scoreBreakdown.TotalScore);
+                }
+            }
             
             // Step 5: Filter by minimum score
-            var filteredSuggestions = candidateSuggestions
+            var filteredSuggestions = precedenceResolvedSuggestions
                 .Where(s => s.ConfidenceScore >= minConfidenceScore)
                 .ToList();
             
