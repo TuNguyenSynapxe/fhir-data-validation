@@ -28,7 +28,9 @@ public class UnifiedErrorModelBuilderTests
     {
         _navigationServiceMock = new Mock<ISmartPathNavigationService>();
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<UnifiedErrorModelBuilder>.Instance;
-        _builder = new UnifiedErrorModelBuilder(_navigationServiceMock.Object, logger);
+        var classifierLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<BaseRuleClassifier>.Instance;
+        var classifier = new BaseRuleClassifier(classifierLogger);
+        _builder = new UnifiedErrorModelBuilder(_navigationServiceMock.Object, logger, classifier);
         _testBundle = CreateTestBundle();
         
         SetupDefaultNavigationMock();

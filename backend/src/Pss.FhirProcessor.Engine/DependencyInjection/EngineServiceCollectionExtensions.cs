@@ -90,6 +90,10 @@ public static class EngineServiceCollectionExtensions
         });
         
         services.AddScoped<ISmartPathNavigationService, SmartPathNavigationService>();
+        
+        // Register BaseRuleClassifier for SPEC_HINT → STRUCTURE classification
+        services.AddSingleton<BaseRuleClassifier>();
+        
         services.AddScoped<IUnifiedErrorModelBuilder, UnifiedErrorModelBuilder>();
         
         // Register severity resolver for validation class-aware severity resolution

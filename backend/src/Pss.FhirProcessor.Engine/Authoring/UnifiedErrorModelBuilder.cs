@@ -15,11 +15,16 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
 {
     private readonly ISmartPathNavigationService _navigationService;
     private readonly ILogger<UnifiedErrorModelBuilder> _logger;
+    private readonly BaseRuleClassifier _ruleClassifier;
     
-    public UnifiedErrorModelBuilder(ISmartPathNavigationService navigationService, ILogger<UnifiedErrorModelBuilder> logger)
+    public UnifiedErrorModelBuilder(
+        ISmartPathNavigationService navigationService, 
+        ILogger<UnifiedErrorModelBuilder> logger,
+        BaseRuleClassifier ruleClassifier)
     {
         _navigationService = navigationService;
         _logger = logger;
+        _ruleClassifier = ruleClassifier;
     }
     
     /// <summary>
@@ -459,27 +464,50 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
             rawJson = default;
         }
         
+        // Track classification statistics for logging
+        int upgradedToStructure = 0;
+        int remainedSpecHint = 0;
+        
         foreach (var issue in issues)
         {
+            // CLASSIFICATION: Determine if this should be STRUCTURE (blocking) or SPEC_HINT (advisory)
+            var classification = _ruleClassifier.Classify(issue);
+            
+            // Track statistics
+            if (classification.Source == "STRUCTURE")
+            {
+                upgradedToStructure++;
+                _logger.LogDebug("Upgraded '{Path}' to STRUCTURE: {Reason} (Category: {Category})", 
+                    issue.Path, classification.Reason, classification.Category);
+            }
+            else
+            {
+                remainedSpecHint++;
+            }
+            
             // METADATA-DRIVEN: Use IsConditional flag explicitly (no path parsing)
             bool isConditional = issue.IsConditional;
             
             var error = new ValidationError
             {
-                Source = "SPEC_HINT",
-                Severity = issue.Severity,
+                Source = classification.Source,  // UPGRADED: Use classified source
+                Severity = classification.Severity,  // UPGRADED: Use classified severity
                 ResourceType = issue.ResourceType,
                 Path = issue.Path,
                 JsonPointer = issue.JsonPointer,
                 ErrorCode = isConditional ? "SPEC_REQUIRED_CONDITIONAL" : "MISSING_REQUIRED_FIELD",
-                Message = $"{issue.Reason} This is advisory only and does not block validation.",
+                Message = classification.Source == "STRUCTURE" 
+                    ? $"{issue.Reason}" // Blocking error - no advisory suffix
+                    : $"{issue.Reason} This is advisory only and does not block validation.", // Advisory
                 Details = new Dictionary<string, object>
                 {
                     ["reason"] = issue.Reason,
-                    ["advisory"] = true,
+                    ["advisory"] = classification.Source == "SPEC_HINT", // UPDATED: Based on classification
                     ["source"] = "HL7",
                     ["isConditional"] = isConditional,
-                    ["appliesToEach"] = issue.AppliesToEach
+                    ["appliesToEach"] = issue.AppliesToEach,
+                    ["classificationReason"] = classification.Reason,
+                    ["classificationCategory"] = classification.Category.ToString()
                 },
                 Explanation = ValidationExplanationService.ForSpecHint(issue.Reason, issue.Path)
             };
@@ -522,6 +550,11 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
             
             errors.Add(error);
         }
+        
+        // Log classification summary
+        _logger.LogInformation(
+            "SpecHint classification complete: {UpgradedCount} upgraded to STRUCTURE, {RemainingCount} remain SPEC_HINT",
+            upgradedToStructure, remainedSpecHint);
         
         return errors;
     }

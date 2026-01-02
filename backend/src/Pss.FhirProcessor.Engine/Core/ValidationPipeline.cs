@@ -116,9 +116,21 @@ public class ValidationPipeline : IValidationPipeline
             _logger.LogInformation("=== SPECHINT CHECKPOINT 1: ValidationMode={Mode}, IsFullAnalysis={IsFullAnalysis}", 
                 validationMode, isFullAnalysis);
             
+            // Step 1.9: JSON Node Structural Validation (Phase A) - PRIMARY AUTHORITY
+            // CRITICAL: This runs BEFORE Firely POCO parsing and BEFORE SpecHint
+            // Primary authority for structural errors: enum, primitive format, array shape, cardinality, required fields
+            // Uses JSON nodes + StructureDefinition metadata (not POCO)
+            _logger.LogInformation("Running JSON Node Structural Validation (Phase A) - PRIMARY AUTHORITY");
+            var structuralErrors = await _structuralValidator.ValidateAsync(request.BundleJson, request.FhirVersion, cancellationToken);
+            if (structuralErrors.Any())
+            {
+                _logger.LogInformation("JSON Node Structural Validation found {ErrorCount} errors", structuralErrors.Count);
+                response.Errors.AddRange(structuralErrors);
+            }
+            
             if (isFullAnalysis)
             {
-                _logger.LogInformation("=== SPECHINT CHECKPOINT 2: Starting JSON-based SpecHint validation");
+                _logger.LogInformation("=== SPECHINT CHECKPOINT 2: Starting JSON-based SpecHint validation (ADVISORY)");
                 
                 // Parse bundle for optional POCO-based advanced hints
                 // This is OPTIONAL - SpecHint will run with JSON-only if this fails
@@ -144,18 +156,6 @@ public class ValidationPipeline : IValidationPipeline
             else
             {
                 _logger.LogInformation("=== SPECHINT CHECKPOINT X: Not in full analysis mode (mode={Mode}), skipping SpecHint", validationMode);
-            }
-            
-            // Step 1.9: JSON Node Structural Validation (Phase A)
-            // CRITICAL: This runs BEFORE Firely POCO parsing
-            // Primary authority for structural errors: enum, primitive format, array shape, cardinality, required fields
-            // Uses JSON nodes + StructureDefinition metadata (not POCO)
-            _logger.LogInformation("Running JSON Node Structural Validation (Phase A)");
-            var structuralErrors = await _structuralValidator.ValidateAsync(request.BundleJson, request.FhirVersion, cancellationToken);
-            if (structuralErrors.Any())
-            {
-                _logger.LogInformation("JSON Node Structural Validation found {ErrorCount} errors", structuralErrors.Count);
-                response.Errors.AddRange(structuralErrors);
             }
             
             // Step 2: Firely Structural Validation (authoritative)

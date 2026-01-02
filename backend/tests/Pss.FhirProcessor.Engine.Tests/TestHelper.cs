@@ -272,7 +272,9 @@ public static class TestHelper
     {
         var navigationService = CreateNavigationService();
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<UnifiedErrorModelBuilder>.Instance;
-        return new UnifiedErrorModelBuilder(navigationService, logger);
+        var classifierLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<BaseRuleClassifier>.Instance;
+        var classifier = new BaseRuleClassifier(classifierLogger);
+        return new UnifiedErrorModelBuilder(navigationService, logger, classifier);
     }
 
     public static ILintValidationService CreateLintValidationService()

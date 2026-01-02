@@ -30,7 +30,9 @@ public class SpecHintInstanceScopedTests
         var navLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<SmartPathNavigationService>.Instance;
         _navigationService = new SmartPathNavigationService(jsonResolver, navLogger);
         var mockLogger = new Mock<ILogger<UnifiedErrorModelBuilder>>();
-        _errorBuilder = new UnifiedErrorModelBuilder(_navigationService, mockLogger.Object);
+        var classifierLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<BaseRuleClassifier>.Instance;
+        var classifier = new BaseRuleClassifier(classifierLogger);
+        _errorBuilder = new UnifiedErrorModelBuilder(_navigationService, mockLogger.Object, classifier);
         _specHintService = new SpecHintService();
     }
 

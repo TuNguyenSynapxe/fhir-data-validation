@@ -28,7 +28,9 @@ public class SpecHintMetadataTests
         var navLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<SmartPathNavigationService>.Instance;
         var navService = new SmartPathNavigationService(jsonResolver, navLogger);
         var builderLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<UnifiedErrorModelBuilder>.Instance;
-        _errorBuilder = new UnifiedErrorModelBuilder(navService, builderLogger);
+        var classifierLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<BaseRuleClassifier>.Instance;
+        var classifier = new BaseRuleClassifier(classifierLogger);
+        _errorBuilder = new UnifiedErrorModelBuilder(navService, builderLogger, classifier);
         _parser = new FhirJsonParser();
     }
 

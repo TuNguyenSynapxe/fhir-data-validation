@@ -159,12 +159,17 @@ public class FhirR4ModelResolverService : IFhirModelResolverService
                 typeString = "Element";
             }
             
+            // Extract cardinality from property mapping
+            // IsMandatoryElement indicates if this field is required (min >= 1)
+            var min = propMapping.IsMandatoryElement ? 1 : 0;
+            var max = propMapping.IsCollection ? "*" : "1";
+            
             var element = new ElementDefinition
             {
                 Path = elementPath,
                 ElementId = elementPath,
-                Min = 0,
-                Max = propMapping.IsCollection ? "*" : "1"
+                Min = min,
+                Max = max
             };
 
             element.Type = new List<ElementDefinition.TypeRefComponent>
