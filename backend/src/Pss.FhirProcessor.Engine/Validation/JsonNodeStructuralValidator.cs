@@ -605,7 +605,15 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
 
     private static bool IsPrimitiveType(string type)
     {
-        return type.ToLowerInvariant() switch
+        var lowerType = type.ToLowerInvariant();
+        
+        // Handle generic types like "Code`1"
+        if (lowerType.Contains('`'))
+        {
+            lowerType = lowerType.Substring(0, lowerType.IndexOf('`'));
+        }
+        
+        return lowerType switch
         {
             "boolean" or "integer" or "string" or "decimal" or "uri" or "url" or
             "canonical" or "base64binary" or "instant" or "date" or "datetime" or

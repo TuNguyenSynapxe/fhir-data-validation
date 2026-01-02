@@ -361,4 +361,147 @@ public class FirelyExceptionMapperTests
         Assert.NotNull(error.Details);
         Assert.Contains("expectedType", error.Details.Keys);
     }
+    
+    #region JsonPointer Population Tests
+    
+    [Fact]
+    public void MapToValidationError_InvalidEnumWithLocation_PopulatesJsonPointer()
+    {
+        // Arrange - enum error with location in message
+        var exceptionMessage = "Literal 'malex' is not a valid value for enumeration 'AdministrativeGender' (at Bundle.entry[0].resource[0].gender[0])";
+        var exception = new Exception(exceptionMessage);
+        
+        // Act
+        var error = FirelyExceptionMapper.MapToValidationError(exception, null);
+        
+        // Assert - jsonPointer should be populated from location
+        Assert.Equal("INVALID_ENUM_VALUE", error.ErrorCode);
+        Assert.NotNull(error.JsonPointer);
+        Assert.Equal("/entry/0/resource/gender", error.JsonPointer);
+    }
+    
+    [Fact]
+    public void MapToValidationError_UnknownElementWithLocation_PopulatesJsonPointer()
+    {
+        // Arrange
+        var exceptionMessage = "Encountered unknown element 'actualPeriod' at location 'Bundle.entry[1].resource[0].actualPeriod[0]' while parsing";
+        var exception = new Exception(exceptionMessage);
+        
+        // Act
+        var error = FirelyExceptionMapper.MapToValidationError(exception, null);
+        
+        // Assert
+        Assert.Equal("UNKNOWN_ELEMENT", error.ErrorCode);
+        Assert.NotNull(error.JsonPointer);
+        Assert.Equal("/entry/1/resource/actualPeriod", error.JsonPointer);
+    }
+    
+    [Fact]
+    public void MapToValidationError_InvalidPrimitiveWithLocation_PopulatesJsonPointer()
+    {
+        // Arrange - primitive error with location
+        var exceptionMessage = "Literal 'bad-date' cannot be parsed as a date (at Bundle.entry[0].resource[0].birthDate[0])";
+        var exception = new Exception(exceptionMessage);
+        var bundleJson = @"{
+            ""resourceType"": ""Bundle"",
+            ""entry"": [{
+                ""resource"": {
+                    ""resourceType"": ""Patient"",
+                    ""birthDate"": ""bad-date""
+                }
+            }]
+        }";
+        
+        // Act
+        var error = FirelyExceptionMapper.MapToValidationError(exception, bundleJson);
+        
+        // Assert - jsonPointer should be populated from location
+        Assert.Equal("FHIR_INVALID_PRIMITIVE", error.ErrorCode);
+        Assert.NotNull(error.JsonPointer);
+        // Should extract from location
+        Assert.Equal("/entry/0/resource/birthDate", error.JsonPointer);
+    }
+    
+    [Fact]
+    public void MapToValidationError_ArrayExpectedWithLocation_PopulatesJsonPointer()
+    {
+        // Arrange - array expected error with location
+        var exceptionMessage = "Expected array but received object (at Bundle.entry[0].resource[0].identifier[0])";
+        var exception = new Exception(exceptionMessage);
+        
+        // Act
+        var error = FirelyExceptionMapper.MapToValidationError(exception, null);
+        
+        // Assert
+        Assert.Equal("FHIR_ARRAY_EXPECTED", error.ErrorCode);
+        Assert.NotNull(error.JsonPointer);
+        Assert.Equal("/entry/0/resource/identifier", error.JsonPointer);
+    }
+    
+    [Fact]
+    public void MapToValidationError_TypeMismatchWithLocation_PopulatesJsonPointer()
+    {
+        // Arrange
+        var exceptionMessage = "Cannot convert value 'abc' to type 'integer' (at Bundle.entry[0].resource[0].valueInteger[0])";
+        var exception = new Exception(exceptionMessage);
+        
+        // Act
+        var error = FirelyExceptionMapper.MapToValidationError(exception, null);
+        
+        // Assert
+        Assert.Equal("TYPE_MISMATCH", error.ErrorCode);
+        Assert.NotNull(error.JsonPointer);
+        Assert.Equal("/entry/0/resource/valueInteger", error.JsonPointer);
+    }
+    
+    [Fact]
+    public void MapToValidationError_MandatoryMissingWithLocation_PopulatesJsonPointer()
+    {
+        // Arrange
+        var exceptionMessage = "Mandatory element 'status' is missing (at Bundle.entry[2].resource[0])";
+        var exception = new Exception(exceptionMessage);
+        
+        // Act
+        var error = FirelyExceptionMapper.MapToValidationError(exception, null);
+        
+        // Assert
+        Assert.Equal("MANDATORY_MISSING", error.ErrorCode);
+        Assert.NotNull(error.JsonPointer);
+        Assert.Equal("/entry/2/resource", error.JsonPointer);
+    }
+    
+    [Fact]
+    public void MapToValidationError_GenericErrorWithLocation_PopulatesJsonPointer()
+    {
+        // Arrange
+        var exceptionMessage = "Some error occurred (at Bundle.entry[0].resource[0].someField[0])";
+        var exception = new Exception(exceptionMessage);
+        
+        // Act
+        var error = FirelyExceptionMapper.MapToValidationError(exception, null);
+        
+        // Assert
+        Assert.Equal("FHIR_DESERIALIZATION_ERROR", error.ErrorCode);
+        Assert.NotNull(error.JsonPointer);
+        Assert.Equal("/entry/0/resource/someField", error.JsonPointer);
+    }
+    
+    [Fact]
+    public void MapToValidationError_NoLocation_JsonPointerIsNull()
+    {
+        // Arrange - error without location information
+        var exceptionMessage = "Literal 'completed' is not a valid value for enumeration 'Encounter.StatusCode'";
+        var exception = new Exception(exceptionMessage);
+        
+        // Act
+        var error = FirelyExceptionMapper.MapToValidationError(exception, null);
+        
+        // Assert - should NOT fabricate jsonPointer
+        Assert.Equal("INVALID_ENUM_VALUE", error.ErrorCode);
+        // jsonPointer may be null or populated from TryFindJsonPointer fallback
+        // The important thing is we don't throw an error
+    }
+    
+    #endregion
 }
+

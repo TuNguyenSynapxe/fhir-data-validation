@@ -172,6 +172,14 @@ public class FhirR4ModelResolverService : IFhirModelResolverService
                 new ElementDefinition.TypeRefComponent { Code = typeString }
             };
 
+            // Add binding information for enum fields
+            // This enables JSON node structural validation to enforce enum constraints
+            var binding = GetBindingForElement(elementPath);
+            if (binding != null)
+            {
+                element.Binding = binding;
+            }
+
             elements.Add(element);
 
             // Recursively expand complex types
@@ -190,5 +198,36 @@ public class FhirR4ModelResolverService : IFhirModelResolverService
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Returns binding information for well-known enum fields.
+    /// This enables JSON node structural validation without requiring full StructureDefinition expansion.
+    /// </summary>
+    private ElementDefinition.ElementDefinitionBindingComponent? GetBindingForElement(string elementPath)
+    {
+        // Map common enum fields to their ValueSet URLs
+        var bindings = new Dictionary<string, (string ValueSetUrl, BindingStrength Strength)>
+        {
+            ["Patient.gender"] = ("http://hl7.org/fhir/ValueSet/administrative-gender", BindingStrength.Required),
+            ["Observation.status"] = ("http://hl7.org/fhir/ValueSet/observation-status", BindingStrength.Required),
+            ["Bundle.type"] = ("http://hl7.org/fhir/ValueSet/bundle-type", BindingStrength.Required),
+            ["Encounter.status"] = ("http://hl7.org/fhir/ValueSet/encounter-status", BindingStrength.Required),
+            ["MedicationRequest.status"] = ("http://hl7.org/fhir/ValueSet/medicationrequest-status", BindingStrength.Required),
+            ["Condition.clinicalStatus"] = ("http://hl7.org/fhir/ValueSet/condition-clinical", BindingStrength.Required),
+            ["AllergyIntolerance.clinicalStatus"] = ("http://hl7.org/fhir/ValueSet/allergyintolerance-clinical", BindingStrength.Required),
+            ["AllergyIntolerance.verificationStatus"] = ("http://hl7.org/fhir/ValueSet/allergyintolerance-verification", BindingStrength.Required),
+        };
+
+        if (bindings.TryGetValue(elementPath, out var binding))
+        {
+            return new ElementDefinition.ElementDefinitionBindingComponent
+            {
+                ValueSet = binding.ValueSetUrl,
+                Strength = binding.Strength
+            };
+        }
+
+        return null;
     }
 }

@@ -271,11 +271,21 @@ public static class FirelyExceptionMapper
             ["fullMessage"] = exceptionMessage
         };
         
+        // Attempt to extract location from exception message and resolve jsonPointer
+        string? jsonPointer = null;
+        var locationMatch = Regex.Match(exceptionMessage, @"\(at\s+(?:location\s+)?(.+?)\)\s*$", RegexOptions.IgnoreCase);
+        if (locationMatch.Success)
+        {
+            var location = locationMatch.Groups[1].Value.Trim().Trim('\'', '\"');
+            jsonPointer = ConvertFhirPathToJsonPointer(location);
+        }
+        
         return new ValidationError
         {
             Source = "FHIR",
             Severity = "error",
             ErrorCode = "TYPE_MISMATCH",
+            JsonPointer = jsonPointer,
             Message = $"Value cannot be converted to expected type '{expectedType}'",
             Details = details
         };
@@ -290,12 +300,22 @@ public static class FirelyExceptionMapper
             ["fullMessage"] = exceptionMessage
         };
         
+        // Attempt to extract location from exception message and resolve jsonPointer
+        string? jsonPointer = null;
+        var locationMatch = Regex.Match(exceptionMessage, @"\(at\s+(?:location\s+)?(.+?)\)\s*$", RegexOptions.IgnoreCase);
+        if (locationMatch.Success)
+        {
+            var location = locationMatch.Groups[1].Value.Trim().Trim('\'', '\"');
+            jsonPointer = ConvertFhirPathToJsonPointer(location);
+        }
+        
         return new ValidationError
         {
             Source = "FHIR",
             Severity = "error",
             ErrorCode = "MANDATORY_MISSING",
             Path = missingElement,
+            JsonPointer = jsonPointer,
             Message = $"Mandatory element '{missingElement}' is missing from the resource",
             Details = details
         };
@@ -309,11 +329,21 @@ public static class FirelyExceptionMapper
             ["fullMessage"] = exceptionMessage
         };
         
+        // Attempt to extract location from exception message and resolve jsonPointer
+        string? jsonPointer = null;
+        var locationMatch = Regex.Match(exceptionMessage, @"\(at\s+(?:location\s+)?(.+?)\)\s*$", RegexOptions.IgnoreCase);
+        if (locationMatch.Success)
+        {
+            var location = locationMatch.Groups[1].Value.Trim().Trim('\'', '\"');
+            jsonPointer = ConvertFhirPathToJsonPointer(location);
+        }
+        
         return new ValidationError
         {
             Source = "FHIR",
             Severity = "error",
             ErrorCode = "FHIR_DESERIALIZATION_ERROR",
+            JsonPointer = jsonPointer,
             Message = $"FHIR deserialization failed: {exceptionMessage}",
             Details = details
         };
@@ -416,11 +446,27 @@ public static class FirelyExceptionMapper
         // CRITICAL: Enforce canonical schema at runtime
         ValidationErrorDetailsValidator.Validate("FHIR_INVALID_PRIMITIVE", details);
         
+        // Attempt to extract location from exception message and resolve jsonPointer
+        string? jsonPointer = null;
+        var locationMatch = Regex.Match(exceptionMessage, @"\(at\s+(?:location\s+)?(.+?)\)\s*$", RegexOptions.IgnoreCase);
+        if (locationMatch.Success)
+        {
+            var location = locationMatch.Groups[1].Value.Trim().Trim('\'', '\"');
+            jsonPointer = ConvertFhirPathToJsonPointer(location);
+        }
+        
+        // Fallback: try to find field in JSON by value
+        if (jsonPointer == null)
+        {
+            jsonPointer = TryFindJsonPointer(rawBundleJson, expectedType.ToLowerInvariant(), invalidValue);
+        }
+        
         return new ValidationError
         {
             Source = "FHIR",
             Severity = "error",
             ErrorCode = "FHIR_INVALID_PRIMITIVE",
+            JsonPointer = jsonPointer,
             Message = $"Invalid {expectedType} value: '{invalidValue}'",
             Details = details
         };
@@ -441,11 +487,21 @@ public static class FirelyExceptionMapper
         // CRITICAL: Enforce canonical schema at runtime
         ValidationErrorDetailsValidator.Validate("FHIR_ARRAY_EXPECTED", details);
         
+        // Attempt to extract location from exception message and resolve jsonPointer
+        string? jsonPointer = null;
+        var locationMatch = Regex.Match(exceptionMessage, @"\(at\s+(?:location\s+)?(.+?)\)\s*$", RegexOptions.IgnoreCase);
+        if (locationMatch.Success)
+        {
+            var location = locationMatch.Groups[1].Value.Trim().Trim('\'', '\"');
+            jsonPointer = ConvertFhirPathToJsonPointer(location);
+        }
+        
         return new ValidationError
         {
             Source = "FHIR",
             Severity = "error",
             ErrorCode = "FHIR_ARRAY_EXPECTED",
+            JsonPointer = jsonPointer,
             Message = $"Expected array but received {actualType}",
             Details = details
         };

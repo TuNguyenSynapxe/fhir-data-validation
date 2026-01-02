@@ -88,7 +88,8 @@ public class ArchitectureContractTests
         var enumError = result.Errors.FirstOrDefault(e => e.ErrorCode == "INVALID_ENUM_VALUE");
         enumError.Should().NotBeNull("invalid enum must produce INVALID_ENUM_VALUE error");
         enumError!.JsonPointer.Should().NotBeNullOrEmpty("enum error must have jsonPointer");
-        enumError.Details.Should().ContainKey("actualValue");
+        enumError.Details.Should().ContainKey("actual");
+        enumError.Details.Should().ContainKey("allowed");
     }
 
     [Fact]
