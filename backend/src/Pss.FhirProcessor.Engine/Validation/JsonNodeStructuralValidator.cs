@@ -78,6 +78,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
     private readonly IFhirSchemaService _schemaService;
     private readonly IFhirEnumIndex _enumIndex;
     private readonly ILogger<JsonNodeStructuralValidator> _logger;
+    private readonly ValidationErrorDetailsValidator _detailsValidator;
 
     // Primitive type validators
     private static readonly Dictionary<string, Func<string, bool>> PrimitiveValidators = new()
@@ -102,11 +103,13 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
     public JsonNodeStructuralValidator(
         IFhirSchemaService schemaService,
         IFhirEnumIndex enumIndex,
-        ILogger<JsonNodeStructuralValidator> logger)
+        ILogger<JsonNodeStructuralValidator> logger,
+        ValidationErrorDetailsValidator? detailsValidator = null)
     {
         _schemaService = schemaService;
         _enumIndex = enumIndex;
         _logger = logger;
+        _detailsValidator = detailsValidator ?? new ValidationErrorDetailsValidator();
     }
 
     public async Task<List<ValidationError>> ValidateAsync(
@@ -509,7 +512,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             ["valueType"] = "enum"
         };
 
-        Models.ValidationErrorDetailsValidator.Validate("INVALID_ENUM_VALUE", details);
+        _detailsValidator.Validate("INVALID_ENUM_VALUE", details);
 
         return new ValidationError
         {
@@ -559,7 +562,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             ["reason"] = "ValueSet not supported by enum index"
         };
 
-        Models.ValidationErrorDetailsValidator.Validate("ENUM_VALIDATION_SKIPPED", details);
+        _detailsValidator.Validate("ENUM_VALIDATION_SKIPPED", details);
 
         return new ValidationError
         {
@@ -601,7 +604,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             ["reason"] = reason
         };
 
-        Models.ValidationErrorDetailsValidator.Validate(errorCode, details);
+        _detailsValidator.Validate(errorCode, details);
 
         return new ValidationError
         {
@@ -637,7 +640,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             ["actualType"] = actualType
         };
 
-        Models.ValidationErrorDetailsValidator.Validate("FHIR_ARRAY_EXPECTED", details);
+        _detailsValidator.Validate("FHIR_ARRAY_EXPECTED", details);
 
         return new ValidationError
         {
@@ -667,7 +670,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             ["actual"] = actual
         };
 
-        Models.ValidationErrorDetailsValidator.Validate("ARRAY_LENGTH_OUT_OF_RANGE", details);
+        _detailsValidator.Validate("ARRAY_LENGTH_OUT_OF_RANGE", details);
 
         var maxDisplay = max == int.MaxValue ? "*" : max.ToString();
         return new ValidationError
@@ -693,7 +696,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             ["required"] = true
         };
 
-        Models.ValidationErrorDetailsValidator.Validate("REQUIRED_FIELD_MISSING", details);
+        _detailsValidator.Validate("REQUIRED_FIELD_MISSING", details);
 
         return new ValidationError
         {
@@ -879,7 +882,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
                 ["count"] = valueXFields.Count
             };
 
-            Models.ValidationErrorDetailsValidator.Validate("FHIR_MULTIPLE_VALUE_X", details);
+            _detailsValidator.Validate("FHIR_MULTIPLE_VALUE_X", details);
 
             errors.Add(new ValidationError
             {
@@ -959,7 +962,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
                     ["reference"] = referenceValue
                 };
 
-                Models.ValidationErrorDetailsValidator.Validate("FHIR_INVALID_REFERENCE_FORMAT", details);
+                _detailsValidator.Validate("FHIR_INVALID_REFERENCE_FORMAT", details);
 
                 errors.Add(new ValidationError
                 {
@@ -986,7 +989,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
                 ["hasDisplay"] = hasDisplay
             };
 
-            Models.ValidationErrorDetailsValidator.Validate("FHIR_REFERENCE_INVALID_COMBINATION", details);
+            _detailsValidator.Validate("FHIR_REFERENCE_INVALID_COMBINATION", details);
 
             errors.Add(new ValidationError
             {
@@ -1102,7 +1105,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
                 ["urlType"] = hasUrl ? urlElement.ValueKind.ToString() : "missing"
             };
 
-            Models.ValidationErrorDetailsValidator.Validate("FHIR_EXTENSION_MISSING_URL", details);
+            _detailsValidator.Validate("FHIR_EXTENSION_MISSING_URL", details);
 
             errors.Add(new ValidationError
             {
@@ -1160,7 +1163,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
                 ["shapeReason"] = shapeReason
             };
 
-            Models.ValidationErrorDetailsValidator.Validate("FHIR_EXTENSION_INVALID_SHAPE", details);
+            _detailsValidator.Validate("FHIR_EXTENSION_INVALID_SHAPE", details);
 
             var message = shapeReason == "both"
                 ? "FHIR Extension elements must contain either a single value[x] or nested extensions, but not both."

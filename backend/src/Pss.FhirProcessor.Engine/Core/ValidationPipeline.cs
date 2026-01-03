@@ -4,6 +4,8 @@ using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
 using Microsoft.Extensions.Logging;
 using Pss.FhirProcessor.Engine.Models;
+using Pss.FhirProcessor.Engine.Models.Questions;
+using Pss.FhirProcessor.Engine.Models.Terminology;
 using Pss.FhirProcessor.Engine.RuleEngines;
 using Pss.FhirProcessor.Engine.Firely;
 using Pss.FhirProcessor.Engine.Authoring;
@@ -168,14 +170,16 @@ public class ValidationPipeline : IValidationPipeline
             // Even if Firely found structural errors, we still attempt parsing to get as many errors as possible
             // Use lenient parser to maximize success rate
             Bundle? bundle = null;
-            var ruleSet = ParseRuleSet(request.RulesJson);
+            var ruleSet = ParseRuleSet(request.RulesJson, request.CodeSystemsJson);
             var codeMaster = ParseCodeMaster(request.CodeMasterJson);
             
             if (ruleSet != null)
             {
                 response.Metadata.RulesVersion = ruleSet.Version;
-                // Set Project ID for terminology resolution
+                // DLL-ISOLATION: Set Project ID as metadata only (deprecated for loading)
+                #pragma warning disable CS0618 // Type or member is obsolete
                 ruleSet.Project = request.ProjectId;
+                #pragma warning restore CS0618
             }
             
             // Try to parse bundle for downstream validation
@@ -284,12 +288,48 @@ public class ValidationPipeline : IValidationPipeline
             // Step 4.5: QuestionAnswer Validation (Phase 3D)
             // Validates Question/Answer constraints based on QuestionAnswer rules
             // OPTIMIZATION (Phase 3.5): Compute traversal context once per rule and reuse
+            // DLL-ISOLATION: Uses pre-loaded questions from ValidationRequest (stateless)
             if (_questionAnswerValidator != null && _contextProvider != null && bundle != null && ruleSet?.Rules != null && ruleSet.Rules.Any())
             {
                 try
                 {
                     // Extract projectId from request if available
+                    #pragma warning disable CS0618 // Type or member is obsolete
                     var projectId = request.ProjectId ?? "default";
+                    #pragma warning restore CS0618
+                    
+                    // DLL-ISOLATION: Parse pre-loaded questions (stateless mode)
+                    // First try: RuleSet.Questions (embedded in rules.json)
+                    // Second try: ValidationRequest.QuestionsJson (separate payload)
+                    // Fallback: null triggers IQuestionService loading (authoring mode)
+                    Question[]? questions = null;
+                    
+                    if (ruleSet.Questions != null && ruleSet.Questions.Any())
+                    {
+                        _logger.LogInformation("Using {QuestionCount} pre-loaded questions from RuleSet (stateless mode)", ruleSet.Questions.Count);
+                        questions = ruleSet.Questions.ToArray();
+                    }
+                    else if (!string.IsNullOrWhiteSpace(request.QuestionsJson))
+                    {
+                        _logger.LogInformation("Parsing questions from ValidationRequest.QuestionsJson (stateless mode)");
+                        try
+                        {
+                            var questionsList = JsonSerializer.Deserialize<List<Question>>(request.QuestionsJson, new JsonSerializerOptions
+                            {
+                                PropertyNameCaseInsensitive = true
+                            });
+                            questions = questionsList?.ToArray();
+                            _logger.LogInformation("Parsed {QuestionCount} questions from ValidationRequest", questions?.Length ?? 0);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to parse QuestionsJson: {Message}", ex.Message);
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("No pre-loaded questions found. QuestionAnswer validation will use IQuestionService fallback (authoring mode).");
+                    }
                     
                     // Build execution contexts once per rule (Phase 3.5 optimization)
                     var questionAnswerRules = ruleSet.Rules
@@ -318,7 +358,8 @@ public class ValidationPipeline : IValidationPipeline
                         
                         _logger.LogDebug("Executing QuestionAnswer validation with pre-computed contexts");
                         
-                        var questionAnswerResult = await _questionAnswerValidator.ValidateAsync(contexts, projectId, cancellationToken);
+                        // DLL-ISOLATION: Pass pre-loaded questions (stateless)
+                        var questionAnswerResult = await _questionAnswerValidator.ValidateAsync(contexts, projectId, questions, cancellationToken);
                         var qaErrors = await _errorBuilder.FromRuleErrorsAsync(questionAnswerResult.Errors, request.BundleJson, bundle, cancellationToken);
                         response.Errors.AddRange(qaErrors);
                         
@@ -619,7 +660,7 @@ public class ValidationPipeline : IValidationPipeline
         public List<ValidationError> Errors { get; set; } = new();
     }
     
-    private RuleSet? ParseRuleSet(string? rulesJson)
+    private RuleSet? ParseRuleSet(string? rulesJson, string? codeSystemsJson = null)
     {
         try
         {
@@ -630,6 +671,37 @@ public class ValidationPipeline : IValidationPipeline
             {
                 PropertyNameCaseInsensitive = true
             });
+            
+            if (ruleSet == null)
+                return null;
+            
+            // DLL-ISOLATION: Parse and enrich RuleSet with CodeSystems from ValidationRequest
+            // This enables stateless validation without projectId-based loading
+            if (!string.IsNullOrWhiteSpace(codeSystemsJson) && (ruleSet.CodeSystems == null || !ruleSet.CodeSystems.Any()))
+            {
+                try
+                {
+                    _logger.LogInformation("Parsing CodeSystems from ValidationRequest.CodeSystemsJson (stateless mode)");
+                    var codeSystems = JsonSerializer.Deserialize<List<Models.Terminology.CodeSystem>>(codeSystemsJson, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+                    
+                    if (codeSystems != null && codeSystems.Any())
+                    {
+                        ruleSet.CodeSystems = codeSystems;
+                        _logger.LogInformation("Enriched RuleSet with {CodeSystemCount} CodeSystems from ValidationRequest", codeSystems.Count);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse CodeSystemsJson: {Message}", ex.Message);
+                }
+            }
+            else if (ruleSet.CodeSystems != null && ruleSet.CodeSystems.Any())
+            {
+                _logger.LogInformation("Using {CodeSystemCount} CodeSystems embedded in RuleSet", ruleSet.CodeSystems.Count);
+            }
             
             // REMOVED: ErrorCode enforcement (backend-owned, not authoring requirement)
             // Rules may now deserialize without errorCode field

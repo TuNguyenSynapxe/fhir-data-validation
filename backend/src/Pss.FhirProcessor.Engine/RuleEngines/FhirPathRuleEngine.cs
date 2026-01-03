@@ -46,8 +46,19 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         if (ruleSet?.Rules == null || ruleSet.Rules.Count == 0)
             return errors;
         
-        // Extract projectId from RuleSet for terminology resolution
-        var projectId = ruleSet.Project;
+        // DLL-ISOLATION: Extract pre-loaded CodeSystems from RuleSet (stateless)
+        // Fallback: Use projectId for backward compatibility (authoring mode)
+        var codeSystems = ruleSet.CodeSystems?.ToArray();
+        var projectId = ruleSet.Project;  // Metadata only (deprecated for loading)
+        
+        if (codeSystems != null && codeSystems.Length > 0)
+        {
+            _logger.LogInformation("Using {CodeSystemCount} pre-loaded CodeSystems from RuleSet (stateless mode)", codeSystems.Length);
+        }
+        else if (!string.IsNullOrWhiteSpace(projectId))
+        {
+            _logger.LogWarning("No pre-loaded CodeSystems. Will fall back to ITerminologyService (authoring mode). ProjectId={ProjectId}", projectId);
+        }
         
         // Step 1: Validate bundle-level rules (RequiredResources / Resource)
         var bundleLevelRules = ruleSet.Rules
@@ -131,7 +142,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                 // Validate each selected resource against the rule
                 foreach (var (resource, entryIndex) in selectedResources)
                 {
-                    var ruleErrors = await ValidateRuleAsync(resource, rule, entryIndex, projectId, cancellationToken);
+                    var ruleErrors = await ValidateRuleAsync(resource, rule, entryIndex, codeSystems, projectId, cancellationToken);
                     errors.AddRange(ruleErrors);
                 }
             }
@@ -872,7 +883,13 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
         }
     }
     
-    private async Task<List<RuleValidationError>> ValidateRuleAsync(Resource resource, RuleDefinition rule, int entryIndex, string? projectId, CancellationToken cancellationToken)
+    private async Task<List<RuleValidationError>> ValidateRuleAsync(
+        Resource resource, 
+        RuleDefinition rule, 
+        int entryIndex, 
+        Models.Terminology.CodeSystem[]? codeSystems, 
+        string? projectId, 
+        CancellationToken cancellationToken)
     {
         var errors = new List<RuleValidationError>();
         
@@ -904,7 +921,7 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
                     break;
                 
                 case "CODESYSTEM":
-                    errors.AddRange(await ValidateCodeSystemAsync(resource, rule, entryIndex, projectId));
+                    errors.AddRange(await ValidateCodeSystemAsync(resource, rule, entryIndex, codeSystems, projectId));
                     break;
                 
                 case "CUSTOMFHIRPATH":
@@ -1447,13 +1464,18 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
     /// - Details["violation"] distinguishes "system" vs "code" vs "codeSetId" failure
     /// - Frontend UI must treat CodeSystem errorCode as read-only
     /// </summary>
-    private async Task<List<RuleValidationError>> ValidateCodeSystemAsync(Resource resource, RuleDefinition rule, int entryIndex, string? projectId)
+    private async Task<List<RuleValidationError>> ValidateCodeSystemAsync(
+        Resource resource, 
+        RuleDefinition rule, 
+        int entryIndex, 
+        Models.Terminology.CodeSystem[]? codeSystems, 
+        string? projectId)
     {
         var errors = new List<RuleValidationError>();
         
         var fieldPath = GetFieldPathForRule(rule);
-        _logger.LogInformation("ValidateCodeSystem: Validating rule {RuleId} for resource {ResourceType} at fieldPath {FieldPath}, projectId={ProjectId}", 
-            rule.Id, resource.TypeName, fieldPath, projectId ?? "null");
+        _logger.LogInformation("ValidateCodeSystem: Validating rule {RuleId} for resource {ResourceType} at fieldPath {FieldPath}", 
+            rule.Id, resource.TypeName, fieldPath);
         
         // Validate params structure
         if (rule.Params == null || !rule.Params.ContainsKey("codeSetId") || !rule.Params.ContainsKey("system"))
@@ -1502,18 +1524,40 @@ public class FhirPathRuleEngine : IFhirPathRuleEngine
             return errors;
         }
         
-        // Resolve CodeSet from Terminology module
+        // DLL-ISOLATION: Resolve CodeSet from pre-loaded CodeSystems (stateless)
+        // Fallback: Load from ITerminologyService (authoring mode)
         Models.Terminology.CodeSystem? codeSet = null;
-        try
+        
+        // Primary: Use pre-loaded CodeSystems (stateless)
+        if (codeSystems != null && codeSystems.Length > 0)
         {
-            if (!string.IsNullOrWhiteSpace(projectId))
+            codeSet = codeSystems.FirstOrDefault(cs => cs.Url == expectedSystem);
+            if (codeSet != null)
             {
-                codeSet = await _terminologyService.GetCodeSystemByUrlAsync(expectedSystem, CancellationToken.None);
+                _logger.LogDebug("ValidateCodeSystem: Found CodeSystem {System} in pre-loaded data (stateless)", expectedSystem);
+            }
+            else
+            {
+                _logger.LogDebug("ValidateCodeSystem: CodeSystem {System} not found in {Count} pre-loaded CodeSystems", expectedSystem, codeSystems.Length);
             }
         }
-        catch (Exception ex)
+        
+        // Fallback: Load from ITerminologyService (authoring mode)
+        if (codeSet == null && !string.IsNullOrWhiteSpace(projectId))
         {
-            _logger.LogError("ValidateCodeSystem: Error loading CodeSet {CodeSetId}: {ErrorMessage}", codeSetId, ex.Message);
+            try
+            {
+                _logger.LogWarning("ValidateCodeSystem: No pre-loaded CodeSystem for {System}, falling back to ITerminologyService (authoring mode)", expectedSystem);
+                codeSet = await _terminologyService.GetCodeSystemByUrlAsync(expectedSystem, CancellationToken.None);
+                if (codeSet != null)
+                {
+                    _logger.LogDebug("ValidateCodeSystem: Loaded CodeSystem {System} from ITerminologyService", expectedSystem);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "ValidateCodeSystem: Error loading CodeSet {CodeSetId} from ITerminologyService: {ErrorMessage}", codeSetId, ex.Message);
+            }
         }
         
         if (codeSet == null)

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Pss.FhirProcessor.Engine.Models;
 
@@ -21,14 +22,20 @@ namespace Pss.FhirProcessor.Engine.Models;
 /// - If present, MUST match schema for errorCode
 /// - Throws InvalidOperationException in Development
 /// - Logs warning in Production
+/// 
+/// DLL-ISOLATION: Instance class with injected ILogger (supports NullLogger for standalone DLL scenarios)
 /// </summary>
-public static class ValidationErrorDetailsValidator
+public class ValidationErrorDetailsValidator
 {
-    private static ILogger? _logger;
+    private readonly ILogger<ValidationErrorDetailsValidator> _logger;
     
-    public static void SetLogger(ILogger logger)
+    /// <summary>
+    /// Constructor with optional logger injection (DLL-safe)
+    /// </summary>
+    /// <param name="logger">Optional logger. If null, uses NullLogger (no-op logging for DLL scenarios)</param>
+    public ValidationErrorDetailsValidator(ILogger<ValidationErrorDetailsValidator>? logger = null)
     {
-        _logger = logger;
+        _logger = logger ?? NullLogger<ValidationErrorDetailsValidator>.Instance;
     }
     
     /// <summary>
@@ -36,7 +43,7 @@ public static class ValidationErrorDetailsValidator
     /// Throws InvalidOperationException in Development.
     /// Logs warning in Production.
     /// </summary>
-    public static void Validate(string errorCode, IDictionary<string, object>? details)
+    public void Validate(string errorCode, IDictionary<string, object>? details)
     {
         if (details == null)
             return; // details is optional
@@ -112,7 +119,7 @@ public static class ValidationErrorDetailsValidator
         }
     }
     
-    private static void ValidateValueNotAllowed(IDictionary<string, object> details, List<string> errors)
+    private void ValidateValueNotAllowed(IDictionary<string, object> details, List<string> errors)
     {
         RequireKey(details, "actual", errors, allowNull: true);
         RequireKey(details, "allowed", errors);
@@ -125,7 +132,7 @@ public static class ValidationErrorDetailsValidator
         }
     }
     
-    private static void ValidateInvalidEnumValue(IDictionary<string, object> details, List<string> errors)
+    private void ValidateInvalidEnumValue(IDictionary<string, object> details, List<string> errors)
     {
         RequireKey(details, "actual", errors, allowNull: true);
         RequireKey(details, "allowed", errors);
@@ -144,7 +151,7 @@ public static class ValidationErrorDetailsValidator
         }
     }    
     // Phase B.2 — Explicit warning when enum validation cannot be enforced
-    private static void ValidateEnumValidationSkipped(IDictionary<string, object> details, List<string> errors)
+    private void ValidateEnumValidationSkipped(IDictionary<string, object> details, List<string> errors)
     {
         RequireKey(details, "valueSet", errors);
         RequireKey(details, "bindingStrength", errors);
@@ -164,20 +171,20 @@ public static class ValidationErrorDetailsValidator
             }
         }
     }    
-    private static void ValidatePatternMismatch(IDictionary<string, object> details, List<string> errors)
+    private void ValidatePatternMismatch(IDictionary<string, object> details, List<string> errors)
     {
         RequireKey(details, "actual", errors, allowNull: true);
         RequireKey(details, "pattern", errors);
         // 'description' is optional
     }
     
-    private static void ValidateFixedValueMismatch(IDictionary<string, object> details, List<string> errors)
+    private void ValidateFixedValueMismatch(IDictionary<string, object> details, List<string> errors)
     {
         RequireKey(details, "actual", errors, allowNull: true);
         RequireKey(details, "expected", errors);
     }
     
-    private static void ValidateRequiredFieldMissing(IDictionary<string, object> details, List<string> errors)
+    private void ValidateRequiredFieldMissing(IDictionary<string, object> details, List<string> errors)
     {
         RequireKey(details, "required", errors);
         
@@ -188,7 +195,7 @@ public static class ValidationErrorDetailsValidator
         }
     }
     
-    private static void ValidateRequiredResourceMissing(IDictionary<string, object> details, List<string> errors)
+    private void ValidateRequiredResourceMissing(IDictionary<string, object> details, List<string> errors)
     {
         RequireKey(details, "requiredResourceType", errors);
         RequireKey(details, "actualResourceTypes", errors);
@@ -200,7 +207,7 @@ public static class ValidationErrorDetailsValidator
         }
     }
     
-    private static void ValidateArrayLengthOutOfRange(IDictionary<string, object> details, List<string> errors)
+    private void ValidateArrayLengthOutOfRange(IDictionary<string, object> details, List<string> errors)
     {
         RequireKey(details, "min", errors, allowNull: true);
         RequireKey(details, "max", errors, allowNull: true);
@@ -213,26 +220,26 @@ public static class ValidationErrorDetailsValidator
         }
     }
     
-    private static void ValidateCodeSystemMismatch(IDictionary<string, object> details, List<string> errors)
+    private void ValidateCodeSystemMismatch(IDictionary<string, object> details, List<string> errors)
     {
         RequireKey(details, "expectedSystem", errors);
         RequireKey(details, "actualSystem", errors, allowNull: true);
     }
     
-    private static void ValidateCodeNotInValueSet(IDictionary<string, object> details, List<string> errors)
+    private void ValidateCodeNotInValueSet(IDictionary<string, object> details, List<string> errors)
     {
         RequireKey(details, "system", errors);
         RequireKey(details, "code", errors);
         RequireKey(details, "valueSet", errors);
     }
     
-    private static void ValidateReferenceNotFound(IDictionary<string, object> details, List<string> errors)
+    private void ValidateReferenceNotFound(IDictionary<string, object> details, List<string> errors)
     {
         RequireKey(details, "reference", errors);
         // 'expectedType' is optional
     }
     
-    private static void ValidateReferenceTypeMismatch(IDictionary<string, object> details, List<string> errors)
+    private void ValidateReferenceTypeMismatch(IDictionary<string, object> details, List<string> errors)
     {
         RequireKey(details, "reference", errors);
         RequireKey(details, "expectedTypes", errors);
@@ -249,7 +256,7 @@ public static class ValidationErrorDetailsValidator
     /// Reserved for future Firely SDK integration.
     /// Canonical schema: { actual: string, expectedType: string, reason: string }
     /// </summary>
-    private static void ValidateFhirInvalidPrimitive(IDictionary<string, object> details, List<string> errors)
+    private void ValidateFhirInvalidPrimitive(IDictionary<string, object> details, List<string> errors)
     {
         RequireKey(details, "actual", errors);
         RequireKey(details, "expectedType", errors);
@@ -260,7 +267,7 @@ public static class ValidationErrorDetailsValidator
     /// Reserved for future Firely SDK integration.
     /// Canonical schema: { expectedType: "array", actualType: string }
     /// </summary>
-    private static void ValidateFhirArrayExpected(IDictionary<string, object> details, List<string> errors)
+    private void ValidateFhirArrayExpected(IDictionary<string, object> details, List<string> errors)
     {
         RequireKey(details, "expectedType", errors);
         RequireKey(details, "actualType", errors);
@@ -280,7 +287,7 @@ public static class ValidationErrorDetailsValidator
     /// Canonical schema: { violation: "question" | "answer" | "cardinality",
     ///                     questionCode?: string, answerCode?: string, expectedCardinality?: string }
     /// </summary>
-    private static void ValidateQuestionAnswerViolation(IDictionary<string, object> details, List<string> errors)
+    private void ValidateQuestionAnswerViolation(IDictionary<string, object> details, List<string> errors)
     {
         RequireKey(details, "violation", errors);
         

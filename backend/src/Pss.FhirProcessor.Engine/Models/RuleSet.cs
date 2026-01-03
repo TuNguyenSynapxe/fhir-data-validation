@@ -1,4 +1,6 @@
 using System.Text.Json.Serialization;
+using Pss.FhirProcessor.Engine.Models.Questions;
+using Pss.FhirProcessor.Engine.Models.Terminology;
 
 namespace Pss.FhirProcessor.Engine.Models;
 
@@ -10,6 +12,11 @@ public class RuleSet
     [JsonPropertyName("version")]
     public string Version { get; set; } = "1.0";
     
+    /// <summary>
+    /// Project identifier (metadata only).
+    /// WARNING: Do NOT use for data loading - violates DLL isolation.
+    /// All project data must be passed via Questions and CodeSystems fields.
+    /// </summary>
     [JsonPropertyName("project")]
     public string? Project { get; set; }
     
@@ -18,6 +25,24 @@ public class RuleSet
     
     [JsonPropertyName("rules")]
     public List<RuleDefinition> Rules { get; set; } = new();
+    
+    /// <summary>
+    /// Pre-loaded code systems for terminology validation.
+    /// Replaces projectId-based file/database loading.
+    /// Optional: Only required if rules use CodeSystem validation type.
+    /// </summary>
+    [JsonPropertyName("codeSystems")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<Terminology.CodeSystem>? CodeSystems { get; set; }
+    
+    /// <summary>
+    /// Pre-loaded questions for QuestionAnswer validation.
+    /// Replaces projectId-based file/database loading.
+    /// Optional: Only required if rules use QuestionAnswer validation type.
+    /// </summary>
+    [JsonPropertyName("questions")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<Question>? Questions { get; set; }
 }
 
 /// <summary>

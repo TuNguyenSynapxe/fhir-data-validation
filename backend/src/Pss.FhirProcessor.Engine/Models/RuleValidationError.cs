@@ -6,6 +6,9 @@ namespace Pss.FhirProcessor.Engine.Models;
 /// </summary>
 public class RuleValidationError
 {
+    // DLL-SAFE: Static validator with NullLogger for standalone scenarios
+    private static readonly ValidationErrorDetailsValidator _detailsValidator = new ValidationErrorDetailsValidator();
+
     public required string RuleId { get; set; }
     public required string RuleType { get; set; }
     public required string Severity { get; set; }
@@ -43,7 +46,7 @@ public class RuleValidationError
             // Validate schema if both ErrorCode and Details are present
             if (!string.IsNullOrEmpty(ErrorCode) && _details != null)
             {
-                ValidationErrorDetailsValidator.Validate(ErrorCode, _details);
+                _detailsValidator.Validate(ErrorCode, _details);
             }
         }
     }

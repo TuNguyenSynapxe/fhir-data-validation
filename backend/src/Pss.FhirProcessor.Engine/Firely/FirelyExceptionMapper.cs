@@ -14,6 +14,9 @@ namespace Pss.FhirProcessor.Engine.Firely;
 /// </summary>
 public static class FirelyExceptionMapper
 {
+    // DLL-SAFE: Static validator with NullLogger for standalone scenarios
+    private static readonly ValidationErrorDetailsValidator _detailsValidator = new ValidationErrorDetailsValidator();
+
     /// <summary>
     /// Maps a Firely parsing/deserialization exception to a ValidationError
     /// </summary>
@@ -158,7 +161,7 @@ public static class FirelyExceptionMapper
         };
         
         // Enforce schema
-        ValidationErrorDetailsValidator.Validate("INVALID_ENUM_VALUE", details);
+        _detailsValidator.Validate("INVALID_ENUM_VALUE", details);
         
         // Attempt to find location in JSON if we don't have it yet
         if (jsonPointer == null)
@@ -444,7 +447,7 @@ public static class FirelyExceptionMapper
         };
         
         // CRITICAL: Enforce canonical schema at runtime
-        ValidationErrorDetailsValidator.Validate("FHIR_INVALID_PRIMITIVE", details);
+        _detailsValidator.Validate("FHIR_INVALID_PRIMITIVE", details);
         
         // Attempt to extract location from exception message and resolve jsonPointer
         string? jsonPointer = null;
@@ -485,7 +488,7 @@ public static class FirelyExceptionMapper
         };
         
         // CRITICAL: Enforce canonical schema at runtime
-        ValidationErrorDetailsValidator.Validate("FHIR_ARRAY_EXPECTED", details);
+        _detailsValidator.Validate("FHIR_ARRAY_EXPECTED", details);
         
         // Attempt to extract location from exception message and resolve jsonPointer
         string? jsonPointer = null;

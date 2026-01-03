@@ -50,10 +50,30 @@ public class QuestionAnswerValidator
     /// Validate all QuestionAnswer rules in a bundle
     /// PUBLIC API: Maintains backward compatibility
     /// </summary>
+    [Obsolete("Use overload with preLoadedQuestions parameter for stateless validation. This method requires IQuestionService (file/DB access).")]
     public async Task<QuestionAnswerResult> ValidateAsync(
         Bundle bundle,
         RuleSet ruleSet,
         string projectId,
+        CancellationToken cancellationToken = default)
+    {
+        // Backward compatibility: delegate to new overload with null questions (triggers fallback)
+        return await ValidateAsync(bundle, ruleSet, projectId, preLoadedQuestions: null, cancellationToken);
+    }
+
+    /// <summary>
+    /// Validate all QuestionAnswer rules in a bundle (STATELESS, DLL-SAFE)
+    /// </summary>
+    /// <param name="bundle">FHIR Bundle to validate</param>
+    /// <param name="ruleSet">Rule definitions (must contain Questions field for stateless mode)</param>
+    /// <param name="projectId">Project identifier (metadata only, not used for loading)</param>
+    /// <param name="preLoadedQuestions">Pre-loaded questions (stateless). If null, falls back to IQuestionService.</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    public async Task<QuestionAnswerResult> ValidateAsync(
+        Bundle bundle,
+        RuleSet ruleSet,
+        string projectId,
+        Question[]? preLoadedQuestions,
         CancellationToken cancellationToken = default)
     {
         var result = new QuestionAnswerResult();
@@ -72,7 +92,7 @@ public class QuestionAnswerValidator
         {
             try
             {
-                var ruleErrors = await ValidateRuleAsync(bundle, rule, projectId, cancellationToken);
+                var ruleErrors = await ValidateRuleAsync(bundle, rule, projectId, preLoadedQuestions, cancellationToken);
                 result.Errors.AddRange(ruleErrors);
             }
             catch (Exception ex)
@@ -86,13 +106,14 @@ public class QuestionAnswerValidator
     }
 
     /// <summary>
-    /// Validate QuestionAnswer rules with pre-computed execution contexts.
+    /// Validate QuestionAnswer rules with pre-computed execution contexts (STATELESS, DLL-SAFE).
     /// INTERNAL API (Phase 3.5 optimization): Used by ValidationPipeline for performance.
     /// Traversal context is computed once and reused, avoiding redundant bundle scanning.
     /// </summary>
     internal async Task<QuestionAnswerResult> ValidateAsync(
         IReadOnlyList<RuleExecutionContext> contexts,
         string projectId,
+        Question[]? preLoadedQuestions,
         CancellationToken cancellationToken = default)
     {
         var result = new QuestionAnswerResult();
@@ -101,7 +122,7 @@ public class QuestionAnswerValidator
         {
             try
             {
-                var ruleErrors = await ValidateRuleWithContextAsync(context, projectId, cancellationToken);
+                var ruleErrors = await ValidateRuleWithContextAsync(context, projectId, preLoadedQuestions, cancellationToken);
                 result.Errors.AddRange(ruleErrors);
             }
             catch (Exception ex)
@@ -115,12 +136,25 @@ public class QuestionAnswerValidator
     }
 
     /// <summary>
+    /// Backward compatibility overload (will be removed in future version)
+    /// </summary>
+    [Obsolete("Use overload with preLoadedQuestions parameter for stateless validation.")]
+    internal async Task<QuestionAnswerResult> ValidateAsync(
+        IReadOnlyList<RuleExecutionContext> contexts,
+        string projectId,
+        CancellationToken cancellationToken = default)
+    {
+        return await ValidateAsync(contexts, projectId, preLoadedQuestions: null, cancellationToken);
+    }
+
+    /// <summary>
     /// Validate a single QuestionAnswer rule
     /// </summary>
     private async Task<List<RuleValidationError>> ValidateRuleAsync(
         Bundle bundle,
         RuleDefinition rule,
         string projectId,
+        Question[]? preLoadedQuestions,
         CancellationToken cancellationToken)
     {
         var errors = new List<RuleValidationError>();
@@ -146,8 +180,8 @@ public class QuestionAnswerValidator
             return errors;
         }
 
-        // Load Questions
-        var questions = await LoadQuestionsAsync(projectId, questionSet, cancellationToken);
+        // Load Questions (stateless: uses preLoadedQuestions if available)
+        var questions = await LoadQuestionsAsync(projectId, questionSet, preLoadedQuestions, cancellationToken);
 
         // Resolve all validation contexts via provider (no traversal in validator)
         var contextSeeds = _contextProvider.Resolve(bundle, rule);
@@ -261,6 +295,7 @@ public class QuestionAnswerValidator
     private async Task<List<RuleValidationError>> ValidateRuleWithContextAsync(
         RuleExecutionContext executionContext,
         string projectId,
+        Question[]? preLoadedQuestions,
         CancellationToken cancellationToken)
     {
         var errors = new List<RuleValidationError>();
@@ -287,8 +322,8 @@ public class QuestionAnswerValidator
             return errors;
         }
 
-        // Load Questions
-        var questions = await LoadQuestionsAsync(projectId, questionSet, cancellationToken);
+        // Load Questions (stateless: uses preLoadedQuestions if available)
+        var questions = await LoadQuestionsAsync(projectId, questionSet, preLoadedQuestions, cancellationToken);
 
         // Use pre-computed seeds (NO traversal recomputation)
         if (executionContext.QuestionAnswerSeeds == null || !executionContext.QuestionAnswerSeeds.Any())
@@ -1139,17 +1174,32 @@ public class QuestionAnswerValidator
 
     /// <summary>
     /// Load questions for a QuestionSet
+    /// DLL-ISOLATION: Uses pre-loaded questions from RuleSet instead of projectId-based file I/O.
+    /// Falls back to IQuestionService for backward compatibility (authoring mode only).
     /// </summary>
-    private async Task<Dictionary<string, Question>> LoadQuestionsAsync(string projectId, QuestionSet questionSet, CancellationToken cancellationToken)
+    private async Task<Dictionary<string, Question>> LoadQuestionsAsync(
+        string projectId, 
+        QuestionSet questionSet, 
+        Question[]? preLoadedQuestions, 
+        CancellationToken cancellationToken)
     {
         var questions = new Dictionary<string, Question>();
 
-        _logger.LogDebug("LoadQuestionsAsync: Loading ALL questions for project {ProjectId}", projectId);
+        IEnumerable<Question> allQuestions;
 
-        // Load ALL questions from the project
-        var allQuestions = await _questionService.ListQuestionsAsync(projectId);
-
-        _logger.LogDebug("LoadQuestionsAsync: Loaded {TotalQuestions} questions from project", allQuestions.Count());
+        // DLL-ISOLATION: Prefer pre-loaded questions (stateless)
+        if (preLoadedQuestions != null && preLoadedQuestions.Any())
+        {
+            _logger.LogDebug("LoadQuestionsAsync: Using {QuestionCount} pre-loaded questions (stateless mode)", preLoadedQuestions.Length);
+            allQuestions = preLoadedQuestions;
+        }
+        else
+        {
+            // FALLBACK: Load from IQuestionService (authoring mode, requires file/DB access)
+            _logger.LogWarning("LoadQuestionsAsync: No pre-loaded questions, falling back to IQuestionService (authoring mode). ProjectId={ProjectId}", projectId);
+            allQuestions = await _questionService.ListQuestionsAsync(projectId);
+            _logger.LogDebug("LoadQuestionsAsync: Loaded {TotalQuestions} questions from IQuestionService", allQuestions.Count());
+        }
 
         // Build lookup by question code (not UUID)
         foreach (var question in allQuestions)

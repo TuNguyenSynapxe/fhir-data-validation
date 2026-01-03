@@ -11,6 +11,9 @@ namespace Pss.FhirProcessor.Engine.Tests;
 /// </summary>
 public class ValidationErrorDetailsValidatorTests
 {
+    // DLL-ISOLATION: Use instance validator with NullLogger (matches production DLL behavior)
+    private readonly ValidationErrorDetailsValidator _validator = new ValidationErrorDetailsValidator();
+
     [Fact]
     public void ValueNotAllowed_ValidDetails_Passes()
     {
@@ -24,7 +27,7 @@ public class ValidationErrorDetailsValidatorTests
 
         // Act & Assert - Should not throw
         var exception = Record.Exception(() =>
-            ValidationErrorDetailsValidator.Validate("VALUE_NOT_ALLOWED", details)
+            _validator.Validate("VALUE_NOT_ALLOWED", details)
         );
 
         Assert.Null(exception);
@@ -45,7 +48,7 @@ public class ValidationErrorDetailsValidatorTests
 
         // Act & Assert - Should not throw (internal hints allowed)
         var exception = Record.Exception(() =>
-            ValidationErrorDetailsValidator.Validate("VALUE_NOT_ALLOWED", details)
+            _validator.Validate("VALUE_NOT_ALLOWED", details)
         );
 
         Assert.Null(exception);
@@ -64,7 +67,7 @@ public class ValidationErrorDetailsValidatorTests
 
         // Act & Assert - Throws InvalidOperationException in Development
         var exception = Assert.Throws<InvalidOperationException>(() =>
-            ValidationErrorDetailsValidator.Validate("VALUE_NOT_ALLOWED", details)
+            _validator.Validate("VALUE_NOT_ALLOWED", details)
         );
 
         Assert.Contains("VALUE_NOT_ALLOWED", exception.Message);
@@ -84,7 +87,7 @@ public class ValidationErrorDetailsValidatorTests
 
         // Act & Assert - Throws InvalidOperationException in Development
         var exception = Assert.Throws<InvalidOperationException>(() =>
-            ValidationErrorDetailsValidator.Validate("VALUE_NOT_ALLOWED", details)
+            _validator.Validate("VALUE_NOT_ALLOWED", details)
         );
 
         Assert.Contains("VALUE_NOT_ALLOWED", exception.Message);
@@ -104,7 +107,7 @@ public class ValidationErrorDetailsValidatorTests
 
         // Act & Assert - Throws InvalidOperationException in Development
         var exception = Assert.Throws<InvalidOperationException>(() =>
-            ValidationErrorDetailsValidator.Validate("VALUE_NOT_ALLOWED", details)
+            _validator.Validate("VALUE_NOT_ALLOWED", details)
         );
 
         Assert.Contains("VALUE_NOT_ALLOWED", exception.Message);
@@ -126,7 +129,7 @@ public class ValidationErrorDetailsValidatorTests
 
         // Act & Assert - Should not throw (validator doesn't forbid extra keys yet)
         var exception = Record.Exception(() =>
-            ValidationErrorDetailsValidator.Validate("VALUE_NOT_ALLOWED", details)
+            _validator.Validate("VALUE_NOT_ALLOWED", details)
         );
 
         Assert.Null(exception);
@@ -150,7 +153,7 @@ public class ValidationErrorDetailsValidatorTests
 
         // Act & Assert - Should not throw (validator doesn't forbid legacy keys yet)
         var exception = Record.Exception(() =>
-            ValidationErrorDetailsValidator.Validate("VALUE_NOT_ALLOWED", details)
+            _validator.Validate("VALUE_NOT_ALLOWED", details)
         );
 
         Assert.Null(exception);
@@ -164,7 +167,7 @@ public class ValidationErrorDetailsValidatorTests
 
         // Act & Assert - Should not throw (details is optional)
         var exception = Record.Exception(() =>
-            ValidationErrorDetailsValidator.Validate("VALUE_NOT_ALLOWED", details)
+            _validator.Validate("VALUE_NOT_ALLOWED", details)
         );
 
         Assert.Null(exception);
@@ -181,7 +184,7 @@ public class ValidationErrorDetailsValidatorTests
 
         // Act & Assert - Should not throw (validator not implemented for this code)
         var exception = Record.Exception(() =>
-            ValidationErrorDetailsValidator.Validate("UNKNOWN_ERROR_CODE", details)
+            _validator.Validate("UNKNOWN_ERROR_CODE", details)
         );
 
         Assert.Null(exception);
@@ -200,7 +203,7 @@ public class ValidationErrorDetailsValidatorTests
 
         // Act & Assert - Should not throw (null actual is valid)
         var exception = Record.Exception(() =>
-            ValidationErrorDetailsValidator.Validate("VALUE_NOT_ALLOWED", details)
+            _validator.Validate("VALUE_NOT_ALLOWED", details)
         );
 
         Assert.Null(exception);
@@ -219,7 +222,7 @@ public class ValidationErrorDetailsValidatorTests
 
         // Act & Assert - Should not throw (empty allowed is valid)
         var exception = Record.Exception(() =>
-            ValidationErrorDetailsValidator.Validate("VALUE_NOT_ALLOWED", details)
+            _validator.Validate("VALUE_NOT_ALLOWED", details)
         );
 
         Assert.Null(exception);

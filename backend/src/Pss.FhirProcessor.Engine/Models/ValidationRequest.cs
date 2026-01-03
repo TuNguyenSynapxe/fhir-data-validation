@@ -45,15 +45,31 @@ public class ValidationRequest
     public string FhirVersion { get; set; } = "R4";
     
     /// <summary>
-    /// AUTHORING MODE ONLY: Project ID for loading project-specific master data (Questions, QuestionSets, etc.).
+    /// Questions definition as JSON string (for QuestionAnswer validation).
+    /// Optional. When provided, QuestionAnswer rules will validate against these question definitions.
+    /// Format: JSON array of Question objects.
+    /// </summary>
+    [JsonPropertyName("questions")]
+    public string? QuestionsJson { get; set; }
+    
+    /// <summary>
+    /// CodeSystems definition as JSON string (for terminology validation in FHIRPath rules).
+    /// Optional. When provided, code system validation will use these definitions.
+    /// Format: JSON array of CodeSystem objects.
+    /// </summary>
+    [JsonPropertyName("codeSystems")]
+    public string? CodeSystemsJson { get; set; }
+    
+    /// <summary>
+    /// DEPRECATED: Project ID for loading project-specific master data.
     /// 
-    /// Runtime DLL consumers should leave this null and pass all configuration as JSON strings
-    /// (RulesJson, CodesJson, CodeMasterJson, ProjectJson).
+    /// ⚠️ This field triggers file I/O and database access, breaking DLL isolation.
+    /// Use QuestionsJson and CodeSystemsJson instead to pass pre-loaded data.
     /// 
-    /// When provided, the engine will attempt to load Questions/QuestionSets from a database,
-    /// which is only available in the Playground authoring environment.
+    /// This field will be removed in a future version.
     /// </summary>
     [JsonPropertyName("projectId")]
+    [Obsolete("Use QuestionsJson and CodeSystemsJson instead. ProjectId-based loading will be removed in future versions.")]
     public string? ProjectId { get; set; }
     
     /// <summary>

@@ -99,6 +99,9 @@ public static class EngineServiceCollectionExtensions
         // Register severity resolver for validation class-aware severity resolution
         services.AddScoped<Validation.ISeverityResolver, Validation.SeverityResolver>();
         
+        // DLL-ISOLATION: ValidationErrorDetailsValidator as singleton (stateless, thread-safe)
+        services.AddSingleton<Models.ValidationErrorDetailsValidator>();
+        
         // Register System Rule Suggestion Service (deterministic pattern analysis)
         services.AddScoped<ISystemRuleSuggestionService, SystemRuleSuggestionService>();
 
