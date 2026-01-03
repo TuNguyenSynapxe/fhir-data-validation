@@ -13,6 +13,13 @@ namespace Pss.FhirProcessor.Engine.Tests.Validation;
 /// <summary>
 /// Phase 1, Rule 1: Tests for FHIR id grammar validation.
 /// Ensures JsonNodeStructuralValidator correctly enforces FHIR id primitive constraints.
+/// 
+/// IMPORTANT INFRASTRUCTURE NOTE:
+/// All STRUCTURE tests MUST use Bundle-based schema setup.
+/// JsonNodeStructuralValidator validates resources within Bundle.entry[].resource context.
+/// Resource-only schema setup is invalid and will cause traversal failures.
+/// 
+/// Use SetupBundleWithResourceSchema() helper for all STRUCTURE validation tests.
 /// </summary>
 public class FhirIdGrammarValidationTests
 {
@@ -62,7 +69,7 @@ public class FhirIdGrammarValidationTests
         }
         """;
 
-        SetupBundleAndPatientSchema(withId: true, withBirthDate: false);
+        SetupBundleWithResourceSchema("Patient", withId: true, withBirthDate: false);
 
         // Act
         var errors = await _validator.ValidateAsync(bundleJson, "R4", default);
@@ -104,10 +111,7 @@ public class FhirIdGrammarValidationTests
         }
         """;
 
-        var patientSchema = CreatePatientSchemaWithId();
-        _mockSchemaService
-            .Setup(x => x.GetResourceSchemaAsync("Patient", default))
-            .ReturnsAsync(patientSchema);
+        SetupBundleWithResourceSchema("Patient", withId: true, withBirthDate: false);
 
         // Act
         var errors = await _validator.ValidateAsync(bundleJson, "R4", default);
@@ -157,10 +161,7 @@ public class FhirIdGrammarValidationTests
         }
         """;
 
-        var patientSchema = CreatePatientSchemaWithId();
-        _mockSchemaService
-            .Setup(x => x.GetResourceSchemaAsync("Patient", default))
-            .ReturnsAsync(patientSchema);
+        SetupBundleWithResourceSchema("Patient", withId: true, withBirthDate: false);
 
         // Act
         var errors = await _validator.ValidateAsync(bundleJson, "R4", default);
@@ -197,10 +198,7 @@ public class FhirIdGrammarValidationTests
         }
         """;
 
-        var patientSchema = CreatePatientSchemaWithIdAndBirthDate();
-        _mockSchemaService
-            .Setup(x => x.GetResourceSchemaAsync("Patient", default))
-            .ReturnsAsync(patientSchema);
+        SetupBundleWithResourceSchema("Patient", withId: true, withBirthDate: true);
 
         // Act
         var errors = await _validator.ValidateAsync(bundleJson, "R4", default);
@@ -232,10 +230,7 @@ public class FhirIdGrammarValidationTests
         }
         """;
 
-        var patientSchema = CreatePatientSchemaWithId();
-        _mockSchemaService
-            .Setup(x => x.GetResourceSchemaAsync("Patient", default))
-            .ReturnsAsync(patientSchema);
+        SetupBundleWithResourceSchema("Patient", withId: true, withBirthDate: false);
 
         // Act
         var errors = await _validator.ValidateAsync(bundleJson, "R4", default);
@@ -245,11 +240,25 @@ public class FhirIdGrammarValidationTests
         Assert.Single(idErrors);
     }
 
-    // Helper methods
-
-    private void SetupBundleAndPatientSchema(bool withId, bool withBirthDate)
+    // ==================================================================================
+    // CANONICAL TEST HELPER - Use for ALL STRUCTURE validation tests
+    // ==================================================================================
+    
+    /// <summary>
+    /// Sets up proper Bundle + embedded resource schema for STRUCTURE validation.
+    /// This helper ensures JsonNodeStructuralValidator can traverse Bundle.entry[].resource.
+    /// 
+    /// CRITICAL: All STRUCTURE tests MUST use this helper or equivalent Bundle-aware setup.
+    /// Resource-only schema setup will cause traversal failures.
+    /// </summary>
+    /// <param name="resourceType">The resource type to validate (e.g., "Patient", "Observation")</param>
+    /// <param name="withId">Include id element in resource schema</param>
+    /// <param name="withBirthDate">Include birthDate element in resource schema (Patient-specific)</param>
+    private void SetupBundleWithResourceSchema(string resourceType, bool withId, bool withBirthDate = false)
     {
-        // Setup Bundle schema
+        // 1. Setup Bundle schema
+        // Note: The validator specially handles entry.resource traversal in ValidateAsync,
+        // so we don't need to define "resource" as a child of entry in the schema.
         var bundleSchema = new FhirSchemaNode
         {
             Path = "Bundle",
@@ -278,17 +287,17 @@ public class FhirIdGrammarValidationTests
         };
 
         _mockSchemaService
-            .Setup(x => x.GetResourceSchemaAsync("Bundle", default))
+            .Setup(x => x.GetResourceSchemaAsync("Bundle", It.IsAny<CancellationToken>()))
             .ReturnsAsync(bundleSchema);
 
-        // Setup Patient schema
-        var patientChildren = new List<FhirSchemaNode>();
+        // 2. Setup resource-specific schema (Patient, Observation, etc.)
+        var resourceChildren = new List<FhirSchemaNode>();
         
         if (withId)
         {
-            patientChildren.Add(new FhirSchemaNode
+            resourceChildren.Add(new FhirSchemaNode
             {
-                Path = "Patient.id",
+                Path = $"{resourceType}.id",
                 ElementName = "id",
                 Type = "id",
                 Min = 0,
@@ -296,11 +305,11 @@ public class FhirIdGrammarValidationTests
             });
         }
         
-        if (withBirthDate)
+        if (withBirthDate && resourceType == "Patient")
         {
-            patientChildren.Add(new FhirSchemaNode
+            resourceChildren.Add(new FhirSchemaNode
             {
-                Path = "Patient.birthDate",
+                Path = $"{resourceType}.birthDate",
                 ElementName = "birthDate",
                 Type = "date",
                 Min = 0,
@@ -308,66 +317,16 @@ public class FhirIdGrammarValidationTests
             });
         }
 
-        var patientSchema = new FhirSchemaNode
+        var resourceSchema = new FhirSchemaNode
         {
-            Path = "Patient",
-            ElementName = "Patient",
-            Type = "Patient",
-            Children = patientChildren
+            Path = resourceType,
+            ElementName = resourceType,
+            Type = resourceType,
+            Children = resourceChildren
         };
 
         _mockSchemaService
-            .Setup(x => x.GetResourceSchemaAsync("Patient", default))
-            .ReturnsAsync(patientSchema);
-    }
-
-    private FhirSchemaNode CreatePatientSchemaWithId()
-    {
-        return new FhirSchemaNode
-        {
-            Path = "Patient",
-            ElementName = "Patient",
-            Type = "Patient",
-            Children = new List<FhirSchemaNode>
-            {
-                new()
-                {
-                    Path = "Patient.id",
-                    ElementName = "id",
-                    Type = "id",
-                    Min = 0,
-                    Max = "1"
-                }
-            }
-        };
-    }
-
-    private FhirSchemaNode CreatePatientSchemaWithIdAndBirthDate()
-    {
-        return new FhirSchemaNode
-        {
-            Path = "Patient",
-            ElementName = "Patient",
-            Type = "Patient",
-            Children = new List<FhirSchemaNode>
-            {
-                new()
-                {
-                    Path = "Patient.id",
-                    ElementName = "id",
-                    Type = "id",
-                    Min = 0,
-                    Max = "1"
-                },
-                new()
-                {
-                    Path = "Patient.birthDate",
-                    ElementName = "birthDate",
-                    Type = "date",
-                    Min = 0,
-                    Max = "1"
-                }
-            }
-        };
+            .Setup(x => x.GetResourceSchemaAsync(resourceType, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(resourceSchema);
     }
 }
