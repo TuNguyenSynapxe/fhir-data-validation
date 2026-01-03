@@ -28,21 +28,20 @@ public class ValidationPipeline : IValidationPipeline
 {
     private readonly IJsonNodeStructuralValidator _structuralValidator;
     private readonly ILintValidationService _lintService;
-    private readonly ISpecHintService _specHintService;
+    private readonly ISpecHintService? _specHintService; // AUTHORING-ONLY: Optional, null in runtime-only mode
     private readonly IFirelyValidationService _firelyService;
     private readonly IFhirPathRuleEngine _ruleEngine;
     private readonly ICodeMasterEngine _codeMasterEngine;
     private readonly IReferenceResolver _referenceResolver;
     private readonly IUnifiedErrorModelBuilder _errorBuilder;
     private readonly ISystemRuleSuggestionService _suggestionService;
-    private readonly QuestionAnswerValidator? _questionAnswerValidator;
-    private readonly IQuestionAnswerContextProvider? _contextProvider;
+    private readonly QuestionAnswerValidator? _questionAnswerValidator; // AUTHORING-ONLY: Optional, null in runtime-only mode
+    private readonly IQuestionAnswerContextProvider? _contextProvider; // AUTHORING-ONLY: Optional, null in runtime-only mode
     private readonly ILogger<ValidationPipeline> _logger;
     
     public ValidationPipeline(
         IJsonNodeStructuralValidator structuralValidator,
         ILintValidationService lintService,
-        ISpecHintService specHintService,
         IFirelyValidationService firelyService,
         IFhirPathRuleEngine ruleEngine,
         ICodeMasterEngine codeMasterEngine,
@@ -50,12 +49,13 @@ public class ValidationPipeline : IValidationPipeline
         IUnifiedErrorModelBuilder errorBuilder,
         ISystemRuleSuggestionService suggestionService,
         ILogger<ValidationPipeline> logger,
-        QuestionAnswerValidator? questionAnswerValidator = null,
-        IQuestionAnswerContextProvider? contextProvider = null)
+        ISpecHintService? specHintService = null, // AUTHORING-ONLY: Optional
+        QuestionAnswerValidator? questionAnswerValidator = null, // AUTHORING-ONLY: Optional
+        IQuestionAnswerContextProvider? contextProvider = null) // AUTHORING-ONLY: Optional
     {
         _structuralValidator = structuralValidator;
         _lintService = lintService;
-        _specHintService = specHintService;
+        _specHintService = specHintService; // May be null in runtime-only mode
         _firelyService = firelyService;
         _ruleEngine = ruleEngine;
         _codeMasterEngine = codeMasterEngine;
@@ -65,6 +65,16 @@ public class ValidationPipeline : IValidationPipeline
         _questionAnswerValidator = questionAnswerValidator;
         _contextProvider = contextProvider;
         _logger = logger;
+        
+        // Log mode on construction
+        if (_specHintService == null)
+        {
+            _logger.LogInformation("ValidationPipeline: Runtime-only mode (SpecHintService not available)");
+        }
+        else
+        {
+            _logger.LogInformation("ValidationPipeline: Full authoring mode (SpecHintService available)");
+        }
     }
     
     public async Task<ValidationResponse> ValidateAsync(ValidationRequest request, CancellationToken cancellationToken = default)
@@ -130,7 +140,7 @@ public class ValidationPipeline : IValidationPipeline
                 response.Errors.AddRange(structuralErrors);
             }
             
-            if (isFullAnalysis)
+            if (isFullAnalysis && _specHintService != null)
             {
                 _logger.LogInformation("=== SPECHINT CHECKPOINT 2: Starting JSON-based SpecHint validation (ADVISORY)");
                 
@@ -154,6 +164,10 @@ public class ValidationPipeline : IValidationPipeline
                     var specHintErrors = await _errorBuilder.FromSpecHintIssuesAsync(specHintIssues, request.BundleJson, bundlePoco, cancellationToken);
                     response.Errors.AddRange(specHintErrors);
                 }
+            }
+            else if (isFullAnalysis && _specHintService == null)
+            {
+                _logger.LogInformation("=== SPECHINT CHECKPOINT X: SpecHintService not available (runtime-only mode), skipping SpecHint");
             }
             else
             {

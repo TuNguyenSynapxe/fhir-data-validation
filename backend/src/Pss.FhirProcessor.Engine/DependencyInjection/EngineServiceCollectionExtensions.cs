@@ -19,41 +19,72 @@ namespace Pss.FhirProcessor.Engine.DependencyInjection;
 
 /// <summary>
 /// Dependency injection registration for FhirProcessor.Engine
+/// Supports two modes:
+/// 1. Runtime-only (AddRuntimeValidation): Core validation without authoring features
+/// 2. Full authoring (AddFhirProcessorEngine): Includes SpecHint, QuestionAnswer, Rule Suggestion
 /// </summary>
 public static class EngineServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers all FhirProcessor.Engine services
+    /// Registers RUNTIME-ONLY validation services (DLL-safe, no file I/O)
+    /// Includes: Structural validation, Firely validation, Business rules, CodeMaster, References
+    /// Excludes: SpecHint auto-generation, QuestionAnswer validation, Rule suggestion
     /// </summary>
-    public static IServiceCollection AddFhirProcessorEngine(this IServiceCollection services)
+    public static IServiceCollection AddRuntimeValidation(this IServiceCollection services)
     {
-        // Register FHIR R4 Model Resolver as Singleton (expensive to initialize, thread-safe)
-        // NOTE: FHIR R5 support will be added in a future release by introducing FhirR5ModelResolverService and a factory
+        // CORE: FHIR Model and Schema Services (stateless, DLL-safe)
         services.AddSingleton<IFhirModelResolverService, FhirR4ModelResolverService>();
-        
-        // Register FHIR Sample Provider as Singleton (caches samples at startup)
         services.AddSingleton<IFhirSampleProvider, FhirSampleProvider>();
-        
-        // Register schema and exploration services
         services.AddScoped<ISchemaExpansionService, SchemaExpansionService>();
         services.AddScoped<IFhirSchemaService, FhirSchemaService>();
+        
+        // CORE: Navigation and Path Resolution (deterministic, no file I/O)
         services.AddScoped<IBundlePathExplorer, BundlePathExplorer>();
         services.AddScoped<IFhirPathValidationService, FhirPathValidationService>();
+        services.AddSingleton<IFhirStructureHintProvider, NullFhirStructureHintProvider>();
+        services.AddScoped<IJsonPointerResolver>(sp =>
+        {
+            var structureHints = sp.GetRequiredService<IFhirStructureHintProvider>();
+            return new JsonPointerResolver(structureHints, EntryResolutionPolicy.Strict);
+        });
+        services.AddScoped<ISmartPathNavigationService, SmartPathNavigationService>();
         
-        // Register validation services
+        // CORE: Validation Pipeline (runtime-safe)
         services.AddScoped<IValidationPipeline, ValidationPipeline>();
-        services.AddScoped<ILintValidationService, LintValidationService>(); // Pre-FHIR best-effort lint layer
-        services.AddScoped<IJsonNodeStructuralValidator, JsonNodeStructuralValidator>(); // Phase A: JSON node structural validation
-        services.AddSingleton<IFhirEnumIndex, FhirEnumIndex>(); // Phase B: Dynamic enum index (singleton for caching)
+        services.AddScoped<ILintValidationService, LintValidationService>();
+        services.AddScoped<IJsonNodeStructuralValidator, JsonNodeStructuralValidator>();
+        services.AddSingleton<IFhirEnumIndex, FhirEnumIndex>();
+        services.AddScoped<IFirelyValidationService, FirelyValidationService>();
+        services.AddScoped<IFhirPathRuleEngine, FhirPathRuleEngine>();
+        services.AddScoped<ICodeMasterEngine, CodeMasterEngine>();
+        services.AddScoped<IReferenceResolver, ReferenceResolver>();
         
-        // Register Hl7SpecHintGenerator for auto-generating hints
+        // CORE: Error Model and Classification (deterministic)
+        services.AddScoped<IUnifiedErrorModelBuilder, UnifiedErrorModelBuilder>();
+        services.AddScoped<Validation.ISeverityResolver, Validation.SeverityResolver>();
+        services.AddSingleton<BaseRuleClassifier>();
+        services.AddSingleton<Models.ValidationErrorDetailsValidator>();
+        
+        // CORE: Instance Scope Resolution (structured validation)
+        services.AddScoped<IResourceSelector, ResourceSelector>();
+        services.AddScoped<IFieldPathValidator, FieldPathValidator>();
+        
+        return services;
+    }
+    
+    /// <summary>
+    /// Registers AUTHORING services (requires file I/O, for development/playground)
+    /// Includes: SpecHint auto-generation, QuestionAnswer validation, Rule suggestion, Governance
+    /// Requires: AddRuntimeValidation() to be called first
+    /// </summary>
+    public static IServiceCollection AddAuthoringServices(this IServiceCollection services)
+    {
+        // AUTHORING: SpecHint Auto-Generation (requires specs folder)
         services.AddSingleton<Hl7SpecHintGenerator>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<Hl7SpecHintGenerator>>();
             return new Hl7SpecHintGenerator(logger);
         });
-        
-        // Register SpecHintService with auto-generation support
         services.AddScoped<ISpecHintService>(sp =>
         {
             var generator = sp.GetRequiredService<Hl7SpecHintGenerator>();
@@ -61,49 +92,27 @@ public static class EngineServiceCollectionExtensions
             return new SpecHintService(generator, logger);
         });
         
-        services.AddScoped<IFirelyValidationService, FirelyValidationService>();
-        services.AddScoped<IFhirPathRuleEngine, FhirPathRuleEngine>();
-        services.AddScoped<ICodeMasterEngine, CodeMasterEngine>();
-        services.AddScoped<IReferenceResolver, ReferenceResolver>();
-        
-        // PHASE 4: Structured Instance Scope (refactored from string-based parsing)
-        services.AddScoped<IResourceSelector, ResourceSelector>();
-        services.AddScoped<IFieldPathValidator, FieldPathValidator>();
-        
-        // PHASE 7: Rule governance and quality enforcement
+        // AUTHORING: Rule Governance and Quality (deterministic pattern analysis)
         services.AddScoped<Governance.IRuleReviewEngine, Governance.RuleReviewEngine>();
-        
-        // PHASE 8: Rule Suggestion Engine (deterministic, non-AI)
         services.AddScoped<IBundleFlattener, BundleFlattener>();
         services.AddScoped<IConfidenceScorer, ConfidenceScorer>();
         services.AddScoped<IRuleSuggestionEngine, RuleSuggestionEngine>();
-        
-        // DLL-SAFE: Structural hints (default no-op for runtime safety)
-        services.AddSingleton<IFhirStructureHintProvider, NullFhirStructureHintProvider>();
-        
-        // DLL-SAFE: Pure JSON navigation with STRICT entry resolution policy
-        // Engine default requires explicit entryIndex for deterministic behavior
-        services.AddScoped<IJsonPointerResolver>(sp =>
-        {
-            var structureHints = sp.GetRequiredService<IFhirStructureHintProvider>();
-            return new JsonPointerResolver(structureHints, EntryResolutionPolicy.Strict);
-        });
-        
-        services.AddScoped<ISmartPathNavigationService, SmartPathNavigationService>();
-        
-        // Register BaseRuleClassifier for SPEC_HINT → STRUCTURE classification
-        services.AddSingleton<BaseRuleClassifier>();
-        
-        services.AddScoped<IUnifiedErrorModelBuilder, UnifiedErrorModelBuilder>();
-        
-        // Register severity resolver for validation class-aware severity resolution
-        services.AddScoped<Validation.ISeverityResolver, Validation.SeverityResolver>();
-        
-        // DLL-ISOLATION: ValidationErrorDetailsValidator as singleton (stateless, thread-safe)
-        services.AddSingleton<Models.ValidationErrorDetailsValidator>();
-        
-        // Register System Rule Suggestion Service (deterministic pattern analysis)
         services.AddScoped<ISystemRuleSuggestionService, SystemRuleSuggestionService>();
+        
+        return services;
+    }
+    
+    /// <summary>
+    /// Registers ALL FhirProcessor.Engine services (runtime + authoring)
+    /// Convenience method for full feature set (Playground, development environments)
+    /// </summary>
+    public static IServiceCollection AddFhirProcessorEngine(this IServiceCollection services)
+    {
+        // Register runtime-only validation services (DLL-safe core)
+        services.AddRuntimeValidation();
+        
+        // Register authoring services (SpecHint, Rule Suggestion, Governance)
+        services.AddAuthoringServices();
 
         return services;
     }
