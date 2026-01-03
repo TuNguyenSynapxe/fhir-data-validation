@@ -61,8 +61,13 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         ["integer"] = value => int.TryParse(value, out _),
         ["decimal"] = value => decimal.TryParse(value, out _),
         ["date"] = ValidateDate,
-        ["dateTime"] = ValidateDateTime
+        ["dateTime"] = ValidateDateTime,
+        ["id"] = ValidateFhirId  // Phase 1, Rule 1: FHIR id grammar
     };
+
+    // FHIR id regex: 1-64 characters, alphanumeric plus dash and dot
+    private static readonly System.Text.RegularExpressions.Regex FhirIdRegex = 
+        new(@"^[A-Za-z0-9\-\.]{1,64}$", System.Text.RegularExpressions.RegexOptions.Compiled);
 
     public JsonNodeStructuralValidator(
         IFhirSchemaService schemaService,
@@ -501,6 +506,9 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         string reason,
         string resourceType)
     {
+        // Phase 1, Rule 1: Use specific error code for id validation
+        var errorCode = expectedType == "id" ? "FHIR_INVALID_ID_FORMAT" : "FHIR_INVALID_PRIMITIVE";
+        
         var details = new Dictionary<string, object>
         {
             ["actual"] = actualValue,
@@ -508,13 +516,13 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             ["reason"] = reason
         };
 
-        Models.ValidationErrorDetailsValidator.Validate("FHIR_INVALID_PRIMITIVE", details);
+        Models.ValidationErrorDetailsValidator.Validate(errorCode, details);
 
         return new ValidationError
         {
             Source = "STRUCTURE",
             Severity = "error",
-            ErrorCode = "FHIR_INVALID_PRIMITIVE",
+            ErrorCode = errorCode,
             ResourceType = resourceType,
             Path = fhirPath,
             JsonPointer = jsonPointer,
@@ -664,6 +672,18 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         return DateTimeOffset.TryParse(value, out _) || DateTime.TryParse(value, out _);
     }
 
+    /// <summary>
+    /// Phase 1, Rule 1: Validates FHIR id primitive grammar.
+    /// FHIR id must be 1-64 characters, containing only [A-Za-z0-9.-]
+    /// </summary>
+    private static bool ValidateFhirId(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return false;
+            
+        return FhirIdRegex.IsMatch(value);
+    }
+
     private static string GetValidationReason(string primitiveType)
     {
         return primitiveType switch
@@ -673,6 +693,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             "integer" => "Must be a whole number",
             "decimal" => "Must be a numeric value",
             "boolean" => "Must be true or false",
+            "id" => "Must be 1-64 characters containing only [A-Za-z0-9.-]",
             _ => $"Invalid {primitiveType} format"
         };
     }
