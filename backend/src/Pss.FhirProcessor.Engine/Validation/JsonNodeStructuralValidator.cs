@@ -176,6 +176,12 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         string fhirVersion,
         List<ValidationError> errors)
     {
+        // Phase 1, Rule 4: Check value[x] exclusivity BEFORE validating children
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            ValidateValueXExclusivity(element, fhirPath, jsonPointer, resourceType, errors);
+        }
+
         // Validate each child element defined in schema
         foreach (var childSchema in schema.Children)
         {
@@ -790,6 +796,89 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             var reason = GetValidationReason("id");
             errors.Add(CreateInvalidPrimitiveError(fhirPath, jsonPointer, idValue ?? string.Empty, "id", reason, resourceType));
         }
+    }
+
+    /// <summary>
+    /// Phase 1, Rule 4: Validates FHIR value[x] exclusivity.
+    /// At most ONE value[x] field may be present in an element.
+    /// </summary>
+    private void ValidateValueXExclusivity(
+        JsonElement element,
+        string fhirPath,
+        string jsonPointer,
+        string resourceType,
+        List<ValidationError> errors)
+    {
+        var valueXFields = new List<string>();
+
+        // Enumerate all properties in this JSON object
+        foreach (var property in element.EnumerateObject())
+        {
+            if (IsValueXProperty(property.Name))
+            {
+                valueXFields.Add(property.Name);
+            }
+        }
+
+        // If more than one value[x] field, emit error
+        if (valueXFields.Count > 1)
+        {
+            var details = new Dictionary<string, object>
+            {
+                ["valueFields"] = valueXFields,
+                ["count"] = valueXFields.Count
+            };
+
+            Models.ValidationErrorDetailsValidator.Validate("FHIR_MULTIPLE_VALUE_X", details);
+
+            errors.Add(new ValidationError
+            {
+                Source = "STRUCTURE",
+                Severity = "error",
+                ErrorCode = "FHIR_MULTIPLE_VALUE_X",
+                ResourceType = resourceType,
+                Path = fhirPath,
+                JsonPointer = jsonPointer,
+                Message = $"FHIR elements may contain only one value[x] field. Found {valueXFields.Count}: {string.Join(", ", valueXFields)}",
+                Details = details
+            });
+        }
+    }
+
+    /// <summary>
+    /// Checks if a property name matches the value[x] pattern: value[A-Z][A-Za-z0-9]*
+    /// </summary>
+    private static bool IsValueXProperty(string propertyName)
+    {
+        // Must start with "value"
+        if (!propertyName.StartsWith("value", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        // Must have at least one character after "value"
+        if (propertyName.Length <= 5)
+        {
+            return false;
+        }
+
+        // Character after "value" must be uppercase
+        var firstChar = propertyName[5];
+        if (!char.IsUpper(firstChar))
+        {
+            return false;
+        }
+
+        // Remaining characters must be alphanumeric
+        for (int i = 6; i < propertyName.Length; i++)
+        {
+            if (!char.IsLetterOrDigit(propertyName[i]))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static string GetValidationReason(string primitiveType)
