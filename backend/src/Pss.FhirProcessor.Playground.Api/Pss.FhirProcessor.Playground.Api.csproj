@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Pss.FhirProcessor.Engine\Pss.FhirProcessor.Engine.csproj" />
+    <ProjectReference Include="..\Pss.FhirProcessor.Persistence\Pss.FhirProcessor.Persistence.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

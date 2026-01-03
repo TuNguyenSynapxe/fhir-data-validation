@@ -1,5 +1,7 @@
+using Npgsql;
 using Pss.FhirProcessor.Engine.DependencyInjection;
 using Pss.FhirProcessor.Engine.Navigation.Structure;
+using Pss.FhirProcessor.Persistence.Repositories;
 using Pss.FhirProcessor.Playground.Api.Commands;
 using Pss.FhirProcessor.Playground.Api.Services;
 using Pss.FhirProcessor.Playground.Api.Storage;
@@ -80,8 +82,23 @@ try
     builder.Services.AddTerminologyServices(baseDataPath);
     Log.Information("Terminology services configured with data path: {DataPath}", baseDataPath);
 
-    // Register Playground API services
-    builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+    // Register Persistence Layer (Phase 3 MVP)
+    // PostgreSQL connection for published project access
+    builder.Services.AddScoped<NpgsqlConnection>(sp =>
+    {
+        var connString = builder.Configuration.GetConnectionString("PostgreSQL");
+        if (string.IsNullOrWhiteSpace(connString))
+        {
+            Log.Warning("PostgreSQL connection string not configured - persistence layer will be unavailable");
+            throw new InvalidOperationException("PostgreSQL connection string 'PostgreSQL' is not configured");
+        }
+        return new NpgsqlConnection(connString);
+    });
+    builder.Services.AddScoped<Pss.FhirProcessor.Persistence.Repositories.IProjectRepository, PostgresProjectRepository>();
+    Log.Information("Persistence layer configured with PostgreSQL");
+
+    // Register Playground API services (existing authoring services)
+    builder.Services.AddScoped<Pss.FhirProcessor.Playground.Api.Storage.IProjectRepository, ProjectRepository>();
     builder.Services.AddScoped<IProjectService, ProjectService>();
     builder.Services.AddScoped<IRuleService, RuleService>();
 
