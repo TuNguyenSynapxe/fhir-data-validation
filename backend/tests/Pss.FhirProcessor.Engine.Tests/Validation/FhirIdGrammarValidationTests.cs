@@ -96,6 +96,8 @@ public class FhirIdGrammarValidationTests
     public async Task InvalidFhirId_ShouldEmitStructureError(string invalidId, string reason)
     {
         // Arrange
+        // Use JsonSerializer to properly escape special characters (e.g., backslash)
+        var escapedId = System.Text.Json.JsonSerializer.Serialize(invalidId);
         var bundleJson = $$"""
         {
           "resourceType": "Bundle",
@@ -104,7 +106,7 @@ public class FhirIdGrammarValidationTests
             {
               "resource": {
                 "resourceType": "Patient",
-                "id": "{{invalidId}}"
+                "id": {{escapedId}}
               }
             }
           ]
@@ -205,7 +207,7 @@ public class FhirIdGrammarValidationTests
 
         // Assert
         var idErrors = errors.Where(e => e.Path == "Patient.id").ToList();
-        var birthDateErrors = errors.Where(e => e.Path == "Patient.birthDate").ToList();
+        var birthDateErrors = errors.Where(e => e.Path == "Bundle.entry[0].resource.birthDate").ToList();
         
         Assert.Empty(idErrors); // Valid id should not emit error
         Assert.NotEmpty(birthDateErrors); // Invalid birthDate should emit error

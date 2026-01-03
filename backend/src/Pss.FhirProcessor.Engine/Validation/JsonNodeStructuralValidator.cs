@@ -129,6 +129,14 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
                                 {
                                     var resourcePath = $"Bundle.entry[{entryIndex}].resource";
                                     var resourceJsonPointer = $"/entry/{entryIndex}/resource";
+                                    
+                                    // Phase 1, Rule 1: FHIR id is a base Resource primitive and is not reached via normal element traversal.
+                                    // Explicitly validate it here before normal child element traversal.
+                                    if (resource.TryGetProperty("id", out var idElement))
+                                    {
+                                        ValidateResourceId(idElement, $"{resourceType}.id", $"{resourceJsonPointer}/id", resourceType, errors);
+                                    }
+                                    
                                     ValidateElement(resource, resourceSchema, resourcePath, resourceJsonPointer, resourceType, fhirVersion, errors);
                                 }
                             }
@@ -170,6 +178,14 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         foreach (var childSchema in schema.Children)
         {
             var propertyName = childSchema.ElementName;
+            
+            // Phase 1, Rule 1: Skip 'id' validation here only at resource level
+            // to avoid duplicate validation since it's handled at resource boundary
+            if (propertyName == "id" && fhirPath.EndsWith($".resource"))
+            {
+                continue;
+            }
+            
             var childFhirPath = string.IsNullOrEmpty(fhirPath) 
                 ? propertyName 
                 : $"{fhirPath}.{propertyName}";
@@ -682,6 +698,36 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             return false;
             
         return FhirIdRegex.IsMatch(value);
+    }
+
+    /// <summary>
+    /// Phase 1, Rule 1: Validates Resource.id explicitly.
+    /// id is a base Resource primitive that isn't in individual resource schemas.
+    /// This must be called at the resource boundary before normal element traversal.
+    /// </summary>
+    private void ValidateResourceId(
+        JsonElement idElement,
+        string fhirPath,
+        string jsonPointer,
+        string resourceType,
+        List<ValidationError> errors)
+    {
+        // id must be a string
+        if (idElement.ValueKind != JsonValueKind.String)
+        {
+            var actual = idElement.ToString();
+            errors.Add(CreateInvalidPrimitiveError(fhirPath, jsonPointer, actual, "id", "Must be a string value", resourceType));
+            return;
+        }
+
+        var idValue = idElement.GetString();
+        
+        // Validate FHIR id grammar (including empty string check)
+        if (!ValidateFhirId(idValue))
+        {
+            var reason = GetValidationReason("id");
+            errors.Add(CreateInvalidPrimitiveError(fhirPath, jsonPointer, idValue ?? string.Empty, "id", reason, resourceType));
+        }
     }
 
     private static string GetValidationReason(string primitiveType)
