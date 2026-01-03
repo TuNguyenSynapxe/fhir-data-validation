@@ -129,7 +129,6 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
                                 var resourceSchema = await _schemaService.GetResourceSchemaAsync(resourceType, cancellationToken);
                                 if (resourceSchema != null)
                                 {
-                                    var resourcePath = $"Bundle.entry[{entryIndex}].resource";
                                     var resourceJsonPointer = $"/entry/{entryIndex}/resource";
                                     
                                     // Phase 1, Rule 1: FHIR id is a base Resource primitive and is not reached via normal element traversal.
@@ -139,7 +138,9 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
                                         ValidateResourceId(idElement, $"{resourceType}.id", $"{resourceJsonPointer}/id", resourceType, errors);
                                     }
                                     
-                                    ValidateElement(resource, resourceSchema, resourcePath, resourceJsonPointer, resourceType, fhirVersion, errors);
+                                    // Use resourceType as the base fhirPath (e.g., "Observation") not the full Bundle path
+                                    // This ensures error paths show "Observation.subject" not "Bundle.entry[0].resource.subject"
+                                    ValidateElement(resource, resourceSchema, resourceType, resourceJsonPointer, resourceType, fhirVersion, errors);
                                 }
                             }
                         }
@@ -180,6 +181,12 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         if (element.ValueKind == JsonValueKind.Object)
         {
             ValidateValueXExclusivity(element, fhirPath, jsonPointer, resourceType, errors);
+            
+            // Phase 1, Rule 5: Validate Reference grammar if this is a Reference element
+            if (schema.Type == "Reference")
+            {
+                ValidateReferenceGrammar(element, fhirPath, jsonPointer, resourceType, errors);
+            }
         }
 
         // Validate each child element defined in schema
@@ -189,7 +196,8 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             
             // Phase 1, Rule 1: Skip 'id' validation here only at resource level
             // to avoid duplicate validation since it's handled at resource boundary
-            if (propertyName == "id" && fhirPath.EndsWith($".resource"))
+            // Check if we're at resource root (fhirPath == schema.Type, e.g., "Patient")
+            if (propertyName == "id" && fhirPath == schema.Type)
             {
                 continue;
             }
@@ -879,6 +887,149 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Phase 1, Rule 5: Validates FHIR Reference grammar.
+    /// Checks:
+    /// 1. Reference.reference format (if present)
+    /// 2. Field combination rules (reference + identifier is invalid)
+    /// </summary>
+    private void ValidateReferenceGrammar(
+        JsonElement element,
+        string fhirPath,
+        string jsonPointer,
+        string resourceType,
+        List<ValidationError> errors)
+    {
+        bool hasReference = element.TryGetProperty("reference", out var referenceElement);
+        bool hasIdentifier = element.TryGetProperty("identifier", out _);
+        bool hasDisplay = element.TryGetProperty("display", out _);
+
+        // Rule 5.1: Validate reference format if present
+        if (hasReference && referenceElement.ValueKind == JsonValueKind.String)
+        {
+            var referenceValue = referenceElement.GetString() ?? string.Empty;
+            if (!ValidateFhirReference(referenceValue))
+            {
+                var details = new Dictionary<string, object>
+                {
+                    ["reference"] = referenceValue
+                };
+
+                Models.ValidationErrorDetailsValidator.Validate("FHIR_INVALID_REFERENCE_FORMAT", details);
+
+                errors.Add(new ValidationError
+                {
+                    Source = "STRUCTURE",
+                    Severity = "error",
+                    ErrorCode = "FHIR_INVALID_REFERENCE_FORMAT",
+                    ResourceType = resourceType,
+                    Path = fhirPath,
+                    JsonPointer = jsonPointer,
+                    Message = "FHIR Reference.reference must be a relative reference (ResourceType/id), absolute URL, or urn:uuid.",
+                    Details = details
+                });
+            }
+        }
+
+        // Rule 5.2: Validate field combinations
+        // reference + identifier is invalid (with or without display)
+        if (hasReference && hasIdentifier)
+        {
+            var details = new Dictionary<string, object>
+            {
+                ["hasReference"] = true,
+                ["hasIdentifier"] = true,
+                ["hasDisplay"] = hasDisplay
+            };
+
+            Models.ValidationErrorDetailsValidator.Validate("FHIR_REFERENCE_INVALID_COMBINATION", details);
+
+            errors.Add(new ValidationError
+            {
+                Source = "STRUCTURE",
+                Severity = "error",
+                ErrorCode = "FHIR_REFERENCE_INVALID_COMBINATION",
+                ResourceType = resourceType,
+                Path = fhirPath,
+                JsonPointer = jsonPointer,
+                Message = "FHIR Reference elements must not contain both reference and identifier.",
+                Details = details
+            });
+        }
+    }
+
+    /// <summary>
+    /// Validates FHIR Reference.reference format.
+    /// Valid formats:
+    /// 1. Relative: ResourceType/id (ResourceType must start uppercase, id follows FHIR id grammar)
+    /// 2. UUID: urn:uuid:&lt;uuid&gt;
+    /// 3. Absolute URL: http:// or https://
+    /// </summary>
+    private static bool ValidateFhirReference(string reference)
+    {
+        if (string.IsNullOrWhiteSpace(reference))
+        {
+            return false;
+        }
+
+        // Trim for validation (FHIR references should not have leading/trailing whitespace)
+        var trimmed = reference.Trim();
+        if (trimmed != reference)
+        {
+            return false; // Has whitespace padding
+        }
+
+        // Format 1: Relative reference - ResourceType/id
+        if (!reference.Contains("://") && !reference.StartsWith("urn:"))
+        {
+            var parts = reference.Split('/');
+            if (parts.Length != 2)
+            {
+                return false; // Must be exactly ResourceType/id
+            }
+
+            var resourceType = parts[0];
+            var id = parts[1];
+
+            // ResourceType must start with uppercase letter
+            if (string.IsNullOrEmpty(resourceType) || !char.IsUpper(resourceType[0]))
+            {
+                return false;
+            }
+
+            // ResourceType must be valid identifier (letters, no spaces)
+            if (!resourceType.All(c => char.IsLetterOrDigit(c)))
+            {
+                return false;
+            }
+
+            // id must follow FHIR id grammar
+            if (!ValidateFhirId(id))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        // Format 2: UUID reference - urn:uuid:...
+        if (reference.StartsWith("urn:uuid:", StringComparison.OrdinalIgnoreCase))
+        {
+            var uuidPart = reference.Substring(9); // Skip "urn:uuid:"
+            return Guid.TryParse(uuidPart, out _);
+        }
+
+        // Format 3: Absolute URL - http:// or https://
+        if (reference.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            reference.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            return Uri.TryCreate(reference, UriKind.Absolute, out _);
+        }
+
+        // No valid format matched
+        return false;
     }
 
     private static string GetValidationReason(string primitiveType)

@@ -159,7 +159,7 @@ public class JsonNodeStructuralValidatorTests
         Assert.Equal("STRUCTURE", enumError.Source);
         Assert.Equal("error", enumError.Severity);
         Assert.Equal("/entry/0/resource/gender", enumError.JsonPointer);
-        Assert.Equal("Bundle.entry[0].resource.gender", enumError.Path);
+        Assert.Equal("Patient.gender", enumError.Path);
         
         // Verify details schema
         Assert.NotNull(enumError.Details);

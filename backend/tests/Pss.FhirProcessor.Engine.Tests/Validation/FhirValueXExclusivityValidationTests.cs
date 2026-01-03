@@ -490,7 +490,7 @@ public class FhirValueXExclusivityValidationTests
         
         var error = valueXErrors.First();
         // Path should be at the resource level where multiple value[x] exist
-        Assert.Contains("resource", error.Path, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("Observation", error.Path);
     }
 
     [Fact]

@@ -115,7 +115,7 @@ public class FhirCodeGrammarValidationTests
         var error = codeErrors.First();
         Assert.Equal("STRUCTURE", error.Source);
         Assert.Equal("error", error.Severity);
-        Assert.Equal("Bundle.entry[0].resource.status", error.Path);
+        Assert.Equal("Observation.status", error.Path);
         Assert.Equal("/entry/0/resource/status", error.JsonPointer);
         Assert.Contains("whitespace", error.Message, StringComparison.OrdinalIgnoreCase);
     }

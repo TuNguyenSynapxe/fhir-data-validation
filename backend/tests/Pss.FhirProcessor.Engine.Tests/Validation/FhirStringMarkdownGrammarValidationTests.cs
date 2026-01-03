@@ -255,7 +255,7 @@ public class FhirStringMarkdownGrammarValidationTests
         var error = stringErrors.First();
         Assert.Equal("STRUCTURE", error.Source);
         Assert.Equal("error", error.Severity);
-        Assert.Equal("Bundle.entry[0].resource.name[0].text", error.Path);
+        Assert.Equal("Patient.name[0].text", error.Path);
         Assert.Equal("/entry/0/resource/name/0/text", error.JsonPointer);
         Assert.Contains("newline", error.Message, StringComparison.OrdinalIgnoreCase);
     }

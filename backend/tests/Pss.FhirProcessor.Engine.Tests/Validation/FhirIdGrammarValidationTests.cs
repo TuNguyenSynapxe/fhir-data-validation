@@ -207,7 +207,7 @@ public class FhirIdGrammarValidationTests
 
         // Assert
         var idErrors = errors.Where(e => e.Path == "Patient.id").ToList();
-        var birthDateErrors = errors.Where(e => e.Path == "Bundle.entry[0].resource.birthDate").ToList();
+        var birthDateErrors = errors.Where(e => e.Path == "Patient.birthDate").ToList();
         
         Assert.Empty(idErrors); // Valid id should not emit error
         Assert.NotEmpty(birthDateErrors); // Invalid birthDate should emit error
