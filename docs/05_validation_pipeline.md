@@ -1,9 +1,11 @@
-
 # 05. Validation Pipeline Specification — FHIR Processor V2
+
+> **Phase 1 STRUCTURE Validation:** ✅ Complete — See [PHASE_1_COMPLETE.md](../PHASE_1_COMPLETE.md)
 
 ## 1. Overview
 The Validation Pipeline is the orchestrated backend workflow that processes:
 - the FHIR Bundle
+- **STRUCTURE validation (Phase 1)** — Pre-POCO grammar checks
 - business validation rules
 - CodeSystems/CodeMaster
 - reference integrity
@@ -14,16 +16,19 @@ The pipeline ensures correctness, determinism, and consistency across projects.
 
 ## 2. Pipeline Execution Order (Strict)
 1. **Input Parsing**
-2. **Firely Structural Validation**
-3. **FHIRPath Business Rule Validation**
-4. **CodeMaster Validation**
-5. **Reference Validation**
-6. **Error Aggregation**
-7. **Smart Path Navigation Mapping**
-8. **Unified Error Model Assembly**
-9. **Final API Response**
+2. **STRUCTURE Validation (Phase 1)** — Pre-POCO grammar checks
+3. **Firely Structural Validation** — POCO model validation
+4. **FHIRPath Business Rule Validation**
+5. **CodeMaster Validation**
+6. **Reference Validation**
+7. **Error Aggregation**
+8. **Smart Path Navigation Mapping**
+9. **Unified Error Model Assembly**
+10. **Final API Response**
 
 Each step always runs in this order. Steps may be skipped only if inputs are absent.
+
+**Phase 1 Note:** STRUCTURE validation runs **before** Firely to catch JSON-level errors before deserialization. See [STRUCTURE Coverage Spec](./STRUCTURE_VALIDATION_COVERAGE_PHASE_1.md).
 
 ---
 
@@ -35,7 +40,26 @@ Each step always runs in this order. Steps may be skipped only if inputs are abs
 - Wraps the bundle into `BundleWrapper`
 - Extracts resource indexes for use by navigation engine
 
-### 3.2 Step 2 – Firely Structural Validation
+### 3.2 Step 2 – STRUCTURE Validation (Phase 1)
+**NEW — Phase 1 Complete ✅**
+
+Pre-POCO validation using `JsonNodeStructuralValidator`:
+- FHIR `id` grammar (1-64 chars, `[A-Za-z0-9.-]`)
+- FHIR `string` vs `markdown` (no newlines in string)
+- FHIR `code` lexical (no whitespace/control chars)
+- FHIR `value[x]` exclusivity (only one variant)
+- FHIR `Reference` grammar (format and combinations)
+- FHIR `Extension` grammar (url required, shape validation)
+- FHIR `uri`/`url`/`canonical` grammar (RFC 3986)
+
+**Produces:** `Source = "STRUCTURE"` errors (blocking)
+
+**Documentation:**
+- [STRUCTURE Coverage Spec](./STRUCTURE_VALIDATION_COVERAGE_PHASE_1.md)
+- [STRUCTURE Guardrails](./STRUCTURE_VALIDATION_GUARDRAILS.md)
+- [Phase 1 Complete](../PHASE_1_COMPLETE.md)
+
+### 3.3 Step 3 – Firely Structural Validation
 Firely Validator checks:
 - Cardinality (min/max)
 - Datatype correctness
@@ -44,11 +68,13 @@ Firely Validator checks:
 - Element presence
 - Terminology if IG is loaded (optional)
 
-Produces Firely `OperationOutcome.issue[]`.
+Produces Firely `OperationOutcome.issue[]` → `Source = "FHIR"` or `"Firely"`.
+
+**Note:** STRUCTURE validation (Step 2) catches many errors before Firely, improving error messages and preventing deserialization failures.
 
 No PSS or business rules are evaluated here.
 
-### 3.3 Step 3 – Business Rule Validation (FHIRPath)
+### 3.4 Step 4 – Business Rule Validation (FHIRPath)
 Uses RuleEngineService to:
 - Compile FHIRPath expressions
 - Evaluate required/regex/allowedValues/CodeSystem/ArrayLength rules
@@ -78,10 +104,11 @@ Produces `"source": "Reference"` errors.
 
 ### 3.6 Step 6 – Error Aggregation
 Merges:
-- Firely errors
-- Rule engine errors
-- CodeMaster errors
-- Reference errors
+- **STRUCTURE errors** (Phase 1) — Pre-POCO grammar
+- Firely errors — POCO model validation
+- Rule engine errors — Business rules
+- CodeMaster errors — Terminology validation
+- Reference errors — Resource references
 
 Each error is normalized into a common intermediate structure:
 ```

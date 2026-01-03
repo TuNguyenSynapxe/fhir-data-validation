@@ -25,6 +25,16 @@ export const ValidationLayerInfo: React.FC = () => {
           <h3 className="text-sm font-semibold text-gray-900 mb-3">
             Understanding Validation Layers
           </h3>
+
+          {/* Phase 1 STRUCTURE vs SPEC_HINT explanation */}
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
+            <p className="text-xs text-gray-700 leading-relaxed mb-2">
+              <span className="font-semibold">STRUCTURE</span> errors prevent HL7 FHIR compliance and <span className="font-semibold text-red-700">must be fixed</span>.
+            </p>
+            <p className="text-xs text-gray-700 leading-relaxed">
+              <span className="font-semibold">SPEC_HINT</span> findings are <span className="font-semibold text-blue-700">advisory recommendations</span> that do not block validation.
+            </p>
+          </div>
           
           <div className="space-y-3 text-xs">
             {/* FHIR Structure */}
@@ -133,6 +143,16 @@ export const ValidationLayerInfo: React.FC = () => {
             </p>
             <p className="text-xs text-gray-600 leading-relaxed">
               Recommendations improve quality but do not affect validity.
+            </p>
+            <p className="text-xs text-blue-600 leading-relaxed mt-2">
+              <a 
+                href="/docs/STRUCTURE_VALIDATION_COVERAGE_PHASE_1.md" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="underline hover:text-blue-800"
+              >
+                Learn more about STRUCTURE validation →
+              </a>
             </p>
           </div>
         </div>

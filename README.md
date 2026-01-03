@@ -133,6 +133,14 @@ fhir_processor_v2/
 - [Unified Error Model](docs/08_unified_error_model.md)
 - [Smart Path Navigation](docs/07_smart_path_navigation.md)
 
+### Phase 1 STRUCTURE Validation (COMPLETE ✅)
+- **[Phase 1 Complete](PHASE_1_COMPLETE.md)** — Formal phase closure
+- **[STRUCTURE Coverage](docs/STRUCTURE_VALIDATION_COVERAGE_PHASE_1.md)** — Backend specification
+- **[STRUCTURE Guardrails](docs/STRUCTURE_VALIDATION_GUARDRAILS.md)** — Architectural protection
+- **[Frontend UI Semantics](FRONTEND_STRUCTURE_UI_SEMANTICS.md)** — Frontend implementation
+
+**Status:** 🔒 Locked — 163 tests passing (134 backend + 29 frontend)
+
 ### Quick References
 - [Backend Setup](backend/README.md)
 - [Frontend Development](frontend/README.md)
@@ -199,11 +207,24 @@ npm test
 
 ## 🤝 Contributing
 
+### General Guidelines
 1. Create a feature branch: `git checkout -b feature/your-feature`
 2. Follow existing code patterns and conventions
 3. Ensure all tests pass: `dotnet test` and `npm test`
 4. Update documentation if needed
 5. Submit a pull request
+
+### STRUCTURE Validation Changes
+**Phase 1 is LOCKED** 🔒 — See [PHASE_1_COMPLETE.md](PHASE_1_COMPLETE.md)
+
+**Bug fixes:** ✅ Allowed with tests + documentation update  
+**New rules:** ⚠️ Require Phase 2 proposal + architectural review
+
+Before modifying `JsonNodeStructuralValidator.cs`:
+- Read the Phase Lock comment at top of file
+- All 128 Phase 1 tests must continue passing
+- Run `StructureValidationGuardrailTests` to verify compliance
+- Update [STRUCTURE_VALIDATION_COVERAGE_PHASE_1.md](docs/STRUCTURE_VALIDATION_COVERAGE_PHASE_1.md) if behavior changes
 
 ---
 

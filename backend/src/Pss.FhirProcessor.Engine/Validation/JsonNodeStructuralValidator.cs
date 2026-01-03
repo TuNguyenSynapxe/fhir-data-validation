@@ -7,6 +7,31 @@ using Pss.FhirProcessor.Engine.Models;
 
 namespace Pss.FhirProcessor.Engine.Validation;
 
+//
+// ⚠️ PHASE 1 STRUCTURE VALIDATION — LOCKED ⚠️
+//
+// Phase 1 STRUCTURE coverage is complete (Rules 1-7).
+// New grammar rules require Phase 2 proposal and architectural review.
+//
+// Phase 1 Rules:
+//   1. FHIR id grammar
+//   2. string vs markdown
+//   3. code lexical grammar
+//   4. value[x] exclusivity
+//   5. Reference grammar
+//   6. Extension grammar
+//   7. uri / url / canonical grammar
+//
+// See: /docs/STRUCTURE_VALIDATION_COVERAGE_PHASE_1.md
+// Tests: StructureValidationGuardrailTests.cs
+//
+// Modification Policy:
+//   - Bug fixes: allowed with tests + documentation update
+//   - New rules: require Phase 2 proposal + version bump
+//   - Changes must not weaken existing validation
+//   - All 128 Phase 1 tests must continue passing
+//
+
 /// <summary>
 /// Phase A: JSON Node-based Structural Validation (Primary Authority)
 /// 
@@ -64,7 +89,10 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         ["dateTime"] = ValidateDateTime,
         ["id"] = ValidateFhirId,  // Phase 1, Rule 1: FHIR id grammar
         ["string"] = ValidateFhirString,  // Phase 1, Rule 2: FHIR string (no newlines)
-        ["code"] = ValidateFhirCode  // Phase 1, Rule 3: FHIR code (no whitespace/control chars)
+        ["code"] = ValidateFhirCode,  // Phase 1, Rule 3: FHIR code (no whitespace/control chars)
+        ["uri"] = ValidateFhirUri,  // Phase 1, Rule 7: FHIR uri grammar (RFC 3986)
+        ["url"] = ValidateFhirUrl,  // Phase 1, Rule 7: FHIR url grammar (absolute URI)
+        ["canonical"] = ValidateFhirCanonical  // Phase 1, Rule 7: FHIR canonical grammar (absolute URI with optional version)
     };
 
     // FHIR id regex: 1-64 characters, alphanumeric plus dash and dot
@@ -392,8 +420,13 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             var textValue = value.GetString();
             
             // Phase 1, Rule 3: code and id must not be empty (lexical requirement)
+            // Phase 1, Rule 7: uri, url, canonical must not be empty (lexical requirement)
             // Other primitives: empty strings handled by required field validation
-            var mustValidateEmpty = primitiveType == "code" || primitiveType == "id";
+            var mustValidateEmpty = primitiveType == "code" || 
+                                  primitiveType == "id" ||
+                                  primitiveType == "uri" ||
+                                  primitiveType == "url" ||
+                                  primitiveType == "canonical";
             
             if (string.IsNullOrEmpty(textValue) && !mustValidateEmpty)
             {
@@ -555,6 +588,9 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             "id" => "FHIR_INVALID_ID_FORMAT",
             "string" => "FHIR_INVALID_STRING_NEWLINE",
             "code" => "FHIR_INVALID_CODE_LITERAL",
+            "uri" => "FHIR_INVALID_URI",
+            "url" => "FHIR_INVALID_URL",
+            "canonical" => "FHIR_INVALID_CANONICAL",
             _ => "FHIR_INVALID_PRIMITIVE"
         };
         
@@ -1156,7 +1192,109 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             "id" => "Must be 1-64 characters containing only [A-Za-z0-9.-]",
             "string" => "FHIR string primitives must not contain newline characters. Use markdown if multiline text is required.",
             "code" => "FHIR code primitives must not contain whitespace or control characters.",
+            "uri" => "FHIR uri primitives must be valid RFC 3986 URIs.",
+            "url" => "FHIR url primitives must be absolute URIs.",
+            "canonical" => "FHIR canonical primitives must be absolute URIs and may include a version suffix.",
             _ => $"Invalid {primitiveType} format"
         };
+    }
+
+    /// <summary>
+    /// Phase 1, Rule 7: Validates FHIR uri primitive grammar.
+    /// uri may be relative or absolute, but must be a valid RFC 3986 URI.
+    /// </summary>
+    private static bool ValidateFhirUri(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        // Check for spaces or control characters (invalid in URIs)
+        if (value.Any(c => char.IsWhiteSpace(c) || char.IsControl(c)))
+        {
+            return false;
+        }
+
+        // Try to parse as a URI (both relative and absolute are valid for uri primitive)
+        // Use UriKind.RelativeOrAbsolute to accept both
+        if (!Uri.TryCreate(value, UriKind.RelativeOrAbsolute, out var uri))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Phase 1, Rule 7: Validates FHIR url primitive grammar.
+    /// url MUST be an absolute URI (contains scheme).
+    /// </summary>
+    private static bool ValidateFhirUrl(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        // Check for spaces or control characters
+        if (value.Any(c => char.IsWhiteSpace(c) || char.IsControl(c)))
+        {
+            return false;
+        }
+
+        // url must be absolute (UriKind.Absolute)
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Phase 1, Rule 7: Validates FHIR canonical primitive grammar.
+    /// canonical MUST be an absolute URI and may include a version suffix using |.
+    /// </summary>
+    private static bool ValidateFhirCanonical(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        // Check for spaces or control characters
+        if (value.Any(c => char.IsWhiteSpace(c) || char.IsControl(c)))
+        {
+            return false;
+        }
+
+        // canonical may have a version suffix: baseUri|version
+        // Split on | to extract base URI and version parts
+        var parts = value.Split('|');
+        
+        // If there's a version separator, validate both parts exist
+        if (parts.Length > 2)
+        {
+            return false; // Multiple | characters is invalid
+        }
+
+        if (parts.Length == 2)
+        {
+            // Version part must not be empty
+            if (string.IsNullOrWhiteSpace(parts[1]))
+            {
+                return false;
+            }
+        }
+
+        // Validate the base URI (before | if present) is an absolute URI
+        var baseUri = parts[0];
+        if (!Uri.TryCreate(baseUri, UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        return true;
     }
 }

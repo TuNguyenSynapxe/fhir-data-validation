@@ -308,6 +308,17 @@ This is an internal Synapxe project. Please follow:
 4. No bundle mutation
 5. All rules in JSON (not C#)
 
+### STRUCTURE Validation (Phase 1 LOCKED 🔒)
+- **[Phase 1 Complete](../PHASE_1_COMPLETE.md)** — Review before modifying validation
+- **Before editing `JsonNodeStructuralValidator.cs`:**
+  - Read Phase Lock comment (lines 1-25)
+  - All 128 Phase 1 tests must pass
+  - Run `StructureValidationGuardrailTests`
+  - Bug fixes allowed, new rules require Phase 2 proposal
+- **Documentation:**
+  - [STRUCTURE Coverage](../docs/STRUCTURE_VALIDATION_COVERAGE_PHASE_1.md)
+  - [STRUCTURE Guardrails](../docs/STRUCTURE_VALIDATION_GUARDRAILS.md)
+
 ---
 
 ## 📄 License

@@ -48,6 +48,10 @@ describe('validationUICounters', () => {
       expect(isBlockingError(createError('Reference'))).toBe(true);
     });
 
+    it('identifies STRUCTURE errors as blocking', () => {
+      expect(isBlockingError(createError('STRUCTURE'))).toBe(true);
+    });
+
     it('identifies LINT as non-blocking', () => {
       expect(isBlockingError(createError('LINT'))).toBe(false);
     });
