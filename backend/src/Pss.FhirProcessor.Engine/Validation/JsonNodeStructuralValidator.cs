@@ -63,7 +63,8 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         ["date"] = ValidateDate,
         ["dateTime"] = ValidateDateTime,
         ["id"] = ValidateFhirId,  // Phase 1, Rule 1: FHIR id grammar
-        ["string"] = ValidateFhirString  // Phase 1, Rule 2: FHIR string (no newlines)
+        ["string"] = ValidateFhirString,  // Phase 1, Rule 2: FHIR string (no newlines)
+        ["code"] = ValidateFhirCode  // Phase 1, Rule 3: FHIR code (no whitespace/control chars)
     };
 
     // FHIR id regex: 1-64 characters, alphanumeric plus dash and dot
@@ -369,7 +370,12 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         if (value.ValueKind == JsonValueKind.String)
         {
             var textValue = value.GetString();
-            if (string.IsNullOrEmpty(textValue))
+            
+            // Phase 1, Rule 3: code and id must not be empty (lexical requirement)
+            // Other primitives: empty strings handled by required field validation
+            var mustValidateEmpty = primitiveType == "code" || primitiveType == "id";
+            
+            if (string.IsNullOrEmpty(textValue) && !mustValidateEmpty)
             {
                 return; // Empty strings are handled by required field validation
             }
@@ -379,7 +385,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
                 if (!validator(textValue))
                 {
                     var reason = GetValidationReason(primitiveType);
-                    errors.Add(CreateInvalidPrimitiveError(fhirPath, jsonPointer, textValue, primitiveType, reason, resourceType));
+                    errors.Add(CreateInvalidPrimitiveError(fhirPath, jsonPointer, textValue ?? string.Empty, primitiveType, reason, resourceType));
                 }
             }
         }
@@ -528,6 +534,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         {
             "id" => "FHIR_INVALID_ID_FORMAT",
             "string" => "FHIR_INVALID_STRING_NEWLINE",
+            "code" => "FHIR_INVALID_CODE_LITERAL",
             _ => "FHIR_INVALID_PRIMITIVE"
         };
         
@@ -724,6 +731,38 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
     }
 
     /// <summary>
+    /// Phase 1, Rule 3: Validates FHIR code primitive lexical grammar.
+    /// FHIR code primitives MUST NOT:
+    /// - Contain any whitespace (space, tab, newline, etc.)
+    /// - Have leading or trailing whitespace
+    /// - Contain control characters (\u0000-\u001F, \u007F)
+    /// - Be empty string
+    /// This is lexical validation only, independent of terminology/enum membership.
+    /// </summary>
+    private static bool ValidateFhirCode(string? value)
+    {
+        // Empty string is invalid for code
+        if (string.IsNullOrEmpty(value))
+        {
+            return false;
+        }
+
+        // Check for any whitespace characters
+        if (value.Any(char.IsWhiteSpace))
+        {
+            return false;
+        }
+
+        // Check for control characters (0x00-0x1F and 0x7F)
+        if (value.Any(c => char.IsControl(c)))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// Phase 1, Rule 1: Validates Resource.id explicitly.
     /// id is a base Resource primitive that isn't in individual resource schemas.
     /// This must be called at the resource boundary before normal element traversal.
@@ -764,6 +803,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             "boolean" => "Must be true or false",
             "id" => "Must be 1-64 characters containing only [A-Za-z0-9.-]",
             "string" => "FHIR string primitives must not contain newline characters. Use markdown if multiline text is required.",
+            "code" => "FHIR code primitives must not contain whitespace or control characters.",
             _ => $"Invalid {primitiveType} format"
         };
     }
