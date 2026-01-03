@@ -316,14 +316,14 @@ public static class TestHelper
         return new ValidationPipeline(
             structuralValidator,
             lintService,
-            specHintService,
-            firelyService,
+            firelyService,          // Moved before specHintService
             ruleEngine,
             codeMasterEngine,
             referenceResolver,
             errorModelBuilder,
             suggestionService,
-            logger);
+            logger,
+            specHintService);       // Now optional parameter at end
     }
     
     public static IJsonNodeStructuralValidator CreateJsonNodeStructuralValidator()
