@@ -111,8 +111,6 @@ export const RuleCard: React.FC<RuleCardProps> = ({ rule, onEdit, onDelete }) =>
             )}
           </div>
         );
-          </div>
-        );
 
       case 'questionanswer':
         return (
