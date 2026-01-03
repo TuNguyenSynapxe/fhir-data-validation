@@ -187,6 +187,12 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             {
                 ValidateReferenceGrammar(element, fhirPath, jsonPointer, resourceType, errors);
             }
+            
+            // Phase 1, Rule 6: Validate Extension grammar if this is an Extension element
+            if (schema.Type == "Extension")
+            {
+                ValidateExtensionGrammar(element, fhirPath, jsonPointer, resourceType, errors);
+            }
         }
 
         // Validate each child element defined in schema
@@ -1030,6 +1036,112 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
 
         // No valid format matched
         return false;
+    }
+
+    /// <summary>
+    /// Phase 1, Rule 6: Validates FHIR Extension grammar.
+    /// Checks:
+    /// 1. url must be present and non-empty
+    /// 2. Extension must contain either value[x] OR extension[], not both
+    /// 3. Extension must not be empty (url only)
+    /// </summary>
+    private void ValidateExtensionGrammar(
+        JsonElement element,
+        string fhirPath,
+        string jsonPointer,
+        string resourceType,
+        List<ValidationError> errors)
+    {
+        // Rule 6.1: Validate url presence
+        bool hasUrl = element.TryGetProperty("url", out var urlElement);
+        bool urlValid = hasUrl && 
+                       urlElement.ValueKind == JsonValueKind.String && 
+                       !string.IsNullOrWhiteSpace(urlElement.GetString());
+
+        if (!urlValid)
+        {
+            var details = new Dictionary<string, object>
+            {
+                ["hasUrl"] = hasUrl,
+                ["urlType"] = hasUrl ? urlElement.ValueKind.ToString() : "missing"
+            };
+
+            Models.ValidationErrorDetailsValidator.Validate("FHIR_EXTENSION_MISSING_URL", details);
+
+            errors.Add(new ValidationError
+            {
+                Source = "STRUCTURE",
+                Severity = "error",
+                ErrorCode = "FHIR_EXTENSION_MISSING_URL",
+                ResourceType = resourceType,
+                Path = fhirPath,
+                JsonPointer = jsonPointer,
+                Message = "FHIR Extension elements must contain a non-empty url property.",
+                Details = details
+            });
+            // Continue validation - check shape even if url is missing
+        }
+
+        // Rule 6.2: Validate shape (value[x] vs extension[] exclusivity)
+        bool hasValueX = false;
+        bool hasNestedExtension = false;
+
+        foreach (var property in element.EnumerateObject())
+        {
+            if (IsValueXProperty(property.Name))
+            {
+                hasValueX = true;
+            }
+            else if (property.Name == "extension" && property.Value.ValueKind == JsonValueKind.Array)
+            {
+                hasNestedExtension = true;
+            }
+        }
+
+        // Invalid shapes:
+        // 1. url only (neither value[x] nor extension[])
+        // 2. both value[x] and extension[]
+        bool isInvalidShape = false;
+        string shapeReason = string.Empty;
+
+        if (!hasValueX && !hasNestedExtension)
+        {
+            isInvalidShape = true;
+            shapeReason = "empty";
+        }
+        else if (hasValueX && hasNestedExtension)
+        {
+            isInvalidShape = true;
+            shapeReason = "both";
+        }
+
+        if (isInvalidShape)
+        {
+            var details = new Dictionary<string, object>
+            {
+                ["hasValueX"] = hasValueX,
+                ["hasNestedExtension"] = hasNestedExtension,
+                ["shapeReason"] = shapeReason
+            };
+
+            Models.ValidationErrorDetailsValidator.Validate("FHIR_EXTENSION_INVALID_SHAPE", details);
+
+            var message = shapeReason == "both"
+                ? "FHIR Extension elements must contain either a single value[x] or nested extensions, but not both."
+                : "FHIR Extension elements must contain either a single value[x] or nested extensions.";
+
+            errors.Add(new ValidationError
+            {
+                Source = "STRUCTURE",
+                Severity = "error",
+                ErrorCode = "FHIR_EXTENSION_INVALID_SHAPE",
+                ResourceType = resourceType,
+                Path = fhirPath,
+                JsonPointer = jsonPointer,
+                Message = message,
+                Details = details
+            });
+        }
     }
 
     private static string GetValidationReason(string primitiveType)
