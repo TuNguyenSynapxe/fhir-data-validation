@@ -62,7 +62,8 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         ["decimal"] = value => decimal.TryParse(value, out _),
         ["date"] = ValidateDate,
         ["dateTime"] = ValidateDateTime,
-        ["id"] = ValidateFhirId  // Phase 1, Rule 1: FHIR id grammar
+        ["id"] = ValidateFhirId,  // Phase 1, Rule 1: FHIR id grammar
+        ["string"] = ValidateFhirString  // Phase 1, Rule 2: FHIR string (no newlines)
     };
 
     // FHIR id regex: 1-64 characters, alphanumeric plus dash and dot
@@ -522,8 +523,13 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
         string reason,
         string resourceType)
     {
-        // Phase 1, Rule 1: Use specific error code for id validation
-        var errorCode = expectedType == "id" ? "FHIR_INVALID_ID_FORMAT" : "FHIR_INVALID_PRIMITIVE";
+        // Phase 1: Use specific error codes for different primitive types
+        var errorCode = expectedType switch
+        {
+            "id" => "FHIR_INVALID_ID_FORMAT",
+            "string" => "FHIR_INVALID_STRING_NEWLINE",
+            _ => "FHIR_INVALID_PRIMITIVE"
+        };
         
         var details = new Dictionary<string, object>
         {
@@ -701,6 +707,23 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
     }
 
     /// <summary>
+    /// Phase 1, Rule 2: Validates FHIR string primitive (no newlines allowed).
+    /// FHIR string primitives MUST NOT contain \n or \r.
+    /// Use markdown type if multiline text is required.
+    /// </summary>
+    private static bool ValidateFhirString(string? value)
+    {
+        // Empty string is valid
+        if (string.IsNullOrEmpty(value))
+        {
+            return true;
+        }
+
+        // Check for newline characters (\n or \r)
+        return !value.Contains('\n') && !value.Contains('\r');
+    }
+
+    /// <summary>
     /// Phase 1, Rule 1: Validates Resource.id explicitly.
     /// id is a base Resource primitive that isn't in individual resource schemas.
     /// This must be called at the resource boundary before normal element traversal.
@@ -740,6 +763,7 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
             "decimal" => "Must be a numeric value",
             "boolean" => "Must be true or false",
             "id" => "Must be 1-64 characters containing only [A-Za-z0-9.-]",
+            "string" => "FHIR string primitives must not contain newline characters. Use markdown if multiline text is required.",
             _ => $"Invalid {primitiveType} format"
         };
     }
