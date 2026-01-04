@@ -149,7 +149,20 @@ public class UnifiedErrorModelBuilder : IUnifiedErrorModelBuilder
             });
         }
         
-        return errors;
+        // Deduplicate errors by (ErrorCode, JsonPointer, Message)
+        // This prevents duplicate errors from being returned (e.g., unknown element errors caught multiple times)
+        var uniqueErrors = errors
+            .GroupBy(e => new { e.ErrorCode, e.JsonPointer, e.Message })
+            .Select(g => g.First())
+            .ToList();
+        
+        if (uniqueErrors.Count < errors.Count)
+        {
+            _logger?.LogInformation("Deduplicated {DuplicateCount} Firely errors ({Original} → {Unique})", 
+                errors.Count - uniqueErrors.Count, errors.Count, uniqueErrors.Count);
+        }
+        
+        return uniqueErrors;
     }
     
     public async Task<List<ValidationError>> FromRuleErrorsAsync(List<RuleValidationError> errors, string rawBundleJson, Bundle bundle, CancellationToken cancellationToken = default)

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { BundleEditor } from '../../components/public/BundleEditor';
-import { ValidationResultPanel } from '../../components/public/ValidationResultPanel';
+import { BundleTree } from '../../components/playground/Bundle/BundleTree';
+import { ValidationWorkspace } from '../../components/shared/ValidationWorkspace';
 import { validateBundle } from '../../api/publicValidationApi';
 import type { ValidateResponse } from '../../types/public-validation';
 import { Loader2, FileJson } from 'lucide-react';
@@ -40,8 +41,9 @@ export function ValidatePage() {
   const [isValidating, setIsValidating] = useState(false);
   const [result, setResult] = useState<ValidateResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedJsonPointer, setSelectedJsonPointer] = useState<string | null>(null);
 
-  const handleValidate = async () => {
+  const handleValidate = async (mode?: 'standard' | 'full') => {
     if (!bundleJson.trim() || !isValidJson) {
       setError('Please enter valid JSON');
       return;
@@ -55,7 +57,7 @@ export function ValidatePage() {
       const response = await validateBundle({
         bundleJson,
         fhirVersion,
-        validationMode,
+        validationMode: mode ?? validationMode,
       });
       console.log('Validation response:', response);
       setResult(response);
@@ -65,6 +67,11 @@ export function ValidatePage() {
     } finally {
       setIsValidating(false);
     }
+  };
+
+  const handleReset = () => {
+    setResult(null);
+    setError(null);
   };
 
   const handleLoadExample = () => {
@@ -139,7 +146,7 @@ export function ValidatePage() {
 
         {/* Validate Button */}
         <button
-          onClick={handleValidate}
+          onClick={() => handleValidate()}
           disabled={!isValidJson || !bundleJson.trim() || isValidating}
           className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
@@ -154,31 +161,32 @@ export function ValidatePage() {
         </button>
       </div>
 
-      {/* Error Display */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800 font-medium">Error</p>
-          <p className="text-red-600 text-sm mt-1">{error}</p>
-        </div>
-      )}
-
-      {/* Results */}
-      {result && (
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <h2 className="text-lg font-semibold mb-4">Validation Results</h2>
-          {result.engineResponse ? (
-            <ValidationResultPanel result={result.engineResponse} />
-          ) : (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <p className="text-yellow-800 font-medium">Unexpected Response</p>
-              <p className="text-yellow-600 text-sm mt-1">
-                The validation completed but returned an unexpected format.
-              </p>
-              <pre className="mt-2 text-xs bg-white p-2 rounded overflow-auto">
-                {JSON.stringify(result, null, 2)}
-              </pre>
+      {/* Two-Panel Layout: Tree + Validation Results */}
+      {bundleJson && result && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left Panel: Bundle Tree */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold mb-4">Bundle Structure</h2>
+            <div className="border border-gray-200 rounded-lg overflow-auto max-h-[600px]">
+              <BundleTree
+                bundleJson={bundleJson}
+                selectedPath={selectedJsonPointer ?? undefined}
+              />
             </div>
-          )}
+          </div>
+
+          {/* Right Panel: ValidationWorkspace */}
+          <ValidationWorkspace
+            bundleJson={bundleJson}
+            validationResult={result?.engineResponse ?? null}
+            isValidating={isValidating}
+            validationError={error}
+            onValidate={handleValidate}
+            onReset={handleReset}
+            onNavigateToPath={setSelectedJsonPointer}
+            defaultOpen={true}
+            showExplanations={false}
+          />
         </div>
       )}
     </div>

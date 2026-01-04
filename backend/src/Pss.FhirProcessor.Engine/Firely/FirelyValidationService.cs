@@ -164,13 +164,34 @@ public class FirelyValidationService : IFirelyValidationService
         
         nodeCount++;
         
-        // Access the Value property to trigger validation
-        _ = element.Value;
-        
-        // Recursively visit children
-        foreach (var child in element.Children())
+        try
         {
-            VisitAllNodes(child, ref nodeCount);
+            // Access the Value property to trigger validation
+            _ = element.Value;
+        }
+        catch
+        {
+            // Ignore validation errors during traversal - they'll be caught at the top level
+        }
+        
+        // Recursively visit children (wrapped in try-catch to continue even if child fails)
+        try
+        {
+            foreach (var child in element.Children())
+            {
+                try
+                {
+                    VisitAllNodes(child, ref nodeCount);
+                }
+                catch
+                {
+                    // Continue traversing other children even if one fails
+                }
+            }
+        }
+        catch
+        {
+            // Children() itself might throw - continue anyway
         }
     }
 }
