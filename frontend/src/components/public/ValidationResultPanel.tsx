@@ -6,21 +6,37 @@ interface ValidationResultPanelProps {
 }
 
 export function ValidationResultPanel({ result }: ValidationResultPanelProps) {
+  // Defensive checks
+  if (!result || !result.summary) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <p className="text-red-800 font-medium">Invalid validation result</p>
+        <p className="text-red-600 text-sm mt-1">
+          The validation response is missing required data.
+        </p>
+      </div>
+    );
+  }
+
   const { summary, byPhase } = result;
 
   // Group issues by enforcement
   const mustFixIssues: ValidationIssue[] = [];
   const recommendedIssues: ValidationIssue[] = [];
 
-  Object.values(byPhase).forEach((phaseIssues) => {
-    phaseIssues?.forEach((issue: ValidationIssue) => {
-      if (issue.enforcement === 'MUST_FIX') {
-        mustFixIssues.push(issue);
-      } else {
-        recommendedIssues.push(issue);
+  if (byPhase && typeof byPhase === 'object') {
+    Object.values(byPhase).forEach((phaseIssues) => {
+      if (Array.isArray(phaseIssues)) {
+        phaseIssues.forEach((issue: ValidationIssue) => {
+          if (issue && issue.enforcement === 'MUST_FIX') {
+            mustFixIssues.push(issue);
+          } else if (issue) {
+            recommendedIssues.push(issue);
+          }
+        });
       }
     });
-  });
+  }
 
   const isValid = summary.totalErrors === 0;
 
@@ -45,10 +61,10 @@ export function ValidationResultPanel({ result }: ValidationResultPanelProps) {
               {isValid ? 'Validation Passed' : 'Validation Failed'}
             </h2>
             <p className="text-sm text-gray-600">
-              {summary.totalErrors} errors, {summary.totalWarnings} warnings
+              {summary.totalErrors || 0} errors, {summary.totalWarnings || 0} warnings
               {' • '}
-              {summary.byEnforcement.mustFix} must fix,{' '}
-              {summary.byEnforcement.recommended} recommended
+              {summary.byEnforcement?.mustFix || 0} must fix,{' '}
+              {summary.byEnforcement?.recommended || 0} recommended
             </p>
           </div>
         </div>

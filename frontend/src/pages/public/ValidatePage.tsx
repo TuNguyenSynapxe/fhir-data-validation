@@ -57,8 +57,10 @@ export function ValidatePage() {
         fhirVersion,
         validationMode,
       });
+      console.log('Validation response:', response);
       setResult(response);
     } catch (err) {
+      console.error('Validation error:', err);
       setError(err instanceof Error ? err.message : 'Validation failed');
     } finally {
       setIsValidating(false);
@@ -164,7 +166,19 @@ export function ValidatePage() {
       {result && (
         <div className="bg-white border border-gray-200 rounded-lg p-6">
           <h2 className="text-lg font-semibold mb-4">Validation Results</h2>
-          <ValidationResultPanel result={result.engineResponse} />
+          {result.engineResponse ? (
+            <ValidationResultPanel result={result.engineResponse} />
+          ) : (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <p className="text-yellow-800 font-medium">Unexpected Response</p>
+              <p className="text-yellow-600 text-sm mt-1">
+                The validation completed but returned an unexpected format.
+              </p>
+              <pre className="mt-2 text-xs bg-white p-2 rounded overflow-auto">
+                {JSON.stringify(result, null, 2)}
+              </pre>
+            </div>
+          )}
         </div>
       )}
     </div>
