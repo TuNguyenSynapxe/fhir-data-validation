@@ -1,7 +1,8 @@
 using Pss.FhirProcessor.Engine.Core;
 using Pss.FhirProcessor.Engine.Models;
 using Pss.FhirProcessor.Playground.Api.Models;
-using Pss.FhirProcessor.Playground.Api.Storage;
+using Pss.FhirProcessor.Playground.Api.Mappers;
+using Pss.FhirProcessor.Persistence.Repositories;
 
 namespace Pss.FhirProcessor.Playground.Api.Services;
 
@@ -34,20 +35,23 @@ public class ProjectService : IProjectService
             FhirVersion = fhirVersion
         };
         
-        var created = await _repository.CreateAsync(project);
+        var record = ProjectMapper.ToRecord(project);
+        var created = await _repository.CreateAsync(record);
         _logger.LogInformation("Created project {ProjectId} with name {Name}", created.Id, created.Name);
         
-        return created;
+        return ProjectMapper.ToProject(created);
     }
 
     public async Task<Project?> GetProjectAsync(Guid id)
     {
-        return await _repository.GetAsync(id);
+        var record = await _repository.GetByIdAsync(id);
+        return record == null ? null : ProjectMapper.ToProject(record);
     }
 
     public async Task<IEnumerable<ProjectMetadata>> ListProjectsAsync()
     {
-        return await _repository.ListAsync();
+        var records = await _repository.ListAllAsync();
+        return ProjectMapper.ToMetadataList(records);
     }
 
     public async Task<bool> DeleteProjectAsync(Guid id)
@@ -64,42 +68,85 @@ public class ProjectService : IProjectService
 
     public async Task<Project> UpdateRulesAsync(Guid id, string rulesJson)
     {
-        var project = await _repository.SaveRulesAsync(id, rulesJson);
+        var existing = await _repository.GetByIdAsync(id);
+        if (existing == null)
+        {
+            throw new InvalidOperationException($"Project {id} not found");
+        }
+
+        var project = ProjectMapper.ToProject(existing);
+        project.RulesJson = rulesJson;
+
+        var record = ProjectMapper.ToRecordForUpdate(project, existing.Slug, existing.Status);
+        var updated = await _repository.UpdateAsync(record);
         _logger.LogInformation("Updated rules for project {ProjectId}", id);
         
-        return project;
+        return ProjectMapper.ToProject(updated);
     }
 
     public async Task<Project> UpdateCodeMasterAsync(Guid id, string codeMasterJson)
     {
-        var project = await _repository.SaveCodeMasterAsync(id, codeMasterJson);
+        var existing = await _repository.GetByIdAsync(id);
+        if (existing == null)
+        {
+            throw new InvalidOperationException($"Project {id} not found");
+        }
+
+        var project = ProjectMapper.ToProject(existing);
+        project.CodeMasterJson = codeMasterJson;
+
+        var record = ProjectMapper.ToRecordForUpdate(project, existing.Slug, existing.Status);
+        var updated = await _repository.UpdateAsync(record);
         _logger.LogInformation("Updated CodeMaster for project {ProjectId}", id);
         
-        return project;
+        return ProjectMapper.ToProject(updated);
     }
 
     public async Task<Project> UpdateSampleBundleAsync(Guid id, string bundleJson)
     {
-        var project = await _repository.SaveSampleBundleAsync(id, bundleJson);
+        var existing = await _repository.GetByIdAsync(id);
+        if (existing == null)
+        {
+            throw new InvalidOperationException($"Project {id} not found");
+        }
+
+        var project = ProjectMapper.ToProject(existing);
+        project.SampleBundleJson = bundleJson;
+
+        var record = ProjectMapper.ToRecordForUpdate(project, existing.Slug, existing.Status);
+        var updated = await _repository.UpdateAsync(record);
         _logger.LogInformation("Updated sample bundle for project {ProjectId}", id);
         
-        return project;
+        return ProjectMapper.ToProject(updated);
     }
 
     public async Task<Project> UpdateValidationSettingsAsync(Guid id, string validationSettingsJson)
     {
-        var project = await _repository.SaveValidationSettingsAsync(id, validationSettingsJson);
+        var existing = await _repository.GetByIdAsync(id);
+        if (existing == null)
+        {
+            throw new InvalidOperationException($"Project {id} not found");
+        }
+
+        var project = ProjectMapper.ToProject(existing);
+        project.ValidationSettingsJson = validationSettingsJson;
+
+        var record = ProjectMapper.ToRecordForUpdate(project, existing.Slug, existing.Status);
+        var updated = await _repository.UpdateAsync(record);
         _logger.LogInformation("Updated validation settings for project {ProjectId}", id);
         
-        return project;
+        return ProjectMapper.ToProject(updated);
     }
 
     public async Task<Project> UpdateFeaturesAsync(Guid id, UpdateFeaturesRequest request)
     {
-        var project = await _repository.GetAsync(id);
-        
-        if (project == null)
+        var existing = await _repository.GetByIdAsync(id);
+        if (existing == null)
+        {
             throw new InvalidOperationException($"Project {id} not found");
+        }
+
+        var project = ProjectMapper.ToProject(existing);
         
         // Update only the provided feature flags (merge with existing)
         if (request.TreeRuleAuthoring.HasValue)
@@ -107,31 +154,31 @@ public class ProjectService : IProjectService
             project.Features.TreeRuleAuthoring = request.TreeRuleAuthoring.Value;
         }
         
-        // Save the updated project
-        project.UpdatedAt = DateTime.UtcNow;
-        await _repository.UpdateAsync(project);
+        var record = ProjectMapper.ToRecordForUpdate(project, existing.Slug, existing.Status);
+        var updated = await _repository.UpdateAsync(record);
         
         _logger.LogInformation("Updated features for project {ProjectId}: TreeRuleAuthoring={TreeRuleAuthoring}", 
             id, project.Features.TreeRuleAuthoring);
         
-        return project;
+        return ProjectMapper.ToProject(updated);
     }
 
     public async Task<object> ExportRulePackageAsync(Guid id)
     {
-        var project = await _repository.GetAsync(id);
-        
-        if (project == null)
+        var record = await _repository.GetByIdAsync(id);
+        if (record == null)
+        {
             throw new InvalidOperationException($"Project {id} not found");
-        
+        }
+
         var package = new
         {
-            projectId = project.Id,
-            projectName = project.Name,
-            fhirVersion = project.FhirVersion,
+            projectId = record.Id,
+            projectName = record.Name,
+            fhirVersion = record.FhirVersion,
             exportedAt = DateTime.UtcNow,
-            rules = project.RulesJson,
-            codeMaster = project.CodeMasterJson
+            rules = record.RulesetJson,
+            codeMaster = record.CodeMasterJson
         };
         
         _logger.LogInformation("Exported rule package for project {ProjectId}", id);
@@ -141,10 +188,13 @@ public class ProjectService : IProjectService
 
     public async Task<ValidationResponse> ValidateProjectAsync(Guid id, string? bundleJsonOverride = null, string? validationMode = null)
     {
-        var project = await _repository.GetAsync(id);
-        
-        if (project == null)
+        var record = await _repository.GetByIdAsync(id);
+        if (record == null)
+        {
             throw new InvalidOperationException($"Project {id} not found");
+        }
+
+        var project = ProjectMapper.ToProject(record);
         
         // Use override bundle if provided, otherwise use project's sample bundle
         var bundleJson = bundleJsonOverride ?? project.SampleBundleJson;

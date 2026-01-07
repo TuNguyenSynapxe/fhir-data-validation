@@ -82,8 +82,8 @@ try
     builder.Services.AddTerminologyServices(baseDataPath);
     Log.Information("Terminology services configured with data path: {DataPath}", baseDataPath);
 
-    // Register Persistence Layer (Phase 3 MVP)
-    // PostgreSQL connection for published project access
+    // Register Persistence Layer (PostgreSQL for all project operations)
+    // Shared connection for both public and admin operations
     builder.Services.AddScoped<NpgsqlConnection>(sp =>
     {
         var connString = builder.Configuration.GetConnectionString("PostgreSQL");
@@ -94,11 +94,12 @@ try
         }
         return new NpgsqlConnection(connString);
     });
+    
+    // Register PostgresProjectRepository for both public and admin use
     builder.Services.AddScoped<Pss.FhirProcessor.Persistence.Repositories.IProjectRepository, PostgresProjectRepository>();
-    Log.Information("Persistence layer configured with PostgreSQL");
+    Log.Information("Persistence layer configured with PostgreSQL (admin + public)");
 
-    // Register Playground API services (existing authoring services)
-    builder.Services.AddScoped<Pss.FhirProcessor.Playground.Api.Storage.IProjectRepository, ProjectRepository>();
+    // Register Playground API services (authoring services now use PostgreSQL)
     builder.Services.AddScoped<IProjectService, ProjectService>();
     builder.Services.AddScoped<IRuleService, RuleService>();
 

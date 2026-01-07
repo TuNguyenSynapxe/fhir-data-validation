@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fhir_processor_postgres
+    restart: unless-stopped
+    ports:
+      - "5433:5432"  # Expose on host port 5433 to avoid conflicts
+    environment:
+      POSTGRES_DB: fhir_validation
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/database/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d fhir_validation"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fhir_network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  fhir_network:
+    driver: bridge

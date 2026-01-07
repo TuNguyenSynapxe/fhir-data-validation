@@ -47,4 +47,38 @@ public sealed record ProjectRecord
     /// When the project was published (null if never published).
     /// </summary>
     public DateTimeOffset? PublishedAt { get; init; }
+
+    /// <summary>
+    /// When the project was last updated.
+    /// </summary>
+    public DateTimeOffset UpdatedAt { get; init; }
+
+    /// <summary>
+    /// FHIR version for validation (e.g., "R4", "R5").
+    /// </summary>
+    public string FhirVersion { get; init; } = "R4";
+
+    /// <summary>
+    /// CodeMaster definitions as raw JSON string.
+    /// MUST remain as string - never deserialized in this layer.
+    /// </summary>
+    public string? CodeMasterJson { get; init; }
+
+    /// <summary>
+    /// Sample FHIR bundle for testing as raw JSON string.
+    /// MUST remain as string - never deserialized in this layer.
+    /// </summary>
+    public string? SampleBundleJson { get; init; }
+
+    /// <summary>
+    /// Runtime validation settings as raw JSON string.
+    /// MUST remain as string - never deserialized in this layer.
+    /// </summary>
+    public string? ValidationSettingsJson { get; init; }
+
+    /// <summary>
+    /// Project features and settings as raw JSON string.
+    /// MUST remain as string - never deserialized in this layer.
+    /// </summary>
+    public string? FeaturesJson { get; init; }
 }

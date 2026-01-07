@@ -1,42 +1,16 @@
 import { useState } from 'react';
-import { BundleEditor } from '../../components/public/BundleEditor';
-import { BundleTree } from '../../components/playground/Bundle/BundleTree';
+import { ValidationSplitLayout } from '../../components/shared/ValidationSplitLayout';
+import { BundleWorkspace } from '../../components/shared/BundleWorkspace';
 import { ValidationWorkspace } from '../../components/shared/ValidationWorkspace';
 import { validateBundle } from '../../api/publicValidationApi';
 import type { ValidateResponse } from '../../types/public-validation';
-import { Loader2, FileJson } from 'lucide-react';
-
-const EXAMPLE_BUNDLE = `{
-  "resourceType": "Bundle",
-  "type": "collection",
-  "entry": [
-    {
-      "resource": {
-        "resourceType": "Patient",
-        "id": "example",
-        "identifier": [
-          {
-            "system": "http://example.org/mrn",
-            "value": "12345"
-          }
-        ],
-        "name": [
-          {
-            "family": "Doe",
-            "given": ["John"]
-          }
-        ]
-      }
-    }
-  ]
-}`;
+import { ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export function ValidatePage() {
   const [bundleJson, setBundleJson] = useState('');
-  const [fhirVersion, setFhirVersion] = useState('R4');
-  const [validationMode, setValidationMode] = useState<'standard' | 'full'>(
-    'standard'
-  );
+  const [fhirVersion] = useState('R4');
+  const [validationMode, setValidationMode] = useState<'standard' | 'full'>('standard');
   const [isValidJson, setIsValidJson] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [result, setResult] = useState<ValidateResponse | null>(null);
@@ -74,121 +48,57 @@ export function ValidatePage() {
     setError(null);
   };
 
-  const handleLoadExample = () => {
-    setBundleJson(EXAMPLE_BUNDLE);
-  };
-
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
+    <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Anonymous FHIR Validation
-        </h1>
-        <p className="text-gray-600">
-          Validate your FHIR bundles without project-specific rules.
-          This performs structural validation only.
-        </p>
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center gap-4 mb-2">
+            <Link
+              to="/projects"
+              className="text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Anonymous FHIR Validation
+            </h1>
+          </div>
+          <p className="text-sm text-gray-600">
+            Structural validation without project-specific rules
+          </p>
+        </div>
       </div>
 
-      {/* Input Section */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">FHIR Bundle</h2>
-          <button
-            onClick={handleLoadExample}
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
-          >
-            <FileJson className="w-4 h-4" />
-            Load Example
-          </button>
-        </div>
-
-        <BundleEditor
-          value={bundleJson}
-          onChange={setBundleJson}
-          onValidJson={setIsValidJson}
-        />
-
-        {/* Configuration */}
-        <div className="flex gap-4">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              FHIR Version
-            </label>
-            <select
-              value={fhirVersion}
-              onChange={(e) => setFhirVersion(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="R4">R4</option>
-              <option value="R4B">R4B</option>
-              <option value="R5">R5</option>
-            </select>
-          </div>
-
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Validation Mode
-            </label>
-            <select
-              value={validationMode}
-              onChange={(e) =>
-                setValidationMode(e.target.value as 'standard' | 'full')
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="standard">Standard (Runtime)</option>
-              <option value="full">Full (with SpecHints)</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Validate Button */}
-        <button
-          onClick={() => handleValidate()}
-          disabled={!isValidJson || !bundleJson.trim() || isValidating}
-          className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          {isValidating ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Validating...
-            </>
-          ) : (
-            'Validate Bundle'
-          )}
-        </button>
-      </div>
-
-      {/* Two-Panel Layout: Tree + Validation Results */}
-      {bundleJson && result && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Panel: Bundle Tree */}
-          <div className="bg-white border border-gray-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold mb-4">Bundle Structure</h2>
-            <div className="border border-gray-200 rounded-lg overflow-auto max-h-[600px]">
-              <BundleTree
+      {/* Main Content */}
+      <div className="flex-1 overflow-hidden p-6">
+        <div className="h-full max-w-7xl mx-auto">
+          <ValidationSplitLayout
+            left={
+              <BundleWorkspace
                 bundleJson={bundleJson}
-                selectedPath={selectedJsonPointer ?? undefined}
+                onChange={setBundleJson}
+                onJsonValidChange={setIsValidJson}
+                selectedPath={selectedJsonPointer}
+                onPathSelect={setSelectedJsonPointer}
               />
-            </div>
-          </div>
-
-          {/* Right Panel: ValidationWorkspace */}
-          <ValidationWorkspace
-            bundleJson={bundleJson}
-            validationResult={result?.engineResponse ?? null}
-            isValidating={isValidating}
-            validationError={error}
-            onValidate={handleValidate}
-            onReset={handleReset}
-            onNavigateToPath={setSelectedJsonPointer}
-            defaultOpen={true}
-            showExplanations={false}
+            }
+            right={
+              <ValidationWorkspace
+                bundleJson={bundleJson}
+                validationResult={result?.engineResponse ?? null}
+                isValidating={isValidating}
+                validationError={error}
+                onValidate={handleValidate}
+                onReset={handleReset}
+                onNavigateToPath={setSelectedJsonPointer}
+                defaultOpen={false}
+                showExplanations={false}
+              />
+            }
           />
         </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -79,7 +79,7 @@ export interface ProjectSummaryDto {
 
 export interface ProjectDetailDto extends ProjectSummaryDto {
   createdAt: string;
-  rulesetMetadata: ProjectRulesetMetadata;
+  rulesetMetadata?: ProjectRulesetMetadata; // Optional since it might be null
 }
 
 export interface ProjectRulesetMetadata {

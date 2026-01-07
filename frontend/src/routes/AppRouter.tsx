@@ -5,6 +5,7 @@ import PlaygroundPage from '../pages/PlaygroundPage';
 // Public validation pages
 import { ValidatePage } from '../pages/public/ValidatePage';
 import { ProjectListPage } from '../pages/public/ProjectListPage';
+import PublicProjectsPage from '../pages/public/PublicProjectsPage';
 import { ProjectDetailPage } from '../pages/public/ProjectDetailPage';
 import { ProjectValidatePage } from '../pages/public/ProjectValidatePage';
 
@@ -14,6 +15,7 @@ export default function AppRouter() {
       <Routes>
         {/* Public Validation Routes (MVP) */}
         <Route path="/validate" element={<ValidatePage />} />
+        <Route path="/projects" element={<PublicProjectsPage />} />
         <Route path="/public/projects" element={<ProjectListPage />} />
         <Route path="/public/projects/:slug" element={<ProjectDetailPage />} />
         <Route path="/public/projects/:slug/validate" element={<ProjectValidatePage />} />

@@ -1,40 +1,15 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
-import { BundleEditor } from '../../components/public/BundleEditor';
-import { BundleTree } from '../../components/playground/Bundle/BundleTree';
+import { ValidationSplitLayout } from '../../components/shared/ValidationSplitLayout';
+import { BundleWorkspace } from '../../components/shared/BundleWorkspace';
 import { ValidationWorkspace } from '../../components/shared/ValidationWorkspace';
 import {
   getPublishedProject,
   validateWithProject,
 } from '../../api/publicValidationApi';
 import type { ValidateResponse } from '../../types/public-validation';
-import { Loader2, ArrowLeft, FileJson, FolderOpen } from 'lucide-react';
-
-const EXAMPLE_BUNDLE = `{
-  "resourceType": "Bundle",
-  "type": "collection",
-  "entry": [
-    {
-      "resource": {
-        "resourceType": "Patient",
-        "id": "example",
-        "identifier": [
-          {
-            "system": "http://example.org/mrn",
-            "value": "12345"
-          }
-        ],
-        "name": [
-          {
-            "family": "Doe",
-            "given": ["John"]
-          }
-        ]
-      }
-    }
-  ]
-}`;
+import { Loader2, ArrowLeft, FolderOpen } from 'lucide-react';
 
 export function ProjectValidatePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -47,10 +22,8 @@ export function ProjectValidatePage() {
   });
 
   const [bundleJson, setBundleJson] = useState('');
-  const [fhirVersion, setFhirVersion] = useState('R4');
-  const [validationMode, setValidationMode] = useState<'standard' | 'full'>(
-    'standard'
-  );
+  const [fhirVersion] = useState('R4');
+  const [validationMode, setValidationMode] = useState<'standard' | 'full'>('standard');
   const [isValidJson, setIsValidJson] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [result, setResult] = useState<ValidateResponse | null>(null);
@@ -86,180 +59,101 @@ export function ProjectValidatePage() {
     setError(null);
   };
 
-  const handleLoadExample = () => {
-    setBundleJson(EXAMPLE_BUNDLE);
-  };
-
   if (isLoadingProject) {
     return (
-      <div className="max-w-7xl mx-auto p-6">
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        </div>
+      <div className="h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   if (!project) {
     return (
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
-        <Link
-          to="/projects"
-          className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Projects
-        </Link>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <p className="text-red-800 font-medium">Project not found</p>
+      <div className="h-screen flex flex-col bg-gray-50">
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="max-w-7xl mx-auto">
+            <Link
+              to="/projects"
+              className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Projects
+            </Link>
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <p className="text-red-800 font-medium">Project not found</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
-      {/* Back Link */}
-      <Link
-        to={`/projects/${slug}`}
-        className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Back to Project Details
-      </Link>
-
-      {/* Header with Project Info */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
-        <div className="flex items-center gap-3 mb-2">
-          <FolderOpen className="w-6 h-6 text-blue-600" />
-          <h1 className="text-2xl font-bold text-gray-900">
-            Validate with {project.name}
-          </h1>
-        </div>
-        <p className="text-gray-700 mb-3">{project.description}</p>
-        <div className="flex gap-4 text-sm">
-          <div>
-            <span className="font-semibold text-gray-700">Rules:</span>
-            <span className="ml-2 text-gray-900">
-              {project.rulesetMetadata.ruleCount}
-            </span>
-          </div>
-          <div>
-            <span className="font-semibold text-gray-700">FHIR Version:</span>
-            <span className="ml-2 text-gray-900">
-              {project.rulesetMetadata.fhirVersion}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Input Section */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">FHIR Bundle</h2>
-          <button
-            onClick={handleLoadExample}
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
-          >
-            <FileJson className="w-4 h-4" />
-            Load Example
-          </button>
-        </div>
-
-        <BundleEditor
-          value={bundleJson}
-          onChange={setBundleJson}
-          onValidJson={setIsValidJson}
-        />
-
-        {/* Configuration */}
-        <div className="flex gap-4">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              FHIR Version
-            </label>
-            <select
-              value={fhirVersion}
-              onChange={(e) => setFhirVersion(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+    <div className="h-screen flex flex-col bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center gap-4 mb-2">
+            <Link
+              to="/projects"
+              className="text-gray-600 hover:text-gray-900 transition-colors"
             >
-              <option value="R4">R4</option>
-              <option value="R4B">R4B</option>
-              <option value="R5">R5</option>
-            </select>
-          </div>
-
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Validation Mode
-            </label>
-            <select
-              value={validationMode}
-              onChange={(e) =>
-                setValidationMode(e.target.value as 'standard' | 'full')
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="standard">Standard (Runtime)</option>
-              <option value="full">Full (with SpecHints)</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Info Banner */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-800">
-            This validation will apply <strong>{project.name}</strong>'s{' '}
-            <strong>{project.rulesetMetadata.ruleCount}</strong> business rules
-            in addition to structural validation.
-          </p>
-        </div>
-
-        {/* Validate Button */}
-        <button
-          onClick={() => handleValidate()}
-          disabled={!isValidJson || !bundleJson.trim() || isValidating}
-          className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          {isValidating ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Validating...
-            </>
-          ) : (
-            'Validate Bundle'
-          )}
-        </button>
-      </div>
-
-      {/* Two-Panel Layout: Tree + Validation Results */}
-      {bundleJson && result && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Panel: Bundle Tree */}
-          <div className="bg-white border border-gray-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold mb-4">Bundle Structure</h2>
-            <div className="border border-gray-200 rounded-lg overflow-auto max-h-[600px]">
-              <BundleTree
-                bundleJson={bundleJson}
-                selectedPath={selectedJsonPointer ?? undefined}
-              />
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
+            <div className="flex items-center gap-3">
+              <FolderOpen className="w-6 h-6 text-blue-600" />
+              <h1 className="text-2xl font-bold text-gray-900">
+                {project.name}
+              </h1>
             </div>
           </div>
+          {project.description && (
+            <p className="text-sm text-gray-600 ml-9">{project.description}</p>
+          )}
+          {project.rulesetMetadata && (
+            <div className="flex gap-4 text-sm ml-9 mt-2">
+              <span className="text-gray-600">
+                <span className="font-semibold">{project.rulesetMetadata.ruleCount}</span> rules
+              </span>
+              <span className="text-gray-600">
+                FHIR <span className="font-semibold">{project.rulesetMetadata.fhirVersion}</span>
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
 
-          {/* Right Panel: ValidationWorkspace */}
-          <ValidationWorkspace
-            bundleJson={bundleJson}
-            validationResult={result?.engineResponse ?? null}
-            isValidating={isValidating}
-            validationError={error}
-            onValidate={handleValidate}
-            onReset={handleReset}
-            onNavigateToPath={setSelectedJsonPointer}
-            defaultOpen={true}
-            showExplanations={false}
+      {/* Main Content */}
+      <div className="flex-1 overflow-hidden p-6">
+        <div className="h-full max-w-7xl mx-auto">
+          <ValidationSplitLayout
+            left={
+              <BundleWorkspace
+                bundleJson={bundleJson}
+                onChange={setBundleJson}
+                onJsonValidChange={setIsValidJson}
+                selectedPath={selectedJsonPointer}
+                onPathSelect={setSelectedJsonPointer}
+              />
+            }
+            right={
+              <ValidationWorkspace
+                bundleJson={bundleJson}
+                validationResult={result?.engineResponse ?? null}
+                isValidating={isValidating}
+                validationError={error}
+                onValidate={handleValidate}
+                onReset={handleReset}
+                onNavigateToPath={setSelectedJsonPointer}
+                defaultOpen={false}
+                showExplanations={false}
+              />
+            }
           />
         </div>
-      )}
+      </div>
     </div>
   );
 }
