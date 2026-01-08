@@ -207,6 +207,175 @@ public class RequiredBindingValidatorTests
     }
 
     /// <summary>
+    /// Phase 2.4: Entire-system include must be rejected (ambiguous, non-deterministic)
+    /// </summary>
+    [Fact]
+    public void Validate_EntireSystemInclude_ReturnsAmbiguousError()
+    {
+        // Arrange
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection
+        };
+
+        var valueSet = new ValueSet
+        {
+            Url = "http://test.org/ValueSet/bundle-types",
+            Compose = new ValueSet.ComposeComponent
+            {
+                Include = new List<ValueSet.ConceptSetComponent>
+                {
+                    new ValueSet.ConceptSetComponent
+                    {
+                        System = "http://hl7.org/fhir/bundle-type"
+                        // NO Concept list = entire system (ambiguous)
+                    }
+                }
+            }
+        };
+
+        var constraint = new SdConstraint(
+            elementPath: "Bundle.type",
+            kind: SdConstraintKind.RequiredBinding,
+            expected: "http://test.org/ValueSet/bundle-types",
+            sourceProfile: "http://test.org/StructureDefinition/TestProfile",
+            description: "Required binding test"
+        );
+
+        var resolver = new InMemoryResourceResolver(valueSet);
+        var context = new FirelyValidationContext(
+            bundle,
+            resolver,
+            Hl7.Fhir.Introspection.ModelInspector.ForAssembly(typeof(Bundle).Assembly)
+        );
+
+        // Act
+        var error = _validator.Validate(constraint, context);
+
+        // Assert
+        error.Should().NotBeNull();
+        error!.ErrorCode.Should().Be("SD_REQUIRED_BINDING_AMBIGUOUS_VALUESET");
+        error.Details.Should().ContainKey("reason");
+        error.Details["reason"].Should().Be("entire-system-include");
+    }
+
+    /// <summary>
+    /// Phase 2.4: Filter-based includes must be rejected (cannot validate deterministically)
+    /// </summary>
+    [Fact]
+    public void Validate_FilterBasedInclude_ReturnsAmbiguousError()
+    {
+        // Arrange
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection
+        };
+
+        var valueSet = new ValueSet
+        {
+            Url = "http://test.org/ValueSet/bundle-types",
+            Compose = new ValueSet.ComposeComponent
+            {
+                Include = new List<ValueSet.ConceptSetComponent>
+                {
+                    new ValueSet.ConceptSetComponent
+                    {
+                        System = "http://hl7.org/fhir/bundle-type",
+                        Filter = new List<ValueSet.FilterComponent>
+                        {
+                            new ValueSet.FilterComponent
+                            {
+                                Property = "concept",
+                                Op = FilterOperator.IsA,
+                                Value = "Collection"
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        var constraint = new SdConstraint(
+            elementPath: "Bundle.type",
+            kind: SdConstraintKind.RequiredBinding,
+            expected: "http://test.org/ValueSet/bundle-types",
+            sourceProfile: "http://test.org/StructureDefinition/TestProfile",
+            description: "Required binding test"
+        );
+
+        var resolver = new InMemoryResourceResolver(valueSet);
+        var context = new FirelyValidationContext(
+            bundle,
+            resolver,
+            Hl7.Fhir.Introspection.ModelInspector.ForAssembly(typeof(Bundle).Assembly)
+        );
+
+        // Act
+        var error = _validator.Validate(constraint, context);
+
+        // Assert
+        error.Should().NotBeNull();
+        error!.ErrorCode.Should().Be("SD_REQUIRED_BINDING_AMBIGUOUS_VALUESET");
+        error.Details.Should().ContainKey("reason");
+        error.Details["reason"].Should().Be("filter-not-supported");
+    }
+
+    /// <summary>
+    /// Phase 2.4: ValueSet imports must be rejected (cannot resolve transitively)
+    /// </summary>
+    [Fact]
+    public void Validate_ValueSetImport_ReturnsAmbiguousError()
+    {
+        // Arrange
+        var bundle = new Bundle
+        {
+            Type = Bundle.BundleType.Collection
+        };
+
+        var valueSet = new ValueSet
+        {
+            Url = "http://test.org/ValueSet/bundle-types",
+            Compose = new ValueSet.ComposeComponent
+            {
+                Include = new List<ValueSet.ConceptSetComponent>
+                {
+                    new ValueSet.ConceptSetComponent
+                    {
+                        ValueSetElement = new List<Canonical>
+                        {
+                            new Canonical("http://test.org/ValueSet/imported")
+                        }
+                    }
+                }
+            }
+        };
+
+        var constraint = new SdConstraint(
+            elementPath: "Bundle.type",
+            kind: SdConstraintKind.RequiredBinding,
+            expected: "http://test.org/ValueSet/bundle-types",
+            sourceProfile: "http://test.org/StructureDefinition/TestProfile",
+            description: "Required binding test"
+        );
+
+        var resolver = new InMemoryResourceResolver(valueSet);
+        var context = new FirelyValidationContext(
+            bundle,
+            resolver,
+            Hl7.Fhir.Introspection.ModelInspector.ForAssembly(typeof(Bundle).Assembly)
+        );
+
+        // Act
+        var error = _validator.Validate(constraint, context);
+
+        // Assert
+        error.Should().NotBeNull();
+        error!.ErrorCode.Should().Be("SD_REQUIRED_BINDING_AMBIGUOUS_VALUESET");
+        error.Details.Should().ContainKey("reason");
+        error.Details["reason"].Should().Be("imported-valueset-not-supported");
+    }
+
+    /// <summary>
     /// In-memory resource resolver for testing (no HTTP, no file system)
     /// </summary>
     private class InMemoryResourceResolver : IResourceResolver

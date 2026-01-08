@@ -94,8 +94,15 @@ public class RequiredBindingValidator
             };
         }
 
-        // Validate code is in ValueSet
-        if (!IsCodeInValueSet(codedValue.Value, valueSet))
+        // Validate code is in ValueSet (Phase 2.4: strict)
+        var (found, ambiguousError) = IsCodeInValueSet(codedValue.Value, valueSet, constraint, valueSetUrl);
+        
+        if (ambiguousError != null)
+        {
+            return ambiguousError; // ValueSet structure is ambiguous
+        }
+        
+        if (!found)
         {
             return new ValidationError
             {
@@ -144,16 +151,20 @@ public class RequiredBindingValidator
 
     /// <summary>
     /// Checks if code is in ValueSet.
-    /// Phase 2.3: In-memory expansion only - checks ValueSet.compose.include.concept.
+    /// Phase 2.4: Strict validation - rejects entire-system includes, filters, and imports.
     /// </summary>
-    private bool IsCodeInValueSet((string? Code, string? System) codedValue, ValueSet valueSet)
+    private (bool Found, ValidationError? Error) IsCodeInValueSet(
+        (string? Code, string? System) codedValue, 
+        ValueSet valueSet, 
+        SdConstraint constraint, 
+        string valueSetUrl)
     {
         if (string.IsNullOrEmpty(codedValue.Code))
         {
-            return false;
+            return (false, null);
         }
 
-        // Phase 2.3: Simple expansion - check compose.include
+        // Phase 2.4: Strict validation - check compose.include
         if (valueSet.Compose?.Include != null)
         {
             foreach (var include in valueSet.Compose.Include)
@@ -166,8 +177,58 @@ public class RequiredBindingValidator
                     continue; // System mismatch, skip this include
                 }
 
-                // Check concept list
-                if (include.Concept != null)
+                // Phase 2.4: Reject filters (not supported)
+                if (include.Filter != null && include.Filter.Any())
+                {
+                    _logger.LogDebug(
+                        "ValueSet include contains filters which cannot be deterministically validated");
+                    
+                    return (false, new ValidationError
+                    {
+                        Source = "StructureDefinition",
+                        Severity = "error",
+                        ErrorCode = "SD_REQUIRED_BINDING_AMBIGUOUS_VALUESET",
+                        Path = constraint.ElementPath,
+                        Message = $"Required binding ValueSet '{valueSetUrl}' uses filters which cannot be deterministically validated",
+                        Details = new Dictionary<string, object>
+                        {
+                            ["profile"] = constraint.SourceProfile,
+                            ["elementPath"] = constraint.ElementPath,
+                            ["valueSetUrl"] = valueSetUrl,
+                            ["system"] = include.System ?? "(none)",
+                            ["reason"] = "filter-not-supported",
+                            ["bindingStrength"] = "required"
+                        }
+                    });
+                }
+
+                // Phase 2.4: Reject valueSet imports (not supported)
+                if (include.ValueSetElement != null && include.ValueSetElement.Any())
+                {
+                    _logger.LogDebug(
+                        "ValueSet include contains valueSet imports which cannot be deterministically validated");
+                    
+                    return (false, new ValidationError
+                    {
+                        Source = "StructureDefinition",
+                        Severity = "error",
+                        ErrorCode = "SD_REQUIRED_BINDING_AMBIGUOUS_VALUESET",
+                        Path = constraint.ElementPath,
+                        Message = $"Required binding ValueSet '{valueSetUrl}' imports other ValueSets which cannot be deterministically validated",
+                        Details = new Dictionary<string, object>
+                        {
+                            ["profile"] = constraint.SourceProfile,
+                            ["elementPath"] = constraint.ElementPath,
+                            ["valueSetUrl"] = valueSetUrl,
+                            ["system"] = include.System ?? "(none)",
+                            ["reason"] = "imported-valueset-not-supported",
+                            ["bindingStrength"] = "required"
+                        }
+                    });
+                }
+
+                // Check explicit concept list
+                if (include.Concept != null && include.Concept.Any())
                 {
                     foreach (var concept in include.Concept)
                     {
@@ -177,23 +238,39 @@ public class RequiredBindingValidator
                                 "Code '{Code}' found in ValueSet include (system: {System})",
                                 codedValue.Code,
                                 include.System);
-                            return true; // Code found
+                            return (true, null); // Code found
                         }
                     }
                 }
-                else if (include.Filter == null && include.ValueSetElement == null)
+                else
                 {
-                    // Include entire system - Phase 2.3: Conservative, assume valid
+                    // Phase 2.4: Reject entire-system includes (ambiguous)
                     _logger.LogDebug(
-                        "Include references entire system {System}, assuming code '{Code}' is valid (Phase 2.3 limitation)",
-                        include.System,
-                        codedValue.Code);
-                    return true;
+                        "ValueSet include references entire CodeSystem '{System}' which cannot be deterministically validated",
+                        include.System);
+                    
+                    return (false, new ValidationError
+                    {
+                        Source = "StructureDefinition",
+                        Severity = "error",
+                        ErrorCode = "SD_REQUIRED_BINDING_AMBIGUOUS_VALUESET",
+                        Path = constraint.ElementPath,
+                        Message = $"Required binding ValueSet '{valueSetUrl}' includes entire CodeSystem '{include.System}' which cannot be deterministically validated",
+                        Details = new Dictionary<string, object>
+                        {
+                            ["profile"] = constraint.SourceProfile,
+                            ["elementPath"] = constraint.ElementPath,
+                            ["valueSetUrl"] = valueSetUrl,
+                            ["system"] = include.System ?? "(none)",
+                            ["reason"] = "entire-system-include",
+                            ["bindingStrength"] = "required"
+                        }
+                    });
                 }
             }
         }
 
-        // Phase 2.3: If no compose, check expansion
+        // Phase 2.4: If no compose, check expansion
         if (valueSet.Expansion?.Contains != null)
         {
             foreach (var contain in valueSet.Expansion.Contains)
@@ -205,7 +282,7 @@ public class RequiredBindingValidator
                     _logger.LogDebug(
                         "Code '{Code}' found in ValueSet expansion",
                         codedValue.Code);
-                    return true;
+                    return (true, null);
                 }
             }
         }
@@ -214,6 +291,6 @@ public class RequiredBindingValidator
             "Code '{Code}' (system: {System}) NOT found in ValueSet",
             codedValue.Code,
             codedValue.System);
-        return false;
+        return (false, null);
     }
 }
