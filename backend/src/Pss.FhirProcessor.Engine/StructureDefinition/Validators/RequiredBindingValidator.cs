@@ -56,10 +56,14 @@ public class RequiredBindingValidator
         var valueSet = context.Resolver.ResolveByCanonicalUri(valueSetUrl) as ValueSet;
         if (valueSet == null)
         {
+            var severity = SdEnforcementPolicy.ResolveSeverity(
+                SdConstraintKind.RequiredBinding,
+                SdViolationReason.UnresolvableValueSet);
+
             return new ValidationError
             {
                 Source = "StructureDefinition",
-                Severity = "error",
+                Severity = severity,
                 ErrorCode = "SD_REQUIRED_BINDING_VALUESET_NOT_RESOLVED",
                 Path = constraint.ElementPath,
                 Message = $"Required ValueSet '{valueSetUrl}' could not be resolved",
@@ -68,7 +72,9 @@ public class RequiredBindingValidator
                     ["profile"] = constraint.SourceProfile,
                     ["elementPath"] = constraint.ElementPath,
                     ["valueSetUrl"] = valueSetUrl,
-                    ["bindingStrength"] = "required"
+                    ["bindingStrength"] = "required",
+                    ["policyMode"] = SdEnforcementPolicy.CurrentMode.ToString(),
+                    ["violationReason"] = SdViolationReason.UnresolvableValueSet.ToString()
                 }
             };
         }
@@ -183,10 +189,14 @@ public class RequiredBindingValidator
                     _logger.LogDebug(
                         "ValueSet include contains filters which cannot be deterministically validated");
                     
+                    var severity = SdEnforcementPolicy.ResolveSeverity(
+                        SdConstraintKind.RequiredBinding,
+                        SdViolationReason.FilteredInclude);
+
                     return (false, new ValidationError
                     {
                         Source = "StructureDefinition",
-                        Severity = "error",
+                        Severity = severity,
                         ErrorCode = "SD_REQUIRED_BINDING_AMBIGUOUS_VALUESET",
                         Path = constraint.ElementPath,
                         Message = $"Required binding ValueSet '{valueSetUrl}' uses filters which cannot be deterministically validated",
@@ -197,7 +207,9 @@ public class RequiredBindingValidator
                             ["valueSetUrl"] = valueSetUrl,
                             ["system"] = include.System ?? "(none)",
                             ["reason"] = "filter-not-supported",
-                            ["bindingStrength"] = "required"
+                            ["bindingStrength"] = "required",
+                            ["policyMode"] = SdEnforcementPolicy.CurrentMode.ToString(),
+                            ["violationReason"] = SdViolationReason.FilteredInclude.ToString()
                         }
                     });
                 }
@@ -208,10 +220,14 @@ public class RequiredBindingValidator
                     _logger.LogDebug(
                         "ValueSet include contains valueSet imports which cannot be deterministically validated");
                     
+                    var severity = SdEnforcementPolicy.ResolveSeverity(
+                        SdConstraintKind.RequiredBinding,
+                        SdViolationReason.ImportedValueSet);
+
                     return (false, new ValidationError
                     {
                         Source = "StructureDefinition",
-                        Severity = "error",
+                        Severity = severity,
                         ErrorCode = "SD_REQUIRED_BINDING_AMBIGUOUS_VALUESET",
                         Path = constraint.ElementPath,
                         Message = $"Required binding ValueSet '{valueSetUrl}' imports other ValueSets which cannot be deterministically validated",
@@ -222,7 +238,9 @@ public class RequiredBindingValidator
                             ["valueSetUrl"] = valueSetUrl,
                             ["system"] = include.System ?? "(none)",
                             ["reason"] = "imported-valueset-not-supported",
-                            ["bindingStrength"] = "required"
+                            ["bindingStrength"] = "required",
+                            ["policyMode"] = SdEnforcementPolicy.CurrentMode.ToString(),
+                            ["violationReason"] = SdViolationReason.ImportedValueSet.ToString()
                         }
                     });
                 }
@@ -249,10 +267,14 @@ public class RequiredBindingValidator
                         "ValueSet include references entire CodeSystem '{System}' which cannot be deterministically validated",
                         include.System);
                     
+                    var severity = SdEnforcementPolicy.ResolveSeverity(
+                        SdConstraintKind.RequiredBinding,
+                        SdViolationReason.EntireSystemValueSet);
+
                     return (false, new ValidationError
                     {
                         Source = "StructureDefinition",
-                        Severity = "error",
+                        Severity = severity,
                         ErrorCode = "SD_REQUIRED_BINDING_AMBIGUOUS_VALUESET",
                         Path = constraint.ElementPath,
                         Message = $"Required binding ValueSet '{valueSetUrl}' includes entire CodeSystem '{include.System}' which cannot be deterministically validated",
@@ -263,7 +285,9 @@ public class RequiredBindingValidator
                             ["valueSetUrl"] = valueSetUrl,
                             ["system"] = include.System ?? "(none)",
                             ["reason"] = "entire-system-include",
-                            ["bindingStrength"] = "required"
+                            ["bindingStrength"] = "required",
+                            ["policyMode"] = SdEnforcementPolicy.CurrentMode.ToString(),
+                            ["violationReason"] = SdViolationReason.EntireSystemValueSet.ToString()
                         }
                     });
                 }
