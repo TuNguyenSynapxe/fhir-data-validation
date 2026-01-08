@@ -237,6 +237,8 @@ public class PublicProjectsController : ControllerBase
 
             // Load bundle profile if specified (multi-bundle support)
             string? profileStructureDefinitionJson = null;
+            string? profileCanonicalUrl = null;
+            
             if (request.BundleProfileId.HasValue)
             {
                 _logger.LogInformation(
@@ -266,6 +268,7 @@ public class PublicProjectsController : ControllerBase
                 }
 
                 profileStructureDefinitionJson = profile.StructureDefinitionJson;
+                profileCanonicalUrl = profile.CanonicalUrl;
                 
                 _logger.LogInformation(
                     "Using bundle profile: ProfileId={ProfileId}, Name={ProfileName}, CanonicalUrl={CanonicalUrl}",
@@ -283,6 +286,7 @@ public class PublicProjectsController : ControllerBase
                 if (defaultProfile != null)
                 {
                     profileStructureDefinitionJson = defaultProfile.StructureDefinitionJson;
+                    profileCanonicalUrl = defaultProfile.CanonicalUrl;
                     
                     _logger.LogInformation(
                         "Using default bundle profile: ProfileId={ProfileId}, Name={ProfileName}",
@@ -339,23 +343,23 @@ public class PublicProjectsController : ControllerBase
             }
 
             // Build validation request for engine (explicit string-based input)
-            // NOTE: profileStructureDefinitionJson is loaded but NOT passed to engine in Phase 1
-            // Phase 1 focus: Infrastructure for multi-bundle support (table, repository, API)
-            // Future Phase: Add ProfileStructureDefinitionJson field to ValidationRequest
+            // Phase 2: Pass profile StructureDefinition to engine when provided
             var engineRequest = new ValidationRequest
             {
                 BundleJson = request.BundleJson,
                 FhirVersion = request.FhirVersion,
                 ValidationMode = request.ValidationMode,
                 RulesJson = rulesJson, // ✅ Pass serialized rules as JSON string
-                CodeSystemsJson = codeSystemsJson // ✅ Pass serialized code systems as JSON string
-                // TODO: Add ProfileStructureDefinitionJson once engine supports it
+                CodeSystemsJson = codeSystemsJson, // ✅ Pass serialized code systems as JSON string
+                BundleProfileStructureDefinitionJson = profileStructureDefinitionJson, // ✅ Phase 2: Pass profile SD
+                BundleProfileCanonicalUrl = profileCanonicalUrl // ✅ Phase 2: Pass canonical URL
             };
 
             if (profileStructureDefinitionJson != null)
             {
                 _logger.LogInformation(
-                    "Bundle profile loaded for validation (not yet passed to engine - Phase 1 limitation)");
+                    "Bundle profile loaded for validation: CanonicalUrl={CanonicalUrl}",
+                    profileCanonicalUrl);
             }
 
             // Execute validation through engine (engine has NO database access)

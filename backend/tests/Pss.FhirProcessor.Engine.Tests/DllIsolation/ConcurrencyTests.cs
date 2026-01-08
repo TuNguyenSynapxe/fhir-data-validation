@@ -1,10 +1,7 @@
 using System.Text.Json;
 using Hl7.Fhir.Model;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
 using Pss.FhirProcessor.Engine.Core;
-using Pss.FhirProcessor.Engine.DependencyInjection;
-using Pss.FhirProcessor.Engine.Models.Questions;
+using Pss.FhirProcessor.Engine.Models;
 using Xunit;
 
 namespace Pss.FhirProcessor.Engine.Tests.DllIsolation;
@@ -21,22 +18,12 @@ namespace Pss.FhirProcessor.Engine.Tests.DllIsolation;
 /// </summary>
 public class ConcurrencyTests
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IValidationPipeline _pipeline;
     
     public ConcurrencyTests()
     {
-        var services = new ServiceCollection();
-        
-        // Use only runtime validation services (DLL-distributable subset)
-        services.AddRuntimeValidation();
-        
-        // Add NullLoggerFactory for tests
-        services.AddLogging(builder => 
-        {
-            builder.AddProvider(NullLoggerProvider.Instance);
-        });
-        
-        _serviceProvider = services.BuildServiceProvider();
+        // Use TestHelper to create a fully-wired ValidationPipeline
+        _pipeline = TestHelper.CreateValidationPipeline();
     }
 
     [Fact]
@@ -47,22 +34,12 @@ public class ConcurrencyTests
         var request = new ValidationRequest
         {
             BundleJson = testBundleJson,
-            FhirVersion = "R4",
-            ValidationMode = ValidationMode.RuntimeOnly, // No authoring services needed
-            RuleSet = new RuleSet
-            {
-                FhirPathRules = new List<FhirPathRule>(),
-                Questions = new Question[0],
-                CodeSystems = new CodeSystem[0]
-            }
+            FhirVersion = "R4"
         };
-        
-        // Get a single ValidationPipeline instance (simulates DLL usage)
-        var pipeline = _serviceProvider.GetRequiredService<IValidationPipeline>();
         
         // Act - Run 100 concurrent validations on the SAME pipeline instance
         var tasks = Enumerable.Range(0, 100)
-            .Select(_ => pipeline.ValidateAsync(request, CancellationToken.None))
+            .Select(_ => System.Threading.Tasks.Task.Run(() => _pipeline.ValidateAsync(request, CancellationToken.None)))
             .ToArray();
         
         var results = await System.Threading.Tasks.Task.WhenAll(tasks);
@@ -78,7 +55,7 @@ public class ConcurrencyTests
             
             // Verify metadata is populated consistently
             Assert.NotNull(result.Metadata);
-            Assert.NotNull(result.Metadata.Timestamp);
+            Assert.True(result.Metadata.Timestamp != default);
             Assert.Equal(firstResult.Metadata.FhirVersion, result.Metadata.FhirVersion);
         }
         
@@ -100,36 +77,20 @@ public class ConcurrencyTests
         var validRequest = new ValidationRequest
         {
             BundleJson = validBundleJson,
-            FhirVersion = "R4",
-            ValidationMode = ValidationMode.RuntimeOnly,
-            RuleSet = new RuleSet
-            {
-                FhirPathRules = new List<FhirPathRule>(),
-                Questions = new Question[0],
-                CodeSystems = new CodeSystem[0]
-            }
+            FhirVersion = "R4"
         };
         
         var invalidRequest = new ValidationRequest
         {
             BundleJson = invalidBundleJson,
-            FhirVersion = "R4",
-            ValidationMode = ValidationMode.RuntimeOnly,
-            RuleSet = new RuleSet
-            {
-                FhirPathRules = new List<FhirPathRule>(),
-                Questions = new Question[0],
-                CodeSystems = new CodeSystem[0]
-            }
+            FhirVersion = "R4"
         };
-        
-        var pipeline = _serviceProvider.GetRequiredService<IValidationPipeline>();
         
         // Act - Run 50 valid + 50 invalid validations concurrently
         var validTasks = Enumerable.Range(0, 50)
-            .Select(_ => pipeline.ValidateAsync(validRequest, CancellationToken.None));
+            .Select(_ => System.Threading.Tasks.Task.Run(() => _pipeline.ValidateAsync(validRequest, CancellationToken.None)));
         var invalidTasks = Enumerable.Range(0, 50)
-            .Select(_ => pipeline.ValidateAsync(invalidRequest, CancellationToken.None));
+            .Select(_ => System.Threading.Tasks.Task.Run(() => _pipeline.ValidateAsync(invalidRequest, CancellationToken.None)));
         
         var allTasks = validTasks.Concat(invalidTasks).ToArray();
         var results = await System.Threading.Tasks.Task.WhenAll(allTasks);
@@ -160,61 +121,49 @@ public class ConcurrencyTests
     [Fact]
     public async System.Threading.Tasks.Task SingletonServices_ShouldNotCauseRaceConditions()
     {
-        // Arrange - Test that stateless singleton services are thread-safe
+        // Arrange - Test that stateless services are thread-safe with business rules
         var testBundleJson = CreateTestBundle();
+        var rulesJson = JsonSerializer.Serialize(new
+        {
+            layers = new[]
+            {
+                new
+                {
+                    scope = "Bundle",
+                    rules = new[]
+                    {
+                        new
+                        {
+                            id = "test-rule",
+                            severity = "error",
+                            fhirPath = "entry.count() > 0",
+                            message = "Bundle must have entries"
+                        }
+                    }
+                }
+            }
+        });
+        
         var request = new ValidationRequest
         {
             BundleJson = testBundleJson,
-            FhirVersion = "R4",
-            ValidationMode = ValidationMode.RuntimeOnly,
-            RuleSet = new RuleSet
-            {
-                FhirPathRules = new List<FhirPathRule>
-                {
-                    new FhirPathRule
-                    {
-                        Id = "test-rule",
-                        Expression = "Bundle.entry.count() > 0",
-                        Severity = Severity.Error,
-                        Message = "Bundle must have entries"
-                    }
-                },
-                Questions = new Question[0],
-                CodeSystems = new CodeSystem[0]
-            }
+            RulesJson = rulesJson,
+            FhirVersion = "R4"
         };
         
-        // Create multiple scopes to simulate concurrent requests
-        var scopes = Enumerable.Range(0, 50)
-            .Select(_ => _serviceProvider.CreateScope())
+        // Act - Run 50 concurrent validations using Task.Run for real thread-safety test
+        var tasks = Enumerable.Range(0, 50)
+            .Select(_ => System.Threading.Tasks.Task.Run(() => _pipeline.ValidateAsync(request, CancellationToken.None)))
             .ToArray();
         
-        try
+        var results = await System.Threading.Tasks.Task.WhenAll(tasks);
+        
+        // Assert - All results should be identical (services are stateless)
+        var firstResult = results[0];
+        foreach (var result in results)
         {
-            // Act - Get ValidationPipeline from each scope and run concurrently
-            var tasks = scopes.Select(scope =>
-            {
-                var pipeline = scope.ServiceProvider.GetRequiredService<IValidationPipeline>();
-                return pipeline.ValidateAsync(request, CancellationToken.None);
-            }).ToArray();
-            
-            var results = await System.Threading.Tasks.Task.WhenAll(tasks);
-            
-            // Assert - All results should be identical (singleton services shared, but stateless)
-            var firstResult = results[0];
-            foreach (var result in results)
-            {
-                Assert.Equal(firstResult.Errors.Count, result.Errors.Count);
-                Assert.Equal(firstResult.Metadata.FhirVersion, result.Metadata.FhirVersion);
-            }
-        }
-        finally
-        {
-            // Cleanup scopes
-            foreach (var scope in scopes)
-            {
-                scope.Dispose();
-            }
+            Assert.Equal(firstResult.Errors.Count, result.Errors.Count);
+            Assert.Equal(firstResult.Metadata.FhirVersion, result.Metadata.FhirVersion);
         }
     }
 
@@ -226,21 +175,12 @@ public class ConcurrencyTests
         var request = new ValidationRequest
         {
             BundleJson = testBundleJson,
-            FhirVersion = "R4",
-            ValidationMode = ValidationMode.RuntimeOnly,
-            RuleSet = new RuleSet
-            {
-                FhirPathRules = new List<FhirPathRule>(),
-                Questions = new Question[0],
-                CodeSystems = new CodeSystem[0]
-            }
+            FhirVersion = "R4"
         };
         
-        var pipeline = _serviceProvider.GetRequiredService<IValidationPipeline>();
-        
-        // Act - 200 concurrent validations
+        // Act - 200 concurrent validations using Task.Run for real concurrency
         var tasks = Enumerable.Range(0, 200)
-            .Select(_ => pipeline.ValidateAsync(request, CancellationToken.None))
+            .Select(_ => System.Threading.Tasks.Task.Run(() => _pipeline.ValidateAsync(request, CancellationToken.None)))
             .ToArray();
         
         var results = await System.Threading.Tasks.Task.WhenAll(tasks);
@@ -251,49 +191,45 @@ public class ConcurrencyTests
         {
             Assert.Equal(firstResult.Errors.Count, result.Errors.Count);
             Assert.Equal(firstResult.Metadata.FhirVersion, result.Metadata.FhirVersion);
-            Assert.NotNull(result.Metadata.Timestamp);
+            Assert.True(result.Metadata.Timestamp != default);
         });
     }
 
     private string CreateTestBundle()
     {
         // Minimal valid Bundle
-        return """
-        {
-          "resourceType": "Bundle",
-          "type": "collection",
-          "entry": [
-            {
-              "resource": {
-                "resourceType": "Patient",
-                "id": "test-patient",
-                "identifier": [
-                  {
-                    "system": "http://test.org",
-                    "value": "12345"
-                  }
-                ]
-              }
-            }
-          ]
-        }
-        """;
+        return @"{
+  ""resourceType"": ""Bundle"",
+  ""type"": ""collection"",
+  ""entry"": [
+    {
+      ""resource"": {
+        ""resourceType"": ""Patient"",
+        ""id"": ""test-patient"",
+        ""identifier"": [
+          {
+            ""system"": ""http://test.org"",
+            ""value"": ""12345""
+          }
+        ]
+      }
+    }
+  ]
+}";
     }
 
     private string CreateInvalidTestBundle()
     {
         // Bundle with structural errors (missing resourceType)
-        return """
-        {
-          "type": "collection",
-          "entry": [
-            {
-              "resource": {
-                "id": "test-patient"
-              }
-            }
-          ]
-        }
-        """;
+        return @"{
+  ""type"": ""collection"",
+  ""entry"": [
+    {
+      ""resource"": {
+        ""id"": ""test-patient""
+      }
+    }
+  ]
+}";
     }
 }

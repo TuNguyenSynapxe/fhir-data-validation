@@ -101,4 +101,23 @@ public class ValidationRequest
     /// </summary>
     [JsonPropertyName("validationSettings")]
     public ValidationSettings? ValidationSettings { get; set; }
+    
+    /// <summary>
+    /// Bundle StructureDefinition profile JSON (optional).
+    /// When provided, the Bundle will be validated against this profile using Firely SDK.
+    /// When null, validation uses base FHIR R4 behavior (backward compatible).
+    /// 
+    /// ⚠️ Profile validation is delegated EXCLUSIVELY to Firely SDK.
+    /// Do NOT attempt to interpret or enforce profile constraints outside FirelyValidationService.
+    /// </summary>
+    [JsonPropertyName("bundleProfileStructureDefinitionJson")]
+    public string? BundleProfileStructureDefinitionJson { get; set; }
+    
+    /// <summary>
+    /// Canonical URL of the Bundle profile (optional).
+    /// Required when BundleProfileStructureDefinitionJson is provided.
+    /// Used for profile identity and error reporting.
+    /// </summary>
+    [JsonPropertyName("bundleProfileCanonicalUrl")]
+    public string? BundleProfileCanonicalUrl { get; set; }
 }

@@ -177,7 +177,13 @@ public class ValidationPipeline : IValidationPipeline
             // Step 2: Firely Structural Validation (authoritative)
             // This is the source of truth for FHIR compliance
             // Uses node-based validation to collect structural issues
-            var firelyOutcome = await _firelyService.ValidateAsync(request.BundleJson, request.FhirVersion, cancellationToken);
+            // When profile is provided, validates against profile constraints
+            var firelyOutcome = await _firelyService.ValidateAsync(
+                request.BundleJson, 
+                request.FhirVersion, 
+                request.BundleProfileStructureDefinitionJson,
+                request.BundleProfileCanonicalUrl,
+                cancellationToken);
             
             // Step 3: Parse to POCO Bundle for business rule processing
             // Parse early so we can use it for navigation if available

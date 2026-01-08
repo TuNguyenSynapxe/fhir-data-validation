@@ -1,8 +1,9 @@
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
 using Hl7.Fhir.Specification.Source;
-using Hl7.Fhir.ElementModel;
-using Hl7.Fhir.Specification;
+using Hl7.Fhir.Specification.Snapshot;
+using Hl7.Fhir.Support;
+using Hl7.Fhir.Validation;
 using Microsoft.Extensions.Logging;
 using Pss.FhirProcessor.Engine.Interfaces;
 using System.Linq;
@@ -10,9 +11,12 @@ using System.Linq;
 namespace Pss.FhirProcessor.Engine.Firely;
 
 /// <summary>
-/// Performs FHIR structural validation using Firely SDK with FHIR R4
-/// Uses node-based validation (FhirJsonNode → ITypedElement) to collect structural issues
-/// Does NOT handle business rules - only FHIR R4 structural correctness
+/// Performs FHIR structural and profile validation using Firely SDK Validator with FHIR R4.
+/// 
+/// Phase 2.2: Uses Firely's Validator class (from Hl7.Fhir.Validation.Legacy.R4) to enforce
+/// profile constraints including cardinality, fixed values, slicing, and invariants.
+/// 
+/// Does NOT handle business rules - only FHIR R4 structural correctness and profile conformance.
 /// </summary>
 public class FirelyValidationService : IFirelyValidationService
 {
@@ -28,113 +32,192 @@ public class FirelyValidationService : IFirelyValidationService
     }
 
     /// <summary>
-    /// Validates raw FHIR bundle JSON using node-based validation (FhirJsonNode → ITypedElement)
-    /// This approach validates structure without POCO deserialization, allowing error collection
-    /// instead of fail-fast behavior.
+    /// Validates raw FHIR bundle JSON using Firely's Validator class.
     /// 
-    /// Validates: resource types, cardinality, required fields, data types, value constraints
+    /// Phase 2.2: Uses Firely Validator to enforce profile constraints including:
+    /// - Cardinality (min/max)
+    /// - Fixed values
+    /// - Slicing
+    /// - Invariants
+    /// 
+    /// When bundleProfileStructureDefinitionJson is provided, validates against that specific profile.
+    /// When null, validates against base FHIR R4 (backward compatible behavior).
     /// </summary>
-    public async System.Threading.Tasks.Task<OperationOutcome> ValidateAsync(string bundleJson, string fhirVersion, CancellationToken cancellationToken = default)
+    /// <param name="bundleJson">FHIR Bundle JSON to validate</param>
+    /// <param name="fhirVersion">FHIR version (currently only R4 supported)</param>
+    /// <param name="bundleProfileStructureDefinitionJson">Optional Bundle profile StructureDefinition JSON</param>
+    /// <param name="bundleProfileCanonicalUrl">Optional canonical URL of the profile</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    public async System.Threading.Tasks.Task<OperationOutcome> ValidateAsync(
+        string bundleJson, 
+        string fhirVersion, 
+        string? bundleProfileStructureDefinitionJson = null,
+        string? bundleProfileCanonicalUrl = null,
+        CancellationToken cancellationToken = default)
     {
         await System.Threading.Tasks.Task.CompletedTask;
         
-        var outcome = new OperationOutcome();
-        var errors = new List<string>();
-        
         try
         {
-            _logger.LogInformation("Starting Firely R4 node-based structural validation for {Length} chars of JSON", 
+            _logger.LogInformation("Starting Firely Validator-based validation for {Length} chars of JSON", 
                 bundleJson?.Length ?? 0);
             
-            // IMPORTANT: Firely SDK 5.10.3 limitation
-            // - ToTypedElement() with ErrorMode.Report doesn't fully collect all errors - it still throws on critical errors
-            // - No ExceptionNotification annotation type exists in 5.10.3
-            // - True multi-error collection requires SDK 6.0+
-            
-            // Step 1: Parse JSON to ISourceNode (node-based, NOT POCO)
-            ISourceNode sourceNode;
+            // Step 1: Parse Bundle POCO (Validator requires POCO input)
+            Bundle bundle;
             try
             {
-                sourceNode = FhirJsonNode.Parse(bundleJson);
-            }
-            catch (FormatException ex)
-            {
-                // JSON parsing error
-                outcome.Issue.Add(new OperationOutcome.IssueComponent
-                {
-                    Severity = OperationOutcome.IssueSeverity.Error,
-                    Code = OperationOutcome.IssueType.Structure,
-                    Diagnostics = $"Invalid JSON format: {ex.Message}"
-                });
-                return outcome;
-            }
-            
-            // Step 2: Try to convert to ITypedElement with structural validation
-            // Get R4 StructureDefinition provider
-            var provider = new PocoStructureDefinitionSummaryProvider();
-            
-            var settings = new TypedElementSettings
-            {
-                ErrorMode = TypedElementSettings.TypeErrorMode.Report // Try to report errors instead of throwing
-            };
-            
-            try
-            {
-                // This conversion validates structure (types, cardinality, etc.)
-                var typedElement = sourceNode.ToTypedElement(provider, settings: settings);
-                
-                // If we get here without exception, basic structure is valid
-                // Visit all nodes to ensure complete traversal
-                int nodeCount = 0;
-                VisitAllNodes(typedElement, ref nodeCount);
-                
-                _logger.LogInformation("Firely validation: Traversed {NodeCount} nodes successfully", nodeCount);
-                
-                outcome.Issue.Add(new OperationOutcome.IssueComponent
-                {
-                    Severity = OperationOutcome.IssueSeverity.Information,
-                    Code = OperationOutcome.IssueType.Informational,
-                    Diagnostics = "FHIR R4 structural validation passed with no issues"
-                });
+                var parser = new FhirJsonParser();
+                bundle = parser.Parse<Bundle>(bundleJson);
             }
             catch (Exception ex)
             {
-                // Structural validation error
-                _logger.LogWarning(ex, "Firely structural validation error");
-                
-                // Store the full exception message in diagnostics
-                // And store structured info in details for later extraction
-                var diagnostics = $"FHIR structural validation error: {ex.Message}";
-                
-                outcome.Issue.Add(new OperationOutcome.IssueComponent
+                _logger.LogError(ex, "Failed to parse Bundle JSON");
+                return new OperationOutcome
                 {
-                    Severity = OperationOutcome.IssueSeverity.Error,
-                    Code = OperationOutcome.IssueType.Structure,
-                    Diagnostics = diagnostics,
-                    Details = new CodeableConcept
+                    Issue = new List<OperationOutcome.IssueComponent>
                     {
-                        Text = ex.Message,  // Store original message for parsing
-                        Coding = new List<Coding>
+                        new OperationOutcome.IssueComponent
                         {
-                            new Coding
-                            {
-                                System = "http://fhir-processor-v2/error-type",
-                                Code = ex.GetType().Name,  // e.g., "StructuralTypeException"
-                                Display = "Firely SDK Exception"
-                            }
+                            Severity = OperationOutcome.IssueSeverity.Error,
+                            Code = OperationOutcome.IssueType.Structure,
+                            Diagnostics = $"Invalid JSON format: {ex.Message}"
                         }
                     }
-                });
+                };
             }
             
-            return outcome;
+            // Step 2: Set up resolver chain (profile → base R4)
+            IResourceResolver resolver;
+            StructureDefinition? profileSD = null;
+            
+            if (!string.IsNullOrWhiteSpace(bundleProfileStructureDefinitionJson))
+            {
+                _logger.LogInformation("Profile validation requested: {CanonicalUrl}", bundleProfileCanonicalUrl);
+                
+                try
+                {
+                    // Parse profile StructureDefinition
+                    var parser = new FhirJsonParser();
+                    profileSD = parser.Parse<StructureDefinition>(bundleProfileStructureDefinitionJson);
+                    
+                    // Validate profile is for Bundle
+                    if (profileSD.Type != "Bundle")
+                    {
+                        _logger.LogError("Profile StructureDefinition is not for Bundle resource: {Type}", profileSD.Type);
+                        return new OperationOutcome
+                        {
+                            Issue = new List<OperationOutcome.IssueComponent>
+                            {
+                                new OperationOutcome.IssueComponent
+                                {
+                                    Severity = OperationOutcome.IssueSeverity.Error,
+                                    Code = OperationOutcome.IssueType.Invalid,
+                                    Diagnostics = $"Profile StructureDefinition must be for Bundle resource, got: {profileSD.Type}"
+                                }
+                            }
+                        };
+                    }
+                    
+                    _logger.LogInformation("Profile StructureDefinition parsed: {Url}", profileSD.Url);
+                    
+                    // Generate snapshot if not present
+                    if (profileSD.Snapshot == null || !profileSD.Snapshot.Element.Any())
+                    {
+                        _logger.LogInformation("Generating snapshot for profile {Url}", profileSD.Url);
+                        
+                        var zipSource = ZipSource.CreateValidationSource();
+                        var snapshotResolver = new CachedResolver(zipSource);
+                        var generator = new SnapshotGenerator(snapshotResolver, SnapshotGeneratorSettings.CreateDefault());
+                        
+                        generator.Update(profileSD);
+                        
+                        _logger.LogInformation("Snapshot generated with {ElementCount} elements", 
+                            profileSD.Snapshot?.Element?.Count ?? 0);
+                    }
+                    
+                    // Create resolver chain: profile → base R4
+                    var zipSource2 = ZipSource.CreateValidationSource();
+                    var profileResolver = new InMemoryResourceResolver(new[] { profileSD });
+                    resolver = new MultiResolver(profileResolver, zipSource2);
+                    
+                    _logger.LogInformation("Firely profile validator enabled: {Canonical}", bundleProfileCanonicalUrl);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to process Bundle profile StructureDefinition");
+                    return new OperationOutcome
+                    {
+                        Issue = new List<OperationOutcome.IssueComponent>
+                        {
+                            new OperationOutcome.IssueComponent
+                            {
+                                Severity = OperationOutcome.IssueSeverity.Error,
+                                Code = OperationOutcome.IssueType.Exception,
+                                Diagnostics = $"Failed to process Bundle profile: {ex.Message}"
+                            }
+                        }
+                    };
+                }
+            }
+            else
+            {
+                // No profile: Use base R4 only
+                _logger.LogInformation("No profile specified, using base FHIR R4 validation");
+                resolver = ZipSource.CreateValidationSource();
+            }
+            
+            // Step 3: Create Validator
+            var settings = new ValidationSettings
+            {
+                ResourceResolver = resolver,
+                GenerateSnapshot = true,
+                ResolveExternalReferences = false,
+                Trace = false
+            };
+            
+            var validator = new Validator(settings);
+            
+            // Step 4: Validate against specific profile or base Bundle
+            OperationOutcome validationOutcome;
+            
+            if (!string.IsNullOrWhiteSpace(bundleProfileCanonicalUrl) && profileSD != null)
+            {
+                // Validate against specific profile
+                _logger.LogInformation("Validating Bundle against profile: {CanonicalUrl}", bundleProfileCanonicalUrl);
+                
+                // Set meta.profile to tell validator which profile to enforce
+                if (bundle.Meta == null)
+                {
+                    bundle.Meta = new Meta();
+                }
+                
+                var profiles = bundle.Meta.Profile?.ToList() ?? new List<string>();
+                if (!profiles.Contains(bundleProfileCanonicalUrl))
+                {
+                    profiles.Add(bundleProfileCanonicalUrl);
+                    bundle.Meta.Profile = profiles;
+                }
+                
+                validationOutcome = validator.Validate(bundle);
+            }
+            else
+            {
+                // Validate against base Bundle definition
+                _logger.LogInformation("Validating Bundle against base R4");
+                validationOutcome = validator.Validate(bundle);
+            }
+            
+            _logger.LogInformation("Firely validation completed with {IssueCount} issues", 
+                validationOutcome.Issue?.Count ?? 0);
+            
+            // Return the OperationOutcome from Firely Validator
+            // It already contains all validation issues in the correct format
+            return validationOutcome;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during Firely structural validation");
+            _logger.LogError(ex, "Error during Firely validation");
             
-            // Return error as OperationOutcome issue, not as exception
-            // This ensures validation errors are returned as data, not thrown
             return new OperationOutcome
             {
                 Issue = new List<OperationOutcome.IssueComponent>
@@ -155,43 +238,44 @@ public class FirelyValidationService : IFirelyValidationService
     }
     
     /// <summary>
-    /// Recursively visit all typed element nodes to ensure complete traversal
-    /// This triggers lazy validation in the Firely SDK
+    /// In-memory resource resolver for StructureDefinitions.
+    /// Used to provide profile StructureDefinitions to the Validator.
     /// </summary>
-    private void VisitAllNodes(ITypedElement element, ref int nodeCount)
+    private sealed class InMemoryResourceResolver : IResourceResolver
     {
-        if (element == null) return;
-        
-        nodeCount++;
-        
-        try
+        private readonly Dictionary<string, Resource> _resourcesByCanonicalUrl;
+
+        public InMemoryResourceResolver(IEnumerable<StructureDefinition> structureDefinitions)
         {
-            // Access the Value property to trigger validation
-            _ = element.Value;
-        }
-        catch
-        {
-            // Ignore validation errors during traversal - they'll be caught at the top level
-        }
-        
-        // Recursively visit children (wrapped in try-catch to continue even if child fails)
-        try
-        {
-            foreach (var child in element.Children())
+            _resourcesByCanonicalUrl = new Dictionary<string, Resource>();
+
+            foreach (var sd in structureDefinitions)
             {
-                try
+                if (!string.IsNullOrWhiteSpace(sd.Url))
                 {
-                    VisitAllNodes(child, ref nodeCount);
-                }
-                catch
-                {
-                    // Continue traversing other children even if one fails
+                    _resourcesByCanonicalUrl[sd.Url] = sd;
                 }
             }
         }
-        catch
+
+        public Resource? ResolveByCanonicalUri(string uri)
         {
-            // Children() itself might throw - continue anyway
+            if (string.IsNullOrWhiteSpace(uri))
+            {
+                return null;
+            }
+
+            // Handle canonical URLs with version (e.g., http://example.com/SD|1.0.0)
+            var canonicalUrl = uri.Split('|')[0];
+
+            return _resourcesByCanonicalUrl.TryGetValue(canonicalUrl, out var resource) 
+                ? resource 
+                : null;
+        }
+
+        public Resource? ResolveByUri(string uri)
+        {
+            return ResolveByCanonicalUri(uri);
         }
     }
 }
