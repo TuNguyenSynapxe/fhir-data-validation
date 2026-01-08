@@ -319,7 +319,7 @@ public class RequiredBindingEnforcementModeTests : IDisposable
                         System = "http://hl7.org/fhir/bundle-type",
                         Concept = new List<ValueSet.ConceptReferenceComponent>
                         {
-                            new ValueSet.ConceptReferenceComponent { Code = "Collection" }
+                            new ValueSet.ConceptReferenceComponent { Code = "collection" }
                         }
                     }
                 }
@@ -363,7 +363,7 @@ public class RequiredBindingEnforcementModeTests : IDisposable
                         System = "http://hl7.org/fhir/bundle-type",
                         Concept = new List<ValueSet.ConceptReferenceComponent>
                         {
-                            new ValueSet.ConceptReferenceComponent { Code = "Collection" }
+                            new ValueSet.ConceptReferenceComponent { Code = "collection" }
                             // "Document" not in list
                         }
                     }

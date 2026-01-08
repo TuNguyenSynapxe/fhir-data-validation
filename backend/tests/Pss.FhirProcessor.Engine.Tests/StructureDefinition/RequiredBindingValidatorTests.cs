@@ -50,8 +50,8 @@ public class RequiredBindingValidatorTests
                         System = "http://hl7.org/fhir/bundle-type",
                         Concept = new List<ValueSet.ConceptReferenceComponent>
                         {
-                            new ValueSet.ConceptReferenceComponent { Code = "Collection" },
-                            new ValueSet.ConceptReferenceComponent { Code = "Document" }
+                            new ValueSet.ConceptReferenceComponent { Code = "collection" },
+                            new ValueSet.ConceptReferenceComponent { Code = "document" }
                         }
                     }
                 }
@@ -101,7 +101,7 @@ public class RequiredBindingValidatorTests
                         System = "http://hl7.org/fhir/bundle-type",
                         Concept = new List<ValueSet.ConceptReferenceComponent>
                         {
-                            new ValueSet.ConceptReferenceComponent { Code = "Collection" }
+                            new ValueSet.ConceptReferenceComponent { Code = "collection" }
                             // "Document" not in ValueSet
                         }
                     }
@@ -151,7 +151,7 @@ public class RequiredBindingValidatorTests
                         System = "http://hl7.org/fhir/bundle-type",
                         Concept = new List<ValueSet.ConceptReferenceComponent>
                         {
-                            new ValueSet.ConceptReferenceComponent { Code = "Collection" }
+                            new ValueSet.ConceptReferenceComponent { Code = "collection" }
                         }
                     }
                 }
