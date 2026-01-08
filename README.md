@@ -102,8 +102,11 @@ fhir_processor_v2/
 ### ✅ Validation Engine
 - **Firely SDK Integration**: FHIR R4 structure validation
 - **Business Rule Engine**: FHIRPath-based custom validation
-- **Terminology Validation**: CodeSystem and ValueSet support
+- **Terminology Validation**: Offline ValueSet expansion and code validation
 - **Error Classification**: Firely, Business, and System errors
+- **Deterministic Results**: All validation is repeatable and explainable
+
+> **Note:** For complete validation scope and limitations, see [What We Validate](docs/public/WHAT_WE_VALIDATE.md)
 
 ### 📝 Rule Management
 - **Rule DSL**: JSON-based rule definitions
@@ -125,6 +128,12 @@ fhir_processor_v2/
 ---
 
 ## 📚 Documentation
+
+### 🌐 Public Documentation
+- **[What We Validate](docs/public/WHAT_WE_VALIDATE.md)** — Public-facing validation scope reference
+  - Clear boundaries of what is validated vs not validated
+  - Suitable for partners, vendors, and non-technical stakeholders
+  - Safe for external publication and compliance review
 
 ### Core Specifications
 - [Architecture Overview](docs/01_architecture_spec.md)
