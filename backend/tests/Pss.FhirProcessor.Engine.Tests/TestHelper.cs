@@ -8,16 +8,11 @@ using Pss.FhirProcessor.Engine.RuleEngines;
 using Pss.FhirProcessor.Engine.Navigation;
 using Pss.FhirProcessor.Engine.Navigation.Structure;
 using Pss.FhirProcessor.Engine.Firely;
+using Pss.FhirProcessor.Engine.Simplifier;
 using Pss.FhirProcessor.Engine.Authoring;
 using Pss.FhirProcessor.Engine.Models;
 using Pss.FhirProcessor.Engine.Services;
 using Pss.FhirProcessor.Engine.Validation;
-using Pss.FhirProcessor.Engine.Core;
-using Pss.FhirProcessor.Engine.RuleEngines;
-using Pss.FhirProcessor.Engine.Navigation;
-using Pss.FhirProcessor.Engine.Navigation.Structure;
-using Pss.FhirProcessor.Engine.Firely;
-using Pss.FhirProcessor.Engine.Authoring;
 
 namespace Pss.FhirProcessor.Engine.Tests;
 
@@ -184,8 +179,11 @@ public static class TestHelper
         var encounter = new Encounter
         {
             Id = "encounter-001",
-            Status = Encounter.EncounterStatus.Finished,
-            Class = new Coding("http://terminology.hl7.org/CodeSystem/v3-ActCode", "AMB"),
+            Status = EncounterStatus.Completed,
+            Class = new List<CodeableConcept>
+            {
+                new CodeableConcept("http://terminology.hl7.org/CodeSystem/v3-ActCode", "AMB")
+            },
             Subject = new ResourceReference("urn:uuid:patient-001")
         };
 
@@ -257,9 +255,11 @@ public static class TestHelper
 
     public static IFirelyValidationService CreateFirelyValidationService()
     {
-        var modelResolver = CreateModelResolver();
-        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FirelyValidationService>.Instance;
-        return new FirelyValidationService(modelResolver, logger);
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<FirelyR5ValidationService>.Instance;
+        var packageReaderLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<SimplifierPackageReader>.Instance;
+        var packageReader = new SimplifierPackageReader(packageReaderLogger);
+        var loggerFactory = Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance;
+        return new FirelyR5ValidationService(logger, packageReader, loggerFactory); // Phase 2: R5 with package support
     }
     
     private static IFhirModelResolverService CreateModelResolver()
@@ -310,7 +310,7 @@ public static class TestHelper
         var suggestionService = CreateSystemRuleSuggestionService();
 
         // Create REAL structural validator for contract tests
-        var structuralValidator = CreateJsonNodeStructuralValidator();
+        var structuralValidator = CreateJsonNodePreValidator();
 
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<ValidationPipeline>.Instance;
         return new ValidationPipeline(
@@ -326,12 +326,12 @@ public static class TestHelper
             specHintService);       // Now optional parameter at end
     }
     
-    public static IJsonNodeStructuralValidator CreateJsonNodeStructuralValidator()
+    public static IJsonNodePreValidator CreateJsonNodePreValidator()
     {
         var schemaService = CreateFhirSchemaService();
         var enumIndex = CreateEnumIndex();
-        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<JsonNodeStructuralValidator>.Instance;
-        return new JsonNodeStructuralValidator(schemaService, enumIndex, logger);
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<JsonNodePreValidator>.Instance;
+        return new JsonNodePreValidator(schemaService, enumIndex, logger);
     }
     
     public static IFhirEnumIndex CreateEnumIndex()

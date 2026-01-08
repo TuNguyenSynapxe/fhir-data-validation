@@ -15,19 +15,19 @@ namespace Pss.FhirProcessor.Engine.Tests.Validation;
 /// 3. No Firely POCO dependency
 /// 4. All 5 validation types (enum, primitive, array shape, cardinality, required)
 /// </summary>
-public class JsonNodeStructuralValidatorTests
+public class JsonNodePreValidatorTests
 {
     private readonly Mock<IFhirSchemaService> _mockSchemaService;
     private readonly Mock<IFhirEnumIndex> _mockEnumIndex;
-    private readonly Mock<ILogger<JsonNodeStructuralValidator>> _mockLogger;
-    private readonly JsonNodeStructuralValidator _validator;
+    private readonly Mock<ILogger<JsonNodePreValidator>> _mockLogger;
+    private readonly JsonNodePreValidator _validator;
 
-    public JsonNodeStructuralValidatorTests()
+    public JsonNodePreValidatorTests()
     {
         _mockSchemaService = new Mock<IFhirSchemaService>();
         _mockEnumIndex = new Mock<IFhirEnumIndex>();
-        _mockLogger = new Mock<ILogger<JsonNodeStructuralValidator>>();
-        _validator = new JsonNodeStructuralValidator(
+        _mockLogger = new Mock<ILogger<JsonNodePreValidator>>();
+        _validator = new JsonNodePreValidator(
             _mockSchemaService.Object,
             _mockEnumIndex.Object,
             _mockLogger.Object);

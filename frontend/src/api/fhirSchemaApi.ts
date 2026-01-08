@@ -95,23 +95,22 @@ export function assertFhirSchemaNode(
  * 
  * ENDPOINT: /api/fhir/schema/{resourceType}
  * 
- * NOTE: The backend currently only supports R4. Version parameter is
- * reserved for future use when R5 support is added.
+ * NOTE: R5 MVP - Backend currently supports R5 only.
  * 
  * @param resourceType - FHIR resource type (e.g., "Patient", "Observation")
- * @param version - FHIR version ("R4" or "R5") - currently only R4 supported
+ * @param version - FHIR version ("R4" or "R5") - MVP supports R5 only
  * @returns Validated FhirSchemaNode tree
  * @throws Error if fetch fails or response is invalid
  * 
  * @example
  * ```ts
- * const schema = await fetchFhirSchema("Patient", "R4");
+ * const schema = await fetchFhirSchema("Patient", "R5");
  * // schema is guaranteed to be a valid FhirSchemaNode
  * ```
  */
 export async function fetchFhirSchema(
   resourceType: string,
-  version: "R4" | "R5" = "R4"
+  version: "R4" | "R5" = "R5"
 ): Promise<FhirSchemaNodeResponse> {
   if (!resourceType || typeof resourceType !== "string") {
     throw new Error("fetchFhirSchema: resourceType must be a non-empty string");

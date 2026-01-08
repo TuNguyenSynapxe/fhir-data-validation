@@ -32,28 +32,48 @@ namespace Pss.FhirProcessor.Engine.Validation;
 //   - All 128 Phase 1 tests must continue passing
 //
 
+//
+// ⚠️ CLEANUP PHASE — RENAMED FOR CLARITY ⚠️
+//
+// Renamed from IJsonNodeStructuralValidator → IJsonNodePreValidator
+// Reason: Clarify this is lightweight pre-validation, NOT authoritative semantic validation.
+//
+// Layer 1: Non-Authoritative Pre-Validation
+// - Runs BEFORE Firely (Layer 2)
+// - Lightweight syntax and type checking
+// - Does NOT replace Firely's authoritative validation
+//
+// Phase 1 TODO: Ensure this remains distinct from Firely R5 semantic validation.
+//
+
 /// <summary>
-/// Phase A: JSON Node-based Structural Validation (Primary Authority)
+/// Layer 1: JSON Node Pre-Validation (Non-Authoritative)
 /// 
-/// Validates JSON nodes BEFORE Firely POCO parsing.
-/// Catches structural errors that would cause parsing failures.
+/// Performs lightweight syntax and type checking BEFORE Firely POCO parsing.
+/// Catches obvious structural errors that would cause parsing failures.
 /// 
-/// Validation Order (MANDATORY):
+/// IMPORTANT: This is NOT authoritative semantic validation.
+/// Layer 2 (Firely R5 Validator) is the sole semantic authority.
+/// 
+/// Validation Order:
 /// 1. JSON Syntax
-/// 2. JSON Node Structural Validation ← THIS SERVICE
-/// 3. Project / Business Rules
-/// 4. Firely POCO Validation (LAST)
+/// 2. JSON Node Pre-Validation ← THIS SERVICE (lightweight, non-authoritative)
+/// 3. Firely R5 Validation ← AUTHORITATIVE
+/// 4. Business Rules
 /// 
-/// Scope (Phase A ONLY):
-/// - Enum validation
-/// - Primitive format validation
-/// - Array vs object shape validation
-/// - Cardinality validation (min/max)
-/// - Required field presence
+/// Scope (Pre-Validation ONLY):
+/// - Primitive format validation (id, code, dateTime, etc.)
+/// - Basic enum validation (fast-fail)
+/// - Array vs object shape
+/// - Obvious type mismatches
 /// 
-/// All errors emitted are STRUCTURE authority with ERROR severity.
+/// Does NOT validate:
+/// - Profile constraints (Firely's responsibility)
+/// - Cardinality beyond basic checks
+/// - Semantic correctness
+/// - Reference resolution
 /// </summary>
-public interface IJsonNodeStructuralValidator
+public interface IJsonNodePreValidator
 {
     /// <summary>
     /// Validates JSON structure against FHIR schema metadata.
@@ -70,14 +90,18 @@ public interface IJsonNodeStructuralValidator
 }
 
 /// <summary>
-/// Implementation of JSON node-based structural validator.
-/// Uses FhirSchemaNode metadata from StructureDefinition registry.
+/// Implementation of JSON node pre-validator (Layer 1, non-authoritative).
+/// 
+/// Performs lightweight syntax checking before Firely validation.
+/// Uses FhirSchemaNode metadata for basic type and format validation.
+/// 
+/// This is NOT authoritative semantic validation - Layer 2 (Firely R5) is authoritative.
 /// </summary>
-public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
+public class JsonNodePreValidator : IJsonNodePreValidator
 {
     private readonly IFhirSchemaService _schemaService;
     private readonly IFhirEnumIndex _enumIndex;
-    private readonly ILogger<JsonNodeStructuralValidator> _logger;
+    private readonly ILogger<JsonNodePreValidator> _logger;
     private readonly ValidationErrorDetailsValidator _detailsValidator;
 
     // Primitive type validators
@@ -100,10 +124,10 @@ public class JsonNodeStructuralValidator : IJsonNodeStructuralValidator
     private static readonly System.Text.RegularExpressions.Regex FhirIdRegex = 
         new(@"^[A-Za-z0-9\-\.]{1,64}$", System.Text.RegularExpressions.RegexOptions.Compiled);
 
-    public JsonNodeStructuralValidator(
+    public JsonNodePreValidator(
         IFhirSchemaService schemaService,
         IFhirEnumIndex enumIndex,
-        ILogger<JsonNodeStructuralValidator> logger,
+        ILogger<JsonNodePreValidator> logger,
         ValidationErrorDetailsValidator? detailsValidator = null)
     {
         _schemaService = schemaService;

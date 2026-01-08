@@ -19,19 +19,19 @@ namespace Pss.FhirProcessor.Engine.Tests.Validation;
 /// 6. Hardcoded dictionaries no longer referenced
 /// 7. Works for Patient.gender, Observation.status, Bundle.type
 /// </summary>
-public class JsonNodeStructuralValidatorPhaseBTests
+public class JsonNodePreValidatorPhaseBTests
 {
     private readonly Mock<IFhirSchemaService> _mockSchemaService;
     private readonly Mock<IFhirEnumIndex> _mockEnumIndex;
-    private readonly Mock<ILogger<JsonNodeStructuralValidator>> _mockLogger;
-    private readonly JsonNodeStructuralValidator _validator;
+    private readonly Mock<ILogger<JsonNodePreValidator>> _mockLogger;
+    private readonly JsonNodePreValidator _validator;
 
-    public JsonNodeStructuralValidatorPhaseBTests()
+    public JsonNodePreValidatorPhaseBTests()
     {
         _mockSchemaService = new Mock<IFhirSchemaService>();
         _mockEnumIndex = new Mock<IFhirEnumIndex>();
-        _mockLogger = new Mock<ILogger<JsonNodeStructuralValidator>>();
-        _validator = new JsonNodeStructuralValidator(
+        _mockLogger = new Mock<ILogger<JsonNodePreValidator>>();
+        _validator = new JsonNodePreValidator(
             _mockSchemaService.Object,
             _mockEnumIndex.Object,
             _mockLogger.Object);

@@ -20,15 +20,15 @@ public class StructureValidationGuardrailTests
 {
     private readonly Mock<IFhirSchemaService> _mockSchemaService;
     private readonly Mock<IFhirEnumIndex> _mockEnumIndex;
-    private readonly Mock<ILogger<JsonNodeStructuralValidator>> _mockLogger;
-    private readonly JsonNodeStructuralValidator _validator;
+    private readonly Mock<ILogger<JsonNodePreValidator>> _mockLogger;
+    private readonly JsonNodePreValidator _validator;
 
     public StructureValidationGuardrailTests()
     {
         _mockSchemaService = new Mock<IFhirSchemaService>();
         _mockEnumIndex = new Mock<IFhirEnumIndex>();
-        _mockLogger = new Mock<ILogger<JsonNodeStructuralValidator>>();
-        _validator = new JsonNodeStructuralValidator(
+        _mockLogger = new Mock<ILogger<JsonNodePreValidator>>();
+        _validator = new JsonNodePreValidator(
             _mockSchemaService.Object,
             _mockEnumIndex.Object,
             _mockLogger.Object
@@ -103,12 +103,12 @@ public class StructureValidationGuardrailTests
 
     /// <summary>
     /// Guardrail 2: Authority Guard
-    /// Only JsonNodeStructuralValidator may emit Source = "STRUCTURE".
+    /// Only JsonNodePreValidator may emit Source = "STRUCTURE".
     /// This test verifies the architectural constraint by checking that STRUCTURE
     /// errors can only come from the designated authority.
     /// </summary>
     [Fact]
-    public async Task OnlyJsonNodeStructuralValidator_MayEmitStructureErrors()
+    public async Task OnlyJsonNodePreValidator_MayEmitStructureErrors()
     {
         // Arrange - Create a simple invalid payload
         var bundleJson = """
@@ -172,7 +172,7 @@ public class StructureValidationGuardrailTests
             Assert.NotNull(error.Message);
         });
 
-        // Document: This test proves JsonNodeStructuralValidator emits STRUCTURE
+        // Document: This test proves JsonNodePreValidator emits STRUCTURE
         // Any other component emitting STRUCTURE would violate the architecture
     }
 
@@ -407,12 +407,12 @@ public class StructureValidationGuardrailTests
     }
 
     /// <summary>
-    /// Guardrail 6: No SPEC_HINT from JsonNodeStructuralValidator
-    /// JsonNodeStructuralValidator must only emit STRUCTURE errors, never SPEC_HINT.
+    /// Guardrail 6: No SPEC_HINT from JsonNodePreValidator
+    /// JsonNodePreValidator must only emit STRUCTURE errors, never SPEC_HINT.
     /// Advisory hints come from other validation layers.
     /// </summary>
     [Fact]
-    public async Task JsonNodeStructuralValidator_MustNotEmitSpecHint()
+    public async Task JsonNodePreValidator_MustNotEmitSpecHint()
     {
         // Arrange - Various test payloads
         var testCases = new[]
@@ -512,7 +512,7 @@ public class StructureValidationGuardrailTests
         {
             var errors = await _validator.ValidateAsync(testCase, "R5", CancellationToken.None);
             
-            // JsonNodeStructuralValidator must never emit anything but STRUCTURE
+            // JsonNodePreValidator must never emit anything but STRUCTURE
             Assert.All(errors, error =>
             {
                 Assert.Equal("STRUCTURE", error.Source);

@@ -286,7 +286,7 @@ public class SmartPathNavigationServiceTests
                 new Bundle.EntryComponent
                 {
                     FullUrl = "urn:uuid:encounter-001",
-                    Resource = new Encounter { Id = "encounter-001", Status = Encounter.EncounterStatus.Finished }
+                    Resource = new Encounter { Id = "encounter-001", Status = EncounterStatus.Completed }
                 }
             }
         };
@@ -357,7 +357,7 @@ public class SmartPathNavigationServiceTests
                 new Bundle.EntryComponent
                 {
                     FullUrl = "urn:uuid:encounter-001",
-                    Resource = new Encounter { Id = "encounter-456", Status = Encounter.EncounterStatus.Finished }
+                    Resource = new Encounter { Id = "encounter-456", Status = EncounterStatus.Completed }
                 }
             }
         };

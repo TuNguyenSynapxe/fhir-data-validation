@@ -5,7 +5,7 @@ using Xunit;
 namespace Pss.FhirProcessor.Engine.Tests.Validation;
 
 /// <summary>
-/// Explicit test to verify JsonNodeStructuralValidator collects ALL errors in one run.
+/// Explicit test to verify JsonNodePreValidator collects ALL errors in one run.
 /// Addresses requirement: Remove early exit logic that prevents full error collection.
 /// </summary>
 public class StructuralErrorCollectionTest

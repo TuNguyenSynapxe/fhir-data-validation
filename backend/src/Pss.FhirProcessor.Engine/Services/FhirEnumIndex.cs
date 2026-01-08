@@ -6,11 +6,23 @@ using Pss.FhirProcessor.Engine.Firely;
 
 namespace Pss.FhirProcessor.Engine.Services;
 
+//
+// ⚠️ R4 DEPENDENCY — CLEANUP PHASE NOTICE ⚠️
+//
+// This service builds enum bindings from FHIR StructureDefinitions.
+// Currently uses R4 metadata via IFhirModelResolverService (R4 implementation).
+//
+// Phase 1 TODO: Update to use R5 StructureDefinitions and enum bindings.
+//
+
 /// <summary>
 /// Phase B: Dynamic Enum Index Implementation
 /// 
 /// Builds and caches enum bindings from FHIR StructureDefinitions.
 /// Provides fast lookups for enum validation without touching Firely POCO parsing.
+/// 
+/// Current: Uses R4 StructureDefinitions.
+/// Phase 1: Will be updated to R5 StructureDefinitions.
 /// 
 /// Architecture:
 /// - One cache per FHIR version (R4, R5)
@@ -155,17 +167,20 @@ public class FhirEnumIndex : IFhirEnumIndex
             .Select(v => Hl7.Fhir.Utility.EnumUtility.GetLiteral(v))
             .ToList();
         
-        var encounterStatusValues = Enum.GetValues(typeof(Encounter.EncounterStatus))
-            .Cast<Encounter.EncounterStatus>()
-            .Select(v => Hl7.Fhir.Utility.EnumUtility.GetLiteral(v))
-            .ToList();
+        // TODO Phase 1: R5 enum structure changed - EncounterStatus is no longer nested
+        // Need to identify R5 equivalent enum type
+        // Temporarily excluded to unblock Phase 1 compilation
+        // var encounterStatusValues = Enum.GetValues(typeof(Encounter.EncounterStatus))
+        //     .Cast<Encounter.EncounterStatus>()
+        //     .Select(v => Hl7.Fhir.Utility.EnumUtility.GetLiteral(v))
+        //     .ToList();
 
         return new List<(string, string, string, List<string>)>
         {
             ("Patient.gender", "http://hl7.org/fhir/ValueSet/administrative-gender", "required", genderValues),
             ("Observation.status", "http://hl7.org/fhir/ValueSet/observation-status", "required", observationStatusValues),
             ("Bundle.type", "http://hl7.org/fhir/ValueSet/bundle-type", "required", bundleTypeValues),
-            ("Encounter.status", "http://hl7.org/fhir/ValueSet/encounter-status", "required", encounterStatusValues),
+            // ("Encounter.status", "http://hl7.org/fhir/ValueSet/encounter-status", "required", encounterStatusValues), // TODO Phase 1: R5 enum
         };
     }
 

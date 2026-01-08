@@ -8,11 +8,31 @@ using Pss.FhirProcessor.Engine.Models;
 
 namespace Pss.FhirProcessor.Engine.Firely;
 
+//
+// ⚠️ R4 LEGACY CODE — CLEANUP PHASE ISOLATION ⚠️
+//
+// This service uses FHIR R4 packages (Hl7.Fhir.R4, ModelInfo.ModelInspector).
+// It is NOT compatible with FHIR R5.
+//
+// Status: Archived for R5 MVP. Will be replaced in Phase 1 with R5 implementation.
+// Do NOT use for new development.
+//
+// Phase 1 TODO: Replace with FhirR5ModelResolverService using:
+//   - Hl7.Fhir.R5 package
+//   - ModelInfoR5.ModelInspector
+//   - R5-compatible StructureDefinitions
+//
+
 /// <summary>
-/// FHIR R4 model resolver service.
+/// FHIR R4 model resolver service (LEGACY).
+/// 
+/// WARNING: This implementation uses FHIR R4 packages only.
+/// For R5 MVP, this will be replaced with a new R5-compatible implementation.
+/// 
 /// Loads FHIR R4 core specification from embedded resources.
 /// Provides StructureDefinition resolver for validation.
 /// </summary>
+[Obsolete("R4 legacy implementation. Will be replaced with R5 version in Phase 1. Do not use for new development.")]
 public class FhirR4ModelResolverService : IFhirModelResolverService
 {
     private readonly ILogger<FhirR4ModelResolverService> _logger;

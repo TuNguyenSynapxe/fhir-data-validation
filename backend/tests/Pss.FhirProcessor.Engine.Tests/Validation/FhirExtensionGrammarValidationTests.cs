@@ -24,15 +24,15 @@ public class FhirExtensionGrammarValidationTests
 {
     private readonly Mock<IFhirSchemaService> _mockSchemaService;
     private readonly Mock<IFhirEnumIndex> _mockEnumIndex;
-    private readonly Mock<ILogger<JsonNodeStructuralValidator>> _mockLogger;
-    private readonly JsonNodeStructuralValidator _validator;
+    private readonly Mock<ILogger<JsonNodePreValidator>> _mockLogger;
+    private readonly JsonNodePreValidator _validator;
 
     public FhirExtensionGrammarValidationTests()
     {
         _mockSchemaService = new Mock<IFhirSchemaService>();
         _mockEnumIndex = new Mock<IFhirEnumIndex>();
-        _mockLogger = new Mock<ILogger<JsonNodeStructuralValidator>>();
-        _validator = new JsonNodeStructuralValidator(
+        _mockLogger = new Mock<ILogger<JsonNodePreValidator>>();
+        _validator = new JsonNodePreValidator(
             _mockSchemaService.Object,
             _mockEnumIndex.Object,
             _mockLogger.Object

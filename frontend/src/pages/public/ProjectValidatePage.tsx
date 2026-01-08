@@ -22,7 +22,7 @@ export function ProjectValidatePage() {
   });
 
   const [bundleJson, setBundleJson] = useState('');
-  const [fhirVersion] = useState('R4');
+  const [fhirVersion] = useState('R5');
   const [validationMode, setValidationMode] = useState<'standard' | 'full'>('standard');
   const [isValidJson, setIsValidJson] = useState(false);
   const [isValidating, setIsValidating] = useState(false);

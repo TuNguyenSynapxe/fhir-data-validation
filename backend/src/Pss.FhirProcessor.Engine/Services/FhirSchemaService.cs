@@ -7,9 +7,22 @@ using Pss.FhirProcessor.Engine.Interfaces;
 
 namespace Pss.FhirProcessor.Engine.Services;
 
+//
+// ⚠️ R4 DEPENDENCY — CLEANUP PHASE NOTICE ⚠️
+//
+// This service loads FHIR R4 StructureDefinitions via IFhirModelResolverService.
+// Currently bound to R4 implementation (FhirR4ModelResolverService).
+//
+// Phase 1 TODO: Update to use R5 StructureDefinitions when R5 resolver is implemented.
+//
+
 /// <summary>
-/// Service for retrieving FHIR R4 schema information
-/// Loads StructureDefinitions and builds hierarchical schema trees
+/// Service for retrieving FHIR schema information.
+/// 
+/// Current: Loads FHIR R4 StructureDefinitions.
+/// Phase 1: Will be updated to load R5 StructureDefinitions.
+/// 
+/// Loads StructureDefinitions and builds hierarchical schema trees.
 /// </summary>
 public class FhirSchemaService : IFhirSchemaService
 {

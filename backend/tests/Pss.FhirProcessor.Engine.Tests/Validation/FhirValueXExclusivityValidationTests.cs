@@ -16,16 +16,16 @@ public class FhirValueXExclusivityValidationTests
 {
     private readonly Mock<IFhirSchemaService> _mockSchemaService;
     private readonly Mock<IFhirEnumIndex> _mockEnumIndex;
-    private readonly JsonNodeStructuralValidator _validator;
+    private readonly JsonNodePreValidator _validator;
 
     public FhirValueXExclusivityValidationTests()
     {
         _mockSchemaService = new Mock<IFhirSchemaService>();
         _mockEnumIndex = new Mock<IFhirEnumIndex>();
-        _validator = new JsonNodeStructuralValidator(
+        _validator = new JsonNodePreValidator(
             _mockSchemaService.Object,
             _mockEnumIndex.Object,
-            NullLogger<JsonNodeStructuralValidator>.Instance);
+            NullLogger<JsonNodePreValidator>.Instance);
 
         // Setup empty enum index
         _mockEnumIndex

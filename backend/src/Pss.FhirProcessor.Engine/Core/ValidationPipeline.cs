@@ -3,6 +3,7 @@ using System.Text.Json;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
 using Microsoft.Extensions.Logging;
+using Pss.FhirProcessor.Engine.Constants;
 using Pss.FhirProcessor.Engine.Models;
 using Pss.FhirProcessor.Engine.Models.Questions;
 using Pss.FhirProcessor.Engine.Models.Terminology;
@@ -13,6 +14,10 @@ using Hl7.Fhir.Utility;
 using Pss.FhirProcessor.Engine.Validation;
 using Pss.FhirProcessor.Engine.Validation.QuestionAnswer;
 using Pss.FhirProcessor.Engine.Core.Execution;
+using Pss.FhirProcessor.Engine.SdValidation;
+using Pss.FhirProcessor.Engine.Simplifier;
+using Hl7.Fhir.Specification.Source;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Pss.FhirProcessor.Engine.Core;
 
@@ -26,7 +31,7 @@ namespace Pss.FhirProcessor.Engine.Core;
 /// </summary>
 public class ValidationPipeline : IValidationPipeline
 {
-    private readonly IJsonNodeStructuralValidator _structuralValidator;
+    private readonly IJsonNodePreValidator _preValidator;
     private readonly ILintValidationService _lintService;
     private readonly ISpecHintService? _specHintService; // AUTHORING-ONLY: Optional, null in runtime-only mode
     private readonly IFirelyValidationService _firelyService;
@@ -37,10 +42,11 @@ public class ValidationPipeline : IValidationPipeline
     private readonly ISystemRuleSuggestionService _suggestionService;
     private readonly QuestionAnswerValidator? _questionAnswerValidator; // AUTHORING-ONLY: Optional, null in runtime-only mode
     private readonly IQuestionAnswerContextProvider? _contextProvider; // AUTHORING-ONLY: Optional, null in runtime-only mode
+    private readonly SdConstraintValidationService? _sdValidationService; // PHASE 2.2: SD constraint validation
     private readonly ILogger<ValidationPipeline> _logger;
     
     public ValidationPipeline(
-        IJsonNodeStructuralValidator structuralValidator,
+        IJsonNodePreValidator preValidator,
         ILintValidationService lintService,
         IFirelyValidationService firelyService,
         IFhirPathRuleEngine ruleEngine,
@@ -51,9 +57,10 @@ public class ValidationPipeline : IValidationPipeline
         ILogger<ValidationPipeline> logger,
         ISpecHintService? specHintService = null, // AUTHORING-ONLY: Optional
         QuestionAnswerValidator? questionAnswerValidator = null, // AUTHORING-ONLY: Optional
-        IQuestionAnswerContextProvider? contextProvider = null) // AUTHORING-ONLY: Optional
+        IQuestionAnswerContextProvider? contextProvider = null, // AUTHORING-ONLY: Optional
+        SdConstraintValidationService? sdValidationService = null) // PHASE 2.2: Optional
     {
-        _structuralValidator = structuralValidator;
+        _preValidator = preValidator;
         _lintService = lintService;
         _specHintService = specHintService; // May be null in runtime-only mode
         _firelyService = firelyService;
@@ -64,6 +71,7 @@ public class ValidationPipeline : IValidationPipeline
         _suggestionService = suggestionService;
         _questionAnswerValidator = questionAnswerValidator;
         _contextProvider = contextProvider;
+        _sdValidationService = sdValidationService;
         _logger = logger;
         
         // Log mode on construction
@@ -100,6 +108,31 @@ public class ValidationPipeline : IValidationPipeline
                 return response;
             }
             
+            // Step 0.5: Phase 1 R5 MVP Guardrail
+            // ONLY FHIR R5 is supported in MVP
+            if (!string.Equals(request.FhirVersion, SupportedFhir.MvpFhirVersion, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogError("Unsupported FHIR version requested: {FhirVersion}. Only {SupportedVersion} is supported in MVP.",
+                    request.FhirVersion, SupportedFhir.MvpFhirVersion);
+                
+                response.Errors.Add(new ValidationError
+                {
+                    ErrorCode = "MVP_VERSION_NOT_SUPPORTED",
+                    Message = $"Only FHIR {SupportedFhir.MvpFhirVersion} is supported in this MVP. Requested version: {request.FhirVersion}",
+                    Severity = "error",
+                    Source = "MVP_GUARD",
+                    Path = "/",
+                    Details = new Dictionary<string, object>
+                    {
+                        { "requestedVersion", request.FhirVersion ?? "null" },
+                        { "supportedVersion", SupportedFhir.MvpFhirVersion }
+                    }
+                });
+                
+                FinalizeSummary(response, stopwatch);
+                return response;
+            }
+            
             // Step 1: Lint Validation (advisory quality checks)
             // ONLY runs in "full" analysis mode
             // Does NOT block Firely validation - all lint errors are advisory
@@ -128,16 +161,17 @@ public class ValidationPipeline : IValidationPipeline
             _logger.LogInformation("=== SPECHINT CHECKPOINT 1: ValidationMode={Mode}, IsFullAnalysis={IsFullAnalysis}", 
                 validationMode, isFullAnalysis);
             
-            // Step 1.9: JSON Node Structural Validation (Phase A) - PRIMARY AUTHORITY
-            // CRITICAL: This runs BEFORE Firely POCO parsing and BEFORE SpecHint
-            // Primary authority for structural errors: enum, primitive format, array shape, cardinality, required fields
+            // Step 1.9: JSON Node Pre-Validation (Layer 1) - NON-AUTHORITATIVE
+            // CRITICAL: This runs BEFORE Firely POCO parsing (Layer 2)
+            // Lightweight syntax checking: enum, primitive format, basic type validation
             // Uses JSON nodes + StructureDefinition metadata (not POCO)
-            _logger.LogInformation("Running JSON Node Structural Validation (Phase A) - PRIMARY AUTHORITY");
-            var structuralErrors = await _structuralValidator.ValidateAsync(request.BundleJson, request.FhirVersion, cancellationToken);
-            if (structuralErrors.Any())
+            // Layer 2 (Firely R5) is the authoritative semantic validator
+            _logger.LogInformation("Running JSON Node Pre-Validation (Layer 1 - Non-Authoritative)");
+            var preValidationErrors = await _preValidator.ValidateAsync(request.BundleJson, request.FhirVersion, cancellationToken);
+            if (preValidationErrors.Any())
             {
-                _logger.LogInformation("JSON Node Structural Validation found {ErrorCount} errors", structuralErrors.Count);
-                response.Errors.AddRange(structuralErrors);
+                _logger.LogInformation("JSON Node Pre-Validation found {ErrorCount} errors", preValidationErrors.Count);
+                response.Errors.AddRange(preValidationErrors);
             }
             
             if (isFullAnalysis && _specHintService != null)
@@ -247,9 +281,9 @@ public class ValidationPipeline : IValidationPipeline
             var firelyErrors = await _errorBuilder.FromFirelyIssuesAsync(firelyOutcome, request.BundleJson, bundle, cancellationToken);
             
             // Phase B.1: Deduplicate STRUCTURE vs Firely errors
-            // If JSON Node Structural Validation already caught an error (Source=STRUCTURE),
+            // If JSON Node Pre-Validation already caught an error (Source=STRUCTURE),
             // suppress the duplicate from Firely (Source=FHIR)
-            var deduplicatedFirelyErrors = DeduplicateErrors(structuralErrors, firelyErrors);
+            var deduplicatedFirelyErrors = DeduplicateErrors(preValidationErrors, firelyErrors);
             response.Errors.AddRange(deduplicatedFirelyErrors);
             
             var firelyErrorCount = deduplicatedFirelyErrors.Count(e => e.Source == "FHIR" && e.Severity == "error");
@@ -258,6 +292,58 @@ public class ValidationPipeline : IValidationPipeline
             
             // Note: Removed fallback lint check - Lint only runs in full analysis mode
             // In standard mode, only Firely structural validation, business rules, and reference validation run
+            
+            // Step 3.5: Phase 2.2 SD Constraint Validation (explicit, engine-owned)
+            // Validates enforced StructureDefinition constraints: cardinality, fixed values, required bindings
+            // Uses Firely metadata, NOT Validator.Validate()
+            // Only runs if profile specified and POCO parsing succeeded
+            if (_sdValidationService != null && bundle != null && !string.IsNullOrEmpty(request.BundleProfileCanonicalUrl))
+            {
+                _logger.LogInformation("Running Phase 2.2 SD constraint validation for profile: {Profile}", request.BundleProfileCanonicalUrl);
+                
+                try
+                {
+                    // Build Firely context from parsed bundle
+                    var context = new FirelyValidationContext(
+                        bundle,
+                        new CompositeResourceResolver(null, ZipSource.CreateValidationSource(), 
+                            NullLogger<CompositeResourceResolver>.Instance),
+                        Hl7.Fhir.Introspection.ModelInspector.ForAssembly(typeof(Bundle).Assembly)
+                    );
+                    
+                    var sdErrors = await _sdValidationService.ValidateAsync(
+                        context,
+                        new[] { request.BundleProfileCanonicalUrl },
+                        cancellationToken);
+                    
+                    if (sdErrors.Any())
+                    {
+                        _logger.LogInformation("SD constraint validation found {ErrorCount} violations", sdErrors.Count);
+                        response.Errors.AddRange(sdErrors);
+                    }
+                    else
+                    {
+                        _logger.LogInformation("SD constraint validation passed (no violations)");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "SD constraint validation failed: {Message}", ex.Message);
+                    // Don't fail entire validation - continue with business rules
+                }
+            }
+            else if (_sdValidationService == null)
+            {
+                _logger.LogDebug("SD constraint validation not available (Phase 2.2 not configured)");
+            }
+            else if (bundle == null)
+            {
+                _logger.LogDebug("SD constraint validation skipped (POCO parsing failed)");
+            }
+            else if (string.IsNullOrEmpty(request.BundleProfileCanonicalUrl))
+            {
+                _logger.LogDebug("SD constraint validation skipped (no profile specified)");
+            }
             
             // Step 4: Business Rule Validation (FHIRPath)
             // CRITICAL: Always attempt to run business rules even if Firely failed

@@ -403,7 +403,7 @@ export const errorExplanationRegistry: Record<string, ExplanationBuilder> = {
     
     return {
       title: "Element not defined in FHIR specification",
-      reason: `The element "${element || 'unknown'}" does not exist in the FHIR R4 specification for ${resourceType || 'this resource'}.`,
+      reason: `The element "${element || 'unknown'}" does not exist in the FHIR R5 specification for ${resourceType || 'this resource'}.`,
       whatWasFound: `An element named "${element || 'unknown'}" in the resource`,
       expected: "Only elements defined in the FHIR specification or properly defined extensions",
       howToFix: "If this is a typo, correct the element name. If this is meant to be an extension:\n\n1. Use the 'extension' property with a proper extension definition\n2. Ensure the extension has a 'url' property pointing to its definition\n3. Example:\n\n\"extension\": [\n  {\n    \"url\": \"http://example.org/fhir/extension-name\",\n    \"valueString\": \"...\"\n  }\n]",
@@ -445,13 +445,13 @@ export const errorExplanationRegistry: Record<string, ExplanationBuilder> = {
     const field = safeValue(details?.field);
     
     return {
-      title: "Field only available in FHIR R5",
-      reason: `The field "${field || 'detected'}" is part of FHIR R5 specification but you are validating against FHIR R4.`,
-      whatWasFound: `An R5-specific field: "${field || 'unknown'}"`,
-      expected: "Only fields defined in FHIR R4 specification",
-      howToFix: "Choose one of these options:\n\n1. Remove the R5 field if R4 compatibility is required\n2. Use an R4-compatible alternative if one exists\n3. Change your validation target to FHIR R5 if your system supports it\n\nConsult the FHIR version comparison guide to identify R4 equivalents.",
-      whatThisMeans: "FHIR R5 introduced new fields and capabilities not present in R4. Using R5 fields in R4 resources causes compatibility issues. R4-only systems will not understand these fields and may ignore them or reject the resource entirely. This creates interoperability problems in mixed-version environments.",
-      note: "This is a version compatibility check. If all systems in your ecosystem support R5, this warning can be safely ignored."
+      title: "R5 field detected (R5 MVP active)",
+      reason: `The field "${field || 'detected'}" is part of FHIR R5 specification. This system validates against FHIR R5.`,
+      whatWasFound: `An R5 field: "${field || 'unknown'}"`,
+      expected: "R5 fields are supported in this R5 MVP system",
+      howToFix: "No action required if targeting R5. If you need R4 compatibility:\n\n1. Consult the FHIR version comparison guide\n2. Use R4-compatible alternatives\n3. Note that this system currently supports R5 only (MVP)",
+      whatThisMeans: "FHIR R5 introduced new fields and capabilities. This system validates against R5. If interoperability with R4 systems is required, consider using fields available in both versions or maintaining separate resource versions.",
+      note: "This is informational. R5 fields are fully supported in this system (R5 MVP)."
     };
   },
 
@@ -461,7 +461,7 @@ export const errorExplanationRegistry: Record<string, ExplanationBuilder> = {
     
     return {
       title: "Field deprecated in FHIR R5",
-      reason: `The field "${field || 'detected'}" is deprecated in FHIR R5. It still works in R4 but may be removed in future versions.`,
+      reason: `The field "${field || 'detected'}" is deprecated in FHIR R5 and should be replaced with R5 alternatives.`,
       whatWasFound: `A deprecated field: "${field || 'unknown'}"`,
       expected: replacement ? `The replacement field: "${replacement}"` : "A non-deprecated alternative",
       howToFix: replacement 

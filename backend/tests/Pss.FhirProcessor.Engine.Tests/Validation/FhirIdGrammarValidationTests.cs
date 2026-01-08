@@ -12,11 +12,11 @@ namespace Pss.FhirProcessor.Engine.Tests.Validation;
 
 /// <summary>
 /// Phase 1, Rule 1: Tests for FHIR id grammar validation.
-/// Ensures JsonNodeStructuralValidator correctly enforces FHIR id primitive constraints.
+/// Ensures JsonNodePreValidator correctly enforces FHIR id primitive constraints.
 /// 
 /// IMPORTANT INFRASTRUCTURE NOTE:
 /// All STRUCTURE tests MUST use Bundle-based schema setup.
-/// JsonNodeStructuralValidator validates resources within Bundle.entry[].resource context.
+/// JsonNodePreValidator validates resources within Bundle.entry[].resource context.
 /// Resource-only schema setup is invalid and will cause traversal failures.
 /// 
 /// Use SetupBundleWithResourceSchema() helper for all STRUCTURE validation tests.
@@ -25,16 +25,16 @@ public class FhirIdGrammarValidationTests
 {
     private readonly Mock<IFhirSchemaService> _mockSchemaService;
     private readonly Mock<IFhirEnumIndex> _mockEnumIndex;
-    private readonly JsonNodeStructuralValidator _validator;
+    private readonly JsonNodePreValidator _validator;
 
     public FhirIdGrammarValidationTests()
     {
         _mockSchemaService = new Mock<IFhirSchemaService>();
         _mockEnumIndex = new Mock<IFhirEnumIndex>();
-        _validator = new JsonNodeStructuralValidator(
+        _validator = new JsonNodePreValidator(
             _mockSchemaService.Object,
             _mockEnumIndex.Object,
-            NullLogger<JsonNodeStructuralValidator>.Instance);
+            NullLogger<JsonNodePreValidator>.Instance);
 
         // Setup empty enum index (no enum validation for these tests)
         _mockEnumIndex
@@ -248,7 +248,7 @@ public class FhirIdGrammarValidationTests
     
     /// <summary>
     /// Sets up proper Bundle + embedded resource schema for STRUCTURE validation.
-    /// This helper ensures JsonNodeStructuralValidator can traverse Bundle.entry[].resource.
+    /// This helper ensures JsonNodePreValidator can traverse Bundle.entry[].resource.
     /// 
     /// CRITICAL: All STRUCTURE tests MUST use this helper or equivalent Bundle-aware setup.
     /// Resource-only schema setup will cause traversal failures.

@@ -432,7 +432,7 @@ public class ReferenceResolverTests
                         {
                             new Encounter.ParticipantComponent
                             {
-                                Individual = new ResourceReference("Practitioner/prac-001")
+                                Actor = new ResourceReference("Practitioner/prac-001")
                             }
                         }
                     }

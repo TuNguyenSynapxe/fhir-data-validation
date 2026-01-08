@@ -149,14 +149,14 @@ public static class FirelyExceptionMapper
         }
         
         // Phase B.1: No hardcoded enum values - error message is generic
-        // The actual validation is done by JsonNodeStructuralValidator which should
+        // The actual validation is done by JsonNodePreValidator which should
         // catch enum errors BEFORE Firely. This path should rarely be hit.
         
         // Canonical schema: { actual: string | null, allowed: string[], valueType: "enum" }
         var details = new Dictionary<string, object>
         {
             ["actual"] = invalidValue,
-            ["allowed"] = new List<string>(), // No allowed values - use JsonNodeStructuralValidator
+            ["allowed"] = new List<string>(), // No allowed values - use JsonNodePreValidator
             ["valueType"] = "enum"
         };
         
@@ -370,10 +370,10 @@ public static class FirelyExceptionMapper
     /// <summary>
     /// Returns common allowed values for known FHIR enum types
     /// Phase B.1: Removed hardcoded enum values. Enum validation is now handled
-    /// exclusively by JsonNodeStructuralValidator using IFhirEnumIndex.
+    /// exclusively by JsonNodePreValidator using IFhirEnumIndex.
     /// This method is deprecated and returns empty list.
     /// </summary>
-    [Obsolete("Enum validation moved to JsonNodeStructuralValidator. This should not be called.")]
+    [Obsolete("Enum validation moved to JsonNodePreValidator. This should not be called.")]
     private static List<string>? ExtractAllowedEnumValues(string enumType)
     {
         // Phase B.1: No longer used. Enum validation happens in JSON Node phase.

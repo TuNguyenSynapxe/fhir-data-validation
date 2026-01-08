@@ -49,7 +49,7 @@ public class BaseRuleClassifierTests
         var result = _classifier.Classify(issue);
 
         // Assert
-        // These now remain SPEC_HINT because JsonNodeStructuralValidator handles them as STRUCTURE
+        // These now remain SPEC_HINT because JsonNodePreValidator handles them as STRUCTURE
         Assert.Equal("SPEC_HINT", result.Source);
         Assert.Equal("warning", result.Severity);
         // Category can be either Advisory or AlreadyHandled (for closed enums)
@@ -139,7 +139,7 @@ public class BaseRuleClassifierTests
     [InlineData("Bundle.type")]
     public void Classify_ClosedEnumFields_ShouldRemainSpecHint(string path)
     {
-        // Arrange - Closed enum fields are already validated by JsonNodeStructuralValidator
+        // Arrange - Closed enum fields are already validated by JsonNodePreValidator
         var issue = new SpecHintIssue
         {
             ResourceType = path.Split('.')[0],
@@ -153,7 +153,7 @@ public class BaseRuleClassifierTests
         var result = _classifier.Classify(issue);
 
         // Assert
-        // All closed enum fields remain SPEC_HINT (JsonNodeStructuralValidator handles them)
+        // All closed enum fields remain SPEC_HINT (JsonNodePreValidator handles them)
         Assert.Equal("SPEC_HINT", result.Source);
         Assert.Equal("warning", result.Severity);
     }
@@ -179,7 +179,7 @@ public class BaseRuleClassifierTests
         var result = _classifier.Classify(issue);
 
         // Assert
-        // Now remains SPEC_HINT since JsonNodeStructuralValidator handles unconditional required fields
+        // Now remains SPEC_HINT since JsonNodePreValidator handles unconditional required fields
         Assert.Equal("SPEC_HINT", result.Source);
         Assert.Equal("warning", result.Severity);
         

@@ -233,7 +233,7 @@ public class AssemblyBoundaryTests
 
             // Scoped - Request-scoped, may hold state during request
             ["IValidationPipeline"] = "Scoped",
-            ["IJsonNodeStructuralValidator"] = "Scoped",
+            ["IJsonNodePreValidator"] = "Scoped",
             ["IFirelyValidationService"] = "Scoped",
             ["IFhirPathRuleEngine"] = "Scoped",
             ["ICodeMasterEngine"] = "Scoped",

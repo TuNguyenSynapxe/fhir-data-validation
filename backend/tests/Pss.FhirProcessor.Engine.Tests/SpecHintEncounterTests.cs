@@ -23,7 +23,7 @@ public class SpecHintEncounterTests
             Id = "bb7c8a63-0c49-40cf-9b0c-66e8b64d9254"
         };
         encounter.Identifier.Add(new Identifier { System = "test", Value = "test" });
-        encounter.Period = new Period { Start = "2025-01-01" };
+        encounter.ActualPeriod = new Period { Start = "2025-01-01" };
         encounter.Subject = new ResourceReference("Patient/test");
         // Intentionally missing Status and Class fields
         
@@ -78,7 +78,7 @@ public class SpecHintEncounterTests
                     {
                         Id = "test-encounter",
                         // Missing Class field
-                        Status = Encounter.EncounterStatus.Finished,
+                        Status = EncounterStatus.Completed,
                         Subject = new ResourceReference("Patient/test-patient")
                     }
                 }

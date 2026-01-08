@@ -5,6 +5,7 @@ using Pss.FhirProcessor.Engine.RuleEngines;
 using Pss.FhirProcessor.Engine.Navigation;
 using Pss.FhirProcessor.Engine.Navigation.Structure;
 using Pss.FhirProcessor.Engine.Firely;
+using Pss.FhirProcessor.Engine.Simplifier;
 using Pss.FhirProcessor.Engine.Authoring;
 using Pss.FhirProcessor.Engine.Interfaces;
 using Pss.FhirProcessor.Engine.Services;
@@ -52,9 +53,21 @@ public static class EngineServiceCollectionExtensions
         // CORE: Validation Pipeline (runtime-safe)
         services.AddScoped<IValidationPipeline, ValidationPipeline>();
         services.AddScoped<ILintValidationService, LintValidationService>();
-        services.AddScoped<IJsonNodeStructuralValidator, JsonNodeStructuralValidator>();
+        services.AddScoped<IJsonNodePreValidator, JsonNodePreValidator>();
         services.AddSingleton<IFhirEnumIndex, FhirEnumIndex>();
-        services.AddScoped<IFirelyValidationService, FirelyValidationService>();
+        
+        // Phase 2.2: R5 Validator with Simplifier package support
+        services.AddScoped<ISimplifierPackageReader, SimplifierPackageReader>();
+        services.AddScoped<IFirelyValidationService, FirelyR5ValidationService>();
+        
+        // Phase 2.2-2.3: SD Constraint Validation (explicit, engine-owned)
+        services.AddScoped<SdValidation.SdConstraintExtractor>();
+        services.AddScoped<SdValidation.Validators.CardinalityValidator>();
+        services.AddScoped<SdValidation.Validators.FixedValueValidator>();
+        services.AddScoped<SdValidation.Validators.RequiredBindingValidator>();
+        services.AddScoped<SdValidation.Validators.PatternValueValidator>(); // Phase 2.3
+        services.AddScoped<SdValidation.SdConstraintValidationService>();
+        
         services.AddScoped<IFhirPathRuleEngine, FhirPathRuleEngine>();
         services.AddScoped<ICodeMasterEngine, CodeMasterEngine>();
         services.AddScoped<IReferenceResolver, ReferenceResolver>();

@@ -16,16 +16,16 @@ public class FhirCodeGrammarValidationTests
 {
     private readonly Mock<IFhirSchemaService> _mockSchemaService;
     private readonly Mock<IFhirEnumIndex> _mockEnumIndex;
-    private readonly JsonNodeStructuralValidator _validator;
+    private readonly JsonNodePreValidator _validator;
 
     public FhirCodeGrammarValidationTests()
     {
         _mockSchemaService = new Mock<IFhirSchemaService>();
         _mockEnumIndex = new Mock<IFhirEnumIndex>();
-        _validator = new JsonNodeStructuralValidator(
+        _validator = new JsonNodePreValidator(
             _mockSchemaService.Object,
             _mockEnumIndex.Object,
-            NullLogger<JsonNodeStructuralValidator>.Instance);
+            NullLogger<JsonNodePreValidator>.Instance);
 
         // Setup empty enum index (lexical validation is independent of enum membership)
         _mockEnumIndex

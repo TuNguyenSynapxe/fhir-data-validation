@@ -30,27 +30,27 @@ public class BaseRuleClassifier
     private readonly ILogger<BaseRuleClassifier> _logger;
     
     // Root-level required fields that must be present for the resource to be valid FHIR
-    // IMPORTANT: JsonNodeStructuralValidator ALREADY validates all fields where Min >= 1
-    // This list should ONLY contain violations that JsonNodeStructuralValidator doesn't handle
+    // IMPORTANT: JsonNodePreValidator ALREADY validates all fields where Min >= 1
+    // This list should ONLY contain violations that JsonNodePreValidator doesn't handle
     // Examples: JSON grammar violations, value[x] choice violations, etc.
     private static readonly HashSet<string> UnconditionalRequiredFields = new()
     {
-        // EMPTY - JsonNodeStructuralValidator handles all Min >= 1 validations
-        // Future: Add JSON grammar violations not yet handled by JsonNodeStructuralValidator:
+        // EMPTY - JsonNodePreValidator handles all Min >= 1 validations
+        // Future: Add JSON grammar violations not yet handled by JsonNodePreValidator:
         // - Multiple value[x] present
         // - reference as object instead of string
         // - Primitive wrapped as { value: ... }
     };
     
     // Closed enum fields with required binding strength
-    // These are validated in JsonNodeStructuralValidator, but we include them here for completeness
+    // These are validated in JsonNodePreValidator, but we include them here for completeness
     private static readonly HashSet<string> ClosedEnumFields = new()
     {
         "Patient.gender",
         "Observation.status",
         "Bundle.type",
         "Encounter.status"
-        // Note: More closed enums are handled by JsonNodeStructuralValidator via FhirEnumIndex
+        // Note: More closed enums are handled by JsonNodePreValidator via FhirEnumIndex
     };
 
     public BaseRuleClassifier(ILogger<BaseRuleClassifier> logger)
@@ -91,7 +91,7 @@ public class BaseRuleClassifier
             };
         }
         
-        // RULE 3: Closed enum violations are already handled by JsonNodeStructuralValidator
+        // RULE 3: Closed enum violations are already handled by JsonNodePreValidator
         // If they reach here, they're advisory only (e.g., preferred/extensible bindings)
         if (ClosedEnumFields.Contains(issue.Path))
         {
@@ -229,7 +229,7 @@ public enum ClassificationCategory
     
     /// <summary>
     /// Already handled by earlier validation layer
-    /// Example: Closed enum validation in JsonNodeStructuralValidator
+    /// Example: Closed enum validation in JsonNodePreValidator
     /// Decision: SPEC_HINT (advisory - secondary check only)
     /// </summary>
     AlreadyHandled,

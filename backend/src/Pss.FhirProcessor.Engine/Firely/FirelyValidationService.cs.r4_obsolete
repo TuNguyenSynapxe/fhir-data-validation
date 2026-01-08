@@ -10,14 +10,35 @@ using System.Linq;
 
 namespace Pss.FhirProcessor.Engine.Firely;
 
+//
+// ⚠️ R4 LEGACY CODE — CLEANUP PHASE ISOLATION ⚠️
+//
+// This service uses FHIR R4 validation packages:
+//   - Hl7.Fhir.R4 (POCOs)
+//   - Hl7.Fhir.Validation.Legacy.R4 (Validator class)
+//   - Hl7.Fhir.Specification.R4
+//
+// Status: Archived for R5 MVP. Will be replaced in Phase 1 with R5 validator.
+// Do NOT use for new development.
+//
+// Phase 1 TODO: Replace with new Firely R5 validator using:
+//   - Hl7.Fhir.R5 package
+//   - Hl7.Fhir.Validation (NEW, not Legacy)
+//   - R5 POCOs and snapshot generator
+//
+
 /// <summary>
-/// Performs FHIR structural and profile validation using Firely SDK Validator with FHIR R4.
+/// Performs FHIR structural and profile validation using Firely SDK Validator with FHIR R4 (LEGACY).
+/// 
+/// WARNING: This implementation uses FHIR R4 packages only.
+/// For R5 MVP, this will be replaced with a new R5-compatible implementation.
 /// 
 /// Phase 2.2: Uses Firely's Validator class (from Hl7.Fhir.Validation.Legacy.R4) to enforce
 /// profile constraints including cardinality, fixed values, slicing, and invariants.
 /// 
 /// Does NOT handle business rules - only FHIR R4 structural correctness and profile conformance.
 /// </summary>
+[Obsolete("R4 legacy validation. Will be replaced with Hl7.Fhir.Validation (R5) in Phase 1. Do not use for new development.")]
 public class FirelyValidationService : IFirelyValidationService
 {
     private readonly IFhirModelResolverService _modelResolver;

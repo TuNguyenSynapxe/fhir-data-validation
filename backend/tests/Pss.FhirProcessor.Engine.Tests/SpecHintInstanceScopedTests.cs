@@ -154,8 +154,11 @@ public class SpecHintInstanceScopedTests
                     Resource = new Encounter
                     {
                         Id = "enc-1",
-                        Status = Encounter.EncounterStatus.Finished,
-                        Class = new Coding("http://terminology.hl7.org/CodeSystem/v3-ActCode", "AMB")
+                        Status = EncounterStatus.Completed,
+                        Class = new List<CodeableConcept>
+                        {
+                            new CodeableConcept("http://terminology.hl7.org/CodeSystem/v3-ActCode", "AMB")
+                        }
                     }
                 }
             }
@@ -239,7 +242,7 @@ public class SpecHintInstanceScopedTests
                     Resource = new Encounter
                     {
                         Id = "enc-1",
-                        Status = Encounter.EncounterStatus.Finished,
+                        Status = EncounterStatus.Completed,
                         // MISSING CLASS (if it's required by SPEC_HINT)
                     }
                 },
