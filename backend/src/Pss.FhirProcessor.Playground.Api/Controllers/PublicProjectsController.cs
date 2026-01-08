@@ -16,15 +16,18 @@ namespace Pss.FhirProcessor.Playground.Api.Controllers;
 public class PublicProjectsController : ControllerBase
 {
     private readonly IProjectRepository _projectRepository;
+    private readonly IBundleProfileRepository _bundleProfileRepository;
     private readonly IValidationPipeline _validationPipeline;
     private readonly ILogger<PublicProjectsController> _logger;
 
     public PublicProjectsController(
         IProjectRepository projectRepository,
+        IBundleProfileRepository bundleProfileRepository,
         IValidationPipeline validationPipeline,
         ILogger<PublicProjectsController> logger)
     {
         _projectRepository = projectRepository;
+        _bundleProfileRepository = bundleProfileRepository;
         _validationPipeline = validationPipeline;
         _logger = logger;
     }
@@ -140,6 +143,60 @@ public class PublicProjectsController : ControllerBase
     }
 
     /// <summary>
+    /// Get bundle profiles available for a published project.
+    /// Returns list of Bundle StructureDefinitions that can be validated against.
+    /// </summary>
+    /// <param name="slug">Project slug</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of bundle profiles</returns>
+    [HttpGet("{slug}/bundle-profiles")]
+    [ProducesResponseType(typeof(IReadOnlyList<BundleProfileDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetBundleProfiles(string slug, CancellationToken cancellationToken)
+    {
+        try
+        {
+            _logger.LogInformation("Getting bundle profiles for project: Slug={Slug}", slug);
+
+            // Load published project
+            var project = await _projectRepository.GetPublishedBySlugAsync(slug, cancellationToken);
+
+            if (project == null)
+            {
+                _logger.LogWarning("Published project not found: Slug={Slug}", slug);
+                return NotFound(new { error = "Published project not found", slug });
+            }
+
+            // Load bundle profiles for project
+            var profiles = await _bundleProfileRepository.GetByProjectIdAsync(project.Id, cancellationToken);
+
+            var profileDtos = profiles.Select(p => new BundleProfileDto
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Description = p.Description,
+                CanonicalUrl = p.CanonicalUrl,
+                IsDefault = p.IsDefault,
+                CreatedAt = p.CreatedAt
+            }).ToList();
+
+            _logger.LogInformation(
+                "Found {Count} bundle profiles for project: Slug={Slug}",
+                profileDtos.Count,
+                slug);
+
+            return Ok(profileDtos);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get bundle profiles: Slug={Slug}", slug);
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                new { error = "Failed to get bundle profiles", message = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Validate a FHIR Bundle using a published project's ruleset.
     /// This is the main MVP endpoint for project-based validation.
     /// </summary>
@@ -176,6 +233,66 @@ public class PublicProjectsController : ControllerBase
             {
                 _logger.LogWarning("Published project not found for validation: Slug={Slug}", slug);
                 return NotFound(new { error = "Published project not found", slug });
+            }
+
+            // Load bundle profile if specified (multi-bundle support)
+            string? profileStructureDefinitionJson = null;
+            if (request.BundleProfileId.HasValue)
+            {
+                _logger.LogInformation(
+                    "Loading bundle profile: ProfileId={ProfileId}",
+                    request.BundleProfileId.Value);
+
+                var profile = await _bundleProfileRepository.GetByIdAsync(
+                    request.BundleProfileId.Value,
+                    cancellationToken);
+
+                if (profile == null)
+                {
+                    _logger.LogWarning(
+                        "Bundle profile not found: ProfileId={ProfileId}",
+                        request.BundleProfileId.Value);
+                    return BadRequest(new { error = "Bundle profile not found", profileId = request.BundleProfileId.Value });
+                }
+
+                // Verify profile belongs to this project
+                if (profile.ProjectId != project.Id)
+                {
+                    _logger.LogWarning(
+                        "Bundle profile does not belong to project: ProfileId={ProfileId}, ProjectId={ProjectId}",
+                        request.BundleProfileId.Value,
+                        project.Id);
+                    return BadRequest(new { error = "Bundle profile does not belong to this project" });
+                }
+
+                profileStructureDefinitionJson = profile.StructureDefinitionJson;
+                
+                _logger.LogInformation(
+                    "Using bundle profile: ProfileId={ProfileId}, Name={ProfileName}, CanonicalUrl={CanonicalUrl}",
+                    profile.Id,
+                    profile.Name,
+                    profile.CanonicalUrl);
+            }
+            else
+            {
+                // No explicit profile specified - try to use default profile
+                var defaultProfile = await _bundleProfileRepository.GetDefaultByProjectIdAsync(
+                    project.Id,
+                    cancellationToken);
+
+                if (defaultProfile != null)
+                {
+                    profileStructureDefinitionJson = defaultProfile.StructureDefinitionJson;
+                    
+                    _logger.LogInformation(
+                        "Using default bundle profile: ProfileId={ProfileId}, Name={ProfileName}",
+                        defaultProfile.Id,
+                        defaultProfile.Name);
+                }
+                else
+                {
+                    _logger.LogInformation("No bundle profile specified and no default profile exists");
+                }
             }
 
             // Deserialize ruleset JSON into engine model (API layer responsibility)
@@ -222,6 +339,9 @@ public class PublicProjectsController : ControllerBase
             }
 
             // Build validation request for engine (explicit string-based input)
+            // NOTE: profileStructureDefinitionJson is loaded but NOT passed to engine in Phase 1
+            // Phase 1 focus: Infrastructure for multi-bundle support (table, repository, API)
+            // Future Phase: Add ProfileStructureDefinitionJson field to ValidationRequest
             var engineRequest = new ValidationRequest
             {
                 BundleJson = request.BundleJson,
@@ -229,7 +349,14 @@ public class PublicProjectsController : ControllerBase
                 ValidationMode = request.ValidationMode,
                 RulesJson = rulesJson, // ✅ Pass serialized rules as JSON string
                 CodeSystemsJson = codeSystemsJson // ✅ Pass serialized code systems as JSON string
+                // TODO: Add ProfileStructureDefinitionJson once engine supports it
             };
+
+            if (profileStructureDefinitionJson != null)
+            {
+                _logger.LogInformation(
+                    "Bundle profile loaded for validation (not yet passed to engine - Phase 1 limitation)");
+            }
 
             // Execute validation through engine (engine has NO database access)
             var engineResponse = await _validationPipeline.ValidateAsync(engineRequest, cancellationToken);

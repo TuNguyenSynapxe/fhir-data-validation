@@ -97,7 +97,16 @@ try
     
     // Register PostgresProjectRepository for both public and admin use
     builder.Services.AddScoped<Pss.FhirProcessor.Persistence.Repositories.IProjectRepository, PostgresProjectRepository>();
-    Log.Information("Persistence layer configured with PostgreSQL (admin + public)");
+    
+    // Register BundleProfileRepository for multi-bundle support
+    builder.Services.AddScoped<Pss.FhirProcessor.Persistence.Repositories.IBundleProfileRepository>(sp =>
+    {
+        var connString = builder.Configuration.GetConnectionString("PostgreSQL");
+        var logger = sp.GetRequiredService<ILogger<PostgresBundleProfileRepository>>();
+        return new PostgresBundleProfileRepository(connString!, logger);
+    });
+    
+    Log.Information("Persistence layer configured with PostgreSQL (admin + public + bundle profiles)");
 
     // Register Playground API services (authoring services now use PostgreSQL)
     builder.Services.AddScoped<IProjectService, ProjectService>();

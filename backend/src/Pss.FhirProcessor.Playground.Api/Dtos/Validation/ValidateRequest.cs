@@ -2,6 +2,7 @@ namespace Pss.FhirProcessor.Playground.Api.Dtos.Validation;
 
 /// <summary>
 /// Request DTO for anonymous validation (no project context).
+/// Also used for project-based validation with optional bundle profile selection.
 /// </summary>
 public sealed record ValidateRequest
 {
@@ -20,4 +21,11 @@ public sealed record ValidateRequest
     /// Defaults to "standard".
     /// </summary>
     public string ValidationMode { get; init; } = "standard";
+
+    /// <summary>
+    /// Optional bundle profile ID for project-based validation.
+    /// If null, uses the default profile for the project.
+    /// Ignored for anonymous validation.
+    /// </summary>
+    public Guid? BundleProfileId { get; init; }
 }
