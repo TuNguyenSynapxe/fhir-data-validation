@@ -28,5 +28,11 @@ public enum SdViolationReason
     /// ValueSet cannot be resolved from resource resolver.
     /// Missing from FHIR package or resource bundle.
     /// </summary>
-    UnresolvableValueSet
+    UnresolvableValueSet,
+
+    /// <summary>
+    /// Phase 3.4: ValueSet has circular reference in compose.include.valueSet imports.
+    /// Cannot expand transitively without infinite loop.
+    /// </summary>
+    CyclicValueSetReference
 }

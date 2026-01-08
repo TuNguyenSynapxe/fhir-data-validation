@@ -66,6 +66,8 @@ public static class EngineServiceCollectionExtensions
         services.AddScoped<SdValidation.Validators.FixedValueValidator>();
         services.AddScoped<SdValidation.Validators.RequiredBindingValidator>();
         services.AddScoped<SdValidation.Validators.PatternValueValidator>(); // Phase 2.3
+        services.AddScoped<SdValidation.PathResolution.IElementPathResolver, SdValidation.PathResolution.ElementPathResolver>(); // Phase 3.1.1
+        services.AddScoped<SdValidation.Terminology.IOfflineValueSetExpander, SdValidation.Terminology.OfflineValueSetExpander>(); // Phase 3.4
         services.AddScoped<SdValidation.SdConstraintValidationService>();
         
         services.AddScoped<IFhirPathRuleEngine, FhirPathRuleEngine>();

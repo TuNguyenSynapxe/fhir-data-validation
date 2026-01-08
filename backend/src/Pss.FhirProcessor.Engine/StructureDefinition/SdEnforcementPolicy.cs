@@ -72,6 +72,7 @@ public static class SdEnforcementPolicy
 
     /// <summary>
     /// Phase 2.4: Resolves severity for SD violations based on enforcement mode.
+    /// Phase 3.4: Added support for CyclicValueSetReference.
     /// 
     /// Validators detect violations (facts).
     /// Policy decides consequences (severity).
@@ -91,6 +92,7 @@ public static class SdEnforcementPolicy
                 SdViolationReason.ImportedValueSet => CurrentMode == SdEnforcementMode.Strict ? "error" : "warning",
                 SdViolationReason.FilteredInclude => CurrentMode == SdEnforcementMode.Strict ? "error" : "warning",
                 SdViolationReason.UnresolvableValueSet => CurrentMode == SdEnforcementMode.Strict ? "error" : "warning",
+                SdViolationReason.CyclicValueSetReference => CurrentMode == SdEnforcementMode.Strict ? "error" : "warning",
                 _ => "error" // Unknown reason defaults to error
             };
         }

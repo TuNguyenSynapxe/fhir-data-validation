@@ -6,6 +6,7 @@ using Pss.FhirProcessor.Engine.Firely;
 using Pss.FhirProcessor.Engine.SdValidation;
 using Pss.FhirProcessor.Engine.SdValidation.Validators;
 using Pss.FhirProcessor.Engine.SdValidation.PathResolution;
+using Pss.FhirProcessor.Engine.SdValidation.Terminology;
 using Xunit;
 
 namespace Pss.FhirProcessor.Engine.Tests.StructureDefinition;
@@ -22,9 +23,11 @@ public class RequiredBindingEnforcementModeTests : IDisposable
     public RequiredBindingEnforcementModeTests()
     {
         var pathResolver = new ElementPathResolver(NullLogger<ElementPathResolver>.Instance);
+        var expander = new OfflineValueSetExpander(NullLogger<OfflineValueSetExpander>.Instance);
         _validator = new RequiredBindingValidator(
             NullLogger<RequiredBindingValidator>.Instance,
-            pathResolver);
+            pathResolver,
+            expander);
         _originalMode = SdEnforcementPolicy.CurrentMode;
     }
 
