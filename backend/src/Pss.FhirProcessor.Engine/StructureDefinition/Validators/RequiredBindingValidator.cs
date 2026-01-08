@@ -2,11 +2,13 @@ using Hl7.Fhir.Model;
 using Microsoft.Extensions.Logging;
 using Pss.FhirProcessor.Engine.Firely;
 using Pss.FhirProcessor.Engine.Models;
+using Pss.FhirProcessor.Engine.SdValidation.PathResolution;
 
 namespace Pss.FhirProcessor.Engine.SdValidation.Validators;
 
 /// <summary>
 /// Phase 2.3: Validates required terminology bindings.
+/// Phase 3.1.1: Migrated to use generic path resolution.
 /// 
 /// Scope: Required binding strength only, in-memory ValueSet expansion.
 /// Checks that coded elements use values from required ValueSets.
@@ -15,10 +17,14 @@ namespace Pss.FhirProcessor.Engine.SdValidation.Validators;
 public class RequiredBindingValidator
 {
     private readonly ILogger<RequiredBindingValidator> _logger;
+    private readonly IElementPathResolver _pathResolver;
 
-    public RequiredBindingValidator(ILogger<RequiredBindingValidator> logger)
+    public RequiredBindingValidator(
+        ILogger<RequiredBindingValidator> logger,
+        IElementPathResolver pathResolver)
     {
         _logger = logger;
+        _pathResolver = pathResolver;
     }
 
     /// <summary>
@@ -79,9 +85,15 @@ public class RequiredBindingValidator
             };
         }
 
-        // Get coded value from Bundle POCO
-        var codedValue = GetCodedValue(constraint.ElementPath, context.Bundle);
-        if (codedValue == null)
+        // Get coded value from Bundle POCO using path resolver
+        var contexts = _pathResolver.ResolveValues(
+            context.Bundle,
+            constraint.ElementPath,
+            context.ModelInspector);
+
+        var resolvedValues = contexts.Where(c => !c.IsMissing).ToList();
+
+        if (resolvedValues.Count == 0)
         {
             return new ValidationError
             {
@@ -100,59 +112,60 @@ public class RequiredBindingValidator
             };
         }
 
-        // Validate code is in ValueSet (Phase 2.4: strict)
-        var (found, ambiguousError) = IsCodeInValueSet(codedValue.Value, valueSet, constraint, valueSetUrl);
-        
-        if (ambiguousError != null)
+        // Validate all resolved coded values
+        foreach (var ctx in resolvedValues)
         {
-            return ambiguousError; // ValueSet structure is ambiguous
-        }
+            var codedValue = ExtractCodedValue(ctx.Value);
+            if (codedValue == null) continue;
+
+            // Validate code is in ValueSet (Phase 2.4: strict)
+            var (found, ambiguousError) = IsCodeInValueSet(codedValue.Value, valueSet, constraint, valueSetUrl);
         
-        if (!found)
-        {
-            return new ValidationError
+            if (ambiguousError != null)
             {
-                Source = "StructureDefinition",
-                Severity = "error",
-                ErrorCode = "SD_REQUIRED_BINDING_INVALID_CODE",
-                Path = constraint.ElementPath,
-                Message = $"Code '{codedValue.Value.Code}' (system: {codedValue.Value.System ?? "(none)"}) is not in required ValueSet '{valueSetUrl}'",
-                Details = new Dictionary<string, object>
+                return ambiguousError; // ValueSet structure is ambiguous
+            }
+        
+            if (!found)
+            {
+                return new ValidationError
                 {
-                    ["profile"] = constraint.SourceProfile,
-                    ["elementPath"] = constraint.ElementPath,
-                    ["valueSetUrl"] = valueSetUrl,
-                    ["suppliedCode"] = codedValue.Value.Code ?? "(null)",
-                    ["suppliedSystem"] = codedValue.Value.System ?? "(null)",
-                    ["bindingStrength"] = "required"
-                }
-            };
+                    Source = "StructureDefinition",
+                    Severity = "error",
+                    ErrorCode = "SD_REQUIRED_BINDING_INVALID_CODE",
+                    Path = constraint.ElementPath,
+                    Message = $"Code '{codedValue.Value.Code}' (system: {codedValue.Value.System ?? "(none)"}) is not in required ValueSet '{valueSetUrl}'",
+                    Details = new Dictionary<string, object>
+                    {
+                        ["profile"] = constraint.SourceProfile,
+                        ["elementPath"] = constraint.ElementPath,
+                        ["valueSetUrl"] = valueSetUrl,
+                        ["suppliedCode"] = codedValue.Value.Code ?? "(null)",
+                        ["suppliedSystem"] = codedValue.Value.System ?? "(null)",
+                        ["bindingStrength"] = "required"
+                    }
+                };
+            }
         }
 
         return null; // No violation
     }
 
     /// <summary>
-    /// Gets coded value from Bundle POCO.
-    /// Phase 2.3: Simple paths only, Code/Coding/CodeableConcept support.
+    /// Extracts (code, system) from a resolved value object.
+    /// Phase 3.1.1: Works on any resolved object type.
     /// </summary>
-    private (string? Code, string? System)? GetCodedValue(string elementPath, Bundle bundle)
+    private (string? Code, string? System)? ExtractCodedValue(object? value)
     {
-        // Phase 2.3: Simplified implementation for Bundle.type
-        if (elementPath == "Bundle.type")
+        if (value == null) return null;
+
+        return value switch
         {
-            if (bundle.Type.HasValue)
-            {
-                var code = bundle.Type.Value.ToString();
-                return (code, "http://hl7.org/fhir/bundle-type");
-            }
-        }
-
-        _logger.LogDebug(
-            "Required binding check for complex path {Path} requires reflection (not fully implemented in Phase 2.3)",
-            elementPath);
-
-        return null; // Phase 2.3: Conservative
+            Code code => (code.Value, null), // Code primitive doesn't carry system
+            Coding coding => (coding.Code, coding.System),
+            CodeableConcept concept => concept.Coding?.FirstOrDefault() is Coding c ? (c.Code, c.System) : null,
+            _ => null
+        };
     }
 
     /// <summary>

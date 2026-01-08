@@ -2,11 +2,13 @@ using Hl7.Fhir.Model;
 using Microsoft.Extensions.Logging;
 using Pss.FhirProcessor.Engine.Firely;
 using Pss.FhirProcessor.Engine.Models;
+using Pss.FhirProcessor.Engine.SdValidation.PathResolution;
 
 namespace Pss.FhirProcessor.Engine.SdValidation.Validators;
 
 /// <summary>
 /// Phase 2.2: Validates fixed value constraints.
+/// Phase 3.1.1: Migrated to use generic path resolution.
 /// 
 /// Checks that element values match exactly what SD specifies.
 /// Engine-owned validator using Firely metadata.
@@ -14,10 +16,14 @@ namespace Pss.FhirProcessor.Engine.SdValidation.Validators;
 public class FixedValueValidator
 {
     private readonly ILogger<FixedValueValidator> _logger;
+    private readonly IElementPathResolver _pathResolver;
 
-    public FixedValueValidator(ILogger<FixedValueValidator> logger)
+    public FixedValueValidator(
+        ILogger<FixedValueValidator> logger,
+        IElementPathResolver pathResolver)
     {
         _logger = logger;
+        _pathResolver = pathResolver;
     }
 
     /// <summary>
@@ -49,10 +55,16 @@ public class FixedValueValidator
             constraint.ElementPath,
             GetValueString(expectedValue));
 
-        // Navigate to element in Bundle POCO
-        var actualValue = GetElementValue(constraint.ElementPath, context.Bundle);
+        // Navigate to element in Bundle POCO using path resolver
+        var contexts = _pathResolver.ResolveValues(
+            context.Bundle,
+            constraint.ElementPath,
+            context.ModelInspector);
 
-        if (actualValue == null)
+        // For fixed values, we expect exactly one value
+        var resolvedValues = contexts.Where(c => !c.IsMissing).ToList();
+
+        if (resolvedValues.Count == 0)
         {
             return new ValidationError
             {
@@ -71,44 +83,33 @@ public class FixedValueValidator
             };
         }
 
-        if (!ValuesMatch(expectedValue, actualValue))
+        // Validate all resolved values
+        foreach (var ctx in resolvedValues)
         {
-            return new ValidationError
+            var actualValue = ctx.Value as DataType;
+            if (actualValue == null) continue;
+
+            if (!ValuesMatch(expectedValue, actualValue))
             {
-                Source = "StructureDefinition",
-                Severity = "error",
-                ErrorCode = "SD_FIXED_VALUE_MISMATCH",
-                Path = constraint.ElementPath,
-                Message = $"Expected fixed value '{GetValueString(expectedValue)}', found '{GetValueString(actualValue)}'",
-                Details = new Dictionary<string, object>
+                return new ValidationError
                 {
-                    ["profile"] = constraint.SourceProfile,
-                    ["elementPath"] = constraint.ElementPath,
-                    ["expectedValue"] = GetValueString(expectedValue),
-                    ["actualValue"] = GetValueString(actualValue)
-                }
-            };
+                    Source = "StructureDefinition",
+                    Severity = "error",
+                    ErrorCode = "SD_FIXED_VALUE_MISMATCH",
+                    Path = constraint.ElementPath,
+                    Message = $"Expected fixed value '{GetValueString(expectedValue)}', found '{GetValueString(actualValue)}'",
+                    Details = new Dictionary<string, object>
+                    {
+                        ["profile"] = constraint.SourceProfile,
+                        ["elementPath"] = constraint.ElementPath,
+                        ["expectedValue"] = GetValueString(expectedValue),
+                        ["actualValue"] = GetValueString(actualValue)
+                    }
+                };
+            }
         }
 
         return null; // No violation
-    }
-
-    /// <summary>
-    /// Gets element value from Bundle POCO.
-    /// </summary>
-    private DataType? GetElementValue(string elementPath, Bundle bundle)
-    {
-        // Phase 2.2: Simplified implementation for common cases
-        if (elementPath == "Bundle.type")
-        {
-            return bundle.Type.HasValue ? new Code(bundle.Type.Value.ToString()) : null;
-        }
-
-        _logger.LogDebug(
-            "Fixed value check for complex path {Path} requires reflection (not fully implemented in Phase 2.2)",
-            elementPath);
-
-        return null; // Phase 2.2: Conservative
     }
 
     /// <summary>

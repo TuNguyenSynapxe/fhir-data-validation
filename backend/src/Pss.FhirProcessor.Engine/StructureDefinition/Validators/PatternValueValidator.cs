@@ -2,11 +2,13 @@ using Hl7.Fhir.Model;
 using Microsoft.Extensions.Logging;
 using Pss.FhirProcessor.Engine.Firely;
 using Pss.FhirProcessor.Engine.Models;
+using Pss.FhirProcessor.Engine.SdValidation.PathResolution;
 
 namespace Pss.FhirProcessor.Engine.SdValidation.Validators;
 
 /// <summary>
 /// Phase 2.3: Validates pattern[x] constraints.
+/// Phase 3.1.1: Migrated to use generic path resolution.
 /// 
 /// Scope: Primitive patterns only (string, code, boolean, integer)
 /// Engine-owned validator using Firely metadata.
@@ -14,10 +16,14 @@ namespace Pss.FhirProcessor.Engine.SdValidation.Validators;
 public class PatternValueValidator
 {
     private readonly ILogger<PatternValueValidator> _logger;
+    private readonly IElementPathResolver _pathResolver;
 
-    public PatternValueValidator(ILogger<PatternValueValidator> logger)
+    public PatternValueValidator(
+        ILogger<PatternValueValidator> logger,
+        IElementPathResolver pathResolver)
     {
         _logger = logger;
+        _pathResolver = pathResolver;
     }
 
     /// <summary>
@@ -51,10 +57,16 @@ public class PatternValueValidator
             constraint.ElementPath,
             GetValueString(expectedPattern));
 
-        // Navigate to element in Bundle POCO
-        var actualValue = GetElementValue(constraint.ElementPath, context.Bundle);
+        // Navigate to element in Bundle POCO using path resolver
+        var contexts = _pathResolver.ResolveValues(
+            context.Bundle,
+            constraint.ElementPath,
+            context.ModelInspector);
 
-        if (actualValue == null)
+        // For patterns, we expect at least one value
+        var resolvedValues = contexts.Where(c => !c.IsMissing).ToList();
+
+        if (resolvedValues.Count == 0)
         {
             return new ValidationError
             {
@@ -72,45 +84,33 @@ public class PatternValueValidator
             };
         }
 
-        if (!PatternMatches(expectedPattern, actualValue))
+        // Validate all resolved values
+        foreach (var ctx in resolvedValues)
         {
-            return new ValidationError
+            var actualValue = ctx.Value as DataType;
+            if (actualValue == null) continue;
+
+            if (!PatternMatches(expectedPattern, actualValue))
             {
-                Source = "StructureDefinition",
-                Severity = "error",
-                ErrorCode = "SD_PATTERN_MISMATCH",
-                Path = constraint.ElementPath,
-                Message = $"Element must match pattern '{GetValueString(expectedPattern)}', found '{GetValueString(actualValue)}'",
-                Details = new Dictionary<string, object>
+                return new ValidationError
                 {
-                    ["profile"] = constraint.SourceProfile,
-                    ["elementPath"] = constraint.ElementPath,
-                    ["expectedPattern"] = GetValueString(expectedPattern),
-                    ["actualValue"] = GetValueString(actualValue)
-                }
-            };
+                    Source = "StructureDefinition",
+                    Severity = "error",
+                    ErrorCode = "SD_PATTERN_MISMATCH",
+                    Path = constraint.ElementPath,
+                    Message = $"Element must match pattern '{GetValueString(expectedPattern)}', found '{GetValueString(actualValue)}'",
+                    Details = new Dictionary<string, object>
+                    {
+                        ["profile"] = constraint.SourceProfile,
+                        ["elementPath"] = constraint.ElementPath,
+                        ["expectedPattern"] = GetValueString(expectedPattern),
+                        ["actualValue"] = GetValueString(actualValue)
+                    }
+                };
+            }
         }
 
         return null; // No violation
-    }
-
-    /// <summary>
-    /// Gets element value from Bundle POCO.
-    /// Phase 2.3: Simple paths only.
-    /// </summary>
-    private DataType? GetElementValue(string elementPath, Bundle bundle)
-    {
-        // Phase 2.3: Simplified implementation for common cases
-        if (elementPath == "Bundle.type")
-        {
-            return bundle.Type.HasValue ? new Code(bundle.Type.Value.ToString()) : null;
-        }
-
-        _logger.LogDebug(
-            "Pattern check for complex path {Path} requires reflection (not fully implemented in Phase 2.3)",
-            elementPath);
-
-        return null; // Phase 2.3: Conservative
     }
 
     /// <summary>

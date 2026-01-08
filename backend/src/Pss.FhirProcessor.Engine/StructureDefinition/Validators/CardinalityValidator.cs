@@ -2,12 +2,13 @@ using Hl7.Fhir.Model;
 using Microsoft.Extensions.Logging;
 using Pss.FhirProcessor.Engine.Firely;
 using Pss.FhirProcessor.Engine.Models;
-using System.Text.Json;
+using Pss.FhirProcessor.Engine.SdValidation.PathResolution;
 
 namespace Pss.FhirProcessor.Engine.SdValidation.Validators;
 
 /// <summary>
 /// Phase 2.2: Validates cardinality constraints (min/max).
+/// Phase 3.1.1: Migrated to use generic path resolution.
 /// 
 /// Engine-owned validator using Firely metadata.
 /// Does NOT call Validator.Validate().
@@ -15,10 +16,14 @@ namespace Pss.FhirProcessor.Engine.SdValidation.Validators;
 public class CardinalityValidator
 {
     private readonly ILogger<CardinalityValidator> _logger;
+    private readonly IElementPathResolver _pathResolver;
 
-    public CardinalityValidator(ILogger<CardinalityValidator> logger)
+    public CardinalityValidator(
+        ILogger<CardinalityValidator> logger,
+        IElementPathResolver pathResolver)
     {
         _logger = logger;
+        _pathResolver = pathResolver;
     }
 
     /// <summary>
@@ -44,8 +49,13 @@ public class CardinalityValidator
             min,
             max?.ToString() ?? "*");
 
-        // Navigate to element in Bundle POCO
-        var actualCount = CountElement(constraint.ElementPath, context.Bundle);
+        // Navigate to element in Bundle POCO using path resolver
+        var contexts = _pathResolver.ResolveValues(
+            context.Bundle,
+            constraint.ElementPath,
+            context.ModelInspector);
+
+        var actualCount = contexts.Count();
 
         // Check min constraint
         if (actualCount < min)
@@ -92,32 +102,5 @@ public class CardinalityValidator
         }
 
         return null; // No violation
-    }
-
-    /// <summary>
-    /// Counts occurrences of an element in Bundle POCO.
-    /// Uses reflection to navigate element path.
-    /// </summary>
-    private int CountElement(string elementPath, Bundle bundle)
-    {
-        // Phase 2.2: Simplified implementation for common cases
-        // Future: Use ModelInspector for generic path navigation
-
-        if (elementPath == "Bundle.entry")
-        {
-            return bundle.Entry?.Count ?? 0;
-        }
-
-        if (elementPath == "Bundle.type")
-        {
-            return bundle.Type.HasValue ? 1 : 0;
-        }
-
-        // For complex paths, use JSON-based counting (fallback)
-        _logger.LogDebug(
-            "Cardinality check for complex path {Path} requires JSON navigation (not implemented in Phase 2.2)",
-            elementPath);
-
-        return 0; // Phase 2.2: Conservative - assume exists
     }
 }
