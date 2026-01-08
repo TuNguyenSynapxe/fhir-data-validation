@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Pss.FhirProcessor.Engine.Firely;
 using Pss.FhirProcessor.Engine.SdValidation;
 using Pss.FhirProcessor.Engine.SdValidation.Validators;
+using Pss.FhirProcessor.Engine.SdValidation.PathResolution;
 using Xunit;
 
 namespace Pss.FhirProcessor.Engine.Tests.StructureDefinition;
@@ -19,7 +20,10 @@ public class PatternValueValidatorTests
 
     public PatternValueValidatorTests()
     {
-        _validator = new PatternValueValidator(NullLogger<PatternValueValidator>.Instance);
+        var pathResolver = new ElementPathResolver(NullLogger<ElementPathResolver>.Instance);
+        _validator = new PatternValueValidator(
+            NullLogger<PatternValueValidator>.Instance,
+            pathResolver);
     }
 
     [Fact]

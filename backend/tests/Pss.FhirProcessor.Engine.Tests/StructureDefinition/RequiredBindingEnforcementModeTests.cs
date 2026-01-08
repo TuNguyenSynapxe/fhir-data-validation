@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Pss.FhirProcessor.Engine.Firely;
 using Pss.FhirProcessor.Engine.SdValidation;
 using Pss.FhirProcessor.Engine.SdValidation.Validators;
+using Pss.FhirProcessor.Engine.SdValidation.PathResolution;
 using Xunit;
 
 namespace Pss.FhirProcessor.Engine.Tests.StructureDefinition;
@@ -20,7 +21,10 @@ public class RequiredBindingEnforcementModeTests : IDisposable
 
     public RequiredBindingEnforcementModeTests()
     {
-        _validator = new RequiredBindingValidator(NullLogger<RequiredBindingValidator>.Instance);
+        var pathResolver = new ElementPathResolver(NullLogger<ElementPathResolver>.Instance);
+        _validator = new RequiredBindingValidator(
+            NullLogger<RequiredBindingValidator>.Instance,
+            pathResolver);
         _originalMode = SdEnforcementPolicy.CurrentMode;
     }
 
