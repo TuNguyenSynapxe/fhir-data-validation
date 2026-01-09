@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Sparkles, CheckCircle, AlertCircle, Info, ChevronDown, ChevronRight } from 'lucide-react';
-import type { RuleSuggestion } from '../../types/ruleSuggestion';
+import type { RuleSuggestion } from '../../../types/ruleSuggestion';
 
 interface RuleSuggestionsDrawerProps {
   isOpen: boolean;

@@ -144,6 +144,11 @@ try
         Pss.FhirProcessor.Application.ValidationExecution.ProjectValidationExecutionService>();
     Log.Information("Validation execution service registered (Phase 8.1)");
 
+    // Register Phase 9.5a Public Validation Service
+    builder.Services.AddScoped<Pss.FhirProcessor.Application.Public.IPublicValidationService,
+        Pss.FhirProcessor.Application.Public.PublicValidationService>();
+    Log.Information("Public validation service registered (Phase 9.5a - read-only anonymous access)");
+
     // Add CORS for frontend
     builder.Services.AddCors(options =>
     {

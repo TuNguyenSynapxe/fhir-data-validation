@@ -25,7 +25,7 @@ export interface AmbiguityBannerProps {
  * Ambiguity means validation could not be completed deterministically.
  * It does NOT mean the data is valid - it means we cannot confirm validity.
  */
-export function AmbiguityBanner({ issues, policyMode }: AmbiguityBannerProps): JSX.Element | null {
+export function AmbiguityBanner({ issues, policyMode }: AmbiguityBannerProps): React.ReactElement | null {
   // Find all ambiguous issues
   const ambiguousIssues = issues.filter(issue => issue.details?.violationReason);
 

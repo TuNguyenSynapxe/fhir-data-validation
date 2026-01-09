@@ -101,19 +101,19 @@ export function ProjectDetailPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
           <div className="text-center">
             <div className="text-2xl font-bold text-blue-600">
-              {project.rulesetMetadata.ruleCount}
+              {project.rulesetMetadata?.ruleCount || 0}
             </div>
             <div className="text-sm text-gray-600">Business Rules</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-blue-600">
-              {project.rulesetMetadata.codeSystemCount}
+              {project.rulesetMetadata?.codeSystemCount || 0}
             </div>
             <div className="text-sm text-gray-600">Code Systems</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-blue-600">
-              {project.rulesetMetadata.fhirVersion}
+              {project.rulesetMetadata?.fhirVersion || 'N/A'}
             </div>
             <div className="text-sm text-gray-600">FHIR Version</div>
           </div>
@@ -138,7 +138,7 @@ export function ProjectDetailPage() {
           <h2 className="text-xl font-semibold">Business Rules</h2>
         </div>
 
-        {project.rulesetMetadata.ruleCount === 0 ? (
+        {(project.rulesetMetadata?.ruleCount || 0) === 0 ? (
           <div className="text-center py-12 text-gray-500">
             <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
             <p className="font-medium">No rules configured</p>
@@ -152,8 +152,8 @@ export function ProjectDetailPage() {
               <p className="text-sm text-blue-800">
                 <strong>Note:</strong> Rule details are applied during
                 validation. This project has{' '}
-                <strong>{project.rulesetMetadata.ruleCount}</strong> rules
-                configured for FHIR {project.rulesetMetadata.fhirVersion}.
+                <strong>{project.rulesetMetadata?.ruleCount}</strong> rules
+                configured for FHIR {project.rulesetMetadata?.fhirVersion}.
               </p>
             </div>
 

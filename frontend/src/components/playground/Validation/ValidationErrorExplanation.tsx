@@ -12,7 +12,7 @@
  */
 
 import React from 'react';
-import { explainError } from '../../../validation';
+import { legacyExplainError as explainError } from '../../../validation';
 import type { ValidationError } from '../../../contexts/project-validation/useProjectValidation';
 import { BundleDiffDisplay } from './BundleDiffDisplay';
 

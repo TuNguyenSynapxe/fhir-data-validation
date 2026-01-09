@@ -24,7 +24,7 @@ export interface ValidationIssueDetailsProps {
  * 
  * CRITICAL: All explanations come from explainers - NO string building in JSX.
  */
-export function ValidationIssueDetails({ issue }: ValidationIssueDetailsProps): JSX.Element {
+export function ValidationIssueDetails({ issue }: ValidationIssueDetailsProps): React.ReactElement {
   const explanation = explainError(issue);
   const ambiguityExplanation = explainAmbiguity(issue);
 

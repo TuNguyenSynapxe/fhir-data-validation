@@ -1,4 +1,4 @@
-import { ValidationResultsView } from '@/validation/views';
+import { ValidationResultsView } from '../../validation/views';
 
 /**
  * ValidationResultsPage

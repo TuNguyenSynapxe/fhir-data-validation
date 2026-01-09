@@ -1,7 +1,7 @@
 import React from 'react';
 import { AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
 import { HelpTooltip } from '../../common/HelpTooltip';
-import { explainError } from '../../../validation';
+import { legacyExplainError as explainError } from '../../../validation';
 
 interface ValidationIssueExplanation {
   what: string;

@@ -55,6 +55,11 @@ export function AdminValidationPlaygroundPage() {
   // Find the specific bundle
   const bundle: ProjectBundleDto | undefined = bundles?.find(b => b.bundleId === bundleId);
 
+  // Handle back navigation
+  const handleBack = () => {
+    navigate(`/admin/projects/${projectId}`);
+  };
+
   // Phase 9.6: Validation guard - prevent cross-project bundle access
   const bundleBelongsToProject = bundle && bundles?.some(b => b.bundleId === bundleId);
   if (bundle && !bundleBelongsToProject) {
@@ -97,11 +102,6 @@ export function AdminValidationPlaygroundPage() {
       setSelectedIssue(null); // Clear selected issue
       executeValidation({ projectId, bundleId });
     }
-  };
-
-  // Handle back navigation
-  const handleBack = () => {
-    navigate(`/admin/projects/${projectId}`);
   };
 
   // Loading state

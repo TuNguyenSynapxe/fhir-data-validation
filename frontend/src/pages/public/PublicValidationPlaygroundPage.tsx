@@ -227,11 +227,11 @@ export function PublicValidationPlaygroundPage() {
           <div className="space-y-6">
             {/* Ambiguity Banner (Phase 5 component) */}
             {validationResult.summary.hasAmbiguity && (
-              <AmbiguityBanner policyMode={validationResult.summary.policyMode} />
+              <AmbiguityBanner policyMode={validationResult.summary.policyMode} issues={validationResult.issues || []} />
             )}
 
             {/* Validation Summary (Phase 5 component) */}
-            <ValidationSummary summary={validationResult.summary} />
+            <ValidationSummary result={validationResult} />
 
             {/* Issues List (Phase 5 component) */}
             <div className="bg-white rounded-lg shadow">
@@ -287,10 +287,18 @@ export function PublicValidationPlaygroundPage() {
       {/* Issue Details Panel (Phase 5 component) */}
       {selectedIssue && (
         <div className="fixed inset-y-0 right-0 w-full sm:w-1/2 bg-white shadow-xl overflow-y-auto z-50">
-          <ValidationIssueDetails
-            issue={selectedIssue}
-            onClose={() => setSelectedIssue(null)}
-          />
+          <div className="relative">
+            <button
+              onClick={() => setSelectedIssue(null)}
+              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+              aria-label="Close"
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <ValidationIssueDetails issue={selectedIssue} />
+          </div>
         </div>
       )}
     </div>

@@ -16,11 +16,13 @@ export interface ProjectCountsDto {
   ruleCount: number;
 }
 
-export enum BundleSource {
-  ImportedExample = 'ImportedExample',
-  Uploaded = 'Uploaded',
-  AdHoc = 'AdHoc',
-}
+export const BundleSource = {
+  ImportedExample: 'ImportedExample',
+  Uploaded: 'Uploaded',
+  AdHoc: 'AdHoc',
+} as const;
+
+export type BundleSource = typeof BundleSource[keyof typeof BundleSource];
 
 export interface ProjectBundleDto {
   bundleId: string;
@@ -29,21 +31,27 @@ export interface ProjectBundleDto {
   createdAt: string;
 }
 
-export enum RuleScope {
-  Project = 'Project',
-  Bundle = 'Bundle',
-}
+export const RuleScope = {
+  Project: 'Project',
+  Bundle: 'Bundle',
+} as const;
 
-export enum RuleType {
-  ProfileDerived = 'ProfileDerived',
-  FhirPathCustom = 'FhirPathCustom',
-  Other = 'Other',
-}
+export type RuleScope = typeof RuleScope[keyof typeof RuleScope];
 
-export enum RuleProvenance {
-  ImportedGenerated = 'ImportedGenerated',
-  ManualCustom = 'ManualCustom',
-}
+export const RuleType = {
+  ProfileDerived: 'ProfileDerived',
+  FhirPathCustom: 'FhirPathCustom',
+  Other: 'Other',
+} as const;
+
+export type RuleType = typeof RuleType[keyof typeof RuleType];
+
+export const RuleProvenance = {
+  ImportedGenerated: 'ImportedGenerated',
+  ManualCustom: 'ManualCustom',
+} as const;
+
+export type RuleProvenance = typeof RuleProvenance[keyof typeof RuleProvenance];
 
 export interface ProjectRuleDto {
   ruleId: string;

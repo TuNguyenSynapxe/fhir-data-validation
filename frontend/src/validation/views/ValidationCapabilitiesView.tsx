@@ -126,7 +126,7 @@ If we cannot validate something deterministically:
 // Simple markdown renderer (inline to avoid external dependencies)
 function MarkdownRenderer({ content }: { content: string }) {
   const lines = content.split('\n');
-  const elements: JSX.Element[] = [];
+  const elements: React.ReactElement[] = [];
   let listItems: string[] = [];
   let inCodeBlock = false;
   let codeBlockLines: string[] = [];

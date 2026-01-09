@@ -4,5 +4,4 @@
  */
 
 export { BundleEditor } from './BundleEditor';
-export { ValidationResultPanel } from './ValidationResultPanel';
 export { RuleList, RuleCard } from './RuleList';

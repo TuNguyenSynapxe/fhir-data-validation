@@ -22,7 +22,7 @@ export interface ValidationSummaryProps {
  * - Green checkmarks (no false confidence)
  * - "Success" language
  */
-export function ValidationSummary({ result }: ValidationSummaryProps): JSX.Element {
+export function ValidationSummary({ result }: ValidationSummaryProps): React.ReactElement {
   const { summary } = result;
   const { totalErrors, totalWarnings, totalInfo, hasAmbiguity, policyMode } = summary;
 

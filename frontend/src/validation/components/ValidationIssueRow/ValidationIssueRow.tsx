@@ -22,7 +22,7 @@ export interface ValidationIssueRowProps {
  * Interactions:
  * - Click to select/expand (delegated to parent)
  */
-export function ValidationIssueRow({ issue, onSelect }: ValidationIssueRowProps): JSX.Element {
+export function ValidationIssueRow({ issue, onSelect }: ValidationIssueRowProps): React.ReactElement {
   const { severity, errorCode, message, path, source } = issue;
 
   const getSeverityIcon = () => {

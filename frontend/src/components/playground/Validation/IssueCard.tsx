@@ -9,7 +9,7 @@ import { formatSmartPath, getScopedSegments, convertToJsonPath, jsonPointerToFhi
 import { isIssueBlocking } from '../../../types/validationIssues';
 import type { ValidationIssue } from '../../../types/validationIssues';
 import { ExplanationPanel } from './ExplanationPanel';
-import { explainError } from '../../../validation';
+import { legacyExplainError as explainError } from '../../../validation';
 import { BundleDiffDisplay } from './BundleDiffDisplay';
 
 interface IssueCardProps {

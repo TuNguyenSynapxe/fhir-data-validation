@@ -355,7 +355,7 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
         params: suggestion.parameters,
         severity: 'error', // Default severity
         enabled: true,
-        origin: 'suggestion', // Mark as from suggestion engine
+        origin: 'system-suggested', // Mark as from suggestion engine
       };
       
       // Add to rules
@@ -378,7 +378,7 @@ export const RulesPanel: React.FC<RulesPanelProps> = ({
         params: suggestion.parameters,
         severity: 'error',
         enabled: true,
-        origin: 'suggestion',
+        origin: 'system-suggested',
       }));
       
       onRulesChange([...rules, ...newRules]);
