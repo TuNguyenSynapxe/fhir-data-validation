@@ -1,6 +1,8 @@
+using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Pss.FhirProcessor.Engine.DependencyInjection;
 using Pss.FhirProcessor.Engine.Navigation.Structure;
+using Pss.FhirProcessor.Persistence.Data;
 using Pss.FhirProcessor.Persistence.Repositories;
 using Pss.FhirProcessor.Playground.Api.Commands;
 using Pss.FhirProcessor.Playground.Api.Services;
@@ -93,6 +95,13 @@ try
             throw new InvalidOperationException("PostgreSQL connection string 'PostgreSQL' is not configured");
         }
         return new NpgsqlConnection(connString);
+    });
+    
+    // Register Entity Framework Core DbContext
+    builder.Services.AddDbContext<FhirProcessorDbContext>(options =>
+    {
+        var connString = builder.Configuration.GetConnectionString("PostgreSQL");
+        options.UseNpgsql(connString);
     });
     
     // Register PostgresProjectRepository for both public and admin use

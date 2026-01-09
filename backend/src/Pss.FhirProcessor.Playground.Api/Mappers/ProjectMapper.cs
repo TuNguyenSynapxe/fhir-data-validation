@@ -1,5 +1,7 @@
 using Pss.FhirProcessor.Persistence.Models;
-using Pss.FhirProcessor.Playground.Api.Models;
+using ApiProject = Pss.FhirProcessor.Playground.Api.Models.Project;
+using ApiProjectMetadata = Pss.FhirProcessor.Playground.Api.Models.ProjectMetadata;
+using ApiProjectFeatures = Pss.FhirProcessor.Playground.Api.Models.ProjectFeatures;
 using System.Text.Json;
 
 namespace Pss.FhirProcessor.Playground.Api.Mappers;
@@ -18,7 +20,7 @@ public static class ProjectMapper
     /// <summary>
     /// Converts API Project model to database ProjectRecord model.
     /// </summary>
-    public static ProjectRecord ToRecord(Project project)
+    public static ProjectRecord ToRecord(ApiProject project)
     {
         return new ProjectRecord
         {
@@ -41,9 +43,9 @@ public static class ProjectMapper
     /// <summary>
     /// Converts database ProjectRecord model to API Project model.
     /// </summary>
-    public static Project ToProject(ProjectRecord record)
+    public static ApiProject ToProject(ProjectRecord record)
     {
-        return new Project
+        return new ApiProject
         {
             Id = record.Id,
             Name = record.Name,
@@ -64,7 +66,7 @@ public static class ProjectMapper
     /// Converts API Project model to database ProjectRecord model for updates.
     /// Preserves existing slug and status.
     /// </summary>
-    public static ProjectRecord ToRecordForUpdate(Project project, string slug, string status)
+    public static ProjectRecord ToRecordForUpdate(ApiProject project, string slug, string status)
     {
         return new ProjectRecord
         {
@@ -87,7 +89,7 @@ public static class ProjectMapper
     /// <summary>
     /// Serializes ProjectFeatures to JSON string.
     /// </summary>
-    private static string SerializeFeatures(ProjectFeatures features)
+    private static string SerializeFeatures(ApiProjectFeatures features)
     {
         try
         {
@@ -103,29 +105,29 @@ public static class ProjectMapper
     /// Deserializes ProjectFeatures from JSON string.
     /// Returns default instance if deserialization fails.
     /// </summary>
-    private static ProjectFeatures DeserializeFeatures(string? json)
+    private static ApiProjectFeatures DeserializeFeatures(string? json)
     {
         if (string.IsNullOrWhiteSpace(json))
         {
-            return new ProjectFeatures();
+            return new ApiProjectFeatures();
         }
 
         try
         {
-            return JsonSerializer.Deserialize<ProjectFeatures>(json) ?? new ProjectFeatures();
+            return JsonSerializer.Deserialize<ApiProjectFeatures>(json) ?? new ApiProjectFeatures();
         }
         catch
         {
-            return new ProjectFeatures();
+            return new ApiProjectFeatures();
         }
     }
 
     /// <summary>
     /// Converts list of ProjectRecords to ProjectMetadata list.
     /// </summary>
-    public static IEnumerable<ProjectMetadata> ToMetadataList(IEnumerable<ProjectRecord> records)
+    public static IEnumerable<ApiProjectMetadata> ToMetadataList(IEnumerable<ProjectRecord> records)
     {
-        return records.Select(record => new ProjectMetadata
+        return records.Select(record => new ApiProjectMetadata
         {
             Id = record.Id,
             Name = record.Name,
