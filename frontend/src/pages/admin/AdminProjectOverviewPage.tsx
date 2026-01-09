@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { Loader2, AlertCircle, ArrowLeft, FileArchive, FileText, CheckCircle2 } from 'lucide-react';
+import { Loader2, AlertCircle, ArrowLeft, FileArchive, FileText, CheckCircle2, PlayCircle } from 'lucide-react';
 import AppLayout from '../../components/layout/AppLayout';
 import {
   useProjectDetails,
@@ -191,13 +191,22 @@ export default function AdminProjectOverviewPage() {
                         </p>
                       </div>
                     </div>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${getBundleSourceBadgeClass(
-                        bundle.source
-                      )}`}
-                    >
-                      {getBundleSourceLabel(bundle.source)}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${getBundleSourceBadgeClass(
+                          bundle.source
+                        )}`}
+                      >
+                        {getBundleSourceLabel(bundle.source)}
+                      </span>
+                      <button
+                        onClick={() => navigate(`/admin/projects/${projectId}/bundles/${bundle.bundleId}/validate`)}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        <PlayCircle size={16} />
+                        Validate
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
