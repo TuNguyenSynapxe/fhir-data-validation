@@ -150,7 +150,9 @@ public sealed class ProjectImportService
         PolicyMode policyMode,
         CancellationToken cancellationToken)
     {
-        using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+        // Check if using in-memory database (for testing)
+        var isInMemory = _dbContext.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory";
+        var transaction = isInMemory ? null : await _dbContext.Database.BeginTransactionAsync(cancellationToken);
 
         try
         {
@@ -244,17 +246,27 @@ public sealed class ProjectImportService
             // Save all changes
             await _dbContext.SaveChangesAsync(cancellationToken);
 
-            await transaction.CommitAsync(cancellationToken);
+            if (transaction != null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
 
             return project.Id;
         }
         catch (DbUpdateException ex)
         {
-            await transaction.RollbackAsync(cancellationToken);
+            if (transaction != null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+            }
             throw new ProjectImportException(
                 ImportErrorCodes.DatabaseError,
                 "Failed to save project to database",
                 ex);
+        }
+        finally
+        {
+            transaction?.Dispose();
         }
     }
 

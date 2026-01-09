@@ -121,6 +121,13 @@ try
     builder.Services.AddScoped<IProjectService, ProjectService>();
     builder.Services.AddScoped<IRuleService, RuleService>();
 
+    // Register Phase 7.2 Import Services
+    builder.Services.AddScoped<Pss.FhirProcessor.Application.Projects.Import.SimplifierPackageParser>();
+    builder.Services.AddScoped<Pss.FhirProcessor.Application.Projects.Import.ArtifactClassifier>();
+    builder.Services.AddScoped<Pss.FhirProcessor.Application.Projects.Import.StructureDefinitionRuleGenerator>();
+    builder.Services.AddScoped<Pss.FhirProcessor.Application.Projects.Import.ProjectImportService>();
+    Log.Information("Import services registered (Phase 7.2 + 7.3)");
+
     // Add CORS for frontend
     builder.Services.AddCors(options =>
     {
