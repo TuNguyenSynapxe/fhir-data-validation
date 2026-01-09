@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCreateProject } from '../../hooks/useProjects';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Loader2, Upload } from 'lucide-react';
 import { message } from 'antd';
 
 export default function ProjectToolbar() {
+  const navigate = useNavigate();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -42,13 +44,20 @@ export default function ProjectToolbar() {
 
   if (!showForm) {
     return (
-      <div className="mb-6">
+      <div className="mb-6 flex items-center gap-3">
         <button
           onClick={() => setShowForm(true)}
           className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium"
         >
           <Plus size={20} />
           Create New Project
+        </button>
+        <button
+          onClick={() => navigate('/admin/projects/import')}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors font-medium"
+        >
+          <Upload size={20} />
+          Import Package
         </button>
       </div>
     );

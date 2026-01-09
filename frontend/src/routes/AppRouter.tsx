@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import ProjectsPage from '../pages/ProjectsPage';
 import PlaygroundPage from '../pages/PlaygroundPage';
+import ProjectImportPage from '../pages/admin/ProjectImportPage';
 
 // Public validation pages
 import { ValidatePage } from '../pages/public/ValidatePage';
@@ -19,6 +20,9 @@ export default function AppRouter() {
         <Route path="/public/projects" element={<ProjectListPage />} />
         <Route path="/public/projects/:slug" element={<ProjectDetailPage />} />
         <Route path="/public/projects/:slug/validate" element={<ProjectValidatePage />} />
+
+        {/* Admin Routes */}
+        <Route path="/admin/projects/import" element={<ProjectImportPage />} />
 
         {/* Existing Authoring Routes */}
         <Route path="/" element={<ProjectsPage />} />
