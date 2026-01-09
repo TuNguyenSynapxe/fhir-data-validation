@@ -135,6 +135,11 @@ try
     builder.Services.AddScoped<Pss.FhirProcessor.Application.Projects.Queries.ProjectRuleQueryService>();
     Log.Information("Query services registered (Phase 7.4 - read-only)");
 
+    // Register Phase 8.1 Validation Execution Service
+    builder.Services.AddScoped<Pss.FhirProcessor.Application.ValidationExecution.Interfaces.IProjectValidationExecutionService,
+        Pss.FhirProcessor.Application.ValidationExecution.ProjectValidationExecutionService>();
+    Log.Information("Validation execution service registered (Phase 8.1)");
+
     // Add CORS for frontend
     builder.Services.AddCors(options =>
     {
