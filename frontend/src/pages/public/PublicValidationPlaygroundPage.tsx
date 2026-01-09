@@ -130,9 +130,10 @@ export function PublicValidationPlaygroundPage() {
                   read-only access to validation results.
                 </p>
                 <p>
-                  <strong>Passing validation does NOT imply clinical correctness</strong> -
-                  Validation checks technical conformance to FHIR standards and project
-                  rules, but cannot verify clinical appropriateness or safety.
+                  <strong>Validation ≠ Clinical Correctness:</strong> Passing validation only confirms technical conformance to FHIR standards. It does NOT verify clinical appropriateness, safety, or data accuracy.
+                </p>
+                <p>
+                  <strong>Ambiguity ≠ Pass:</strong> When ambiguity is present, some constraints could not be verified. Absence of errors does NOT mean the bundle is fully validated.
                 </p>
               </div>
             </div>
@@ -260,8 +261,13 @@ export function PublicValidationPlaygroundPage() {
                   ))}
                 </div>
               ) : (
-                <div className="p-8 text-center text-gray-500">
-                  <p>✅ No validation issues - this bundle conforms to all rules</p>
+                <div className="p-8 text-center">
+                  <p className="text-gray-900 font-medium mb-2">
+                    No validation issues detected in this execution
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    This indicates technical conformance only. {validationResult.summary.hasAmbiguity && 'Ambiguity was present during validation.'}
+                  </p>
                 </div>
               )}
             </div>

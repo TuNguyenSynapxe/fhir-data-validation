@@ -55,6 +55,35 @@ export function AdminValidationPlaygroundPage() {
   // Find the specific bundle
   const bundle: ProjectBundleDto | undefined = bundles?.find(b => b.bundleId === bundleId);
 
+  // Phase 9.6: Validation guard - prevent cross-project bundle access
+  const bundleBelongsToProject = bundle && bundles?.some(b => b.bundleId === bundleId);
+  if (bundle && !bundleBelongsToProject) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-red-900">Bundle Access Denied</h3>
+                <p className="text-sm text-red-700 mt-1">
+                  The requested bundle does not belong to this project.
+                </p>
+                <button
+                  onClick={handleBack}
+                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Project
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Execute validation on mount
   useEffect(() => {
     if (projectId && bundleId && !validationResponse && !validationPending) {
@@ -179,9 +208,13 @@ export function AdminValidationPlaygroundPage() {
               </button>
               <div className="border-l border-gray-300 h-8"></div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Validation Playground</h1>
-                <div className="flex items-center gap-3 mt-1 text-sm text-gray-600">
-                  <span>Project: <span className="font-medium text-gray-900">{project?.name}</span></span>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold text-gray-900">Validation Playground</h1>
+                  <span className="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded">
+                    ADMIN
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 mt-1 text-sm text-gray-600">\n                  <span>Project: <span className="font-medium text-gray-900">{project?.name}</span></span>
                   <span>•</span>
                   <span>Bundle: <span className="font-medium text-gray-900">{bundle.name}</span></span>
                   {validationResult && (
@@ -212,8 +245,32 @@ export function AdminValidationPlaygroundPage() {
         </div>
       </div>
 
+      {/* Phase 9.6: Demo Hardening - Prominent Disclaimers */}
+      {validationResult && (
+        <div className="max-w-7xl mx-auto px-6 pt-4">
+          <div className="bg-blue-50 border-l-4 border-blue-600 p-4 mb-4">
+            <div className="flex">
+              <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="ml-3">
+                <h3 className="text-sm font-semibold text-blue-900">
+                  Demo Reminder: Validation Results Interpretation
+                </h3>
+                <div className="mt-2 text-sm text-blue-800 space-y-1">
+                  <p>
+                    <strong>Validation ≠ Clinical Correctness:</strong> Passing validation only confirms technical conformance to FHIR standards. It does NOT verify clinical appropriateness, safety, or data accuracy.
+                  </p>
+                  <p>
+                    <strong>Ambiguity ≠ Pass:</strong> When ambiguity is present, some constraints could not be verified deterministically. Absence of errors does NOT mean the bundle is fully validated.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Validation Results */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-7xl mx-auto px-6 pb-6">
         {validationResult ? (
           <div className="space-y-6">
             {/* Ambiguity Banner */}
@@ -241,9 +298,14 @@ export function AdminValidationPlaygroundPage() {
               </div>
               <div className="p-6">
                 {validationResult.issues.length === 0 ? (
-                  <p className="text-gray-600 text-center py-8">
-                    No validation issues to display. This bundle is valid.
-                  </p>
+                  <div className="text-center py-8">
+                    <p className="text-gray-900 font-medium mb-2">
+                      No validation issues detected in this execution
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Note: This indicates technical conformance only. {validationResult.summary.hasAmbiguity && 'Ambiguity was present - some constraints could not be fully verified.'}
+                    </p>
+                  </div>
                 ) : (
                   <div className="space-y-2">
                     {validationResult.issues.map((issue, index) => (
