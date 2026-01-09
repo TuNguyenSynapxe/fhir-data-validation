@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import ProjectsPage from '../pages/ProjectsPage';
 import PlaygroundPage from '../pages/PlaygroundPage';
 import ProjectImportPage from '../pages/admin/ProjectImportPage';
+import AdminProjectOverviewPage from '../pages/admin/AdminProjectOverviewPage';
 
 // Public validation pages
 import { ValidatePage } from '../pages/public/ValidatePage';
@@ -23,6 +24,7 @@ export default function AppRouter() {
 
         {/* Admin Routes */}
         <Route path="/admin/projects/import" element={<ProjectImportPage />} />
+        <Route path="/admin/projects/:projectId" element={<AdminProjectOverviewPage />} />
 
         {/* Existing Authoring Routes */}
         <Route path="/" element={<ProjectsPage />} />
