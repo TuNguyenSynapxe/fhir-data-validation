@@ -21,6 +21,11 @@ public sealed class ProjectRule
     public RuleScope Scope { get; set; }
 
     /// <summary>
+    /// Foreign key to the bundle (if Scope is Bundle).
+    /// </summary>
+    public Guid? BundleId { get; set; }
+
+    /// <summary>
     /// Type of rule (ProfileDerived, FhirPathCustom, Other).
     /// </summary>
     public RuleType RuleType { get; set; }
@@ -31,9 +36,9 @@ public sealed class ProjectRule
     public RuleProvenance Provenance { get; set; }
 
     /// <summary>
-    /// Human-readable name of the rule.
+    /// Human-readable title of the rule.
     /// </summary>
-    public string Name { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
 
     /// <summary>
     /// Optional description of the rule.
@@ -41,24 +46,14 @@ public sealed class ProjectRule
     public string? Description { get; set; }
 
     /// <summary>
-    /// FHIRPath expression for the rule (if applicable).
-    /// </summary>
-    public string? Expression { get; set; }
-
-    /// <summary>
-    /// Severity level: 'error', 'warning', 'info'.
-    /// </summary>
-    public string Severity { get; set; } = "error";
-
-    /// <summary>
-    /// Error code for the rule (used in validation output).
-    /// </summary>
-    public string? ErrorCode { get; set; }
-
-    /// <summary>
     /// Full rule definition stored as JSONB.
     /// </summary>
-    public string RuleDefinitionJson { get; set; } = string.Empty;
+    public string DefinitionJson { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Whether the rule is currently enabled.
+    /// </summary>
+    public bool IsEnabled { get; set; } = true;
 
     /// <summary>
     /// When the rule was created.

@@ -16,14 +16,13 @@ namespace Pss.FhirProcessor.Persistence.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
-                    slug = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
                     description = table.Column<string>(type: "text", nullable: true),
                     policy_mode = table.Column<string>(type: "text", nullable: false),
-                    status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    is_public_enabled = table.Column<bool>(type: "boolean", nullable: false),
+                    public_id = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    published_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -37,13 +36,13 @@ namespace Pss.FhirProcessor.Persistence.Migrations
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     project_id = table.Column<Guid>(type: "uuid", nullable: false),
                     artifact_type = table.Column<string>(type: "text", nullable: false),
+                    file_path = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    file_name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    resource_type = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
                     canonical_url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    description = table.Column<string>(type: "text", nullable: true),
-                    version = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    content_json = table.Column<string>(type: "jsonb", nullable: false),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                    resource_json = table.Column<string>(type: "jsonb", nullable: false),
+                    hash = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -64,10 +63,8 @@ namespace Pss.FhirProcessor.Persistence.Migrations
                     project_id = table.Column<Guid>(type: "uuid", nullable: false),
                     source = table.Column<string>(type: "text", nullable: false),
                     name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    description = table.Column<string>(type: "text", nullable: true),
                     bundle_json = table.Column<string>(type: "jsonb", nullable: false),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -87,10 +84,8 @@ namespace Pss.FhirProcessor.Persistence.Migrations
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     project_id = table.Column<Guid>(type: "uuid", nullable: false),
                     public_id = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    description = table.Column<string>(type: "text", nullable: true),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    expires_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false)
+                    enabled = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -110,14 +105,13 @@ namespace Pss.FhirProcessor.Persistence.Migrations
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     project_id = table.Column<Guid>(type: "uuid", nullable: false),
                     scope = table.Column<string>(type: "text", nullable: false),
+                    bundle_id = table.Column<Guid>(type: "uuid", nullable: true),
                     rule_type = table.Column<string>(type: "text", nullable: false),
                     provenance = table.Column<string>(type: "text", nullable: false),
-                    name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    title = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
                     description = table.Column<string>(type: "text", nullable: true),
-                    expression = table.Column<string>(type: "text", nullable: true),
-                    severity = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    error_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    rule_definition_json = table.Column<string>(type: "jsonb", nullable: false),
+                    definition_json = table.Column<string>(type: "jsonb", nullable: false),
+                    is_enabled = table.Column<bool>(type: "boolean", nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
@@ -161,25 +155,22 @@ namespace Pss.FhirProcessor.Persistence.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "ix_project_rules_bundle_id",
+                table: "project_rules",
+                column: "bundle_id",
+                filter: "bundle_id IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_project_rules_project_id",
                 table: "project_rules",
                 column: "project_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_projects_published_at",
+                name: "ix_projects_public_id",
                 table: "projects",
-                column: "published_at");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_projects_slug",
-                table: "projects",
-                column: "slug",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "ix_projects_status",
-                table: "projects",
-                column: "status");
+                column: "public_id",
+                unique: true,
+                filter: "public_id IS NOT NULL");
         }
 
         /// <inheritdoc />

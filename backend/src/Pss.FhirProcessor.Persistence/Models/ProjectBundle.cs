@@ -26,11 +26,6 @@ public sealed class ProjectBundle
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
-    /// Optional description of the bundle.
-    /// </summary>
-    public string? Description { get; set; }
-
-    /// <summary>
     /// Full FHIR Bundle JSON stored as JSONB.
     /// </summary>
     public string BundleJson { get; set; } = string.Empty;
@@ -39,11 +34,6 @@ public sealed class ProjectBundle
     /// When the bundle was created.
     /// </summary>
     public DateTimeOffset CreatedAt { get; set; }
-
-    /// <summary>
-    /// When the bundle was last updated.
-    /// </summary>
-    public DateTimeOffset UpdatedAt { get; set; }
 
     /// <summary>
     /// Navigation property: Parent project.

@@ -12,7 +12,7 @@ using Pss.FhirProcessor.Persistence.Data;
 namespace Pss.FhirProcessor.Persistence.Migrations
 {
     [DbContext(typeof(FhirProcessorDbContext))]
-    [Migration("20260109073736_Phase7_1_ProjectImportDataModels")]
+    [Migration("20260109075109_Phase7_1_ProjectImportDataModels")]
     partial class Phase7_1_ProjectImportDataModels
     {
         /// <inheritdoc />
@@ -40,6 +40,10 @@ namespace Pss.FhirProcessor.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("description");
 
+                    b.Property<bool>("IsPublicEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_public_enabled");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -51,21 +55,10 @@ namespace Pss.FhirProcessor.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("policy_mode");
 
-                    b.Property<DateTimeOffset?>("PublishedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("published_at");
-
-                    b.Property<string>("Slug")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("slug");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("status");
+                    b.Property<string>("PublicId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("public_id");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -73,15 +66,10 @@ namespace Pss.FhirProcessor.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PublishedAt")
-                        .HasDatabaseName("ix_projects_published_at");
-
-                    b.HasIndex("Slug")
+                    b.HasIndex("PublicId")
                         .IsUnique()
-                        .HasDatabaseName("ix_projects_slug");
-
-                    b.HasIndex("Status")
-                        .HasDatabaseName("ix_projects_status");
+                        .HasDatabaseName("ix_projects_public_id")
+                        .HasFilter("public_id IS NOT NULL");
 
                     b.ToTable("projects", (string)null);
                 });
@@ -103,37 +91,41 @@ namespace Pss.FhirProcessor.Persistence.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("canonical_url");
 
-                    b.Property<string>("ContentJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("content_json");
-
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<string>("Description")
-                        .HasColumnType("text")
-                        .HasColumnName("description");
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("file_name");
 
-                    b.Property<string>("Name")
+                    b.Property<string>("FilePath")
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
-                        .HasColumnName("name");
+                        .HasColumnName("file_path");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("hash");
 
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid")
                         .HasColumnName("project_id");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
+                    b.Property<string>("ResourceJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("resource_json");
 
-                    b.Property<string>("Version")
+                    b.Property<string>("ResourceType")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
-                        .HasColumnName("version");
+                        .HasColumnName("resource_type");
 
                     b.HasKey("Id");
 
@@ -164,10 +156,6 @@ namespace Pss.FhirProcessor.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<string>("Description")
-                        .HasColumnType("text")
-                        .HasColumnName("description");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -182,10 +170,6 @@ namespace Pss.FhirProcessor.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("source");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
 
                     b.HasKey("Id");
 
@@ -206,17 +190,9 @@ namespace Pss.FhirProcessor.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<string>("Description")
-                        .HasColumnType("text")
-                        .HasColumnName("description");
-
-                    b.Property<DateTimeOffset?>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("expires_at");
-
-                    b.Property<bool>("IsActive")
+                    b.Property<bool>("Enabled")
                         .HasColumnType("boolean")
-                        .HasColumnName("is_active");
+                        .HasColumnName("enabled");
 
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid")
@@ -246,28 +222,26 @@ namespace Pss.FhirProcessor.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<Guid?>("BundleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("bundle_id");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<string>("DefinitionJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("definition_json");
 
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description");
 
-                    b.Property<string>("ErrorCode")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("error_code");
-
-                    b.Property<string>("Expression")
-                        .HasColumnType("text")
-                        .HasColumnName("expression");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("name");
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_enabled");
 
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid")
@@ -277,11 +251,6 @@ namespace Pss.FhirProcessor.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("provenance");
-
-                    b.Property<string>("RuleDefinitionJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("rule_definition_json");
 
                     b.Property<string>("RuleType")
                         .IsRequired()
@@ -293,17 +262,21 @@ namespace Pss.FhirProcessor.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("scope");
 
-                    b.Property<string>("Severity")
+                    b.Property<string>("Title")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("severity");
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("title");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BundleId")
+                        .HasDatabaseName("ix_project_rules_bundle_id")
+                        .HasFilter("bundle_id IS NOT NULL");
 
                     b.HasIndex("ProjectId")
                         .HasDatabaseName("ix_project_rules_project_id");

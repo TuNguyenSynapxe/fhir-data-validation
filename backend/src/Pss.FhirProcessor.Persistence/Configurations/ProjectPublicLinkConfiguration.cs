@@ -29,18 +29,12 @@ public class ProjectPublicLinkConfiguration : IEntityTypeConfiguration<ProjectPu
             .HasMaxLength(255)
             .IsRequired();
 
-        builder.Property(l => l.Description)
-            .HasColumnName("description");
+        builder.Property(l => l.Enabled)
+            .HasColumnName("enabled")
+            .IsRequired();
 
         builder.Property(l => l.CreatedAt)
             .HasColumnName("created_at")
-            .IsRequired();
-
-        builder.Property(l => l.ExpiresAt)
-            .HasColumnName("expires_at");
-
-        builder.Property(l => l.IsActive)
-            .HasColumnName("is_active")
             .IsRequired();
 
         // Indexes

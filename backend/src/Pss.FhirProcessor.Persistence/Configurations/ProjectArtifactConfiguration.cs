@@ -29,33 +29,36 @@ public class ProjectArtifactConfiguration : IEntityTypeConfiguration<ProjectArti
             .HasConversion<string>()
             .IsRequired();
 
+        builder.Property(a => a.FilePath)
+            .HasColumnName("file_path")
+            .HasMaxLength(500)
+            .IsRequired();
+
+        builder.Property(a => a.FileName)
+            .HasColumnName("file_name")
+            .HasMaxLength(255)
+            .IsRequired();
+
+        builder.Property(a => a.ResourceType)
+            .HasColumnName("resource_type")
+            .HasMaxLength(100);
+
         builder.Property(a => a.CanonicalUrl)
             .HasColumnName("canonical_url")
             .HasMaxLength(500);
 
-        builder.Property(a => a.Name)
-            .HasColumnName("name")
-            .HasMaxLength(500)
+        builder.Property(a => a.ResourceJson)
+            .HasColumnName("resource_json")
+            .HasColumnType("jsonb")
             .IsRequired();
 
-        builder.Property(a => a.Description)
-            .HasColumnName("description");
-
-        builder.Property(a => a.Version)
-            .HasColumnName("version")
-            .HasMaxLength(100);
-
-        builder.Property(a => a.ContentJson)
-            .HasColumnName("content_json")
-            .HasColumnType("jsonb")
+        builder.Property(a => a.Hash)
+            .HasColumnName("hash")
+            .HasMaxLength(64)
             .IsRequired();
 
         builder.Property(a => a.CreatedAt)
             .HasColumnName("created_at")
-            .IsRequired();
-
-        builder.Property(a => a.UpdatedAt)
-            .HasColumnName("updated_at")
             .IsRequired();
 
         // Indexes

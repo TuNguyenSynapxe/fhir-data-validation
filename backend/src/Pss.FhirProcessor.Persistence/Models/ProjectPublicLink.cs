@@ -23,24 +23,14 @@ public sealed class ProjectPublicLink
     public string PublicId { get; set; } = string.Empty;
 
     /// <summary>
-    /// Optional description of the link's purpose.
+    /// Whether the link is currently enabled.
     /// </summary>
-    public string? Description { get; set; }
+    public bool Enabled { get; set; } = true;
 
     /// <summary>
     /// When the link was created.
     /// </summary>
     public DateTimeOffset CreatedAt { get; set; }
-
-    /// <summary>
-    /// When the link expires (null if never expires).
-    /// </summary>
-    public DateTimeOffset? ExpiresAt { get; set; }
-
-    /// <summary>
-    /// Whether the link is currently active.
-    /// </summary>
-    public bool IsActive { get; set; } = true;
 
     /// <summary>
     /// Navigation property: Parent project.

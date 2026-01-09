@@ -34,9 +34,6 @@ public class ProjectBundleConfiguration : IEntityTypeConfiguration<ProjectBundle
             .HasMaxLength(500)
             .IsRequired();
 
-        builder.Property(b => b.Description)
-            .HasColumnName("description");
-
         builder.Property(b => b.BundleJson)
             .HasColumnName("bundle_json")
             .HasColumnType("jsonb")
@@ -44,10 +41,6 @@ public class ProjectBundleConfiguration : IEntityTypeConfiguration<ProjectBundle
 
         builder.Property(b => b.CreatedAt)
             .HasColumnName("created_at")
-            .IsRequired();
-
-        builder.Property(b => b.UpdatedAt)
-            .HasColumnName("updated_at")
             .IsRequired();
 
         // Indexes

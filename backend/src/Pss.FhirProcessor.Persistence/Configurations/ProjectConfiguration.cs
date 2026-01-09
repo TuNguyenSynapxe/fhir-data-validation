@@ -20,11 +20,6 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
             .ValueGeneratedOnAdd();
 
         // Properties
-        builder.Property(p => p.Slug)
-            .HasColumnName("slug")
-            .HasMaxLength(255)
-            .IsRequired();
-
         builder.Property(p => p.Name)
             .HasColumnName("name")
             .HasMaxLength(500)
@@ -38,10 +33,13 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
             .HasConversion<string>()
             .IsRequired();
 
-        builder.Property(p => p.Status)
-            .HasColumnName("status")
-            .HasMaxLength(50)
+        builder.Property(p => p.IsPublicEnabled)
+            .HasColumnName("is_public_enabled")
             .IsRequired();
+
+        builder.Property(p => p.PublicId)
+            .HasColumnName("public_id")
+            .HasMaxLength(100);
 
         builder.Property(p => p.CreatedAt)
             .HasColumnName("created_at")
@@ -51,19 +49,11 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
             .HasColumnName("updated_at")
             .IsRequired();
 
-        builder.Property(p => p.PublishedAt)
-            .HasColumnName("published_at");
-
         // Indexes
-        builder.HasIndex(p => p.Slug)
+        builder.HasIndex(p => p.PublicId)
             .IsUnique()
-            .HasDatabaseName("ix_projects_slug");
-
-        builder.HasIndex(p => p.Status)
-            .HasDatabaseName("ix_projects_status");
-
-        builder.HasIndex(p => p.PublishedAt)
-            .HasDatabaseName("ix_projects_published_at");
+            .HasDatabaseName("ix_projects_public_id")
+            .HasFilter("public_id IS NOT NULL");
 
         // Relationships
         builder.HasMany(p => p.Artifacts)

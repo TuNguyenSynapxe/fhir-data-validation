@@ -29,6 +29,9 @@ public class ProjectRuleConfiguration : IEntityTypeConfiguration<ProjectRule>
             .HasConversion<string>()
             .IsRequired();
 
+        builder.Property(r => r.BundleId)
+            .HasColumnName("bundle_id");
+
         builder.Property(r => r.RuleType)
             .HasColumnName("rule_type")
             .HasConversion<string>()
@@ -39,29 +42,21 @@ public class ProjectRuleConfiguration : IEntityTypeConfiguration<ProjectRule>
             .HasConversion<string>()
             .IsRequired();
 
-        builder.Property(r => r.Name)
-            .HasColumnName("name")
+        builder.Property(r => r.Title)
+            .HasColumnName("title")
             .HasMaxLength(500)
             .IsRequired();
 
         builder.Property(r => r.Description)
             .HasColumnName("description");
 
-        builder.Property(r => r.Expression)
-            .HasColumnName("expression");
-
-        builder.Property(r => r.Severity)
-            .HasColumnName("severity")
-            .HasMaxLength(50)
+        builder.Property(r => r.DefinitionJson)
+            .HasColumnName("definition_json")
+            .HasColumnType("jsonb")
             .IsRequired();
 
-        builder.Property(r => r.ErrorCode)
-            .HasColumnName("error_code")
-            .HasMaxLength(100);
-
-        builder.Property(r => r.RuleDefinitionJson)
-            .HasColumnName("rule_definition_json")
-            .HasColumnType("jsonb")
+        builder.Property(r => r.IsEnabled)
+            .HasColumnName("is_enabled")
             .IsRequired();
 
         builder.Property(r => r.CreatedAt)
@@ -75,6 +70,10 @@ public class ProjectRuleConfiguration : IEntityTypeConfiguration<ProjectRule>
         // Indexes
         builder.HasIndex(r => r.ProjectId)
             .HasDatabaseName("ix_project_rules_project_id");
+
+        builder.HasIndex(r => r.BundleId)
+            .HasDatabaseName("ix_project_rules_bundle_id")
+            .HasFilter("bundle_id IS NOT NULL");
 
         // Relationships configured in ProjectConfiguration
     }
