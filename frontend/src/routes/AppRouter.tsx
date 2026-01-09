@@ -11,6 +11,7 @@ import { ProjectListPage } from '../pages/public/ProjectListPage';
 import PublicProjectsPage from '../pages/public/PublicProjectsPage';
 import { ProjectDetailPage } from '../pages/public/ProjectDetailPage';
 import { ProjectValidatePage } from '../pages/public/ProjectValidatePage';
+import { PublicValidationPlaygroundPage } from '../pages/public/PublicValidationPlaygroundPage';
 
 export default function AppRouter() {
   return (
@@ -22,6 +23,9 @@ export default function AppRouter() {
         <Route path="/public/projects" element={<ProjectListPage />} />
         <Route path="/public/projects/:slug" element={<ProjectDetailPage />} />
         <Route path="/public/projects/:slug/validate" element={<ProjectValidatePage />} />
+        
+        {/* Phase 9.5: Public Validation Playground (via public link) */}
+        <Route path="/p/:publicId" element={<PublicValidationPlaygroundPage />} />
 
         {/* Admin Routes */}
         <Route path="/admin/projects/import" element={<ProjectImportPage />} />
