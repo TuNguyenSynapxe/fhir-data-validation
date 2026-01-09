@@ -1,0 +1,84 @@
+.container {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background-color: #ffffff;
+  transition: border-color 0.2s;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:hover {
+  border-color: #3b82f6;
+  background-color: #f9fafb;
+}
+
+.clickable:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.severityError {
+  border-left: 4px solid #ef4444;
+}
+
+.severityWarning {
+  border-left: 4px solid #f59e0b;
+}
+
+.severityInfo {
+  border-left: 4px solid #3b82f6;
+}
+
+.severityIcon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.errorCode {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.source {
+  font-size: 12px;
+  color: #6b7280;
+  padding: 2px 8px;
+  background-color: #f3f4f6;
+  border-radius: 4px;
+}
+
+.message {
+  font-size: 14px;
+  color: #111827;
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.path {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
