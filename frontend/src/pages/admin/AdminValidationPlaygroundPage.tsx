@@ -12,6 +12,7 @@ import {
   ValidationIssueRow,
   ValidationIssueDetails,
 } from '../../validation/components';
+import { RuleManagementSection } from '../../components/admin/RuleManagementSection';
 import type { ValidationIssue } from '../../validation/model/ValidationIssue';
 import type { ValidationResult } from '../../validation/model/ValidationResult';
 import type { ExecuteValidationResponse, PolicyMode } from '../../api/validationExecutionApi';
@@ -19,6 +20,7 @@ import type { ProjectBundleDto } from '../../types/projectImport';
 
 /**
  * Phase 9.3: Admin Validation Playground
+ * Phase 9.4: Added Rule Management Section
  * 
  * UI composition ONLY - reuses Phase 5 validation components with Phase 8.2 execution API.
  * 
@@ -224,6 +226,13 @@ export function AdminValidationPlaygroundPage() {
             <div className="bg-white rounded-lg shadow">
               <ValidationSummary result={validationResult} />
             </div>
+
+            {/* Phase 9.4: Rule Management Section */}
+            <RuleManagementSection
+              projectId={projectId!}
+              bundleId={bundleId!}
+              onValidationRerun={handleRerunValidation}
+            />
 
             {/* Issues List */}
             <div className="bg-white rounded-lg shadow">

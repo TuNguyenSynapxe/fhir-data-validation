@@ -135,6 +135,10 @@ try
     builder.Services.AddScoped<Pss.FhirProcessor.Application.Projects.Queries.ProjectRuleQueryService>();
     Log.Information("Query services registered (Phase 7.4 - read-only)");
 
+    // Register Phase 9.4 Rule Management Command Service (manual rule CRUD)
+    builder.Services.AddScoped<Pss.FhirProcessor.Application.Projects.Commands.ProjectRuleCommandService>();
+    Log.Information("Rule management command service registered (Phase 9.4 - manual rule CRUD)");
+
     // Register Phase 8.1 Validation Execution Service
     builder.Services.AddScoped<Pss.FhirProcessor.Application.ValidationExecution.Interfaces.IProjectValidationExecutionService,
         Pss.FhirProcessor.Application.ValidationExecution.ProjectValidationExecutionService>();
