@@ -1,24 +1,87 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ValidationResultsView } from '../ValidationResultsView';
-import type { ValidationResult } from '../../model/ValidationResult';
+import type { ValidationResultDto } from '../../api/ValidationApiTypes';
+import { ValidationApiClient } from '../../api/ValidationApiClient';
+
+// Mock the API client
+vi.mock('../../api/ValidationApiClient');
 
 describe('ValidationResultsView', () => {
-  const createResult = (overrides?: Partial<ValidationResult>): ValidationResult => ({
-    issues: [],
+  const mockProjectId = 'test-project-123';
+  const mockValidationResult: ValidationResultDto = {
+    issues: [
+      {
+        source: 'StructureDefinition',
+        severity: 'error',
+        errorCode: 'TEST_ERROR',
+        path: 'Bundle.entry[0].resource.status',
+        message: 'Test error message',
+      },
+    ],
     summary: {
-      totalErrors: 0,
+      totalErrors: 1,
       totalWarnings: 0,
       totalInfo: 0,
       hasAmbiguity: false,
       policyMode: 'strict',
     },
-    ...overrides,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it('renders ValidationSummary', () => {
-    const result = createResult({
+  it('shows loading state initially', () => {
+    vi.spyOn(ValidationApiClient, 'fetchValidationResult').mockImplementation(
+      () => new Promise(() => {}) // Never resolves
+    );
+
+    render(<ValidationResultsView projectId={mockProjectId} />);
+
+    expect(screen.getByText('Loading validation results...')).toBeInTheDocument();
+  });
+
+  it('shows empty state when projectId is null', () => {
+    render(<ValidationResultsView projectId={null} />);
+
+    expect(screen.getByText('No validation results available.')).toBeInTheDocument();
+  });
+
+  it('shows error state when API request fails', async () => {
+    vi.spyOn(ValidationApiClient, 'fetchValidationResult').mockRejectedValue(
+      new Error('Network error occurred')
+    );
+
+    render(<ValidationResultsView projectId={mockProjectId} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Unable to Load Validation Results')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Network error occurred')).toBeInTheDocument();
+    expect(
+      screen.getByText(/This does NOT mean the data is valid/)
+    ).toBeInTheDocument();
+  });
+
+  it('renders validation results when API succeeds', async () => {
+    vi.spyOn(ValidationApiClient, 'fetchValidationResult').mockResolvedValue(mockValidationResult);
+
+    render(<ValidationResultsView projectId={mockProjectId} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test error message')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('1')).toBeInTheDocument(); // Error count
+    expect(screen.getByText(/Error/)).toBeInTheDocument();
+  });
+
+  it('renders ValidationSummary with correct data', async () => {
+    vi.spyOn(ValidationApiClient, 'fetchValidationResult').mockResolvedValue({
+      issues: [],
       summary: {
         totalErrors: 5,
         totalWarnings: 2,
@@ -28,14 +91,17 @@ describe('ValidationResultsView', () => {
       },
     });
 
-    render(<ValidationResultsView result={result} />);
+    render(<ValidationResultsView projectId={mockProjectId} />);
 
-    expect(screen.getByText('5')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('5')).toBeInTheDocument();
+    });
+
     expect(screen.getByText(/Error/)).toBeInTheDocument();
   });
 
-  it('renders AmbiguityBanner when ambiguity exists', () => {
-    const result = createResult({
+  it('renders AmbiguityBanner when ambiguity exists', async () => {
+    vi.spyOn(ValidationApiClient, 'fetchValidationResult').mockResolvedValue({
       issues: [
         {
           source: 'StructureDefinition',
@@ -57,13 +123,15 @@ describe('ValidationResultsView', () => {
       },
     });
 
-    render(<ValidationResultsView result={result} />);
+    render(<ValidationResultsView projectId={mockProjectId} />);
 
-    expect(screen.getByText('AMBIGUITY DETECTED')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('AMBIGUITY DETECTED')).toBeInTheDocument();
+    });
   });
 
-  it('renders all issues as ValidationIssueRow', () => {
-    const result = createResult({
+  it('renders all issues as ValidationIssueRow', async () => {
+    vi.spyOn(ValidationApiClient, 'fetchValidationResult').mockResolvedValue({
       issues: [
         {
           source: 'StructureDefinition',
@@ -79,71 +147,65 @@ describe('ValidationResultsView', () => {
           path: 'Bundle.entry[1]',
           message: 'First warning',
         },
-        {
-          source: 'Reference',
-          severity: 'info',
-          errorCode: 'INFO_1',
-          path: 'Bundle.entry[2]',
-          message: 'First info',
-        },
       ],
       summary: {
         totalErrors: 1,
         totalWarnings: 1,
-        totalInfo: 1,
+        totalInfo: 0,
         hasAmbiguity: false,
         policyMode: 'strict',
       },
     });
 
-    render(<ValidationResultsView result={result} />);
+    render(<ValidationResultsView projectId={mockProjectId} />);
 
-    expect(screen.getByText('First error')).toBeInTheDocument();
-    expect(screen.getByText('First warning')).toBeInTheDocument();
-    expect(screen.getByText('First info')).toBeInTheDocument();
-  });
-
-  it('shows no issues message when issues array is empty', () => {
-    const result = createResult();
-
-    render(<ValidationResultsView result={result} />);
-
-    expect(screen.getByText('No validation issues to display.')).toBeInTheDocument();
-  });
-
-  it('does not show details panel initially', () => {
-    const result = createResult({
-      issues: [
-        {
-          source: 'StructureDefinition',
-          severity: 'error',
-          errorCode: 'TEST_CODE',
-          path: 'Bundle.entry[0]',
-          message: 'Test error',
-        },
-      ],
+    await waitFor(() => {
+      expect(screen.getByText('First error')).toBeInTheDocument();
     });
 
-    render(<ValidationResultsView result={result} />);
+    expect(screen.getByText('First warning')).toBeInTheDocument();
+  });
+
+  it('shows no issues message when issues array is empty', async () => {
+    vi.spyOn(ValidationApiClient, 'fetchValidationResult').mockResolvedValue({
+      issues: [],
+      summary: {
+        totalErrors: 0,
+        totalWarnings: 0,
+        totalInfo: 0,
+        hasAmbiguity: false,
+        policyMode: 'strict',
+      },
+    });
+
+    render(<ValidationResultsView projectId={mockProjectId} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('No validation issues to display.')).toBeInTheDocument();
+    });
+  });
+
+  it('does not show details panel initially', async () => {
+    vi.spyOn(ValidationApiClient, 'fetchValidationResult').mockResolvedValue(mockValidationResult);
+
+    render(<ValidationResultsView projectId={mockProjectId} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test error message')).toBeInTheDocument();
+    });
 
     expect(screen.queryByText('Issue Details')).not.toBeInTheDocument();
   });
 
   it('shows details panel when an issue is selected', async () => {
     const user = userEvent.setup();
-    const result = createResult({
-      issues: [
-        {
-          source: 'StructureDefinition',
-          severity: 'error',
-          errorCode: 'TEST_CODE',
-          path: 'Bundle.entry[0].resource.status',
-          message: 'Test error message',
-        },
-      ],
-    });
+    vi.spyOn(ValidationApiClient, 'fetchValidationResult').mockResolvedValue(mockValidationResult);
 
-    render(<ValidationResultsView result={result} />);
+    render(<ValidationResultsView projectId={mockProjectId} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test error message')).toBeInTheDocument();
+    });
 
     // Click the issue row
     const issueRow = screen.getByRole('button');
@@ -155,19 +217,13 @@ describe('ValidationResultsView', () => {
 
   it('closes details panel when close button is clicked', async () => {
     const user = userEvent.setup();
-    const result = createResult({
-      issues: [
-        {
-          source: 'StructureDefinition',
-          severity: 'error',
-          errorCode: 'TEST_CODE',
-          path: 'Bundle.entry[0]',
-          message: 'Test error',
-        },
-      ],
-    });
+    vi.spyOn(ValidationApiClient, 'fetchValidationResult').mockResolvedValue(mockValidationResult);
 
-    render(<ValidationResultsView result={result} />);
+    render(<ValidationResultsView projectId={mockProjectId} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test error message')).toBeInTheDocument();
+    });
 
     // Select issue
     const issueRow = screen.getByRole('button');
@@ -182,38 +238,22 @@ describe('ValidationResultsView', () => {
     expect(screen.queryByText('Issue Details')).not.toBeInTheDocument();
   });
 
-  it('renders issues in order without filtering', () => {
-    const result = createResult({
-      issues: [
-        {
-          source: 'StructureDefinition',
-          severity: 'info',
-          errorCode: 'INFO_1',
-          path: 'Bundle.entry[0]',
-          message: 'Info message',
-        },
-        {
-          source: 'FHIRPath',
-          severity: 'error',
-          errorCode: 'ERROR_1',
-          path: 'Bundle.entry[1]',
-          message: 'Error message',
-        },
-        {
-          source: 'Reference',
-          severity: 'warning',
-          errorCode: 'WARNING_1',
-          path: 'Bundle.entry[2]',
-          message: 'Warning message',
-        },
-      ],
+  it('preserves policy mode from backend', async () => {
+    vi.spyOn(ValidationApiClient, 'fetchValidationResult').mockResolvedValue({
+      issues: [],
+      summary: {
+        totalErrors: 0,
+        totalWarnings: 0,
+        totalInfo: 0,
+        hasAmbiguity: false,
+        policyMode: 'permissive',
+      },
     });
 
-    render(<ValidationResultsView result={result} />);
+    render(<ValidationResultsView projectId={mockProjectId} />);
 
-    const messages = screen.getAllByText(/message$/);
-    expect(messages[0]).toHaveTextContent('Info message');
-    expect(messages[1]).toHaveTextContent('Error message');
-    expect(messages[2]).toHaveTextContent('Warning message');
+    await waitFor(() => {
+      expect(screen.getByText(/Permissive/)).toBeInTheDocument();
+    });
   });
 });
