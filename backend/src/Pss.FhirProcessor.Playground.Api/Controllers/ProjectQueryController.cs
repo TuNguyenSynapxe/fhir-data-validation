@@ -16,6 +16,7 @@ public class ProjectQueryController : ControllerBase
     private readonly ProjectArtifactQueryService _artifactQueryService;
     private readonly ProjectBundleQueryService _bundleQueryService;
     private readonly ProjectRuleQueryService _ruleQueryService;
+    private readonly ProjectStructureDefinitionQueryService _structureDefinitionQueryService; // Phase 10.1
     private readonly ILogger<ProjectQueryController> _logger;
 
     public ProjectQueryController(
@@ -23,12 +24,14 @@ public class ProjectQueryController : ControllerBase
         ProjectArtifactQueryService artifactQueryService,
         ProjectBundleQueryService bundleQueryService,
         ProjectRuleQueryService ruleQueryService,
+        ProjectStructureDefinitionQueryService structureDefinitionQueryService, // Phase 10.1
         ILogger<ProjectQueryController> logger)
     {
         _projectQueryService = projectQueryService;
         _artifactQueryService = artifactQueryService;
         _bundleQueryService = bundleQueryService;
         _ruleQueryService = ruleQueryService;
+        _structureDefinitionQueryService = structureDefinitionQueryService; // Phase 10.1
         _logger = logger;
     }
 
@@ -225,6 +228,56 @@ public class ProjectQueryController : ControllerBase
         {
             _logger.LogError(ex, "Failed to retrieve rules for project {ProjectId}", projectId);
             return StatusCode(500, new { error = "QUERY_ERROR", message = "Failed to retrieve rules" });
+        }
+    }
+
+    /// <summary>
+    /// Phase 10.1: GET /api/projects/{projectId}/structure-definitions
+    /// Get all promoted StructureDefinitions for a project.
+    /// </summary>
+    /// <remarks>
+    /// Returns only SDs where IsPromoted=true (Phase 10.0 classification).
+    /// Empty list is valid (project may have no promoted SDs).
+    /// </remarks>
+    [HttpGet("{projectId:guid}/structure-definitions")]
+    [ProducesResponseType(typeof(List<ProjectStructureDefinitionDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetStructureDefinitions(Guid projectId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Check project exists
+            if (!await _structureDefinitionQueryService.ProjectExistsAsync(projectId, cancellationToken))
+            {
+                _logger.LogWarning("Project {ProjectId} not found", projectId);
+                return NotFound(new { error = "PROJECT_NOT_FOUND", message = $"Project {projectId} not found" });
+            }
+
+            // Phase 10.1: Query promoted StructureDefinitions
+            // Uses Phase 10.0 IsPromoted and StructureDefinitionRole fields
+            var structureDefinitions = await _structureDefinitionQueryService
+                .GetPromotedStructureDefinitionsAsync(projectId, cancellationToken);
+
+            var dtos = structureDefinitions.Select(sd => new ProjectStructureDefinitionDto
+            {
+                ArtifactId = sd.ArtifactId,
+                Name = sd.Name,
+                CanonicalUrl = sd.CanonicalUrl,
+                ResourceType = sd.ResourceType,
+                Role = sd.Role
+            }).ToList();
+
+            _logger.LogInformation(
+                "Returned {Count} promoted StructureDefinitions for project {ProjectId}",
+                dtos.Count,
+                projectId);
+
+            return Ok(dtos);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve StructureDefinitions for project {ProjectId}", projectId);
+            return StatusCode(500, new { error = "QUERY_ERROR", message = "Failed to retrieve StructureDefinitions" });
         }
     }
 }

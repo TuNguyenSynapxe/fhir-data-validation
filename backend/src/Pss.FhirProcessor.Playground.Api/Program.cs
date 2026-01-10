@@ -134,7 +134,8 @@ try
     builder.Services.AddScoped<Pss.FhirProcessor.Application.Projects.Queries.ProjectArtifactQueryService>();
     builder.Services.AddScoped<Pss.FhirProcessor.Application.Projects.Queries.ProjectBundleQueryService>();
     builder.Services.AddScoped<Pss.FhirProcessor.Application.Projects.Queries.ProjectRuleQueryService>();
-    Log.Information("Query services registered (Phase 7.4 - read-only)");
+    builder.Services.AddScoped<Pss.FhirProcessor.Application.Projects.Queries.ProjectStructureDefinitionQueryService>(); // Phase 10.1
+    Log.Information("Query services registered (Phase 7.4 + 10.1 - read-only)");
 
     // Register Phase 9.4 Rule Management Command Service (manual rule CRUD)
     builder.Services.AddScoped<Pss.FhirProcessor.Application.Projects.Commands.ProjectRuleCommandService>();
