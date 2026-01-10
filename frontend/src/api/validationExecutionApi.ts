@@ -1,5 +1,6 @@
 import httpClient from './httpClient';
 import type { ValidationIssue } from '../validation/model/ValidationIssue';
+import type { ValidationScope } from '../types/bundleProfile';
 
 /**
  * Phase 8.2 Validation Execution API - Admin validation execution endpoint
@@ -30,6 +31,9 @@ export interface ExecuteValidationResponse {
   policyMode: PolicyMode;
   issues: ValidationIssue[];
   summary: ValidationSummaryDto;
+  metadata?: {
+    validationScope?: ValidationScope;
+  };
 }
 
 /**

@@ -13,7 +13,7 @@ import {
   ValidationIssueDetails,
 } from '../../validation/components';
 import { RuleManagementSection } from '../../components/admin/RuleManagementSection';
-import { ValidationScopeBanner } from '../../components/validation/ValidationScopeBanner';
+import ValidationScopeBanner from '../../components/validation/ValidationScopeBanner';
 import { useBundleProfile } from '../../hooks/useBundleProfile';
 import type { ValidationIssue } from '../../validation/model/ValidationIssue';
 import type { ValidationResult } from '../../validation/model/ValidationResult';
