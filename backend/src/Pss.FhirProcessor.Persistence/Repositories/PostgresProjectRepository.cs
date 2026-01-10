@@ -40,7 +40,7 @@ public sealed class PostgresProjectRepository : IProjectRepository
                 updated_at AS UpdatedAt,
                 published_at AS PublishedAt,
                 fhir_version AS FhirVersion,
-                codemaster_json AS CodeMasterJson,
+                code_master_json AS CodeMasterJson,
                 sample_bundle_json AS SampleBundleJson,
                 validation_settings_json AS ValidationSettingsJson,
                 features AS FeaturesJson
@@ -77,7 +77,7 @@ public sealed class PostgresProjectRepository : IProjectRepository
                 updated_at AS UpdatedAt,
                 published_at AS PublishedAt,
                 fhir_version AS FhirVersion,
-                codemaster_json AS CodeMasterJson,
+                code_master_json AS CodeMasterJson,
                 sample_bundle_json AS SampleBundleJson,
                 validation_settings_json AS ValidationSettingsJson,
                 features AS FeaturesJson
@@ -111,7 +111,7 @@ public sealed class PostgresProjectRepository : IProjectRepository
         const string sql = @"
             INSERT INTO projects (
                 slug, name, description, ruleset_json, status, 
-                fhir_version, codemaster_json, sample_bundle_json, 
+                fhir_version, code_master_json, sample_bundle_json, 
                 validation_settings_json, features
             )
             VALUES (
@@ -122,7 +122,7 @@ public sealed class PostgresProjectRepository : IProjectRepository
             RETURNING 
                 id, slug, name, description, ruleset_json AS RulesetJson, status,
                 created_at AS CreatedAt, updated_at AS UpdatedAt, published_at AS PublishedAt,
-                fhir_version AS FhirVersion, codemaster_json AS CodeMasterJson,
+                fhir_version AS FhirVersion, code_master_json AS CodeMasterJson,
                 sample_bundle_json AS SampleBundleJson, validation_settings_json AS ValidationSettingsJson,
                 features AS FeaturesJson";
 
@@ -154,7 +154,7 @@ public sealed class PostgresProjectRepository : IProjectRepository
             SELECT 
                 id, slug, name, description, ruleset_json AS RulesetJson, status,
                 created_at AS CreatedAt, updated_at AS UpdatedAt, published_at AS PublishedAt,
-                fhir_version AS FhirVersion, codemaster_json AS CodeMasterJson,
+                fhir_version AS FhirVersion, code_master_json AS CodeMasterJson,
                 sample_bundle_json AS SampleBundleJson, validation_settings_json AS ValidationSettingsJson,
                 features AS FeaturesJson
             FROM projects
@@ -175,7 +175,7 @@ public sealed class PostgresProjectRepository : IProjectRepository
             SELECT 
                 id, slug, name, description, ruleset_json AS RulesetJson, status,
                 created_at AS CreatedAt, updated_at AS UpdatedAt, published_at AS PublishedAt,
-                fhir_version AS FhirVersion, codemaster_json AS CodeMasterJson,
+                fhir_version AS FhirVersion, code_master_json AS CodeMasterJson,
                 sample_bundle_json AS SampleBundleJson, validation_settings_json AS ValidationSettingsJson,
                 features AS FeaturesJson
             FROM projects
@@ -201,7 +201,7 @@ public sealed class PostgresProjectRepository : IProjectRepository
                 ruleset_json = @RulesetJson::jsonb,
                 status = @Status,
                 fhir_version = @FhirVersion,
-                codemaster_json = @CodeMasterJson::jsonb,
+                code_master_json = @CodeMasterJson::jsonb,
                 sample_bundle_json = @SampleBundleJson,
                 validation_settings_json = @ValidationSettingsJson::jsonb,
                 features = @FeaturesJson::jsonb,
@@ -210,7 +210,7 @@ public sealed class PostgresProjectRepository : IProjectRepository
             RETURNING 
                 id, slug, name, description, ruleset_json AS RulesetJson, status,
                 created_at AS CreatedAt, updated_at AS UpdatedAt, published_at AS PublishedAt,
-                fhir_version AS FhirVersion, codemaster_json AS CodeMasterJson,
+                fhir_version AS FhirVersion, code_master_json AS CodeMasterJson,
                 sample_bundle_json AS SampleBundleJson, validation_settings_json AS ValidationSettingsJson,
                 features AS FeaturesJson";
 
@@ -355,7 +355,7 @@ public sealed class PostgresProjectRepository : IProjectRepository
             RETURNING 
                 id, slug, name, description, ruleset_json AS RulesetJson, status,
                 created_at AS CreatedAt, updated_at AS UpdatedAt, published_at AS PublishedAt,
-                fhir_version AS FhirVersion, codemaster_json AS CodeMasterJson,
+                fhir_version AS FhirVersion, code_master_json AS CodeMasterJson,
                 sample_bundle_json AS SampleBundleJson, validation_settings_json AS ValidationSettingsJson,
                 features AS FeaturesJson";
 
@@ -387,7 +387,7 @@ public sealed class PostgresProjectRepository : IProjectRepository
             RETURNING 
                 id, slug, name, description, ruleset_json AS RulesetJson, status,
                 created_at AS CreatedAt, updated_at AS UpdatedAt, published_at AS PublishedAt,
-                fhir_version AS FhirVersion, codemaster_json AS CodeMasterJson,
+                fhir_version AS FhirVersion, code_master_json AS CodeMasterJson,
                 sample_bundle_json AS SampleBundleJson, validation_settings_json AS ValidationSettingsJson,
                 features AS FeaturesJson";
 
@@ -418,7 +418,7 @@ public sealed class PostgresProjectRepository : IProjectRepository
             RETURNING 
                 id, slug, name, description, ruleset_json AS RulesetJson, status,
                 created_at AS CreatedAt, updated_at AS UpdatedAt, published_at AS PublishedAt,
-                fhir_version AS FhirVersion, codemaster_json AS CodeMasterJson,
+                fhir_version AS FhirVersion, code_master_json AS CodeMasterJson,
                 sample_bundle_json AS SampleBundleJson, validation_settings_json AS ValidationSettingsJson,
                 features AS FeaturesJson";
 

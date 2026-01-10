@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pss.FhirProcessor.Persistence.Data;
@@ -11,9 +12,11 @@ using Pss.FhirProcessor.Persistence.Data;
 namespace Pss.FhirProcessor.Persistence.Migrations
 {
     [DbContext(typeof(FhirProcessorDbContext))]
-    partial class FhirProcessorDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260109171348_Phase9_5a_AddMissingProjectColumns")]
+    partial class Phase9_5a_AddMissingProjectColumns
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -176,40 +179,6 @@ namespace Pss.FhirProcessor.Persistence.Migrations
                     b.ToTable("project_bundles", (string)null);
                 });
 
-            modelBuilder.Entity("Pss.FhirProcessor.Persistence.Models.ProjectBundleProfileSelection", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid>("ProjectBundleId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("project_bundle_id");
-
-                    b.Property<string>("Source")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("source");
-
-                    b.Property<Guid?>("StructureDefinitionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("structure_definition_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProjectBundleId")
-                        .IsUnique();
-
-                    b.HasIndex("StructureDefinitionId");
-
-                    b.ToTable("project_bundle_profile_selections", (string)null);
-                });
-
             modelBuilder.Entity("Pss.FhirProcessor.Persistence.Models.ProjectPublicLink", b =>
                 {
                     b.Property<Guid>("Id")
@@ -335,24 +304,6 @@ namespace Pss.FhirProcessor.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Project");
-                });
-
-            modelBuilder.Entity("Pss.FhirProcessor.Persistence.Models.ProjectBundleProfileSelection", b =>
-                {
-                    b.HasOne("Pss.FhirProcessor.Persistence.Models.ProjectBundle", "Bundle")
-                        .WithMany()
-                        .HasForeignKey("ProjectBundleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Pss.FhirProcessor.Persistence.Models.ProjectArtifact", "StructureDefinition")
-                        .WithMany()
-                        .HasForeignKey("StructureDefinitionId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Bundle");
-
-                    b.Navigation("StructureDefinition");
                 });
 
             modelBuilder.Entity("Pss.FhirProcessor.Persistence.Models.ProjectPublicLink", b =>

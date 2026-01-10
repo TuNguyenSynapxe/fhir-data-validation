@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Pss.FhirProcessor.Application.Projects.BundleProfiles;
 using Pss.FhirProcessor.Application.ValidationExecution.Interfaces;
 using Pss.FhirProcessor.Engine.Core;
 using Pss.FhirProcessor.Engine.Models;
@@ -10,23 +11,31 @@ using System.Text.Json;
 namespace Pss.FhirProcessor.Application.ValidationExecution;
 
 /// <summary>
-/// Phase 8.1: Validation Execution Service
+/// Phase 8.1 + 8.4: Validation Execution Service
 /// Pure application-layer service that orchestrates validation for Project + Bundle.
 /// READ-ONLY. NO mutations. NO rule management. Deterministic.
+/// 
+/// Phase 8.4 Integration:
+/// - Loads Bundle profile state from Phase 8.3
+/// - Filters project rules based on profile resolution
+/// - Surfaces validation scope in response metadata
 /// </summary>
 public sealed class ProjectValidationExecutionService : IProjectValidationExecutionService
 {
     private readonly FhirProcessorDbContext _dbContext;
     private readonly IValidationPipeline _validationPipeline;
+    private readonly IBundleProfileResolutionService _bundleProfileResolution;
     private readonly ILogger<ProjectValidationExecutionService> _logger;
 
     public ProjectValidationExecutionService(
         FhirProcessorDbContext dbContext,
         IValidationPipeline validationPipeline,
+        IBundleProfileResolutionService bundleProfileResolution,
         ILogger<ProjectValidationExecutionService> logger)
     {
         _dbContext = dbContext;
         _validationPipeline = validationPipeline;
+        _bundleProfileResolution = bundleProfileResolution;
         _logger = logger;
     }
 
@@ -52,8 +61,19 @@ public sealed class ProjectValidationExecutionService : IProjectValidationExecut
             // Step 3: Load structure definitions (fail-fast if none available)
             var structureDefinitions = await LoadStructureDefinitionsAsync(projectId, cancellationToken);
 
-            // Step 4: Load enabled rules (project + bundle scope)
-            var rulesJson = await LoadRulesJsonAsync(projectId, bundleId, cancellationToken);
+            // Step 3.5: Phase 8.4 - Resolve Bundle profile state (determines rule scope)
+            var bundleProfileResult = await _bundleProfileResolution.ResolveAsync(
+                projectId, bundleId, cancellationToken);
+
+            _logger.LogInformation(
+                "Bundle profile state: {State}, SDID={SDID}, Source={Source}",
+                bundleProfileResult.State,
+                bundleProfileResult.StructureDefinitionId,
+                bundleProfileResult.Source);
+
+            // Step 4: Load enabled rules with profile-based filtering (Phase 8.4)
+            var rulesJson = await LoadRulesJsonAsync(
+                projectId, bundleId, bundleProfileResult.State, cancellationToken);
 
             // Step 5: Build validation request
             var validationRequest = new ValidationRequest
@@ -74,8 +94,19 @@ public sealed class ProjectValidationExecutionService : IProjectValidationExecut
 
             _logger.LogInformation(
                 "Validation execution completed: ProjectId={ProjectId}, BundleId={BundleId}, " +
-                "Errors={ErrorCount}, Warnings={WarningCount}",
-                projectId, bundleId, result.Summary.TotalErrors, result.Summary.WarningCount);
+                "Errors={ErrorCount}, Warnings={WarningCount}, BundleProfileState={State}, " +
+                "AppliedProjectRules={AppliedRules}",
+                projectId, bundleId, result.Summary.TotalErrors, result.Summary.WarningCount,
+                bundleProfileResult.State, bundleProfileResult.State == BundleProfileState.Resolved);
+
+            // Phase 8.4: Add validation scope metadata to response
+            result.Metadata.ValidationScope = new ValidationScope
+            {
+                BundleProfileState = bundleProfileResult.State.ToString().ToLowerInvariant(),
+                AppliedProjectRules = bundleProfileResult.State == BundleProfileState.Resolved,
+                StructureDefinitionId = bundleProfileResult.StructureDefinitionId,
+                Source = bundleProfileResult.Source?.ToString().ToLowerInvariant()
+            };
 
             return result;
         }
@@ -229,15 +260,34 @@ public sealed class ProjectValidationExecutionService : IProjectValidationExecut
     }
 
     /// <summary>
-    /// Load enabled rules (project + bundle scope) and serialize to JSON.
-    /// Only includes IsEnabled == true rules.
-    /// Deterministic ordering: project-scoped first, then bundle-scoped, ordered by Title.
+    /// Phase 8.4: Load enabled rules with Bundle profile state filtering.
+    /// 
+    /// Rule Filtering Logic (EXACT):
+    /// - If Bundle profile state is NOT Resolved: Return null (skip ALL project rules)
+    /// - If Bundle profile state is Resolved: Load and apply rules normally
+    /// 
+    /// This is scope control, not validation logic modification.
+    /// Base FHIR validation always runs regardless of rule filtering.
     /// </summary>
     private async Task<string?> LoadRulesJsonAsync(
         Guid projectId,
         Guid bundleId,
+        BundleProfileState bundleProfileState,
         CancellationToken cancellationToken)
     {
+        // Phase 8.4: Filter project rules based on Bundle profile state
+        if (bundleProfileState != BundleProfileState.Resolved)
+        {
+            _logger.LogInformation(
+                "Bundle profile state is {State} - skipping ALL project rules. " +
+                "Only base FHIR validation will apply.",
+                bundleProfileState);
+            return null;
+        }
+
+        // Bundle is RESOLVED - apply project rules normally
+        _logger.LogDebug("Bundle profile is RESOLVED - loading project rules");
+
         var rules = await _dbContext.ProjectRules
             .AsNoTracking()
             .Where(r => r.ProjectId == projectId && r.IsEnabled)

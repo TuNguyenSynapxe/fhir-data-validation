@@ -139,6 +139,11 @@ try
     builder.Services.AddScoped<Pss.FhirProcessor.Application.Projects.Commands.ProjectRuleCommandService>();
     Log.Information("Rule management command service registered (Phase 9.4 - manual rule CRUD)");
 
+    // Register Phase 8.3 Bundle Profile Resolution Service
+    builder.Services.AddScoped<Pss.FhirProcessor.Application.Projects.BundleProfiles.IBundleProfileResolutionService,
+        Pss.FhirProcessor.Application.Projects.BundleProfiles.BundleProfileResolutionService>();
+    Log.Information("Bundle profile resolution service registered (Phase 8.3)");
+
     // Register Phase 8.1 Validation Execution Service
     builder.Services.AddScoped<Pss.FhirProcessor.Application.ValidationExecution.Interfaces.IProjectValidationExecutionService,
         Pss.FhirProcessor.Application.ValidationExecution.ProjectValidationExecutionService>();

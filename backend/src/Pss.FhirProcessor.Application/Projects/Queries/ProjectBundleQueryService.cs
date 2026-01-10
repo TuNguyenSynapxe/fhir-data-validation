@@ -34,7 +34,7 @@ public class ProjectBundleQueryService
                 BundleId = b.Id,
                 Name = b.Name,
                 Source = b.Source,
-                CreatedAt = b.CreatedAt.UtcDateTime
+                CreatedAt = b.CreatedAt.DateTime
             })
             .ToListAsync(cancellationToken);
 

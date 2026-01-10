@@ -19,6 +19,7 @@ public class FhirProcessorDbContext : DbContext
     public DbSet<ProjectBundle> ProjectBundles => Set<ProjectBundle>();
     public DbSet<ProjectRule> ProjectRules => Set<ProjectRule>();
     public DbSet<ProjectPublicLink> ProjectPublicLinks => Set<ProjectPublicLink>();
+    public DbSet<ProjectBundleProfileSelection> ProjectBundleProfileSelections => Set<ProjectBundleProfileSelection>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -30,5 +31,6 @@ public class FhirProcessorDbContext : DbContext
         modelBuilder.ApplyConfiguration(new ProjectBundleConfiguration());
         modelBuilder.ApplyConfiguration(new ProjectRuleConfiguration());
         modelBuilder.ApplyConfiguration(new ProjectPublicLinkConfiguration());
+        modelBuilder.ApplyConfiguration(new ProjectBundleProfileSelectionConfiguration());
     }
 }

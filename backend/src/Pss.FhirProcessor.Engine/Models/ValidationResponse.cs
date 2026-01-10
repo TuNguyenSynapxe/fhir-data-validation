@@ -82,4 +82,29 @@ public class ValidationMetadata
     
     [JsonPropertyName("processingTimeMs")]
     public long ProcessingTimeMs { get; set; }
+    
+    /// <summary>
+    /// Phase 8.4: Validation scope information (Bundle profile state)
+    /// </summary>
+    [JsonPropertyName("validationScope")]
+    public ValidationScope? ValidationScope { get; set; }
+}
+
+/// <summary>
+/// Phase 8.4: Validation scope information
+/// Indicates which rules were applied based on Bundle profile resolution.
+/// </summary>
+public class ValidationScope
+{
+    [JsonPropertyName("bundleProfileState")]
+    public string BundleProfileState { get; set; } = string.Empty;
+    
+    [JsonPropertyName("appliedProjectRules")]
+    public bool AppliedProjectRules { get; set; }
+    
+    [JsonPropertyName("structureDefinitionId")]
+    public Guid? StructureDefinitionId { get; set; }
+    
+    [JsonPropertyName("source")]
+    public string? Source { get; set; }
 }
