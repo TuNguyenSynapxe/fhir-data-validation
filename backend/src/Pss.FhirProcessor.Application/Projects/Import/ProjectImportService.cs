@@ -15,6 +15,7 @@ public sealed class ProjectImportService
     private readonly FhirProcessorDbContext _dbContext;
     private readonly SimplifierPackageParser _parser;
     private readonly ArtifactClassifier _classifier;
+    private readonly StructureDefinitionClassifier _sdClassifier; // Phase 10.0
     private readonly StructureDefinitionRuleGenerator _ruleGenerator;
     private readonly ILogger<ProjectImportService> _logger;
 
@@ -22,12 +23,14 @@ public sealed class ProjectImportService
         FhirProcessorDbContext dbContext,
         SimplifierPackageParser parser,
         ArtifactClassifier classifier,
+        StructureDefinitionClassifier sdClassifier, // Phase 10.0
         StructureDefinitionRuleGenerator ruleGenerator,
         ILogger<ProjectImportService> logger)
     {
         _dbContext = dbContext;
         _parser = parser;
         _classifier = classifier;
+        _sdClassifier = sdClassifier; // Phase 10.0
         _ruleGenerator = ruleGenerator;
         _logger = logger;
     }
@@ -106,11 +109,47 @@ public sealed class ProjectImportService
 
             _logger.LogInformation("Identified {Count} example bundles", bundles.Count);
 
-            // Step 5: Generate rules from StructureDefinitions
-            _logger.LogDebug("Generating rules from StructureDefinitions");
-            var rules = _ruleGenerator.GenerateRules(artifacts);
+            // Phase 10.0: Step 4.5: Classify StructureDefinitions
+            _logger.LogDebug("Classifying StructureDefinitions for promotion");
+            var bundleProfileUrls = _sdClassifier.ExtractBundleProfileUrls(bundles);
+            var sdClassifications = new Dictionary<string, StructureDefinitionClassifier.ClassificationResult>();
 
-            _logger.LogInformation("Generated {Count} rules", rules.Count);
+            var structureDefinitions = artifacts.Where(a => a.ArtifactType == ArtifactType.StructureDefinition).ToList();
+            foreach (var sd in structureDefinitions)
+            {
+                var classification = _sdClassifier.Classify(sd, bundleProfileUrls);
+                sdClassifications[sd.CanonicalUrl ?? sd.FilePath] = classification;
+
+                _logger.LogDebug(
+                    "SD Classification: {FileName} -> {Role} (Promoted: {IsPromoted}) - {Reason}",
+                    sd.FileName,
+                    classification.Role,
+                    classification.IsPromoted,
+                    classification.Reason);
+            }
+
+            var promotedSDs = structureDefinitions
+                .Where(sd => sdClassifications.ContainsKey(sd.CanonicalUrl ?? sd.FilePath) &&
+                             sdClassifications[sd.CanonicalUrl ?? sd.FilePath].IsPromoted)
+                .ToList();
+
+            _logger.LogInformation(
+                "StructureDefinition classification complete: {Total} SDs, {Promoted} promoted ({ValidationProfile} validation profiles, {BundleProfile} bundle profiles), {SupportingArtifact} supporting artifacts",
+                structureDefinitions.Count,
+                promotedSDs.Count,
+                sdClassifications.Values.Count(c => c.Role == StructureDefinitionRole.ValidationProfile),
+                sdClassifications.Values.Count(c => c.Role == StructureDefinitionRole.BundleProfile),
+                sdClassifications.Values.Count(c => c.Role == StructureDefinitionRole.SupportingArtifact));
+
+            // Step 5: Generate rules ONLY from Category A (ValidationProfile) SDs
+            _logger.LogDebug("Generating rules from promoted validation profile StructureDefinitions");
+            var validationProfileSDs = promotedSDs
+                .Where(sd => sdClassifications[sd.CanonicalUrl ?? sd.FilePath].Role == StructureDefinitionRole.ValidationProfile)
+                .ToList();
+
+            var rules = _ruleGenerator.GenerateRules(validationProfileSDs);
+
+            _logger.LogInformation("Generated {Count} rules from {SDCount} validation profile SDs", rules.Count, validationProfileSDs.Count);
 
             // Step 6: Create project graph in database
             _logger.LogDebug("Creating project graph in database");
@@ -120,6 +159,7 @@ public sealed class ProjectImportService
                 bundles,
                 rules,
                 policyMode,
+                sdClassifications, // Phase 10.0: Pass classifications
                 cancellationToken);
 
             _logger.LogInformation("Project created successfully: {ProjectId}", projectId);
@@ -148,6 +188,7 @@ public sealed class ProjectImportService
         List<ImportModels.ParsedBundle> bundles,
         List<StructureDefinitionRuleGenerator.GeneratedRule> rules,
         PolicyMode policyMode,
+        Dictionary<string, StructureDefinitionClassifier.ClassificationResult> sdClassifications, // Phase 10.0
         CancellationToken cancellationToken)
     {
         // Check if using in-memory database (for testing)
@@ -176,6 +217,21 @@ public sealed class ProjectImportService
             // Create ProjectArtifacts
             foreach (var artifact in artifacts)
             {
+                // Phase 10.0: Get SD classification if applicable
+                StructureDefinitionRole? sdRole = null;
+                bool? isPromoted = null;
+
+                if (artifact.ArtifactType == ArtifactType.StructureDefinition)
+                {
+                    var key = artifact.CanonicalUrl ?? artifact.FilePath;
+                    if (sdClassifications.ContainsKey(key))
+                    {
+                        var classification = sdClassifications[key];
+                        sdRole = classification.Role;
+                        isPromoted = classification.IsPromoted;
+                    }
+                }
+
                 var projectArtifact = new ProjectArtifact
                 {
                     Id = Guid.NewGuid(),
@@ -187,6 +243,8 @@ public sealed class ProjectImportService
                     CanonicalUrl = artifact.CanonicalUrl,
                     ResourceJson = artifact.ResourceJson,
                     Hash = artifact.Hash,
+                    StructureDefinitionRole = sdRole, // Phase 10.0
+                    IsPromoted = isPromoted, // Phase 10.0
                     CreatedAt = now
                 };
 

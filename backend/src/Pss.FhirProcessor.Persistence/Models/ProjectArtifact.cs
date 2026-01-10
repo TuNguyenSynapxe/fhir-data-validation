@@ -52,6 +52,20 @@ public sealed class ProjectArtifact
     public string Hash { get; set; } = string.Empty;
 
     /// <summary>
+    /// Phase 10.0: Role classification for StructureDefinitions.
+    /// Null for non-SD artifacts.
+    /// </summary>
+    public StructureDefinitionRole? StructureDefinitionRole { get; set; }
+
+    /// <summary>
+    /// Phase 10.0: Indicates if this SD should be promoted as a Project StructureDefinition.
+    /// True for Category A (ValidationProfile) and Category B (BundleProfile).
+    /// False for Category C (SupportingArtifact).
+    /// Null for non-SD artifacts.
+    /// </summary>
+    public bool? IsPromoted { get; set; }
+
+    /// <summary>
     /// When the artifact was created.
     /// </summary>
     public DateTimeOffset CreatedAt { get; set; }

@@ -124,9 +124,10 @@ try
     // Register Phase 7.2 Import Services
     builder.Services.AddScoped<Pss.FhirProcessor.Application.Projects.Import.SimplifierPackageParser>();
     builder.Services.AddScoped<Pss.FhirProcessor.Application.Projects.Import.ArtifactClassifier>();
+    builder.Services.AddScoped<Pss.FhirProcessor.Application.Projects.Import.StructureDefinitionClassifier>(); // Phase 10.0
     builder.Services.AddScoped<Pss.FhirProcessor.Application.Projects.Import.StructureDefinitionRuleGenerator>();
     builder.Services.AddScoped<Pss.FhirProcessor.Application.Projects.Import.ProjectImportService>();
-    Log.Information("Import services registered (Phase 7.2 + 7.3)");
+    Log.Information("Import services registered (Phase 7.2 + 7.3 + 10.0)");
 
     // Register Phase 7.4 Query Services (read-only)
     builder.Services.AddScoped<Pss.FhirProcessor.Application.Projects.Queries.ProjectQueryService>();
