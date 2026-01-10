@@ -8,6 +8,8 @@ import {
   ValidationIssueRow,
   ValidationIssueDetails,
 } from '../../validation/components';
+import { ValidationScopeBanner } from '../../components/validation/ValidationScopeBanner';
+import { useBundleProfile } from '../../hooks/useBundleProfile';
 import type { ValidationIssue } from '../../validation/model/ValidationIssue';
 import type { ValidationResult } from '../../validation/model/ValidationResult';
 import type { ExecuteValidationResponse, PolicyMode } from '../../api/validationExecutionApi';
@@ -49,6 +51,12 @@ export function PublicValidationPlaygroundPage() {
       { bundleId: 'bundle-2', bundleName: 'Sample Bundle 2' },
     ],
   };
+
+  // Load bundle profile state (Phase 9.6)
+  const { data: bundleProfile } = useBundleProfile(
+    projectData.projectId,
+    selectedBundleId || ''
+  );
 
   // Execute validation
   const {
@@ -225,6 +233,11 @@ export function PublicValidationPlaygroundPage() {
         {/* Validation Results */}
         {validationResult && selectedBundle && (
           <div className="space-y-6">
+            {/* Phase 9.6: Validation Scope Banner */}
+            {bundleProfile && validationResponse?.metadata?.validationScope && (
+              <ValidationScopeBanner validationScope={validationResponse.metadata.validationScope} />
+            )}
+
             {/* Ambiguity Banner (Phase 5 component) */}
             {validationResult.summary.hasAmbiguity && (
               <AmbiguityBanner policyMode={validationResult.summary.policyMode} issues={validationResult.issues || []} />

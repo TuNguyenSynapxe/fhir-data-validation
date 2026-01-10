@@ -13,6 +13,8 @@ import {
   ValidationIssueDetails,
 } from '../../validation/components';
 import { RuleManagementSection } from '../../components/admin/RuleManagementSection';
+import { ValidationScopeBanner } from '../../components/validation/ValidationScopeBanner';
+import { useBundleProfile } from '../../hooks/useBundleProfile';
 import type { ValidationIssue } from '../../validation/model/ValidationIssue';
 import type { ValidationResult } from '../../validation/model/ValidationResult';
 import type { ExecuteValidationResponse, PolicyMode } from '../../api/validationExecutionApi';
@@ -43,6 +45,9 @@ export function AdminValidationPlaygroundPage() {
 
   // Load bundle metadata
   const { data: bundles, isLoading: bundlesLoading, error: bundlesError } = useProjectBundles(projectId!);
+
+  // Load bundle profile state
+  const { data: bundleProfile, isLoading: profileLoading } = useBundleProfile(projectId!, bundleId!);
 
   // Execute validation
   const {
@@ -105,7 +110,7 @@ export function AdminValidationPlaygroundPage() {
   };
 
   // Loading state
-  const isLoading = projectLoading || bundlesLoading || validationPending;
+  const isLoading = projectLoading || bundlesLoading || validationPending || profileLoading;
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
@@ -273,6 +278,11 @@ export function AdminValidationPlaygroundPage() {
       <div className="max-w-7xl mx-auto px-6 pb-6">
         {validationResult ? (
           <div className="space-y-6">
+            {/* Phase 9.6: Validation Scope Banner */}
+            {bundleProfile && validationResponse?.metadata?.validationScope && (
+              <ValidationScopeBanner validationScope={validationResponse.metadata.validationScope} />
+            )}
+
             {/* Ambiguity Banner */}
             <AmbiguityBanner
               issues={validationResult.issues}

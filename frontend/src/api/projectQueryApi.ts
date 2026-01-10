@@ -3,6 +3,7 @@ import type {
   ProjectDetailsDto,
   ProjectBundleDto,
   ProjectRuleDto,
+  ProjectArtifactDto,
 } from '../types/projectImport';
 
 /**
@@ -33,5 +34,15 @@ export async function getProjectBundles(projectId: string): Promise<ProjectBundl
  */
 export async function getProjectRules(projectId: string): Promise<ProjectRuleDto[]> {
   const response = await httpClient.get<ProjectRuleDto[]>(`/api/v2/projects/${projectId}/rules`);
+  return response.data;
+}
+
+/**
+ * Get all artifacts (StructureDefinitions, ValueSets, etc.) in a project.
+ * Phase 9.6: Used for SD-centric UI.
+ * GET /api/v2/projects/{id}/artifacts
+ */
+export async function getProjectArtifacts(projectId: string): Promise<ProjectArtifactDto[]> {
+  const response = await httpClient.get<ProjectArtifactDto[]>(`/api/v2/projects/${projectId}/artifacts`);
   return response.data;
 }

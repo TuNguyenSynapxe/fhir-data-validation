@@ -46,6 +46,14 @@ export const RuleType = {
 
 export type RuleType = typeof RuleType[keyof typeof RuleType];
 
+export interface ProjectArtifactDto {
+  artifactId: string;
+  type: string; // 'StructureDefinition', 'ValueSet', 'CodeSystem', etc.
+  name: string;
+  canonicalUrl?: string;
+  resourceType?: string; // For SDs: 'Patient', 'Observation', etc.
+}
+
 export const RuleProvenance = {
   ImportedGenerated: 'ImportedGenerated',
   ManualCustom: 'ManualCustom',
