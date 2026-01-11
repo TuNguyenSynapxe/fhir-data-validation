@@ -46,3 +46,13 @@ export async function getProjectArtifacts(projectId: string): Promise<ProjectArt
   const response = await httpClient.get<ProjectArtifactDto[]>(`/api/v2/projects/${projectId}/artifacts`);
   return response.data;
 }
+
+/**
+ * Get promoted StructureDefinitions in a project.
+ * Phase 10.1: Returns only ValidationProfile and BundleProfile (excludes SupportingArtifacts).
+ * GET /api/v2/projects/{id}/structure-definitions
+ */
+export async function getProjectStructureDefinitions(projectId: string): Promise<ProjectArtifactDto[]> {
+  const response = await httpClient.get<ProjectArtifactDto[]>(`/api/v2/projects/${projectId}/structure-definitions`);
+  return response.data;
+}

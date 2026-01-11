@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getProjectArtifacts } from '../api/projectQueryApi';
+import { getProjectArtifacts, getProjectStructureDefinitions } from '../api/projectQueryApi';
 import type { ProjectArtifactDto } from '../types/projectImport';
 
 /**
@@ -17,21 +17,18 @@ export function useProjectArtifacts(projectId: string) {
 }
 
 /**
- * Phase 9.6: Hook to get only StructureDefinitions from artifacts
+ * Phase 10.1/10.2: Hook to get only promoted StructureDefinitions
  * 
- * Filters for type='StructureDefinition'
+ * Uses Phase 10.1 endpoint that returns only ValidationProfile and BundleProfile (promoted SDs).
+ * Phase 10.2 expanded promotion criteria to include SDs with actionable constraints.
  */
 export function useProjectStructureDefinitions(projectId: string) {
-  const { data, ...rest } = useProjectArtifacts(projectId);
-  
-  const structureDefinitions = data?.filter(
-    (artifact) => artifact.type === 'StructureDefinition'
-  ) || [];
-
-  return {
-    data: structureDefinitions,
-    ...rest,
-  };
+  return useQuery<ProjectArtifactDto[]>({
+    queryKey: ['projectStructureDefinitions', projectId],
+    queryFn: () => getProjectStructureDefinitions(projectId),
+    enabled: !!projectId,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+  });
 }
 
 /**
