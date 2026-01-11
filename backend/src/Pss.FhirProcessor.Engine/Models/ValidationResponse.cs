@@ -107,4 +107,12 @@ public class ValidationScope
     
     [JsonPropertyName("source")]
     public string? Source { get; set; }
+    
+    /// <summary>
+    /// Phase 11: Indicates whether Firely SDK Validator was used for full SD validation.
+    /// When true: Full Firely Validator with all SD constraints.
+    /// When false: Legacy behavior (basic checks + custom SD validator).
+    /// </summary>
+    [JsonPropertyName("firelyValidatorUsed")]
+    public bool FirelyValidatorUsed { get; set; }
 }

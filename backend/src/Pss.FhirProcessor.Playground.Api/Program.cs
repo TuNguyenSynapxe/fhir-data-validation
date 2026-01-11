@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using Pss.FhirProcessor.Engine.Configuration;
 using Pss.FhirProcessor.Engine.DependencyInjection;
 using Pss.FhirProcessor.Engine.Navigation.Structure;
 using Pss.FhirProcessor.Persistence.Data;
@@ -56,6 +57,16 @@ try
     // Add services to the container
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
+
+    // Phase 11: Register validation configuration options
+    builder.Services.Configure<ValidationOptions>(builder.Configuration.GetSection("Validation"));
+    
+    // Log effective validation configuration at startup
+    var validationConfig = builder.Configuration.GetSection("Validation").Get<ValidationOptions>() ?? new ValidationOptions();
+    Log.Information("Phase 11 Validation Configuration:");
+    Log.Information("  UseFirelyValidator: {UseFirelyValidator} (Firely SDK Validator {Status})",
+        validationConfig.UseFirelyValidator,
+        validationConfig.UseFirelyValidator ? "ENABLED" : "DISABLED (using custom SD validator)");
 
     // Register FhirProcessor.Engine services
     builder.Services.AddFhirProcessorEngine();

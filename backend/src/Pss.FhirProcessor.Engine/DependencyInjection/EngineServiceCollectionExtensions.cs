@@ -60,6 +60,9 @@ public static class EngineServiceCollectionExtensions
         services.AddScoped<ISimplifierPackageReader, SimplifierPackageReader>();
         services.AddScoped<IFirelyValidationService, FirelyR5ValidationService>();
         
+        // Phase 11: Firely Profile Validator (authoritative SD validation)
+        services.AddScoped<IFirelyProfileValidator, FirelyProfileValidator>();
+        
         // Phase 2.2-2.3: SD Constraint Validation (explicit, engine-owned)
         services.AddScoped<SdValidation.SdConstraintExtractor>();
         services.AddScoped<SdValidation.Validators.CardinalityValidator>();

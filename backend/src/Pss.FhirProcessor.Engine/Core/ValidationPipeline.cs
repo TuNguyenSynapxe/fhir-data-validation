@@ -2,22 +2,24 @@ using System.Diagnostics;
 using System.Text.Json;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
+using Hl7.Fhir.Specification.Source;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Pss.FhirProcessor.Engine.Authoring;
+using Pss.FhirProcessor.Engine.Configuration;
 using Pss.FhirProcessor.Engine.Constants;
+using Pss.FhirProcessor.Engine.Core.Execution;
+using Pss.FhirProcessor.Engine.Firely;
 using Pss.FhirProcessor.Engine.Models;
 using Pss.FhirProcessor.Engine.Models.Questions;
 using Pss.FhirProcessor.Engine.Models.Terminology;
 using Pss.FhirProcessor.Engine.RuleEngines;
-using Pss.FhirProcessor.Engine.Firely;
-using Pss.FhirProcessor.Engine.Authoring;
-using Hl7.Fhir.Utility;
-using Pss.FhirProcessor.Engine.Validation;
-using Pss.FhirProcessor.Engine.Validation.QuestionAnswer;
-using Pss.FhirProcessor.Engine.Core.Execution;
 using Pss.FhirProcessor.Engine.SdValidation;
 using Pss.FhirProcessor.Engine.Simplifier;
-using Hl7.Fhir.Specification.Source;
-using Microsoft.Extensions.Logging.Abstractions;
+using Pss.FhirProcessor.Engine.Validation;
+using Pss.FhirProcessor.Engine.Validation.QuestionAnswer;
+using Hl7.Fhir.Utility;
 
 namespace Pss.FhirProcessor.Engine.Core;
 
@@ -35,25 +37,31 @@ public class ValidationPipeline : IValidationPipeline
     private readonly ILintValidationService _lintService;
     private readonly ISpecHintService? _specHintService; // AUTHORING-ONLY: Optional, null in runtime-only mode
     private readonly IFirelyValidationService _firelyService;
+    private readonly IFirelyProfileValidator _firelyProfileValidator; // PHASE 11: Full SD validator
     private readonly IFhirPathRuleEngine _ruleEngine;
     private readonly ICodeMasterEngine _codeMasterEngine;
     private readonly IReferenceResolver _referenceResolver;
     private readonly IUnifiedErrorModelBuilder _errorBuilder;
     private readonly ISystemRuleSuggestionService _suggestionService;
+    private readonly ISimplifierPackageReader _packageReader; // PHASE 11: For resolver construction
     private readonly QuestionAnswerValidator? _questionAnswerValidator; // AUTHORING-ONLY: Optional, null in runtime-only mode
     private readonly IQuestionAnswerContextProvider? _contextProvider; // AUTHORING-ONLY: Optional, null in runtime-only mode
     private readonly SdConstraintValidationService? _sdValidationService; // PHASE 2.2: SD constraint validation
+    private readonly ValidationOptions _validationOptions; // PHASE 11: Feature flags
     private readonly ILogger<ValidationPipeline> _logger;
     
     public ValidationPipeline(
         IJsonNodePreValidator preValidator,
         ILintValidationService lintService,
         IFirelyValidationService firelyService,
+        IFirelyProfileValidator firelyProfileValidator, // PHASE 11: New dependency
         IFhirPathRuleEngine ruleEngine,
         ICodeMasterEngine codeMasterEngine,
         IReferenceResolver referenceResolver,
         IUnifiedErrorModelBuilder errorBuilder,
         ISystemRuleSuggestionService suggestionService,
+        ISimplifierPackageReader packageReader, // PHASE 11: For resolver
+        IOptions<ValidationOptions> validationOptions, // PHASE 11: Feature flags
         ILogger<ValidationPipeline> logger,
         ISpecHintService? specHintService = null, // AUTHORING-ONLY: Optional
         QuestionAnswerValidator? questionAnswerValidator = null, // AUTHORING-ONLY: Optional
@@ -64,11 +72,14 @@ public class ValidationPipeline : IValidationPipeline
         _lintService = lintService;
         _specHintService = specHintService; // May be null in runtime-only mode
         _firelyService = firelyService;
+        _firelyProfileValidator = firelyProfileValidator;
         _ruleEngine = ruleEngine;
         _codeMasterEngine = codeMasterEngine;
         _referenceResolver = referenceResolver;
         _errorBuilder = errorBuilder;
         _suggestionService = suggestionService;
+        _packageReader = packageReader;
+        _validationOptions = validationOptions.Value;
         _questionAnswerValidator = questionAnswerValidator;
         _contextProvider = contextProvider;
         _sdValidationService = sdValidationService;
@@ -83,6 +94,11 @@ public class ValidationPipeline : IValidationPipeline
         {
             _logger.LogInformation("ValidationPipeline: Full authoring mode (SpecHintService available)");
         }
+        
+        // Log Phase 11 configuration
+        _logger.LogInformation(
+            "ValidationPipeline: Phase 11 Firely Validator {Status}",
+            _validationOptions.UseFirelyValidator ? "ENABLED" : "DISABLED");
     }
     
     public async Task<ValidationResponse> ValidateAsync(ValidationRequest request, CancellationToken cancellationToken = default)
@@ -210,34 +226,14 @@ public class ValidationPipeline : IValidationPipeline
             
             // Step 2: Firely Structural Validation (authoritative)
             // This is the source of truth for FHIR compliance
-            // Uses node-based validation to collect structural issues
-            // When profile is provided, validates against profile constraints
-            var firelyOutcome = await _firelyService.ValidateAsync(
-                request.BundleJson, 
-                request.FhirVersion, 
-                request.BundleProfileStructureDefinitionJson,
-                request.BundleProfileCanonicalUrl,
-                cancellationToken);
+            // Phase 11: Conditional branching based on feature flag
+            OperationOutcome firelyOutcome;
+            bool usedFirelyValidator = _validationOptions.UseFirelyValidator;
             
-            // Step 3: Parse to POCO Bundle for business rule processing
+            // Step 3: Parse to POCO Bundle (needed for both paths)
             // Parse early so we can use it for navigation if available
             // Even if Firely found structural errors, we still attempt parsing to get as many errors as possible
-            // Use lenient parser to maximize success rate
             Bundle? bundle = null;
-            var ruleSet = ParseRuleSet(request.RulesJson, request.CodeSystemsJson);
-            var codeMaster = ParseCodeMaster(request.CodeMasterJson);
-            
-            if (ruleSet != null)
-            {
-                response.Metadata.RulesVersion = ruleSet.Version;
-                // DLL-ISOLATION: Set Project ID as metadata only (deprecated for loading)
-                #pragma warning disable CS0618 // Type or member is obsolete
-                ruleSet.Project = request.ProjectId;
-                #pragma warning restore CS0618
-            }
-            
-            // Try to parse bundle for downstream validation
-            // Use lenient parsing with error suppression to maximize parsing success
             var bundleParseResult = ParseBundleWithContext(request.BundleJson);
             if (bundleParseResult.Success)
             {
@@ -277,6 +273,75 @@ public class ValidationPipeline : IValidationPipeline
                 }
             }
             
+            if (_validationOptions.UseFirelyValidator)
+            {
+                // PHASE 11 NEW PATH: Full Firely Validator with authoritative SD validation
+                _logger.LogInformation("Phase 11: Using Firely SDK Validator for full SD validation");
+                
+                if (bundle == null)
+                {
+                    _logger.LogWarning("Phase 11: Bundle parsing failed, cannot run Firely Validator (requires POCO)");
+                    // Return empty OperationOutcome - parsing errors already captured
+                    firelyOutcome = new OperationOutcome();
+                }
+                else
+                {
+                    // Build resolver with project artifacts + core R5
+                    var resolver = await BuildResolverAsync(request, cancellationToken);
+                    
+                    // Determine profile URLs to validate against
+                    var profileUrls = new List<string>();
+                    if (!string.IsNullOrEmpty(request.BundleProfileCanonicalUrl))
+                    {
+                        profileUrls.Add(request.BundleProfileCanonicalUrl);
+                        _logger.LogInformation(
+                            "Phase 11: Validating with Bundle profile: {Profile}",
+                            request.BundleProfileCanonicalUrl);
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Phase 11: Validating against base FHIR R5 (no explicit profile)");
+                    }
+                    
+                    // Run Firely Validator
+                    firelyOutcome = await _firelyProfileValidator.ValidateAsync(
+                        bundle,
+                        request.FhirVersion,
+                        resolver,
+                        profileUrls,
+                        cancellationToken);
+                    
+                    _logger.LogInformation(
+                        "Phase 11: Firely Validator returned {IssueCount} issues",
+                        firelyOutcome.Issue?.Count ?? 0);
+                }
+            }
+            else
+            {
+                // LEGACY PATH: Basic checks only (backward compatible)
+                _logger.LogInformation("Phase 11: Using legacy validation (basic checks + custom SD validator)");
+                
+                firelyOutcome = await _firelyService.ValidateAsync(
+                    request.BundleJson, 
+                    request.FhirVersion, 
+                    request.BundleProfileStructureDefinitionJson,
+                    request.BundleProfileCanonicalUrl,
+                    cancellationToken);
+            }
+            
+            // Parse rules and code master for downstream validation
+            var ruleSet = ParseRuleSet(request.RulesJson, request.CodeSystemsJson);
+            var codeMaster = ParseCodeMaster(request.CodeMasterJson);
+            
+            if (ruleSet != null)
+            {
+                response.Metadata.RulesVersion = ruleSet.Version;
+                // DLL-ISOLATION: Set Project ID as metadata only (deprecated for loading)
+                #pragma warning disable CS0618 // Type or member is obsolete
+                ruleSet.Project = request.ProjectId;
+                #pragma warning restore CS0618
+            }
+            
             // Now build Firely errors with raw JSON for navigation
             var firelyErrors = await _errorBuilder.FromFirelyIssuesAsync(firelyOutcome, request.BundleJson, bundle, cancellationToken);
             
@@ -294,10 +359,16 @@ public class ValidationPipeline : IValidationPipeline
             // In standard mode, only Firely structural validation, business rules, and reference validation run
             
             // Step 3.5: Phase 2.2 SD Constraint Validation (explicit, engine-owned)
+            // Phase 11: Skip when Firely Validator is enabled (to avoid duplicates)
             // Validates enforced StructureDefinition constraints: cardinality, fixed values, required bindings
             // Uses Firely metadata, NOT Validator.Validate()
             // Only runs if profile specified and POCO parsing succeeded
-            if (_sdValidationService != null && bundle != null && !string.IsNullOrEmpty(request.BundleProfileCanonicalUrl))
+            if (_validationOptions.UseFirelyValidator)
+            {
+                _logger.LogInformation(
+                    "Phase 11: Skipping custom SD validation (Firely Validator handles all SD constraints)");
+            }
+            else if (_sdValidationService != null && bundle != null && !string.IsNullOrEmpty(request.BundleProfileCanonicalUrl))
             {
                 _logger.LogInformation("Running Phase 2.2 SD constraint validation for profile: {Profile}", request.BundleProfileCanonicalUrl);
                 
@@ -849,6 +920,13 @@ public class ValidationPipeline : IValidationPipeline
         stopwatch.Stop();
         response.Metadata.ProcessingTimeMs = stopwatch.ElapsedMilliseconds;
         
+        // Phase 11: Set Firely Validator metadata flag
+        if (response.Metadata.ValidationScope == null)
+        {
+            response.Metadata.ValidationScope = new ValidationScope();
+        }
+        response.Metadata.ValidationScope.FirelyValidatorUsed = _validationOptions.UseFirelyValidator;
+        
         response.Summary.TotalErrors = response.Errors.Count;
         response.Summary.ErrorCount = response.Errors.Count(e => e.Severity == "error");
         response.Summary.WarningCount = response.Errors.Count(e => e.Severity == "warning");
@@ -916,5 +994,71 @@ public class ValidationPipeline : IValidationPipeline
         }
 
         return deduplicatedFirely;
+    }
+    
+    /// <summary>
+    /// Phase 11: Builds composite resolver for Firely Validator.
+    /// Combines project artifacts (from request) with core FHIR R5 specs.
+    /// 
+    /// Note: Currently only includes the Bundle profile SD from request.
+    /// Full SimplifierPackage loading would require database integration.
+    /// </summary>
+    private async Task<IResourceResolver> BuildResolverAsync(
+        ValidationRequest request,
+        CancellationToken cancellationToken)
+    {
+        SimplifierPackage? projectPackage = null;
+        
+        // Try to load project-specific artifacts if profile SD JSON is provided
+        if (!string.IsNullOrEmpty(request.BundleProfileStructureDefinitionJson))
+        {
+            try
+            {
+                _logger.LogDebug("Phase 11: Loading project artifacts from request");
+                
+                // Parse the Bundle profile SD
+                var parser = new FhirJsonParser();
+                var bundleProfileSd = parser.Parse<StructureDefinition>(request.BundleProfileStructureDefinitionJson);
+                
+                // Create minimal SimplifierPackage with just the Bundle profile
+                // (Full package loading would require additional implementation)
+                var sdDict = new Dictionary<string, StructureDefinition>();
+                if (!string.IsNullOrEmpty(bundleProfileSd.Url))
+                {
+                    sdDict[bundleProfileSd.Url] = bundleProfileSd;
+                }
+                
+                projectPackage = new SimplifierPackage
+                {
+                    Name = "project-artifacts",
+                    Version = "1.0.0",
+                    FhirVersions = new[] { "5.0.0" },
+                    Dependencies = new Dictionary<string, string>(),
+                    StructureDefinitions = sdDict,
+                    ValueSets = new Dictionary<string, ValueSet>(),
+                    CodeSystems = new Dictionary<string, Hl7.Fhir.Model.CodeSystem>()
+                };
+                
+                _logger.LogInformation(
+                    "Phase 11: Created package with Bundle profile: {ProfileUrl}",
+                    bundleProfileSd.Url);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Phase 11: Failed to parse Bundle profile SD, using core specs only");
+            }
+        }
+        
+        // Build composite resolver: project artifacts + core R5 specs
+        var coreR5Resolver = ZipSource.CreateValidationSource();
+        var resolver = new CompositeResourceResolver(
+            projectPackage,
+            coreR5Resolver,
+            NullLogger<CompositeResourceResolver>.Instance);
+        
+        _logger.LogDebug("Phase 11: Resolver built (project artifacts: {HasProject})", projectPackage != null);
+        return resolver;
     }
 }
