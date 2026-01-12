@@ -26,6 +26,12 @@ public sealed class ProjectBundle
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
+    /// Optional: Canonical URL of the StructureDefinition this bundle is scoped to.
+    /// Used for SD-centric workflow where bundles are sample instances for a specific SD.
+    /// </summary>
+    public string? StructureDefinitionCanonicalUrl { get; set; }
+
+    /// <summary>
     /// Full FHIR Bundle JSON stored as JSONB.
     /// </summary>
     public string BundleJson { get; set; } = string.Empty;

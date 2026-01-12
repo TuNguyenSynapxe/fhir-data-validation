@@ -56,3 +56,24 @@ export async function getProjectStructureDefinitions(projectId: string): Promise
   const response = await httpClient.get<ProjectArtifactDto[]>(`/api/v2/projects/${projectId}/structure-definitions`);
   return response.data;
 }
+
+/**
+ * Phase 3.1: DTO for artifact JSON content.
+ * Used for runtime SD constraint extraction.
+ */
+export interface ArtifactContentDto {
+  artifactId: string;
+  artifactType: string;
+  canonicalUrl: string;
+  content: any; // Raw FHIR JSON
+}
+
+/**
+ * Phase 3.1: Get raw JSON content of an artifact (read-only, admin-only).
+ * Used for runtime SD constraint extraction (Imported Rules).
+ * GET /api/v2/projects/{projectId}/artifacts/{artifactId}/content
+ */
+export async function getArtifactContent(projectId: string, artifactId: string): Promise<ArtifactContentDto> {
+  const response = await httpClient.get<ArtifactContentDto>(`/api/v2/projects/${projectId}/artifacts/${artifactId}/content`);
+  return response.data;
+}

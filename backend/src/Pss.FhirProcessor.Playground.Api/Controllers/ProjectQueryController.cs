@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Pss.FhirProcessor.Application.Projects.Queries;
 using Pss.FhirProcessor.Playground.Api.Dtos;
@@ -278,6 +279,63 @@ public class ProjectQueryController : ControllerBase
         {
             _logger.LogError(ex, "Failed to retrieve StructureDefinitions for project {ProjectId}", projectId);
             return StatusCode(500, new { error = "QUERY_ERROR", message = "Failed to retrieve StructureDefinitions" });
+        }
+    }
+
+    /// <summary>
+    /// Phase 3.1: GET /api/v2/projects/{projectId}/artifacts/{artifactId}/content
+    /// Get raw JSON content of an artifact (read-only, admin-only).
+    /// Used for runtime SD constraint extraction (Imported Rules).
+    /// </summary>
+    [HttpGet("{projectId:guid}/artifacts/{artifactId}/content")]
+    [ProducesResponseType(typeof(ArtifactContentDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetArtifactContent(
+        Guid projectId,
+        string artifactId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Check project exists
+            if (!await _projectQueryService.ProjectExistsAsync(projectId, cancellationToken))
+            {
+                _logger.LogWarning("Project {ProjectId} not found", projectId);
+                return NotFound(new { error = "PROJECT_NOT_FOUND", message = $"Project {projectId} not found" });
+            }
+
+            // Get artifact
+            var artifact = await _artifactQueryService.GetArtifactByIdAsync(projectId, artifactId, cancellationToken);
+
+            if (artifact == null)
+            {
+                _logger.LogWarning("Artifact {ArtifactId} not found in project {ProjectId}", artifactId, projectId);
+                return NotFound(new { error = "ARTIFACT_NOT_FOUND", message = $"Artifact {artifactId} not found" });
+            }
+
+            // Parse JSON content
+            var content = JsonDocument.Parse(artifact.ResourceJson).RootElement;
+
+            var dto = new ArtifactContentDto
+            {
+                ArtifactId = Guid.Parse(artifact.ArtifactId),
+                ArtifactType = artifact.ArtifactType,
+                CanonicalUrl = artifact.CanonicalUrl ?? string.Empty,
+                Content = content
+            };
+
+            _logger.LogInformation("Returned content for artifact {ArtifactId} in project {ProjectId}", artifactId, projectId);
+            return Ok(dto);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Invalid JSON in artifact {ArtifactId}", artifactId);
+            return StatusCode(500, new { error = "INVALID_JSON", message = "Artifact contains invalid JSON" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve artifact content for {ArtifactId} in project {ProjectId}", artifactId, projectId);
+            return StatusCode(500, new { error = "QUERY_ERROR", message = "Failed to retrieve artifact content" });
         }
     }
 }

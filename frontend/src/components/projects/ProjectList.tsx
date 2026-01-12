@@ -28,7 +28,7 @@ export default function ProjectList({ projects }: ProjectListProps) {
       {projects.map((project) => (
         <div
           key={project.id}
-          onClick={() => navigate(`/projects/${project.id}`)}
+          onClick={() => navigate(`/admin/projects/${project.id}`)}
           className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer group"
         >
           <div className="p-5">

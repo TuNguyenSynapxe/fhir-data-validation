@@ -303,27 +303,40 @@ public static class TestHelper
         var lintService = CreateLintValidationService();
         var specHintService = new SpecHintService();
         var firelyService = CreateFirelyValidationService();
+        var firelyProfileValidatorLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<Firely.FirelyProfileValidator>.Instance;
+        var firelyProfileValidator = new Firely.FirelyProfileValidator(firelyProfileValidatorLogger); // Phase 11
         var ruleEngine = CreateRuleEngine();
         var codeMasterEngine = CreateCodeMasterEngine();
         var referenceResolver = CreateReferenceResolver();
         var errorModelBuilder = CreateErrorModelBuilder();
         var suggestionService = CreateSystemRuleSuggestionService();
+        var packageReaderLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<Simplifier.SimplifierPackageReader>.Instance;
+        var packageReader = new Simplifier.SimplifierPackageReader(packageReaderLogger);
 
         // Create REAL structural validator for contract tests
         var structuralValidator = CreateJsonNodePreValidator();
+
+        // Phase 11: ValidationOptions
+        var validationOptions = Microsoft.Extensions.Options.Options.Create(new Engine.Configuration.ValidationOptions
+        {
+            UseFirelyValidator = false // Default to false for tests
+        });
 
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<ValidationPipeline>.Instance;
         return new ValidationPipeline(
             structuralValidator,
             lintService,
-            firelyService,          // Moved before specHintService
+            firelyService,
+            firelyProfileValidator,  // Phase 11
             ruleEngine,
             codeMasterEngine,
             referenceResolver,
             errorModelBuilder,
             suggestionService,
+            packageReader,
+            validationOptions,       // Phase 11
             logger,
-            specHintService);       // Now optional parameter at end
+            specHintService);
     }
     
     public static IJsonNodePreValidator CreateJsonNodePreValidator()
