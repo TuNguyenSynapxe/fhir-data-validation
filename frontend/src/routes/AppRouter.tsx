@@ -3,6 +3,7 @@ import ProjectsPage from '../pages/ProjectsPage';
 import PlaygroundPage from '../pages/PlaygroundPage';
 import ProjectImportPage from '../pages/admin/ProjectImportPage';
 import AdminProjectOverviewPage from '../pages/admin/AdminProjectOverviewPage';
+import AdminSDDetailPage from '../pages/admin/AdminSDDetailPage';
 import { AdminValidationPlaygroundPage } from '../pages/admin/AdminValidationPlaygroundPage';
 
 // Public validation pages
@@ -30,6 +31,7 @@ export default function AppRouter() {
         {/* Admin Routes */}
         <Route path="/admin/projects/import" element={<ProjectImportPage />} />
         <Route path="/admin/projects/:projectId" element={<AdminProjectOverviewPage />} />
+        <Route path="/admin/projects/:projectId/structure-definitions/:artifactId" element={<AdminSDDetailPage />} />
         <Route path="/admin/projects/:projectId/bundles/:bundleId/validate" element={<AdminValidationPlaygroundPage />} />
 
         {/* Existing Authoring Routes */}

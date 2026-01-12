@@ -19,8 +19,9 @@ interface ValidationSettingsEditorProps {
 /**
  * ValidationSettingsEditor Component
  * 
- * UI for configuring runtime validation behavior.
+ * UI for configuring runtime validation behavior (project-level).
  * This is NOT part of rule definitions - it controls engine behavior.
+ * Settings are project-level and not bundle-dependent.
  */
 export const ValidationSettingsEditor: React.FC<ValidationSettingsEditorProps> = ({
   settings,
@@ -31,42 +32,8 @@ export const ValidationSettingsEditor: React.FC<ValidationSettingsEditorProps> =
   bundleSanityState,
   onOpenBundleTab,
 }) => {
-  // Show blocking state if bundle is invalid
-  if (bundleSanityState && !bundleSanityState.isValid) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full p-8 bg-gray-50">
-        <div className="text-center max-w-md">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 mb-4">
-            <AlertTriangle className="w-8 h-8 text-amber-600" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Settings Locked</h3>
-          <p className="text-sm text-gray-600 mb-6">
-            A valid FHIR Bundle structure is required before validation settings can be edited. Please fix the bundle structure issues to continue.
-          </p>
-          
-          <div className="bg-white border border-amber-200 rounded-lg p-4 mb-6 text-left">
-            <div className="flex items-start gap-2 mb-2">
-              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm font-medium text-gray-900">Bundle Structure Issues:</p>
-            </div>
-            <ul className="space-y-1 ml-6">
-              {bundleSanityState.errors.map((error, idx) => (
-                <li key={idx} className="text-sm text-gray-700 list-disc">{error}</li>
-              ))}
-            </ul>
-          </div>
-
-          <button
-            onClick={onOpenBundleTab}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-md transition-colors"
-          >
-            <FileJson className="w-4 h-4" />
-            Open Bundle Editor
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Show advisory warning if bundle is invalid (non-blocking, project-level settings)
+  const showBundleWarning = bundleSanityState && !bundleSanityState.isValid;
 
   const handlePolicyChange = (policy: ReferenceResolutionPolicy) => {
     onSettingsChange({
@@ -77,6 +44,29 @@ export const ValidationSettingsEditor: React.FC<ValidationSettingsEditorProps> =
 
   return (
     <div className="flex flex-col h-full">
+      {/* Bundle Structure Advisory Warning (Non-blocking) */}
+      {showBundleWarning && (
+        <div className="flex-shrink-0 bg-amber-50 border-b border-amber-200 px-6 py-3">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-amber-900 mb-1">
+                Bundle structure issues detected
+              </p>
+              <p className="text-xs text-amber-800">
+                Fix these issues to enable validation. Settings editing is not affected.
+              </p>
+            </div>
+            <button
+              onClick={onOpenBundleTab}
+              className="flex-shrink-0 text-xs font-medium text-amber-900 hover:text-amber-700 underline"
+            >
+              View Issues
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex-shrink-0 border-b bg-gray-50 px-4 py-3">
         <div className="flex items-center justify-between">

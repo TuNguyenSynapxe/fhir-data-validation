@@ -159,6 +159,7 @@ export default function AdminProjectOverviewPage() {
 
           {!isLoading && structureDefinitions && bundles && bundleProfiles && rules && (
             <StructureDefinitionList
+              projectId={projectId!}
               structureDefinitions={structureDefinitions}
               bundles={bundles}
               bundleProfiles={bundleProfiles}

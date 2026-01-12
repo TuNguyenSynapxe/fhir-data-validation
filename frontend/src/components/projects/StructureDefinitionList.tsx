@@ -5,6 +5,7 @@ import type { ProjectArtifactDto, ProjectBundleDto, ProjectRuleDto } from '../..
 import type { BundleProfileStateDto } from '../../types/bundleProfile';
 
 interface StructureDefinitionListProps {
+  projectId: string;
   structureDefinitions: ProjectArtifactDto[];
   bundles: ProjectBundleDto[];
   bundleProfiles: Map<string, BundleProfileStateDto>;
@@ -23,6 +24,7 @@ interface StructureDefinitionListProps {
  * - Collapsible sections
  */
 export default function StructureDefinitionList({
+  projectId,
   structureDefinitions,
   bundles,
   bundleProfiles,
@@ -65,6 +67,7 @@ export default function StructureDefinitionList({
             return (
               <StructureDefinitionCard
                 key={sd.artifactId}
+                projectId={projectId}
                 structureDefinition={sd}
                 bundles={sdBundles}
                 bundleProfiles={bundleProfiles}

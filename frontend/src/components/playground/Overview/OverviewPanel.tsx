@@ -172,32 +172,30 @@ export const OverviewPanel: React.FC<OverviewPanelProps> = ({
 
       {/* Content */}
       <div className="flex-1 p-6 space-y-6">
-        {/* Bundle Sanity Blocking Card - Only shown when bundle structure is invalid */}
+        {/* Bundle Structure Warning - Non-blocking advisory only */}
         {bundleSanityState && !bundleSanityState.isValid && (
-          <div className="bg-amber-50 rounded-lg border-2 border-amber-300 shadow-sm p-5">
-            <div className="flex items-start gap-4">
-              <div className="p-2 bg-amber-100 rounded-lg flex-shrink-0">
-                <AlertTriangle className="w-6 h-6 text-amber-700" />
-              </div>
+          <div className="bg-amber-50 rounded-lg border border-amber-200 p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-amber-900 mb-2">
-                  Rules Authoring Locked
+                <h3 className="text-sm font-semibold text-amber-900 mb-1">
+                  Bundle Structure Issues
                 </h3>
-                <p className="text-sm text-amber-800 mb-3 leading-relaxed">
-                  A valid FHIR Bundle is required before rules can be created. Fix the following structural issues in your bundle:
+                <p className="text-xs text-amber-800 mb-2">
+                  The following structural issues were detected. Fix them to enable validation:
                 </p>
-                <ul className="text-sm text-amber-800 space-y-1 list-disc list-inside mb-4">
+                <ul className="text-xs text-amber-800 space-y-1 list-disc list-inside mb-3">
                   {bundleSanityState.errors.map((error, index) => (
                     <li key={index}>{error}</li>
                   ))}
                 </ul>
                 <button
                   onClick={() => onOpenBundleTab?.()}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-900 bg-amber-200 rounded-lg hover:bg-amber-300 transition-colors"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-amber-900 bg-amber-200 rounded-lg hover:bg-amber-300 transition-colors"
                 >
-                  <FileJson className="w-4 h-4" />
+                  <FileJson className="w-3.5 h-3.5" />
                   Open Bundle Editor
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
@@ -218,7 +216,7 @@ export const OverviewPanel: React.FC<OverviewPanelProps> = ({
           <div className="space-y-3">
             {validationState === ValidationState.NoBundle && (
               <p className="text-sm text-gray-700 leading-relaxed">
-                No bundle is currently loaded. Load a FHIR bundle in the left panel to enable validation and rule authoring.
+                No bundle is currently loaded. Load a FHIR bundle in the left panel to enable validation.
               </p>
             )}
             
