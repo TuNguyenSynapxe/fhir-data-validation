@@ -251,6 +251,20 @@ function extractRequiredBindingRules(element: any, sdName: string): ImportedRule
 
 /**
  * FIX #3: Extract invariant constraint rules (constraint[])
+ * 
+ * STRICT SAFETY RULES:
+ * - Do NOT evaluate FHIRPath expressions
+ * - Do NOT simulate Firely validation
+ * - Do NOT rewrite, optimize, or normalize expressions
+ * - Do NOT infer pass/fail outcomes
+ * - Explanation-only extraction
+ * 
+ * Extracts:
+ * - constraint.key (required)
+ * - constraint.human (if present)
+ * - constraint.expression (verbatim, no changes)
+ * - constraint.severity (error | warning)
+ * - element.path (scope of the invariant)
  */
 function extractInvariantRules(element: any, sdName: string): ImportedRule[] {
   const rules: ImportedRule[] = [];
@@ -258,17 +272,36 @@ function extractInvariantRules(element: any, sdName: string): ImportedRule[] {
   const constraints = element.constraint || [];
 
   for (const constraint of constraints) {
-    // Only extract error-level constraints with human-readable text
-    if (constraint.severity === 'error' && constraint.human) {
-      rules.push({
-        id: `invariant-${path}-${constraint.key}`,
-        category: 'Invariant',
-        path: path,
-        title: constraint.human,
-        explanation: `FHIRPath constraint: ${constraint.expression || 'N/A'}`,
-        fhirPath: constraint.expression,
-      });
+    // SAFETY: Skip null/undefined constraints
+    if (!constraint || typeof constraint !== 'object') {
+      continue;
     }
+
+    // SAFETY: Skip constraints without key or expression
+    if (!constraint.key || !constraint.expression) {
+      continue;
+    }
+
+    // Extract both error and warning severity constraints
+    const severity = constraint.severity || 'error';
+    if (severity !== 'error' && severity !== 'warning') {
+      continue;
+    }
+
+    // Build explanation from human text or fallback to expression
+    const humanText = constraint.human || `Constraint: ${constraint.key}`;
+    const explanation = constraint.human 
+      ? `${constraint.human} (FHIRPath: ${constraint.expression})`
+      : `FHIRPath constraint: ${constraint.expression}`;
+
+    rules.push({
+      id: `invariant-${path}-${constraint.key}`,
+      category: 'Invariant',
+      path: path,
+      title: humanText,
+      explanation: explanation,
+      fhirPath: constraint.expression,
+    });
   }
 
   return rules;
