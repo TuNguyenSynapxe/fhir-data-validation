@@ -10,11 +10,17 @@
 
 export interface ImportedRule {
   id: string;
-  category: 'Cardinality' | 'Fixed Value' | 'Profile Conformance' | 'Required Binding' | 'Forbidden' | 'Invariant' | 'Reference';
+  category: 'Cardinality' | 'Fixed Value' | 'Profile Conformance' | 'Required Binding' | 'Forbidden' | 'Invariant' | 'Reference' | 'Slice Existence' | 'Slice Discriminator' | 'Slicing Closed';
   path: string;
   title: string;
   explanation: string;
   fhirPath?: string;
+  slicingMetadata?: {
+    sliceName?: string;
+    discriminatorType?: string;
+    discriminatorPath?: string;
+    expectedValue?: any;
+  };
 }
 
 /**
@@ -47,6 +53,9 @@ export function extractConstraints(sdJson: any): ImportedRule[] {
 
     // FIX #4: Extract reference target profile rules
     rules.push(...extractReferenceRules(element, sdJson.name));
+
+    // Extract slicing rules (Phase 3.1 enhancement)
+    rules.push(...extractSlicingRules(element, sdJson.name));
   }
 
   return rules;
@@ -258,6 +267,104 @@ function extractInvariantRules(element: any, sdName: string): ImportedRule[] {
         title: constraint.human,
         explanation: `FHIRPath constraint: ${constraint.expression || 'N/A'}`,
         fhirPath: constraint.expression,
+      });
+    }
+  }
+
+  return rules;
+}
+
+/**
+ * Extract slicing rules (Phase 3.1 enhancement)
+ * 
+ * STRICT RULES:
+ * - Do NOT implement validation logic
+ * - Do NOT evaluate slicing
+ * - Firely remains the validator
+ * - Extract human-readable explanations only
+ * 
+ * Extracts:
+ * 1. Slice existence rules (sliceName, min/max)
+ * 2. Slice discriminator intent (pattern/value/type discriminators only)
+ * 3. Closed slicing metadata
+ */
+function extractSlicingRules(element: any, sdName: string): ImportedRule[] {
+  const rules: ImportedRule[] = [];
+  const path = element.path;
+
+  // Extract slice existence rules (elements with sliceName)
+  if (element.sliceName) {
+    const min = element.min ?? 0;
+    const max = element.max ?? '*';
+    const sliceName = element.sliceName;
+
+    rules.push({
+      id: `slice-existence-${path}-${sliceName}`,
+      category: 'Slice Existence',
+      path: path,
+      title: `Slice "${sliceName}" at ${path}`,
+      explanation: `This slice must occur ${min}..${max} times`,
+      slicingMetadata: {
+        sliceName: sliceName,
+      },
+    });
+
+    // Extract slice-level fixed[x] or pattern[x] constraints
+    const fixedKeys = Object.keys(element).filter(k => k.startsWith('fixed') || k.startsWith('pattern'));
+    for (const key of fixedKeys) {
+      const fieldName = key.replace(/^(fixed|pattern)/, '');
+      const value = element[key];
+      rules.push({
+        id: `slice-constraint-${path}-${sliceName}-${fieldName}`,
+        category: 'Slice Discriminator',
+        path: path,
+        title: `Slice "${sliceName}" ${fieldName} constraint`,
+        explanation: `This slice requires ${fieldName} = ${JSON.stringify(value)}`,
+        slicingMetadata: {
+          sliceName: sliceName,
+          discriminatorType: key.startsWith('fixed') ? 'fixed' : 'pattern',
+          discriminatorPath: fieldName,
+          expectedValue: value,
+        },
+      });
+    }
+  }
+
+  // Extract slicing discriminator rules (base element with slicing definition)
+  if (element.slicing) {
+    const slicing = element.slicing;
+
+    // Extract discriminator intent (only pattern/value/type)
+    if (slicing.discriminator && Array.isArray(slicing.discriminator)) {
+      for (const discriminator of slicing.discriminator) {
+        const type = discriminator.type;
+        const discPath = discriminator.path;
+
+        // Only extract safe discriminator types (NOT profile, exists, etc.)
+        if (type === 'pattern' || type === 'value' || type === 'type') {
+          rules.push({
+            id: `slice-discriminator-${path}-${discPath}`,
+            category: 'Slice Discriminator',
+            path: path,
+            title: `Slicing discriminator at ${path}`,
+            explanation: `Slices are distinguished by ${type} discriminator on "${discPath}"`,
+            slicingMetadata: {
+              discriminatorType: type,
+              discriminatorPath: discPath,
+            },
+          });
+        }
+      }
+    }
+
+    // Extract closed slicing metadata
+    if (slicing.rules === 'closed') {
+      rules.push({
+        id: `slicing-closed-${path}`,
+        category: 'Slicing Closed',
+        path: path,
+        title: `Closed slicing at ${path}`,
+        explanation: `Only explicitly defined slices are allowed (no additional slices permitted)`,
       });
     }
   }

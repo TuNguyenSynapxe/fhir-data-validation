@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileCode, Loader2, AlertCircle, FileText, CheckCircle2, Plus, Upload, Trash2, Star, PlayCircle, Info, XCircle, Link } from 'lucide-react';
+import { ArrowLeft, FileCode, Loader2, AlertCircle, FileText, CheckCircle2, Plus, Upload, Trash2, Star, PlayCircle, Info, XCircle, Link, Layers, Scissors, Lock } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import AppLayout from '../../components/layout/AppLayout';
 import BundleCard from '../../components/bundles/BundleCard';
@@ -333,7 +333,7 @@ export default function AdminSDDetailPage() {
                 ) : (
                   <div>
                     {/* Group by category */}
-                    {['Cardinality', 'Fixed Value', 'Profile Conformance', 'Required Binding', 'Forbidden', 'Invariant', 'Reference'].map((category) => {
+                    {['Cardinality', 'Fixed Value', 'Profile Conformance', 'Required Binding', 'Forbidden', 'Invariant', 'Reference', 'Slice Existence', 'Slice Discriminator', 'Slicing Closed'].map((category) => {
                       const categoryRules = importedRules.filter(r => r.category === category);
                       if (categoryRules.length === 0) return null;
 
@@ -343,6 +343,13 @@ export default function AdminSDDetailPage() {
                             {category === 'Cardinality' && <CheckCircle2 size={16} className="text-green-600" />}
                             {category === 'Fixed Value' && <FileText size={16} className="text-purple-600" />}
                             {category === 'Profile Conformance' && <FileCode size={16} className="text-blue-600" />}
+                            {category === 'Required Binding' && <Plus size={16} className="text-orange-600" />}
+                            {category === 'Forbidden' && <XCircle size={16} className="text-red-600" />}
+                            {category === 'Invariant' && <AlertCircle size={16} className="text-yellow-600" />}
+                            {category === 'Reference' && <Link size={16} className="text-indigo-600" />}
+                            {category === 'Slice Existence' && <Layers size={16} className="text-teal-600" />}
+                            {category === 'Slice Discriminator' && <Scissors size={16} className="text-cyan-600" />}
+                            {category === 'Slicing Closed' && <Lock size={16} className="text-gray-600" />}
                             {category === 'Required Binding' && <Plus size={16} className="text-orange-600" />}
                             {category === 'Forbidden' && <XCircle size={16} className="text-red-600" />}
                             {category === 'Invariant' && <AlertCircle size={16} className="text-yellow-600" />}
