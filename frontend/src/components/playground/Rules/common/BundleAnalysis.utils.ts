@@ -14,14 +14,20 @@ export function detectFilterOptions(
   bundle: any,
   resourceType: string
 ): DetectedFilterOption[] {
-  if (!bundle?.entry || !Array.isArray(bundle.entry)) {
-    return [];
-  }
+  let resources: any[] = [];
 
-  // Extract resources of the specified type
-  const resources = bundle.entry
-    .filter((entry: any) => entry.resource?.resourceType === resourceType)
-    .map((entry: any) => entry.resource);
+  // Case 1: Single resource (not a Bundle)
+  if (bundle?.resourceType && bundle.resourceType !== 'Bundle') {
+    if (bundle.resourceType === resourceType) {
+      resources = [bundle];
+    }
+  }
+  // Case 2: Bundle with entries
+  else if (bundle?.entry && Array.isArray(bundle.entry)) {
+    resources = bundle.entry
+      .filter((entry: any) => entry.resource?.resourceType === resourceType)
+      .map((entry: any) => entry.resource);
+  }
 
   if (resources.length === 0) {
     return [];

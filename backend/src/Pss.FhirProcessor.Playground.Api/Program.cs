@@ -132,6 +132,10 @@ try
     builder.Services.AddScoped<IProjectService, ProjectService>();
     builder.Services.AddScoped<IRuleService, RuleService>();
 
+    // Register Phase 3.2 Bundle Auto-Tagging Service
+    builder.Services.AddScoped<Pss.FhirProcessor.Application.Services.IBundleAutoTaggingService, Pss.FhirProcessor.Application.Services.BundleAutoTaggingService>();
+    Log.Information("Bundle auto-tagging service registered (Phase 3.2)");
+
     // Register Phase 7.2 Import Services
     builder.Services.AddScoped<Pss.FhirProcessor.Application.Projects.Import.SimplifierPackageParser>();
     builder.Services.AddScoped<Pss.FhirProcessor.Application.Projects.Import.ArtifactClassifier>();

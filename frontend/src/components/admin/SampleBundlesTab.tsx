@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Upload, Trash2, Edit, Plus, AlertCircle, FileJson } from 'lucide-react';
+import { Upload, Trash2, Edit, Plus, AlertCircle, FileJson, Tag, Link2 } from 'lucide-react';
 import { createSampleBundle, updateSampleBundle, deleteSampleBundle } from '../../api/sampleBundlesApi';
 import type { SampleBundleDto } from '../../api/sampleBundlesApi';
 
@@ -59,9 +59,9 @@ export function SampleBundlesTab({
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Sample Bundles</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Sample Resources</h3>
           <p className="text-sm text-gray-600 mt-1">
-            Upload sample bundles for validation testing and custom rule authoring.
+            Upload sample FHIR resources (Bundle or individual resource) for validation testing and custom rule authoring.
           </p>
         </div>
         <button
@@ -69,7 +69,7 @@ export function SampleBundlesTab({
           className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Upload size={16} />
-          Upload Bundle
+          Upload Resource
         </button>
       </div>
 
@@ -78,11 +78,12 @@ export function SampleBundlesTab({
         <div className="flex items-start gap-3">
           <FileJson className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1 text-sm text-blue-900">
-            <p className="font-medium mb-1">Why Sample Bundles?</p>
-            <p>
-              Sample bundles provide concrete FHIR instances for custom rule authoring. They enable
-              JSON path picking, instance-specific validation, and rule preview.
-            </p>
+            <p className="font-medium mb-1">Sample Resources for Rule Authoring</p>
+            <ul className="list-disc list-inside space-y-1">
+              <li><strong>Bundle resources</strong> - For StructureDefinitions that profile Bundle</li>
+              <li><strong>Single resources</strong> - For SDs that profile specific resources (Patient, Observation, etc.)</li>
+              <li>Provides JSON path picking, instance-specific validation, and rule preview</li>
+            </ul>
           </div>
         </div>
       </div>
@@ -91,14 +92,14 @@ export function SampleBundlesTab({
       {bundles.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
           <FileJson size={48} className="mx-auto text-gray-300 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Sample Bundles</h3>
-          <p className="text-gray-600 mb-4">Upload a sample bundle to get started.</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Sample Resources</h3>
+          <p className="text-gray-600 mb-4">Upload a sample FHIR resource to get started.</p>
           <button
             onClick={() => setShowUploadModal(true)}
             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Plus size={16} />
-            Upload First Bundle
+            Upload First Resource
           </button>
         </div>
       ) : (
@@ -114,11 +115,44 @@ export function SampleBundlesTab({
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h4 className="font-medium text-gray-900">{bundle.name}</h4>
                     <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
                       {bundle.bundleSource}
                     </span>
+                    
+                    {/* Auto-tagging badge */}
+                    {bundle.taggingMode === 'Auto' && bundle.autoTaggedSdCanonicalUrl && (
+                      <span 
+                        className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded"
+                        title={`Automatically linked via bundle.meta.profile: ${bundle.autoTaggedSdCanonicalUrl}`}
+                      >
+                        <Link2 size={12} />
+                        Auto-matched
+                      </span>
+                    )}
+                    
+                    {/* Manual tagging badge */}
+                    {bundle.taggingMode === 'Manual' && bundle.manuallyTaggedSdCanonicalUrl && (
+                      <span 
+                        className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded"
+                        title={`Manually associated. Bundle does not declare this profile: ${bundle.manuallyTaggedSdCanonicalUrl}`}
+                      >
+                        <Tag size={12} />
+                        Manually associated
+                      </span>
+                    )}
+                    
+                    {/* No tagging badge */}
+                    {bundle.taggingMode === 'None' && (
+                      <span 
+                        className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded"
+                        title="Not associated with any StructureDefinition"
+                      >
+                        <AlertCircle size={12} />
+                        Unassigned
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm text-gray-600 mt-1">
                     Created: {new Date(bundle.createdAt).toLocaleDateString()}
@@ -251,33 +285,36 @@ function BundleUploadModal({
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">
-            {isEdit ? 'Edit Bundle' : 'Upload Sample Bundle'}
+            {isEdit ? 'Edit Sample Resource' : 'Upload Sample Resource'}
           </h2>
+          <p className="text-sm text-gray-600 mt-1">
+            Upload a FHIR Bundle or a single resource (Patient, Observation, etc.)
+          </p>
         </div>
 
         <div className="p-6 overflow-y-auto flex-1">
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Bundle Name
+                Resource Name
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g., Happy Path Example"
+                placeholder="e.g., Happy Path Example, Patient with Full Demographics"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Bundle JSON
+                FHIR Resource JSON
               </label>
               <textarea
                 value={bundleJson}
                 onChange={(e) => handleJsonChange(e.target.value)}
-                placeholder='{"resourceType": "Bundle", ...}'
+                placeholder='{"resourceType": "Bundle", ...} or {"resourceType": "Patient", ...}'
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[400px]"
               />
               {jsonError && (
@@ -300,7 +337,7 @@ function BundleUploadModal({
             disabled={isSubmitting || !name.trim() || !bundleJson.trim() || !!jsonError}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Saving...' : isEdit ? 'Update Bundle' : 'Upload Bundle'}
+            {isSubmitting ? 'Saving...' : isEdit ? 'Update Resource' : 'Upload Resource'}
           </button>
         </div>
       </div>

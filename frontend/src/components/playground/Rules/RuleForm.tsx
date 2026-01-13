@@ -119,8 +119,47 @@ export const RuleForm: React.FC<RuleFormProps> = ({
   questionSets,
   projectId = '',
 }) => {
+  // Determine initial resource type based on bundle
+  const getInitialResourceType = (): string => {
+    // If editing, use the rule's resource type
+    if (initialRule?.resourceType) {
+      return initialRule.resourceType;
+    }
+    
+    // If no bundle, return empty (user must select)
+    if (!projectBundle) {
+      return '';
+    }
+    
+    // Case 1: Single resource (not a Bundle) - auto-select it
+    if (projectBundle.resourceType && projectBundle.resourceType !== 'Bundle') {
+      return projectBundle.resourceType;
+    }
+    
+    // Case 2: Bundle with entries - check if only one unique resource type
+    if (projectBundle.entry && Array.isArray(projectBundle.entry)) {
+      const uniqueTypes = new Set<string>();
+      projectBundle.entry.forEach((e: any) => {
+        if (e.resource?.resourceType) {
+          uniqueTypes.add(e.resource.resourceType);
+        }
+      });
+      
+      // Auto-select if only one resource type in bundle
+      if (uniqueTypes.size === 1) {
+        return Array.from(uniqueTypes)[0];
+      }
+      
+      // Multiple resource types - don't auto-select, user must choose
+      return '';
+    }
+    
+    // Fallback
+    return '';
+  };
+
   // === SHARED STATE (ALL RULES) ===
-  const [resourceType, setResourceType] = useState<string>(initialRule?.resourceType || 'Patient');
+  const [resourceType, setResourceType] = useState<string>(getInitialResourceType());
   const [instanceScope, setInstanceScope] = useState<InstanceScope>(
     initialRule?.instanceScope || { kind: 'all' }
   );
@@ -626,12 +665,20 @@ export const RuleForm: React.FC<RuleFormProps> = ({
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 overscroll-contain">
         {/* 1️⃣ SHARED: Resource Selector (hidden for bundle-level rules) */}
         {ruleType !== 'Resource' && (
-          <ResourceSelector
-            value={resourceType}
-            onChange={setResourceType}
-            disabled={mode === 'edit'} // Lock resource type in edit mode
-            projectBundle={projectBundle} // Pass bundle for availability check
-          />
+          <div>
+            <ResourceSelector
+              value={resourceType}
+              onChange={(type) => {
+                setResourceType(type);
+                setErrors({ ...errors, resourceType: undefined });
+              }}
+              disabled={mode === 'edit'} // Lock resource type in edit mode
+              projectBundle={projectBundle} // Pass bundle for availability check
+            />
+            {errors.resourceType && (
+              <p className="mt-2 text-sm text-red-600">{errors.resourceType}</p>
+            )}
+          </div>
         )}
 
         {/* 2️⃣ SHARED: Rule Scope Selector (hidden for bundle-level rules) */}

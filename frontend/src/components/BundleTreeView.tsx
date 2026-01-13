@@ -94,6 +94,27 @@ const BundleTreeView: React.FC<BundleTreeViewProps> = ({ bundleJson, onSelectPat
   const treeData = useMemo(() => {
     try {
       const bundle = JSON.parse(bundleJson);
+      
+      // Case 1: Single resource (not a Bundle)
+      if (bundle.resourceType && bundle.resourceType !== 'Bundle') {
+        // Filter by resource type if specified
+        if (resourceTypeFilter && bundle.resourceType !== resourceTypeFilter) {
+          return [];
+        }
+        
+        return [{
+          key: 'resource-0',
+          label: bundle.resourceType,
+          path: bundle.resourceType,
+          value: bundle,
+          resourceType: bundle.resourceType,
+          entryIndex: 0,
+          type: 'object' as const,
+          children: buildTreeFromObject(bundle, bundle.resourceType),
+        }];
+      }
+      
+      // Case 2: Bundle with entries
       if (!bundle.entry || !Array.isArray(bundle.entry)) {
         return [];
       }
@@ -332,14 +353,14 @@ const BundleTreeView: React.FC<BundleTreeViewProps> = ({ bundleJson, onSelectPat
       <div className="p-4 text-center text-gray-500 bg-gray-50 rounded-md">
         <p className="text-sm">
           {resourceTypeFilter 
-            ? `No ${resourceTypeFilter} resources found in bundle.`
-            : 'No resources found in bundle.'
+            ? `No ${resourceTypeFilter} resources found.`
+            : 'No resources found.'
           }
         </p>
         <p className="text-xs mt-1">
           {resourceTypeFilter
-            ? `The bundle does not contain any ${resourceTypeFilter} resources.`
-            : 'Please provide a valid FHIR R4 bundle with entries.'
+            ? `No ${resourceTypeFilter} resources available.`
+            : 'Please provide a valid FHIR R4 resource or bundle.'
           }
         </p>
       </div>
@@ -350,7 +371,7 @@ const BundleTreeView: React.FC<BundleTreeViewProps> = ({ bundleJson, onSelectPat
     <div className="border border-gray-200 rounded-md bg-white">
       <div className="p-3 bg-gray-50 border-b border-gray-200">
         <h4 className="text-sm font-semibold text-gray-700">
-          {resourceTypeFilter ? `${resourceTypeFilter} Resources` : 'Bundle Resources'}
+          {resourceTypeFilter ? `${resourceTypeFilter} Resources` : 'FHIR Resources'}
         </h4>
         <p className="text-xs text-gray-500 mt-1">
           Click on any element to select its FHIRPath

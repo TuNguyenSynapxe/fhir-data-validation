@@ -150,6 +150,9 @@ namespace Pss.FhirProcessor.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("AutoTaggedSdCanonicalUrl")
+                        .HasColumnType("text");
+
                     b.Property<string>("BundleJson")
                         .IsRequired()
                         .HasColumnType("jsonb")
@@ -158,6 +161,9 @@ namespace Pss.FhirProcessor.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<string>("ManuallyTaggedSdCanonicalUrl")
+                        .HasColumnType("text");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -176,6 +182,9 @@ namespace Pss.FhirProcessor.Persistence.Migrations
 
                     b.Property<string>("StructureDefinitionCanonicalUrl")
                         .HasColumnType("text");
+
+                    b.Property<int>("TaggingMode")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 

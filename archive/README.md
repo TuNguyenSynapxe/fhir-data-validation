@@ -1,18 +1,55 @@
-# Archive - Implementation Documentation & Test Scripts
+# Archive - Implementation Documentation & Reports
 
-This directory contains archived implementation documentation and test scripts that have been consolidated for reference.
+This directory contains archived implementation documentation, audit reports, phase completions, and test scripts.
 
 ## Structure
 
 ```
 archive/
-├── implementation-docs/
-│   ├── backend/          # Backend feature implementations
-│   ├── frontend/         # Frontend UI implementations
-│   ├── frontend-features/# Feature-specific implementations
-│   └── docs/             # Documentation implementations
-└── test-scripts/         # Test scripts and sample data
+├── audit-reports/            # System audits and health checks
+├── phase-completions/        # Phase completion summaries (PHASE_1 - PHASE_11)
+├── implementation-summaries/ # Implementation and testing summaries
+├── implementation-docs/      # Legacy feature implementation docs
+│   ├── backend/              # Backend implementations
+│   ├── frontend/             # Frontend UI implementations
+│   ├── frontend-features/    # Feature-specific implementations
+│   └── docs/                 # Documentation implementations
+└── test-scripts/             # Test scripts and sample data
 ```
+
+## Current Project Root
+
+Only essential documentation remains at the project root:
+- `README.md` - Project overview and setup instructions
+- `PROJECT_STRUCTURE.md` - Current project organization
+- `CHANGELOG.md` - Version history and changes
+
+## Archived Categories
+
+### Audit Reports
+System health checks and audits from various development phases:
+- AUTO_RULE_GENERATION_AUDIT_REPORT.md
+- FIRELY_VALIDATION_AUDIT_REPORT.md
+- REPOSITORY_STRUCTURE_AUDIT_REPORT.md
+- RULE_SYSTEM_AUDIT_REPORT.md
+- SD_CENTRIC_UI_AUDIT_REPORT.md
+- VALIDATION_ENGINE_AUDIT_REPORT.md
+- VALIDATION_ENGINE_BOUNDARY_AUDIT.md
+- And phase-specific audits
+
+### Phase Completions
+Milestone completion reports (PHASE_1 through PHASE_11):
+- Phase completion summaries
+- Phase status reports
+- Quick reference guides
+- Deployment documentation
+
+### Implementation Summaries
+Detailed implementation and testing summaries:
+- Database migration assessments
+- Refactoring plans and summaries
+- Testing summaries
+- Infrastructure setup documentation
 
 ## Implementation Docs
 
@@ -75,12 +112,11 @@ archive/
 
 For current implementation status and active documentation, see:
 - `/README.md` - Main project README
+- `/PROJECT_STRUCTURE.md` - Project structure overview
+- `/CHANGELOG.md` - Version history
 - `/docs/` - Core specification documents (01-11)
 - `/backend/README.md` - Backend documentation
-- `/backend/QUICK_START.md` - Backend quick start guide
-- `/CONTEXT_BADGE_IMPLEMENTATION.md` - Latest feature implementation (TreeView context badges)
-- `/PROJECT_STRUCTURE.md` - Project structure overview
 
 ## Note
 
-These archived documents represent completed implementations and historical refactoring work. They are kept for reference but should not be considered the source of truth for current system behavior. Always refer to the codebase and active documentation for current implementation details.
+These archived documents represent completed implementations and historical work. They are kept for reference but should not be considered the source of truth for current system behavior. Always refer to the codebase and active documentation in `/docs/` for current implementation details.

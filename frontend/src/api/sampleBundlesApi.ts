@@ -4,6 +4,9 @@ export interface SampleBundleDto {
   id: string;
   name: string;
   structureDefinitionCanonicalUrl?: string;
+  autoTaggedSdCanonicalUrl?: string;
+  manuallyTaggedSdCanonicalUrl?: string;
+  taggingMode: string;
   bundleSource: string;
   createdAt: string;
 }
@@ -12,6 +15,9 @@ export interface SampleBundleDetailDto {
   id: string;
   name: string;
   structureDefinitionCanonicalUrl?: string;
+  autoTaggedSdCanonicalUrl?: string;
+  manuallyTaggedSdCanonicalUrl?: string;
+  taggingMode: string;
   bundleSource: string;
   bundleJson: string;
   createdAt: string;

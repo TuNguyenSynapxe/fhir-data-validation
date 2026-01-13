@@ -60,12 +60,49 @@ export const ResourceSelector: React.FC<ResourceSelectorProps> = ({
   const [showGrid, setShowGrid] = useState(() => !value); 
   const SelectedIcon = RESOURCE_ICONS[value as keyof typeof RESOURCE_ICONS];
 
-  // Count resources of selected type in bundle
+  // Extract available resource types from bundle/resource
+  const availableResourceTypes = useMemo(() => {
+    if (!projectBundle) return supportedTypes;
+    
+    // Case 1: Single resource (not a Bundle)
+    if (projectBundle.resourceType && projectBundle.resourceType !== 'Bundle') {
+      const resourceType = projectBundle.resourceType;
+      return supportedTypes.filter(type => type === resourceType);
+    }
+    
+    // Case 2: Bundle with entries - extract unique resource types
+    if (projectBundle.entry && Array.isArray(projectBundle.entry)) {
+      const uniqueTypes = new Set<string>();
+      projectBundle.entry.forEach((e: any) => {
+        if (e.resource?.resourceType) {
+          uniqueTypes.add(e.resource.resourceType);
+        }
+      });
+      // Filter to only supported types that exist in the bundle
+      return supportedTypes.filter(type => uniqueTypes.has(type));
+    }
+    
+    // Fallback: no bundle data, show all supported types
+    return supportedTypes;
+  }, [projectBundle, supportedTypes]);
+
+  // Count resources of selected type in bundle/resource
   const resourceCount = useMemo(() => {
-    if (!value || !projectBundle?.entry) return 0;
-    return projectBundle.entry.filter((e: any) => 
-      e.resource?.resourceType === value
-    ).length;
+    if (!value || !projectBundle) return 0;
+    
+    // Case 1: Single resource (not a Bundle)
+    if (projectBundle.resourceType && projectBundle.resourceType !== 'Bundle') {
+      return projectBundle.resourceType === value ? 1 : 0;
+    }
+    
+    // Case 2: Bundle with entries
+    if (projectBundle.entry && Array.isArray(projectBundle.entry)) {
+      return projectBundle.entry.filter((e: any) => 
+        e.resource?.resourceType === value
+      ).length;
+    }
+    
+    return 0;
   }, [value, projectBundle]);
 
   // Determine bundle status message
@@ -73,6 +110,18 @@ export const ResourceSelector: React.FC<ResourceSelectorProps> = ({
     if (!value) return null;
     
     if (resourceCount > 0) {
+      // Special message for single resources
+      if (projectBundle?.resourceType && projectBundle.resourceType !== 'Bundle') {
+        return {
+          type: 'found' as const,
+          message: `Sample resource is ${value}`,
+          icon: CheckCircle,
+          color: 'text-green-600',
+          bgColor: 'bg-green-50',
+          borderColor: 'border-green-200',
+        };
+      }
+      
       return {
         type: 'found' as const,
         message: `${resourceCount} ${value} ${resourceCount === 1 ? 'instance' : 'instances'} in current bundle`,
@@ -80,6 +129,18 @@ export const ResourceSelector: React.FC<ResourceSelectorProps> = ({
         color: 'text-green-600',
         bgColor: 'bg-green-50',
         borderColor: 'border-green-200',
+      };
+    }
+    
+    // Special message for single resources of wrong type
+    if (projectBundle?.resourceType && projectBundle.resourceType !== 'Bundle') {
+      return {
+        type: 'not-found' as const,
+        message: `Sample resource is ${projectBundle.resourceType}, not ${value}. This rule will not run.`,
+        icon: AlertTriangle,
+        color: 'text-amber-600',
+        bgColor: 'bg-amber-50',
+        borderColor: 'border-amber-200',
       };
     }
     
@@ -91,7 +152,7 @@ export const ResourceSelector: React.FC<ResourceSelectorProps> = ({
       bgColor: 'bg-amber-50',
       borderColor: 'border-amber-200',
     };
-  }, [value, resourceCount]);
+  }, [value, resourceCount, projectBundle]);
 
   // EDIT MODE: Show locked summary (no interaction)
   if (disabled) {
@@ -160,37 +221,49 @@ export const ResourceSelector: React.FC<ResourceSelectorProps> = ({
       <label className="block text-sm font-medium text-gray-700 mb-3">
         Apply to Resource
       </label>
-      <div className="grid grid-cols-3 gap-3">
-        {supportedTypes.map((type) => {
-          const Icon = RESOURCE_ICONS[type as keyof typeof RESOURCE_ICONS];
-          const isSelected = value === type;
+      {availableResourceTypes.length === 0 ? (
+        <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+          <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
+          <p className="text-sm font-medium text-gray-700 mb-1">
+            No resources found in sample
+          </p>
+          <p className="text-xs text-gray-500">
+            Upload a sample resource first to enable rule creation.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-3">
+          {availableResourceTypes.map((type) => {
+            const Icon = RESOURCE_ICONS[type as keyof typeof RESOURCE_ICONS];
+            const isSelected = value === type;
 
-          return (
-            <button
-              key={type}
-              type="button"
-              onClick={() => {
-                onChange(type);
-                setShowGrid(false); // Collapse to summary after selection
-              }}
-              className={`
-                flex flex-col items-center justify-center gap-2 p-4 border-2 rounded-lg
-                transition-all duration-200
-                ${isSelected
-                  ? 'border-blue-500 bg-blue-50 shadow-sm'
-                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                }
-                cursor-pointer
-              `}
-            >
-              {Icon && <Icon size={24} className={isSelected ? 'text-blue-600' : 'text-gray-600'} />}
-              <span className={`text-xs font-medium ${isSelected ? 'text-blue-700' : 'text-gray-700'}`}>
-                {type}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+            return (
+              <button
+                key={type}
+                type="button"
+                onClick={() => {
+                  onChange(type);
+                  setShowGrid(false); // Collapse to summary after selection
+                }}
+                className={`
+                  flex flex-col items-center justify-center gap-2 p-4 border-2 rounded-lg
+                  transition-all duration-200
+                  ${isSelected
+                    ? 'border-blue-500 bg-blue-50 shadow-sm'
+                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                  }
+                  cursor-pointer
+                `}
+              >
+                {Icon && <Icon size={24} className={isSelected ? 'text-blue-600' : 'text-gray-600'} />}
+                <span className={`text-xs font-medium ${isSelected ? 'text-blue-700' : 'text-gray-700'}`}>
+                  {type}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

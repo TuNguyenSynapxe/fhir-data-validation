@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Pss.FhirProcessor.Application.Projects.Import.Errors;
+using Pss.FhirProcessor.Application.Services;
 using Pss.FhirProcessor.Persistence.Data;
 using Pss.FhirProcessor.Persistence.Models;
 
@@ -17,6 +18,7 @@ public sealed class ProjectImportService
     private readonly ArtifactClassifier _classifier;
     private readonly StructureDefinitionClassifier _sdClassifier; // Phase 10.0
     private readonly StructureDefinitionRuleGenerator _ruleGenerator;
+    private readonly IBundleAutoTaggingService _autoTaggingService; // Phase 3.2
     private readonly ILogger<ProjectImportService> _logger;
 
     public ProjectImportService(
@@ -25,6 +27,7 @@ public sealed class ProjectImportService
         ArtifactClassifier classifier,
         StructureDefinitionClassifier sdClassifier, // Phase 10.0
         StructureDefinitionRuleGenerator ruleGenerator,
+        IBundleAutoTaggingService autoTaggingService, // Phase 3.2
         ILogger<ProjectImportService> logger)
     {
         _dbContext = dbContext;
@@ -32,6 +35,7 @@ public sealed class ProjectImportService
         _classifier = classifier;
         _sdClassifier = sdClassifier; // Phase 10.0
         _ruleGenerator = ruleGenerator;
+        _autoTaggingService = autoTaggingService; // Phase 3.2
         _logger = logger;
     }
 
@@ -251,20 +255,46 @@ public sealed class ProjectImportService
                 _dbContext.ProjectArtifacts.Add(projectArtifact);
             }
 
-            // Create ProjectBundles
+            // Phase 3.2: Get known SD canonical URLs for auto-tagging
+            var knownSdUrls = artifacts
+                .Where(a => a.ArtifactType == ArtifactType.StructureDefinition && a.CanonicalUrl != null)
+                .Select(a => a.CanonicalUrl!)
+                .ToList();
+
+            _logger.LogInformation(
+                "Phase 3.2: Found {SdCount} StructureDefinitions for auto-tagging: {SdUrls}",
+                knownSdUrls.Count,
+                string.Join(", ", knownSdUrls.Take(3)) + (knownSdUrls.Count > 3 ? "..." : ""));
+
+            // Create ProjectBundles with auto-tagging
             foreach (var bundle in bundles)
             {
+                // Phase 3.2: Auto-tag bundle based on meta.profile
+                var (autoTaggedUrl, taggingMode) = await _autoTaggingService.AutoTagBundleAsync(
+                    bundle.BundleJson,
+                    knownSdUrls,
+                    cancellationToken);
+
                 var projectBundle = new ProjectBundle
                 {
                     Id = Guid.NewGuid(),
                     ProjectId = project.Id,
                     Name = bundle.Name,
                     Source = BundleSource.ImportedExample,
+                    AutoTaggedSdCanonicalUrl = autoTaggedUrl,
+                    ManuallyTaggedSdCanonicalUrl = null,
+                    TaggingMode = taggingMode,
                     BundleJson = bundle.BundleJson,
                     CreatedAt = now
                 };
 
                 _dbContext.ProjectBundles.Add(projectBundle);
+                
+                _logger.LogInformation(
+                    "Phase 3.2: Bundle '{BundleName}' auto-tagged: {AutoTagged} (mode: {TaggingMode})",
+                    bundle.Name,
+                    autoTaggedUrl ?? "(none)",
+                    taggingMode);
             }
 
             // Create ProjectRules

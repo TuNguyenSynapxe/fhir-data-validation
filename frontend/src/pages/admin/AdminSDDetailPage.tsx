@@ -56,6 +56,16 @@ export default function AdminSDDetailPage() {
     structureDefinition?.canonicalUrl
   );
 
+  // Fetch full bundle details for the default authoring bundle
+  const { data: defaultBundleDetails } = useQuery({
+    queryKey: ['sample-bundle-detail', projectId, defaultAuthoringBundleId],
+    queryFn: async () => {
+      const { getSampleBundle } = await import('../../api/sampleBundlesApi');
+      return getSampleBundle(projectId!, defaultAuthoringBundleId!);
+    },
+    enabled: !!projectId && !!defaultAuthoringBundleId,
+  });
+
   // Get bundles that resolve to this SD
   const bundleIds = allBundles?.map(b => b.bundleId) || [];
   const { data: bundleProfiles, isLoading: loadingProfiles } = useBundleProfiles(projectId!, bundleIds);
@@ -281,7 +291,7 @@ export default function AdminSDDetailPage() {
 
           <div className="p-6">
             {/* Sample Bundles Tab - Phase 3: Full CRUD */}
-            {activeTab === 'bundles' && structureDefinition && (
+            {activeTab === 'bundles' && structureDefinition && structureDefinition.canonicalUrl && (
               <SampleBundlesTab
                 projectId={projectId!}
                 sdCanonicalUrl={structureDefinition.canonicalUrl}
@@ -458,6 +468,11 @@ export default function AdminSDDetailPage() {
                         // Optional: Trigger validation refresh
                         console.log('Rule modified - validation may need rerun');
                       }}
+                      projectBundle={
+                        defaultBundleDetails?.bundleJson ? JSON.parse(defaultBundleDetails.bundleJson) : undefined
+                      }
+                      structureDefinitionCanonicalUrl={structureDefinition.url}
+                      structureDefinitionResourceType={structureDefinition.resourceType}
                     />
                   </div>
                 )}

@@ -32,6 +32,26 @@ public sealed class ProjectBundle
     public string? StructureDefinitionCanonicalUrl { get; set; }
 
     /// <summary>
+    /// Auto-tagged SD canonical URL (derived from bundle meta.profile).
+    /// Populated automatically when bundle explicitly declares conformance.
+    /// </summary>
+    public string? AutoTaggedSdCanonicalUrl { get; set; }
+
+    /// <summary>
+    /// Manually-tagged SD canonical URL (user-defined association).
+    /// Does NOT modify bundle JSON. For explanation only.
+    /// </summary>
+    public string? ManuallyTaggedSdCanonicalUrl { get; set; }
+
+    /// <summary>
+    /// Tagging mode indicating how bundle is associated to SD.
+    /// Auto = derived from meta.profile
+    /// Manual = user-defined
+    /// None = no association
+    /// </summary>
+    public BundleTaggingMode TaggingMode { get; set; } = BundleTaggingMode.None;
+
+    /// <summary>
     /// Full FHIR Bundle JSON stored as JSONB.
     /// </summary>
     public string BundleJson { get; set; } = string.Empty;
