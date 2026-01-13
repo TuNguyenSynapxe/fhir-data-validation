@@ -21,7 +21,7 @@ public class SdBuilderEngineTests
     }
 
     [Fact]
-    public async Task StartAsync_MinimalMode_ReturnsSession()
+    public async TaskAlias StartAsync_MinimalMode_ReturnsSession()
     {
         // Arrange
         var (sdRepo, terminology) = CreateMockRepositories();
@@ -48,7 +48,7 @@ public class SdBuilderEngineTests
     }
 
     [Fact]
-    public async Task StartAsync_FullMode_ReturnsSessionWithAllElements()
+    public async TaskAlias StartAsync_FullMode_ReturnsSessionWithAllElements()
     {
         // Arrange
         var (sdRepo, terminology) = CreateMockRepositories();
@@ -74,7 +74,7 @@ public class SdBuilderEngineTests
     }
 
     [Fact]
-    public async Task StartAsync_MissingBaseSD_ThrowsInvalidOperationException()
+    public async TaskAlias StartAsync_MissingBaseSD_ThrowsInvalidOperationException()
     {
         // Arrange
         var (sdRepo, terminology) = CreateMockRepositories();
@@ -91,7 +91,7 @@ public class SdBuilderEngineTests
     }
 
     [Fact]
-    public async Task StartAsync_MissingSnapshot_ThrowsInvalidOperationException()
+    public async TaskAlias StartAsync_MissingSnapshot_ThrowsInvalidOperationException()
     {
         // Arrange
         var sdWithoutSnapshot = new StructureDefinition
@@ -116,7 +116,7 @@ public class SdBuilderEngineTests
     }
 
     [Fact]
-    public async Task StartAsync_WithTemplateId_PlaceholderForFutureSupport()
+    public async TaskAlias StartAsync_WithTemplateId_PlaceholderForFutureSupport()
     {
         // Arrange
         var (sdRepo, terminology) = CreateMockRepositories();
@@ -135,7 +135,7 @@ public class SdBuilderEngineTests
     }
 
     [Fact]
-    public async Task ValidateAsync_CallsValidator_ReturnsSameResult()
+    public async TaskAlias ValidateAsync_CallsValidator_ReturnsSameResult()
     {
         // Arrange
         var design = new ResourceDesignState
@@ -173,7 +173,7 @@ public class SdBuilderEngineTests
     }
 
     [Fact]
-    public async Task ExportAsync_WithValidationErrors_ThrowsInvalidOperationException()
+    public async TaskAlias ExportAsync_WithValidationErrors_ThrowsInvalidOperationException()
     {
         // Arrange
         var design = new ResourceDesignState
@@ -217,7 +217,7 @@ public class SdBuilderEngineTests
     }
 
     [Fact]
-    public async Task ExportAsync_WithWarningsOnly_Succeeds()
+    public async TaskAlias ExportAsync_WithWarningsOnly_Succeeds()
     {
         // Arrange
         var design = new ResourceDesignState
@@ -268,7 +268,7 @@ public class SdBuilderEngineTests
     }
 
     [Fact]
-    public async Task ExportAsync_LoadsBaseSdFreshly_NoCaching()
+    public async TaskAlias ExportAsync_LoadsBaseSdFreshly_NoCaching()
     {
         // Arrange
         var design = new ResourceDesignState
@@ -305,7 +305,7 @@ public class SdBuilderEngineTests
     }
 
     [Fact]
-    public async Task ExportAsync_ValidDesign_ReturnsStructureDefinition()
+    public async TaskAlias ExportAsync_ValidDesign_ReturnsStructureDefinition()
     {
         // Arrange
         var design = new ResourceDesignState
