@@ -5,4 +5,13 @@ namespace Pss.FhirProcessor.SdBuilder.Domain;
 /// </summary>
 public sealed class ExtensionConfig
 {
+    /// <summary>
+    /// Canonical URL of the extension StructureDefinition.
+    /// </summary>
+    public string Url { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional cardinality override for this extension.
+    /// </summary>
+    public Cardinality? Cardinality { get; set; }
 }
