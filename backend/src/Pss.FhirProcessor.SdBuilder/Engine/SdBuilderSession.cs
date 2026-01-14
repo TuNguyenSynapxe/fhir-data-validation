@@ -58,6 +58,16 @@ public sealed class SdBuilderSession
     }
 
     /// <summary>
+    /// Clears binding override for an element (reverts to base binding if any).
+    /// </summary>
+    /// <param name="path">Element path.</param>
+    public void ClearBindingOverride(string path)
+    {
+        var element = FindElement(path);
+        element.Binding = null;
+    }
+
+    /// <summary>
     /// Adds an extension to an element.
     /// </summary>
     /// <param name="path">Element path.</param>

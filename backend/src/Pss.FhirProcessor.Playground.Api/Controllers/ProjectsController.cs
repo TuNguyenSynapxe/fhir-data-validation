@@ -467,8 +467,8 @@ public class ProjectsController : ControllerBase
             {
                 // Parse the JSON string as a FHIR Bundle
                 // Note: project.SampleBundleJson is already unescaped by the JSON deserializer
-                var parser = new Hl7.Fhir.Serialization.FhirJsonParser();
-                bundle = parser.Parse<Hl7.Fhir.Model.Bundle>(project.SampleBundleJson);
+                // Use factory to avoid R4/R5 ambiguity (MVP is R5)
+                bundle = FhirParserFactory.ParseBundle(project.SampleBundleJson);
             }
             catch (Exception ex)
             {

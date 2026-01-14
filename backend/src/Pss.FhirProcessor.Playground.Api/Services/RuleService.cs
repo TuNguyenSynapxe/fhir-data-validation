@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Hl7.Fhir.Model;
-using Hl7.Fhir.Serialization;
 using Pss.FhirProcessor.Engine.Models;
 using Pss.FhirProcessor.Playground.Api.Models;
 
@@ -13,7 +12,6 @@ public class RuleService : IRuleService
 {
     private readonly IProjectService _projectService;
     private readonly ILogger<RuleService> _logger;
-    private readonly FhirJsonParser _fhirParser;
 
     public RuleService(
         IProjectService projectService,
@@ -21,7 +19,6 @@ public class RuleService : IRuleService
     {
         _projectService = projectService;
         _logger = logger;
-        _fhirParser = new FhirJsonParser();
     }
 
     /// <summary>
@@ -39,7 +36,8 @@ public class RuleService : IRuleService
 
         try
         {
-            var bundle = _fhirParser.Parse<Bundle>(project.SampleBundleJson);
+            // Use factory to avoid R4/R5 ambiguity (MVP is R5)
+            var bundle = FhirParserFactory.ParseBundle(project.SampleBundleJson);
             return ExtractObservedTerminology(bundle);
         }
         catch (Exception ex)

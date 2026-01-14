@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'react-hot-toast';
 import AppRouter from './routes/AppRouter';
 
 // Server state managed by TanStack Query by design
@@ -18,6 +19,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen bg-gray-50">
         <AppRouter />
+        <Toaster />
       </div>
     </QueryClientProvider>
   );

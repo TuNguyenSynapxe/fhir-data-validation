@@ -14,6 +14,9 @@ import { ProjectDetailPage } from '../pages/public/ProjectDetailPage';
 import { ProjectValidatePage } from '../pages/public/ProjectValidatePage';
 import { PublicValidationPlaygroundPage } from '../pages/public/PublicValidationPlaygroundPage';
 
+// SD Builder
+import { SdBuilderPage } from '../pages/SdBuilderPage';
+
 export default function AppRouter() {
   return (
     <BrowserRouter>
@@ -27,6 +30,9 @@ export default function AppRouter() {
         
         {/* Phase 9.5: Public Validation Playground (via public link) */}
         <Route path="/p/:publicId" element={<PublicValidationPlaygroundPage />} />
+
+        {/* SD Builder */}
+        <Route path="/sd-builder" element={<SdBuilderPage />} />
 
         {/* Admin Routes */}
         <Route path="/admin/projects/import" element={<ProjectImportPage />} />

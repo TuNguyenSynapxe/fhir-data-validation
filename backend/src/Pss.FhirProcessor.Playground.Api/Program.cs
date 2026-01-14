@@ -55,7 +55,12 @@ try
         .Enrich.WithThreadId());
 
     // Add services to the container
-    builder.Services.AddControllers();
+    builder.Services.AddControllers()
+        .AddJsonOptions(options =>
+        {
+            options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+            options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+        });
     builder.Services.AddEndpointsApiExplorer();
 
     // Phase 11: Register validation configuration options
@@ -127,6 +132,28 @@ try
     });
     
     Log.Information("Persistence layer configured with PostgreSQL (admin + public + bundle profiles)");
+
+    // Register SD Builder StructureDefinition Repository (FHIR Spec Loader)
+    builder.Services.AddSingleton<Pss.FhirProcessor.SdBuilder.Abstractions.IStructureDefinitionRepository,
+        Pss.FhirProcessor.SdBuilder.Infrastructure.FhirSpecStructureDefinitionRepository>();
+    
+    // Register SD Builder Terminology Registry (FHIR Spec ValueSets)
+    builder.Services.AddSingleton<Pss.FhirProcessor.SdBuilder.Abstractions.ITerminologyRegistry,
+        Pss.FhirProcessor.SdBuilder.Infrastructure.FhirSpecTerminologyRegistry>();
+
+    // Register SD Builder Adapter Layer (R5 MVP)
+    builder.Services.AddScoped<Pss.FhirProcessor.SdBuilder.Adapters.ISdFhirAdapter>(sp =>
+    {
+        var repo = sp.GetRequiredService<Pss.FhirProcessor.SdBuilder.Abstractions.IStructureDefinitionRepository>();
+        return new Pss.FhirProcessor.SdBuilder.Adapters.R5.SdFhirR5Adapter(repo);
+    });
+    
+    // Register SD Builder Session Store (In-Memory)
+    builder.Services.AddSingleton<Pss.FhirProcessor.SdBuilder.Session.ISdBuilderSessionStore, 
+        Pss.FhirProcessor.SdBuilder.Session.InMemorySdBuilderSessionStore>();
+    
+    Log.Information("SD Builder adapter layer configured (FHIR R5)");
+
 
     // Register Playground API services (authoring services now use PostgreSQL)
     builder.Services.AddScoped<IProjectService, ProjectService>();
