@@ -39,4 +39,15 @@ public sealed class ElementDesignState
     /// Collection of extensions applied to this element.
     /// </summary>
     public List<ExtensionConfig> Extensions { get; set; } = new();
+
+    /// <summary>
+    /// Optional slicing configuration (null if element is not sliced).
+    /// </summary>
+    public SlicingConfig? Slicing { get; set; }
+
+    /// <summary>
+    /// Named slices defined on this element.
+    /// Key is the slice name, value is the slice design state.
+    /// </summary>
+    public Dictionary<string, SliceDesignState> Slices { get; set; } = new(StringComparer.Ordinal);
 }

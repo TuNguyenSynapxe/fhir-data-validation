@@ -2,6 +2,9 @@ namespace Pss.FhirProcessor.SdBuilder.Engine;
 
 using Pss.FhirProcessor.SdBuilder.Abstractions;
 using Pss.FhirProcessor.SdBuilder.Domain;
+using Hl7.Fhir.Model;
+using Task = System.Threading.Tasks.Task;
+using DomainBindingStrength = Pss.FhirProcessor.SdBuilder.Domain.BindingStrength;
 
 /// <summary>
 /// Pre-export validation for StructureDefinition design state.
@@ -29,6 +32,13 @@ public static class SdDesignValidator
 
         var result = new SdValidationResult();
 
+        // Phase 2.2: Load base SD once for slice child constraint validation
+        StructureDefinition? baseSd = null;
+        if (!string.IsNullOrEmpty(design.BaseCanonicalUrl))
+        {
+            baseSd = await sdRepo.FindByUrlAsync(design.BaseCanonicalUrl, ct) as StructureDefinition;
+        }
+
         foreach (var element in design.Elements)
         {
             // Rule 1: Required Element Protection
@@ -52,7 +62,13 @@ public static class SdDesignValidator
                 await ValidateExtensionResolution(element, extension, sdRepo, result, ct);
             }
 
-            // Rule 6: Warnings
+            // Rule 6: Slicing Validation
+            ValidateSlicing(element, design, result);
+
+            // Rule 7: Slice Child Constraint Validation (Phase 2.2)
+            ValidateSliceChildConstraints(element, baseSd, result);
+
+            // Rule 8: Warnings
             GenerateWarnings(element, result);
         }
 
@@ -133,15 +149,18 @@ public static class SdDesignValidator
         SdValidationResult result,
         CancellationToken ct)
     {
-        var valueSetUrl = element.Binding!.ValueSetUrl;
-        var exists = await terminology.ValueSetExistsAsync(valueSetUrl, ct);
-
-        if (!exists)
+        if (element.Binding != null)
         {
-            result.AddError(
-                "VALUESET_NOT_FOUND",
-                $"ValueSet not found: {valueSetUrl}",
-                element.Path);
+            var valueSetUrl = element.Binding.ValueSetUrl;
+            var exists = await terminology.ValueSetExistsAsync(valueSetUrl, ct);
+
+            if (!exists)
+            {
+                result.AddError(
+                    "VALUESET_NOT_FOUND",
+                    $"ValueSet not found: {valueSetUrl}",
+                    element.Path);
+            }
         }
     }
 
@@ -166,7 +185,7 @@ public static class SdDesignValidator
     private static void GenerateWarnings(ElementDesignState element, SdValidationResult result)
     {
         // Warning: Preferred binding strength
-        if (element.Binding != null && element.Binding.Strength == BindingStrength.Preferred)
+        if (element.Binding != null && element.Binding.Strength == DomainBindingStrength.Preferred)
         {
             result.AddWarning(
                 "BINDING_PREFERRED",
@@ -186,6 +205,182 @@ public static class SdDesignValidator
                     "CARDINALITY_TIGHTENED",
                     $"Cardinality tightened from {element.BaseCardinality} to {element.OverrideCardinality}",
                     element.Path);
+            }
+        }
+
+        // Warning: Closed slicing with no slices
+        if (element.Slicing != null && 
+            element.Slicing.Rules == SlicingRules.Closed && 
+            element.Slices.Count == 0)
+        {
+            result.AddWarning(
+                "SLICING_CLOSED_NO_SLICES",
+                "Closed slicing defined but no slices exist. This may be overly restrictive.",
+                element.Path);
+        }
+    }
+
+    private static void ValidateSlicing(ElementDesignState element, ResourceDesignState design, SdValidationResult result)
+    {
+        // Error: Slicing without discriminator
+        if (element.Slicing != null && element.Slicing.Discriminators.Count == 0)
+        {
+            result.AddError(
+                "SLICING_NO_DISCRIMINATOR",
+                "Slicing requires at least one discriminator",
+                element.Path);
+        }
+
+        // Error: Slices defined but no slicing configuration
+        if (element.Slices.Count > 0 && element.Slicing == null)
+        {
+            result.AddError(
+                "SLICING_SLICE_WITHOUT_SLICING",
+                "Slices are defined but slicing configuration is missing",
+                element.Path);
+        }
+
+        // Validate each slice
+        foreach (var (sliceName, slice) in element.Slices)
+        {
+            // Error: Empty slice name
+            if (string.IsNullOrWhiteSpace(sliceName))
+            {
+                result.AddError(
+                    "SLICING_EMPTY_SLICE_NAME",
+                    "Slice name cannot be empty or whitespace",
+                    element.Path);
+            }
+        }
+
+        // Error: Duplicate slice names (case-sensitive)
+        var sliceNames = element.Slices.Keys.ToList();
+        var duplicates = sliceNames.GroupBy(n => n).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
+        
+        foreach (var duplicate in duplicates)
+        {
+            result.AddError(
+                "SLICING_DUPLICATE_SLICE_NAME",
+                $"Duplicate slice name: {duplicate}",
+                element.Path);
+        }
+
+        // Error: Discriminator path references unknown element
+        if (element.Slicing != null)
+        {
+            foreach (var discriminator in element.Slicing.Discriminators)
+            {
+                // Simple check: verify discriminator path isn't completely invalid
+                // Full path resolution would require base SD traversal (forbidden)
+                // We only check for obvious errors like empty path
+                if (string.IsNullOrWhiteSpace(discriminator.Path))
+                {
+                    result.AddError(
+                        "SLICING_UNKNOWN_PATH",
+                        "Discriminator path cannot be empty or whitespace",
+                        element.Path);
+                }
+            }
+        }
+    }
+
+    // ============================================
+    // Phase 2.2: Slice Child Constraint Validation
+    // ============================================
+
+    private static void ValidateSliceChildConstraints(ElementDesignState element, StructureDefinition? baseSd, SdValidationResult result)
+    {
+        // Collect all child constraints from all slices
+        foreach (var (sliceName, slice) in element.Slices)
+        {
+            foreach (var constraint in slice.ChildConstraints)
+            {
+                // ERROR: Child constraint without slicing config
+                if (element.Slicing == null)
+                {
+                    result.AddError(
+                        "SLICE_CHILD_WITHOUT_SLICING",
+                        $"Slice child constraint exists but parent element is not sliced: {sliceName}.{constraint.ElementPath}",
+                        element.Path);
+                    continue;
+                }
+
+                // ERROR: Slice name mismatch
+                if (constraint.SliceName != sliceName)
+                {
+                    result.AddError(
+                        "SLICE_CHILD_WITHOUT_SLICE",
+                        $"Slice child constraint references non-existent slice: {constraint.SliceName}",
+                        element.Path);
+                }
+
+                // ERROR: Empty relative path
+                if (string.IsNullOrWhiteSpace(constraint.ElementPath))
+                {
+                    result.AddError(
+                        "SLICE_CHILD_PATH_NOT_FOUND",
+                        "Slice child constraint has empty relative path",
+                        element.Path);
+                }
+
+                // ERROR: Duplicate child constraints (same relative path)
+                var duplicates = slice.ChildConstraints
+                    .Where(c => c.ElementPath == constraint.ElementPath)
+                    .ToList();
+                
+                if (duplicates.Count > 1)
+                {
+                    result.AddError(
+                        "DUPLICATE_SLICE_CHILD",
+                        $"Duplicate child constraint for {sliceName}.{constraint.ElementPath}",
+                        element.Path);
+                }
+
+                // Phase 2.2: Base SD validation rules
+                if (baseSd?.Snapshot?.Element != null)
+                {
+                    var fullPath = $"{element.Path}.{constraint.ElementPath}";
+                    var baseElement = baseSd.Snapshot.Element.FirstOrDefault(e => e.Path == fullPath);
+
+                    if (baseElement != null)
+                    {
+                        // ERROR: Invalid type for binding
+                        if (constraint.Binding != null)
+                        {
+                            var allowedTypes = new[] { "code", "Coding", "CodeableConcept" };
+                            var elementType = baseElement.Type?.FirstOrDefault()?.Code;
+
+                            if (elementType == null || !allowedTypes.Contains(elementType))
+                            {
+                                result.AddError(
+                                    "SLICE_CHILD_INVALID_TYPE_FOR_BINDING",
+                                    $"Cannot apply binding to slice child element {sliceName}.{constraint.ElementPath}: element type is '{elementType ?? "unknown"}', must be code|Coding|CodeableConcept",
+                                    element.Path);
+                            }
+                        }
+
+                        // WARNING: Cardinality tightened
+                        if (constraint.CardinalityOverride != null)
+                        {
+                            var baseMin = baseElement.Min ?? 0;
+                            var baseMax = baseElement.Max ?? "*";
+                            var overrideMin = constraint.CardinalityOverride.Min;
+                            var overrideMax = constraint.CardinalityOverride.Max;
+
+                            var minTightened = overrideMin > baseMin;
+                            var maxTightened = (overrideMax != "*" && baseMax != "*" && int.Parse(overrideMax) < int.Parse(baseMax)) ||
+                                              (overrideMax != "*" && baseMax == "*");
+
+                            if (minTightened || maxTightened)
+                            {
+                                result.AddWarning(
+                                    "SLICE_CHILD_CARDINALITY_TIGHTENED",
+                                    $"Slice child element {sliceName}.{constraint.ElementPath} tightens base cardinality from {baseMin}..{baseMax} to {overrideMin}..{overrideMax}",
+                                    element.Path);
+                            }
+                        }
+                    }
+                }
             }
         }
     }
