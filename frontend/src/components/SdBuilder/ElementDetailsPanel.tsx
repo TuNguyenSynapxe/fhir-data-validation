@@ -35,6 +35,7 @@ import {
 } from '../../utils/bindingHelpers';
 import { ValueSetSelectionDrawer } from './ValueSetSelectionDrawer';
 import { BindingStrengthControl } from './BindingStrengthControl';
+import { BindingDisplay } from './BindingDisplay';
 
 export const ElementDetailsPanel: React.FC = () => {
   const design = useSdBuilderStore((state) => state.design);
@@ -208,57 +209,33 @@ export const ElementDetailsPanel: React.FC = () => {
           
           {/* Base Binding Only (No Override) */}
           {baseBinding && !hasOverride && (
-            <>
-              <div className="binding-summary">
-                <div className="binding-info">
-                  <dl className="details-list compact">
-                    <dt>ValueSet:</dt>
-                    <dd>{baseBinding.valueSetUrl}</dd>
-                  </dl>
-                  <button 
-                    className="action-btn-small" 
-                    onClick={() => setValueSetDrawerOpen(true)}
-                  >
-                    Change ValueSet
-                  </button>
-                </div>
-                {/* Inline Strength Control */}
-                <BindingStrengthControl
-                  elementPath={node.path}
-                  elementName={node.name}
-                  valueSetUrl={baseBinding.valueSetUrl}
-                  currentStrength={baseBinding.strength.toLowerCase() as BindingStrength}
-                  baseStrength={baseBinding.strength.toLowerCase() as BindingStrength}
-                />
-              </div>
-            </>
+            <BindingDisplay
+              binding={baseBinding}
+              variant="base"
+              showActions={true}
+              onChangeValueSet={() => setValueSetDrawerOpen(true)}
+            >
+              <BindingStrengthControl
+                elementPath={node.path}
+                elementName={node.name}
+                valueSetUrl={baseBinding.valueSetUrl}
+                currentStrength={baseBinding.strength.toLowerCase() as BindingStrength}
+                baseStrength={baseBinding.strength.toLowerCase() as BindingStrength}
+              />
+            </BindingDisplay>
           )}
           
           {/* Override Binding */}
           {currentBinding && hasOverride && (
             <>
-              <div className="binding-summary">
-                <div className="binding-info">
-                  <dl className="details-list compact">
-                    <dt>ValueSet:</dt>
-                    <dd className="binding-override">{currentBinding.valueSetUrl}</dd>
-                  </dl>
-                  <div className="button-group-inline">
-                    <button 
-                      className="action-btn-small" 
-                      onClick={() => setValueSetDrawerOpen(true)}
-                    >
-                      Change ValueSet
-                    </button>
-                    <button 
-                      className="action-btn-small secondary" 
-                      onClick={handleClearBinding}
-                    >
-                      Clear Override
-                    </button>
-                  </div>
-                </div>
-                {/* Inline Strength Control */}
+              {/* Current/Override Binding */}
+              <BindingDisplay
+                binding={currentBinding}
+                variant="current"
+                showActions={true}
+                onChangeValueSet={() => setValueSetDrawerOpen(true)}
+                onClearOverride={handleClearBinding}
+              >
                 <BindingStrengthControl
                   elementPath={node.path}
                   elementName={node.name}
@@ -266,10 +243,20 @@ export const ElementDetailsPanel: React.FC = () => {
                   currentStrength={currentBinding.strength.toLowerCase() as BindingStrength}
                   baseStrength={baseBinding?.strength.toLowerCase() as BindingStrength}
                 />
-              </div>
+              </BindingDisplay>
+
+              {/* Base Binding Reference (Read-Only, Muted) */}
               {baseBinding && (
-                <div className="base-binding-reference">
-                  <small>Base: {baseBinding.valueSetUrl} ({baseBinding.strength})</small>
+                <div className="base-binding-reference-section">
+                  <div className="base-binding-reference-label">
+                    <span className="icon-info">ℹ️</span>
+                    Base binding defined in StructureDefinition (overridden)
+                  </div>
+                  <BindingDisplay
+                    binding={baseBinding}
+                    variant="base"
+                    showActions={false}
+                  />
                 </div>
               )}
             </>

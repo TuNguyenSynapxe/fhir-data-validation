@@ -1,5 +1,6 @@
 using Pss.FhirProcessor.Terminology.Abstractions;
 using Pss.FhirProcessor.Terminology.Domain;
+using Pss.FhirProcessor.Terminology.Utils;
 
 namespace Pss.FhirProcessor.Terminology.Sources.Hl7;
 
@@ -31,9 +32,13 @@ public sealed class Hl7ValueSetSource : IValueSetSource
         int maxItems = 50,
         CancellationToken cancellationToken = default)
     {
+        // Normalize: Strip version suffix for lookup
+        // Registry stores by identity only
+        var identity = CanonicalParser.GetIdentity(url);
+        
         // Cap maxItems to safe default
         var cappedMaxItems = Math.Max(1, Math.Min(maxItems, 200));
-        var preview = _registry.Preview(url, cappedMaxItems);
+        var preview = _registry.Preview(identity, cappedMaxItems);
         return Task.FromResult(preview);
     }
     
@@ -41,7 +46,9 @@ public sealed class Hl7ValueSetSource : IValueSetSource
         string url,
         CancellationToken cancellationToken = default)
     {
-        var exists = _registry.Contains(url);
+        // Normalize: Strip version suffix for lookup
+        var identity = CanonicalParser.GetIdentity(url);
+        var exists = _registry.Contains(identity);
         return Task.FromResult(exists);
     }
 }

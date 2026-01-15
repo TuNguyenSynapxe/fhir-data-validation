@@ -20,6 +20,7 @@
 
 import type { TreeNode } from '../types/treeNode';
 import type { BindingConfig } from '../api/sdBuilderApi';
+import { isSameCanonical } from '../features/sd-builder/utils/canonicalUrlUtils';
 
 /**
  * FHIR types that support terminology binding
@@ -96,12 +97,28 @@ export function getCurrentBinding(node: TreeNode): BindingConfig | null {
  * Check if binding is overridden (not inherited from base)
  * 
  * AUTHORITATIVE: Checks ONLY for explicit override presence.
+ * VERSION-AWARE: Compares base URLs only, ignoring version suffixes.
+ * 
+ * Example: If base is "http://example.com/VS|5.0.0" and override is "http://example.com/VS|4.0.0",
+ * they refer to the same ValueSet, so this is NOT considered an override.
  * 
  * @param node - Tree node
- * @returns true if binding has been overridden
+ * @returns true if binding has been overridden with a DIFFERENT ValueSet
  */
 export function hasBindingOverride(node: TreeNode): boolean {
-  return getOverrideBinding(node) !== null;
+  const overrideBinding = getOverrideBinding(node);
+  const baseBinding = getBaseBinding(node);
+  
+  if (!overrideBinding) {
+    return false; // No override at all
+  }
+  
+  if (!baseBinding) {
+    return true; // Override exists but no base = definitely an override
+  }
+  
+  // Compare base URLs only (ignore version suffixes)
+  return !isSameCanonical(overrideBinding.valueSetUrl, baseBinding.valueSetUrl);
 }
 
 /**

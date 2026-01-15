@@ -1,34 +1,36 @@
 /**
  * ValueSetSelectionDrawer Component
  * 
- * Phase 4A Refactor: Wide drawer (70-80%) focused ONLY on ValueSet discovery and selection.
+ * REFACTORED UX: Selection-only drawer
  * 
  * RESPONSIBILITIES:
- * - Search ValueSets by name/publisher/keyword
- * - Show results with preview
- * - Allow selection of ONE ValueSet
- * - Show base binding as READ-ONLY reference
+ * - Search and filter ValueSets by name/publisher/keyword
+ * - Auto-preview codes on click (no separate button)
+ * - Allow selection of ONE ValueSet (emits URL via callback)
  * 
  * RULES (CRITICAL):
+ * - NO display of current/base binding (that's on element details page)
  * - NO binding strength controls (that's inline in element panel)
  * - NO direct persistence (emits selection via callback only)
  * - NO validation logic
  * - NO AI logic (placeholder section only)
+ * - Preview panel shows ONLY the clicked ValueSet (single source of truth)
  * 
- * UX GOAL: Calm, focused discovery experience
+ * UX GOAL: Calm, focused, premium selection experience
  */
 
 import React, { useState, useEffect } from 'react';
 import { useTerminologyStore } from '../../stores/useTerminologyStore';
 import type { BindingConfig } from '../../api/sdBuilderApi';
 import type { TerminologyLayer } from '../../api/terminologyApi';
+import { parseCanonicalUrl, isSameCanonical } from '../../features/sd-builder/utils/canonicalUrlUtils';
 
 interface ValueSetSelectionDrawerProps {
   elementPath: string;
   elementName: string;
   fhirType: string; // e.g. "code", "Coding", "CodeableConcept"
-  baseBinding: BindingConfig | null;
-  currentValueSetUrl: string | null;
+  baseBinding: BindingConfig | null; // Used only for smart filtering
+  currentValueSetUrl: string | null; // Used only for visual indicator
   open: boolean;
   onSelectValueSet: (url: string) => void;
   onClose: () => void;
@@ -61,15 +63,35 @@ export const ValueSetSelectionDrawer: React.FC<ValueSetSelectionDrawerProps> = (
   } = useTerminologyStore();
 
   const [selectedLayer, setSelectedLayer] = useState<TerminologyLayer | undefined>('Hl7');
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [clickedValueSetUrl, setClickedValueSetUrl] = useState<string | null>(null);
 
-  // Auto-search on open
+  // Auto-search on open with smart filtering
   useEffect(() => {
     if (open && !searchResults.length && !searchQuery) {
-      // Default search shows all ValueSets
-      search('', selectedLayer);
+      // If base binding exists, pre-filter by name tokens
+      if (baseBinding) {
+        const baseName = extractBaseNameTokens(baseBinding.valueSetUrl);
+        setSearchQuery(baseName);
+        search(baseName, selectedLayer);
+      } else {
+        // Default search shows all ValueSets
+        search('', selectedLayer);
+      }
     }
   }, [open]);
+
+  // Extract name tokens from ValueSet URL for filtering (Point 3)
+  const extractBaseNameTokens = (url: string): string => {
+    // Extract last segment after final slash
+    const segments = url.split('/');
+    const lastSegment = segments[segments.length - 1];
+    
+    // Remove common prefixes/suffixes
+    return lastSegment
+      .replace(/^valueset-/i, '')
+      .replace(/-codes$/i, '')
+      .replace(/-/g, ' ');
+  };
 
   const handleSearch = () => {
     search(searchQuery, selectedLayer);
@@ -80,13 +102,11 @@ export const ValueSetSelectionDrawer: React.FC<ValueSetSelectionDrawerProps> = (
     onClose();
   };
 
-  const handleShowPreview = (url: string) => {
-    setPreviewUrl(url);
-    loadPreviewCodes(url, 20); // Show first 20 codes
-  };
-
-  const handleClosePreview = () => {
-    setPreviewUrl(null);
+  // Auto-preview on click
+  const handleClickValueSet = (url: string) => {
+    setClickedValueSetUrl(url);
+    selectValueSet(url);
+    loadPreviewCodes(url, 20); // Load codes for THIS ValueSet only
   };
 
   const copyToClipboard = (text: string) => {
@@ -175,48 +195,51 @@ export const ValueSetSelectionDrawer: React.FC<ValueSetSelectionDrawerProps> = (
               <div className="search-results">
                 <p className="results-count">{searchResults.length} ValueSets found</p>
                 <ul className="valueset-list">
-                  {searchResults.map((vs) => (
-                    <li key={vs.url} className="valueset-item">
-                      <div className="valueset-header">
-                        <div>
-                          <h4 className="valueset-name">{vs.name}</h4>
-                          <p className="valueset-publisher">{vs.publisher}</p>
+                  {searchResults.map((vs) => {
+                    const isSelected = clickedValueSetUrl === vs.url;
+                    const isCurrent = currentValueSetUrl ? isSameCanonical(currentValueSetUrl, vs.url) : false;
+                    const { baseUrl, version } = parseCanonicalUrl(vs.url);
+                    
+                    return (
+                      <li 
+                        key={vs.url} 
+                        className={`valueset-item ${isSelected ? 'selected' : ''} ${isCurrent ? 'current' : ''}`}
+                        onClick={() => handleClickValueSet(vs.url)}
+                      >
+                        <div className="valueset-header">
+                          <div>
+                            <h4 className="valueset-name">
+                              {vs.name}
+                              {isCurrent && <span className="current-indicator">Current</span>}
+                            </h4>
+                            <p className="valueset-publisher">{vs.publisher}</p>
+                          </div>
+                          {vs.layer && (
+                            <span className={`layer-badge layer-${vs.layer.toLowerCase()}`}>
+                              {vs.layer}
+                            </span>
+                          )}
                         </div>
-                        {vs.layer && (
-                          <span className={`layer-badge layer-${vs.layer.toLowerCase()}`}>
-                            {vs.layer}
-                          </span>
+                        {vs.description && (
+                          <p className="valueset-description">{vs.description}</p>
                         )}
-                      </div>
-                      {vs.description && (
-                        <p className="valueset-description">{vs.description}</p>
-                      )}
-                      <div className="valueset-url">
-                        <code>{vs.url}</code>
-                        <button
-                          onClick={() => copyToClipboard(vs.url)}
-                          className="btn-copy-small"
-                          title="Copy URL"
-                        >
-                          📋
-                        </button>
-                      </div>
-                      <div className="valueset-actions">
-                        <button
-                          onClick={() => handleShowPreview(vs.url)}
-                          className="btn-preview"
-                        >
-                          Preview Codes
-                        </button>
-                        <button
-                          onClick={() => handleSelectValueSet(vs.url)}
-                          className="btn-select"
-                        >
-                          Select
-                        </button>
-                      </div>
-                    </li>
-                  ))}
+                        <div className="valueset-url">
+                          <code>{baseUrl}</code>
+                          {version && <span className="url-version-badge">|{version}</span>}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copyToClipboard(vs.url);
+                            }}
+                            className="btn-copy-small"
+                            title="Copy full URL"
+                          >
+                            📋
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}
@@ -238,33 +261,29 @@ export const ValueSetSelectionDrawer: React.FC<ValueSetSelectionDrawerProps> = (
             </div>
           </div>
 
-          {/* Right Column: Preview OR Base Binding */}
+          {/* Right Column: Selected ValueSet Preview ONLY */}
           <div className="drawer-right-col">
-            {/* Code Preview */}
-            {previewUrl && (
+            {clickedValueSetUrl ? (
               <div className="preview-panel">
                 <div className="preview-header">
-                  <h3>Code Preview</h3>
-                  <button
-                    onClick={handleClosePreview}
-                    className="btn-close-preview"
-                  >
-                    ✕
-                  </button>
+                  <h3>Preview</h3>
                 </div>
 
                 {previewLoading && (
-                  <div className="preview-loading">Loading codes...</div>
+                  <div className="preview-loading">
+                    <div className="spinner-small"></div>
+                    Loading codes...
+                  </div>
                 )}
 
                 {previewError && (
                   <div className="preview-error">{previewError}</div>
                 )}
 
-                {previewCodes.length > 0 && (
+                {!previewLoading && !previewError && previewCodes.length > 0 && (
                   <div className="preview-codes">
                     <p className="preview-note">
-                      Showing first {previewCodes.length} codes (read-only preview)
+                      Showing first {previewCodes.length} codes
                     </p>
                     <ul className="code-list">
                       {previewCodes.map((code, idx) => (
@@ -276,36 +295,24 @@ export const ValueSetSelectionDrawer: React.FC<ValueSetSelectionDrawerProps> = (
                         </li>
                       ))}
                     </ul>
+                    <button
+                      onClick={() => handleSelectValueSet(clickedValueSetUrl)}
+                      className="btn-select-primary-large"
+                    >
+                      Select this ValueSet
+                    </button>
                   </div>
                 )}
-              </div>
-            )}
 
-            {/* Base Binding Reference (when no preview) */}
-            {!previewUrl && baseBinding && (
-              <div className="base-binding-panel">
-                <h3>Base Binding (Read-Only)</h3>
-                <dl className="base-binding-info">
-                  <dt>ValueSet:</dt>
-                  <dd>
-                    <code>{baseBinding.valueSetUrl}</code>
-                  </dd>
-                  <dt>Strength:</dt>
-                  <dd>
-                    <span className="strength-badge">{baseBinding.strength}</span>
-                  </dd>
-                </dl>
-                <p className="base-binding-note">
-                  This is the binding defined in the base StructureDefinition.
-                  You can override it by selecting a different ValueSet.
-                </p>
+                {!previewLoading && !previewError && previewCodes.length === 0 && (
+                  <p className="no-codes">No codes available for preview</p>
+                )}
               </div>
-            )}
-
-            {/* Empty State */}
-            {!previewUrl && !baseBinding && (
+            ) : (
               <div className="empty-right-col">
-                <p>Click "Preview Codes" on a ValueSet to see sample codes</p>
+                <div className="empty-state-icon">🔍</div>
+                <p className="empty-state-title">No ValueSet selected</p>
+                <p className="empty-state-hint">Click a ValueSet from the list to preview its codes</p>
               </div>
             )}
           </div>

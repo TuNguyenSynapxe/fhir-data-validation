@@ -2006,3 +2006,837 @@
   font-size: 11px;
   color: #6b7280;
 }
+
+/* ========================================
+   PHASE 4A REFACTOR - UX IMPROVEMENTS
+   Points 1-3: Base Binding, Auto-Preview, Filtering
+   ======================================== */
+
+/* Inline preview within search results (Point 2) */
+.inline-preview {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+  animation: fadeIn 0.2s ease-in;
+}
+
+.preview-loading-inline,
+.preview-error-inline {
+  padding: 12px;
+  text-align: center;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.preview-error-inline {
+  color: #dc2626;
+  background: #fef2f2;
+  border-radius: 4px;
+}
+
+.preview-codes-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.preview-note-inline {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.code-list-inline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.code-item-inline {
+  display: flex;
+  gap: 8px;
+  padding: 6px 8px;
+  background: #f9fafb;
+  border-radius: 4px;
+  font-size: 13px;
+  align-items: center;
+}
+
+.code-item-inline .code-value {
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+  color: #7c3aed;
+  font-weight: 600;
+}
+
+.code-item-inline .code-display {
+  color: #374151;
+  flex: 1;
+}
+
+.btn-select-primary {
+  align-self: flex-start;
+  padding: 8px 16px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 8px;
+}
+
+.btn-select-primary:hover {
+  background: #1d4ed8;
+}
+
+/* Selected state for clicked ValueSet (Point 2) */
+.valueset-item.selected {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+}
+
+/* Base binding codes section in right column (Point 1) */
+.base-codes-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.base-codes-section h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.preview-loading {
+  padding: 20px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.preview-codes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.preview-note {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0;
+  padding: 8px;
+  background: #f9fafb;
+  border-radius: 4px;
+}
+
+.no-codes {
+  padding: 20px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* Empty right column state */
+.empty-right-col {
+  padding: 40px 20px;
+  text-align: center;
+  color: #9ca3af;
+}
+
+.empty-right-col p {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+}
+
+.empty-right-col .hint {
+  font-size: 13px;
+  color: #d1d5db;
+}
+
+/* Smooth transitions */
+.valueset-item {
+  transition: all 0.2s ease;
+}
+
+.valueset-item:hover {
+  cursor: pointer;
+}
+
+/* Animation for inline preview */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+/* ========================================
+   BINDING DISPLAY - Human-Readable with Code Preview
+   Replaces raw URL display with names and inline codes
+   ======================================== */
+
+.binding-display {
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  margin-bottom: 12px;
+}
+
+.binding-display-base {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.binding-display-current {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.1);
+}
+
+.binding-display-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.binding-display-label {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.binding-display-base .binding-display-label {
+  color: #6b7280;
+}
+
+.binding-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ValueSet Info */
+.binding-valueset-info {
+  margin-bottom: 12px;
+}
+
+.binding-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.spinner-small {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.binding-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 6px;
+}
+
+.binding-name-fallback {
+  font-size: 15px;
+  font-weight: 600;
+  color: #9ca3af;
+  margin-bottom: 6px;
+  font-style: italic;
+}
+
+.binding-url {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.binding-url code {
+  font-size: 12px;
+  color: #6b7280;
+  font-family: 'Monaco', 'Courier New', monospace;
+  background: transparent;
+  padding: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-copy-tiny {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.btn-copy-tiny:hover {
+  opacity: 1;
+}
+
+.binding-error {
+  padding: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+}
+
+.binding-error-message {
+  font-size: 12px;
+  color: #dc2626;
+  margin-top: 6px;
+}
+
+/* Inline Code Preview */
+.binding-codes-preview {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.codes-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.codes-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.codes-preview-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.code-preview-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+
+.binding-display-current .code-preview-item {
+  background: white;
+}
+
+.code-preview-item .code-value {
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+  color: #7c3aed;
+  font-weight: 600;
+  padding: 2px 6px;
+  background: #f5f3ff;
+  border-radius: 4px;
+}
+
+.code-preview-item .code-divider {
+  color: #d1d5db;
+  font-weight: 300;
+}
+
+.code-preview-item .code-display {
+  color: #374151;
+  flex: 1;
+}
+
+.btn-show-more,
+.btn-show-less {
+  margin-top: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: #3b82f6;
+  background: none;
+  border: 1px solid #3b82f6;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-show-more:hover,
+.btn-show-less:hover {
+  background: #eff6ff;
+}
+
+/* Strength Section */
+.binding-strength-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+/* Base Binding Reference Section (when showing override) */
+.base-binding-reference-section {
+  margin-top: 20px;
+  padding: 16px;
+  background: #f9fafb;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+}
+
+.base-binding-reference-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  margin-bottom: 12px;
+}
+
+.icon-info {
+  font-size: 14px;
+}
+
+/* Ensure base binding display inside reference section is more muted */
+.base-binding-reference-section .binding-display {
+  margin-bottom: 0;
+}
+
+
+/* ========================================
+   VALUESET DRAWER - VISUAL REFINEMENT
+   Premium, calm, selection-focused design
+   ======================================== */
+
+/* Unselected cards: neutral, clean */
+.valueset-item {
+  background: white;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.valueset-item:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+}
+
+/* Selected card: blue border only */
+.valueset-item.selected {
+  border-color: #3b82f6;
+  background: white; /* Keep white, not blue */
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.12);
+}
+
+/* Current binding indicator (small badge) */
+.current-indicator {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #10b981;
+  background: #d1fae5;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Preview panel: clean, spacious */
+.preview-panel {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 20px;
+  height: fit-content;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.preview-header {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.preview-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.preview-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 20px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.preview-error {
+  padding: 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #dc2626;
+  font-size: 13px;
+}
+
+.preview-codes {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.preview-note {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0;
+  padding: 10px 12px;
+  background: #f9fafb;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+/* Code list: spacious, readable */
+.code-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.code-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: background 0.15s;
+}
+
+.code-item:hover {
+  background: #f3f4f6;
+}
+
+.code-item .code-value {
+  font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  color: #7c3aed;
+  font-weight: 600;
+  padding: 4px 8px;
+  background: white;
+  border: 1px solid #e9d5ff;
+  border-radius: 4px;
+}
+
+.code-item .code-display {
+  color: #374151;
+  flex: 1;
+}
+
+/* Primary CTA: blue, prominent */
+.btn-select-primary-large {
+  width: 100%;
+  padding: 12px 20px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.btn-select-primary-large:hover {
+  background: #2563eb;
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+  transform: translateY(-1px);
+}
+
+.btn-select-primary-large:active {
+  transform: translateY(0);
+}
+
+/* Empty state: friendly, clear */
+.empty-right-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  height: 100%;
+}
+
+.empty-state-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-state-title {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.empty-state-hint {
+  margin: 0;
+  font-size: 14px;
+  color: #9ca3af;
+  max-width: 280px;
+}
+
+/* No codes message */
+.no-codes {
+  padding: 40px 20px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 14px;
+  font-style: italic;
+}
+
+/* Remove inline preview from cards (moved to right panel) */
+.inline-preview {
+  display: none;
+}
+
+
+/* ========================================
+   BINDING DISPLAY - MINIMAL CONFIRMATORY REFACTOR
+   Clean, neutral, read-only confirmation
+   ======================================== */
+
+/* Override previous blue background - use white for both */
+.binding-display {
+  background: white;
+  border: 1px solid #e5e7eb;
+}
+
+.binding-display-base {
+  background: white;
+  border-color: #d1d5db;
+}
+
+.binding-display-current {
+  background: white;
+  border-color: #e5e7eb; /* Neutral, not blue */
+  box-shadow: none; /* Remove blue shadow */
+}
+
+/* Minimal header */
+.binding-display-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+/* Outline button (not filled) */
+.action-btn-outline {
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #3b82f6;
+  background: white;
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-btn-outline:hover {
+  background: #eff6ff;
+}
+
+/* Text-based danger action */
+.action-btn-text-danger {
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #dc2626;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.action-btn-text-danger:hover {
+  color: #b91c1c;
+  text-decoration: underline;
+}
+
+/* Minimal ValueSet info */
+.binding-name-minimal {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.binding-url-minimal {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.binding-url-minimal code {
+  font-size: 11px;
+  color: #9ca3af;
+  font-family: 'Monaco', 'Courier New', monospace;
+  background: transparent;
+  padding: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Code Summary Line */
+.binding-code-summary {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.summary-label {
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.summary-value {
+  color: #374151;
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+}
+
+/* Minimal error state */
+.binding-error-minimal {
+  padding: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+}
+
+/* Loading state - smaller */
+.binding-loading {
+  padding: 12px;
+  font-size: 13px;
+}
+
+/* Remove old styles that are no longer needed */
+.binding-codes-preview,
+.codes-preview-header,
+.codes-preview-list,
+.code-preview-item,
+.btn-show-more,
+.btn-show-less {
+  display: none !important;
+}
+
+
+/* ============================================
+   Canonical URL Version Display Styles
+   ============================================ */
+
+/* Version metadata in binding display */
+.binding-version-info {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  margin: 4px 0;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1e40af;
+}
+
+/* Version badge in drawer search results */
+.url-version-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 4px;
+  margin-left: 4px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #6b7280;
+  font-family: 'Monaco', 'Courier New', monospace;
+}
+
+/* Ensure URL and version badge align properly */
+.valueset-url {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.valueset-url code {
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
