@@ -1,0 +1,237 @@
+{
+  "http://example.org/fhir/ValueSet/test-gender-vs": {
+    "url": "http://example.org/fhir/ValueSet/test-gender-vs",
+    "version": "1.0.0",
+    "name": "TestGenderVS",
+    "title": "Test Gender ValueSet",
+    "description": "Test gender value set using explicit expansion",
+    "publisher": "Test Publisher",
+    "expansionStrategy": "ExplicitCodes",
+    "explicitCodes": [
+      {
+        "system": "http://example.org/fhir/CodeSystem/test-gender",
+        "code": "M",
+        "display": "Male"
+      },
+      {
+        "system": "http://example.org/fhir/CodeSystem/test-gender",
+        "code": "F",
+        "display": "Female"
+      }
+    ],
+    "composeIncludes": null
+  },
+  "http://example.org/fhir/ValueSet/test-status-compose": {
+    "url": "http://example.org/fhir/ValueSet/test-status-compose",
+    "version": "1.0.0",
+    "name": "TestStatusCompose",
+    "title": "Test Status ValueSet (Compose)",
+    "description": "Test status value set using compose.include",
+    "publisher": "Test Publisher",
+    "expansionStrategy": "ComposeIncludes",
+    "explicitCodes": null,
+    "composeIncludes": [
+      {
+        "system": "http://example.org/fhir/CodeSystem/test-status",
+        "includeAll": false,
+        "concepts": [
+          "active",
+          "inactive"
+        ]
+      }
+    ]
+  },
+  "http://hl7.org/fhir/ValueSet/administrative-gender": {
+    "url": "http://hl7.org/fhir/ValueSet/administrative-gender",
+    "version": "5.0.0",
+    "name": "AdministrativeGender",
+    "title": "Administrative Gender",
+    "description": "The gender of a person used for administrative purposes.",
+    "publisher": "HL7 International",
+    "expansionStrategy": "ExplicitCodes",
+    "explicitCodes": [
+      {
+        "system": "http://hl7.org/fhir/CodeSystem/administrative-gender",
+        "code": "male",
+        "display": "Male"
+      },
+      {
+        "system": "http://hl7.org/fhir/CodeSystem/administrative-gender",
+        "code": "female",
+        "display": "Female"
+      },
+      {
+        "system": "http://hl7.org/fhir/CodeSystem/administrative-gender",
+        "code": "other",
+        "display": "Other"
+      },
+      {
+        "system": "http://hl7.org/fhir/CodeSystem/administrative-gender",
+        "code": "unknown",
+        "display": "Unknown"
+      }
+    ],
+    "composeIncludes": null
+  },
+  "http://hl7.org/fhir/ValueSet/condition-clinical": {
+    "url": "http://hl7.org/fhir/ValueSet/condition-clinical",
+    "version": "5.0.0",
+    "name": "ConditionClinicalStatusCodes",
+    "title": "Condition Clinical Status Codes",
+    "description": "Preferred value set for Condition Clinical Status.",
+    "publisher": "HL7 International",
+    "expansionStrategy": "ExplicitCodes",
+    "explicitCodes": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "active",
+        "display": "Active"
+      },
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "recurrence",
+        "display": "Recurrence"
+      },
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "relapse",
+        "display": "Relapse"
+      },
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "inactive",
+        "display": "Inactive"
+      },
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "remission",
+        "display": "Remission"
+      },
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "resolved",
+        "display": "Resolved"
+      }
+    ],
+    "composeIncludes": null
+  },
+  "http://hl7.org/fhir/ValueSet/marital-status": {
+    "url": "http://hl7.org/fhir/ValueSet/marital-status",
+    "version": "5.0.0",
+    "name": "MaritalStatus",
+    "title": "Marital Status",
+    "description": "The domestic partnership status of a person.",
+    "publisher": "HL7 International",
+    "expansionStrategy": "ExplicitCodes",
+    "explicitCodes": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+        "code": "A",
+        "display": "Annulled"
+      },
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+        "code": "D",
+        "display": "Divorced"
+      },
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+        "code": "I",
+        "display": "Interlocutory"
+      },
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+        "code": "L",
+        "display": "Legally Separated"
+      },
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+        "code": "M",
+        "display": "Married"
+      },
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+        "code": "P",
+        "display": "Polygamous"
+      },
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+        "code": "S",
+        "display": "Never Married"
+      },
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+        "code": "T",
+        "display": "Domestic partner"
+      },
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+        "code": "U",
+        "display": "unmarried"
+      },
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+        "code": "W",
+        "display": "Widowed"
+      },
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+        "code": "UNK",
+        "display": "unknown"
+      }
+    ],
+    "composeIncludes": null
+  },
+  "http://hl7.org/fhir/ValueSet/observation-status": {
+    "url": "http://hl7.org/fhir/ValueSet/observation-status",
+    "version": "5.0.0",
+    "name": "ObservationStatus",
+    "title": "Observation Status",
+    "description": "Codes providing the status of an observation.",
+    "publisher": "HL7 International",
+    "expansionStrategy": "ExplicitCodes",
+    "explicitCodes": [
+      {
+        "system": "http://hl7.org/fhir/CodeSystem/observation-status",
+        "code": "registered",
+        "display": "Registered"
+      },
+      {
+        "system": "http://hl7.org/fhir/CodeSystem/observation-status",
+        "code": "preliminary",
+        "display": "Preliminary"
+      },
+      {
+        "system": "http://hl7.org/fhir/CodeSystem/observation-status",
+        "code": "final",
+        "display": "Final"
+      },
+      {
+        "system": "http://hl7.org/fhir/CodeSystem/observation-status",
+        "code": "amended",
+        "display": "Amended"
+      },
+      {
+        "system": "http://hl7.org/fhir/CodeSystem/observation-status",
+        "code": "corrected",
+        "display": "Corrected"
+      },
+      {
+        "system": "http://hl7.org/fhir/CodeSystem/observation-status",
+        "code": "cancelled",
+        "display": "Cancelled"
+      },
+      {
+        "system": "http://hl7.org/fhir/CodeSystem/observation-status",
+        "code": "entered-in-error",
+        "display": "Entered in Error"
+      },
+      {
+        "system": "http://hl7.org/fhir/CodeSystem/observation-status",
+        "code": "unknown",
+        "display": "Unknown"
+      }
+    ],
+    "composeIncludes": null
+  }
+}

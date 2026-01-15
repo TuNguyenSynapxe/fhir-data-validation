@@ -1,0 +1,24 @@
+{
+  "resourceType": "CodeSystem",
+  "url": "http://example.org/fhir/CodeSystem/test-gender",
+  "version": "1.0.0",
+  "name": "TestGender",
+  "title": "Test Gender Codes",
+  "status": "active",
+  "publisher": "Test Publisher",
+  "description": "Test gender code system for fixture data",
+  "concept": [
+    {
+      "code": "M",
+      "display": "Male"
+    },
+    {
+      "code": "F",
+      "display": "Female"
+    },
+    {
+      "code": "O",
+      "display": "Other"
+    }
+  ]
+}

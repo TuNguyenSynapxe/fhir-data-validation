@@ -1,68 +1,72 @@
 using Pss.FhirProcessor.Terminology.Domain;
-using Pss.FhirProcessor.Terminology.Sources.Hl7.Domain;
 using Pss.FhirProcessor.Terminology.Utils;
 
 namespace Pss.FhirProcessor.Terminology.Sources.Hl7;
 
 /// <summary>
-/// Enhanced HL7 R5 ValueSet registry with canonical normalization and CodeSystem resolution.
+/// HL7 R5 ValueSet registry with embedded JSON resources.
 /// 
 /// ARCHITECTURE:
-/// - Immutable in-memory registry
-/// - Canonical URL normalization (strips |version)
+/// - Immutable in-memory registry loaded from embedded JSON
+/// - Canonical URL normalization (strips |version for lookup)
 /// - CodeSystem → ValueSet resolution for compose-based expansions
 /// - Deterministic ordering
 /// - No Firely SDK dependencies
 /// - No runtime network calls
 /// 
-/// CURRENT IMPLEMENTATION:
-/// - Seed-based: 4 core ValueSets with explicit codes
-/// - Future: JSON import pipeline from hl7.fhir.r5.core package
+/// IMPLEMENTATION:
+/// - Loads hl7-r5-codesystems.json, hl7-r5-valuesets.json, hl7-r5-index.json
+/// - Supports ExplicitCodes and ComposeIncludes expansion strategies
+/// - Version metadata preserved but not used for lookup
 /// </summary>
 internal sealed class Hl7R5RegistryV2
 {
-    private readonly IReadOnlyDictionary<string, CodeSystemDefinition> _codeSystems;
-    private readonly IReadOnlyDictionary<string, ValueSetDefinition> _valueSets;
+    private readonly IReadOnlyDictionary<string, CodeSystemRegistryEntry> _codeSystems;
+    private readonly IReadOnlyDictionary<string, ValueSetRegistryEntry> _valueSets;
+    private readonly IReadOnlyList<IndexEntry> _index;
     
     public Hl7R5RegistryV2()
     {
-        _codeSystems = BuildCodeSystemRegistry();
-        _valueSets = BuildValueSetRegistry();
+        _codeSystems = RegistryLoader.LoadCodeSystems();
+        _valueSets = RegistryLoader.LoadValueSets();
+        _index = RegistryLoader.LoadIndex();
     }
     
     #region Search
     
     /// <summary>
-    /// Search ValueSets by name, publisher, or description.
+    /// Search ValueSets by name, title, publisher, or description.
+    /// Uses pre-built search index for performance.
     /// </summary>
     public IReadOnlyList<ValueSetSummary> SearchValueSets(string? query)
     {
-        var results = _valueSets.Values.AsEnumerable();
+        var results = _index.Where(e => e.ResourceType == "ValueSet").AsEnumerable();
         
         if (!string.IsNullOrWhiteSpace(query))
         {
             var queryLower = query.ToLowerInvariant();
-            results = results.Where(vs =>
-                vs.Name.Contains(queryLower, StringComparison.OrdinalIgnoreCase) ||
-                (vs.Publisher?.Contains(queryLower, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (vs.Description?.Contains(queryLower, StringComparison.OrdinalIgnoreCase) ?? false));
+            results = results.Where(idx =>
+                idx.Name.Contains(queryLower, StringComparison.OrdinalIgnoreCase) ||
+                (idx.Title?.Contains(queryLower, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (idx.Publisher?.Contains(queryLower, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (idx.Description?.Contains(queryLower, StringComparison.OrdinalIgnoreCase) ?? false));
         }
         
-        return results
-            .Select(vs => new ValueSetSummary
-            {
-                Url = vs.Url,
-                Name = vs.Name,
-                Publisher = vs.Publisher ?? "Unknown",
-                Description = vs.Description
-            })
-            .OrderBy(vs => vs.Name)
-            .ThenBy(vs => vs.Url)
-            .ToList();
+        return results.Select(idx => new ValueSetSummary
+        {
+            Url = idx.Url,
+            Name = idx.Name,
+            Publisher = idx.Publisher ?? "Unknown",
+            Description = idx.Description
+        }).ToList();
     }
     
+    #endregion
+    
+    #region Existence Check
+    
     /// <summary>
-    /// Check if a ValueSet exists (canonical identity).
+    /// Check if a ValueSet exists (canonical normalization applied).
     /// </summary>
     public bool ContainsValueSet(string canonicalUrl)
     {
@@ -72,11 +76,11 @@ internal sealed class Hl7R5RegistryV2
     
     #endregion
     
-    #region Preview/Expansion
+    #region Preview
     
     /// <summary>
-    /// Preview codes from a ValueSet.
-    /// Handles both explicit codes and compose-based expansion.
+    /// Preview a ValueSet by expanding its codes (up to maxItems).
+    /// Applies canonical normalization, resolves compose includes from CodeSystems.
     /// </summary>
     public ValueSetPreview? PreviewValueSet(string canonicalUrl, int maxItems)
     {
@@ -97,20 +101,24 @@ internal sealed class Hl7R5RegistryV2
         };
     }
     
-    private IReadOnlyList<ValueSetCode> ExpandValueSet(ValueSetDefinition valueSet, int maxItems)
+    #endregion
+    
+    #region Expansion
+    
+    private IReadOnlyList<ValueSetCode> ExpandValueSet(ValueSetRegistryEntry valueSet, int maxItems)
     {
-        return valueSet.Strategy switch
+        return valueSet.ExpansionStrategy switch
         {
-            ExpansionStrategy.ExplicitCodes => ExpandFromExplicitCodes(valueSet, maxItems),
-            ExpansionStrategy.ComposeIncludes => ExpandFromComposeIncludes(valueSet, maxItems),
-            ExpansionStrategy.Unsupported => Array.Empty<ValueSetCode>(),
+            ExpansionStrategyType.ExplicitCodes => ExpandFromExplicitCodes(valueSet, maxItems),
+            ExpansionStrategyType.ComposeIncludes => ExpandFromComposeIncludes(valueSet, maxItems),
+            ExpansionStrategyType.Unsupported => Array.Empty<ValueSetCode>(),
             _ => Array.Empty<ValueSetCode>()
         };
     }
     
-    private IReadOnlyList<ValueSetCode> ExpandFromExplicitCodes(ValueSetDefinition valueSet, int maxItems)
+    private IReadOnlyList<ValueSetCode> ExpandFromExplicitCodes(ValueSetRegistryEntry valueSet, int maxItems)
     {
-        if (valueSet.ExplicitCodes == null)
+        if (valueSet.ExplicitCodes == null || valueSet.ExplicitCodes.Count == 0)
         {
             return Array.Empty<ValueSetCode>();
         }
@@ -125,9 +133,9 @@ internal sealed class Hl7R5RegistryV2
             .ToList();
     }
     
-    private IReadOnlyList<ValueSetCode> ExpandFromComposeIncludes(ValueSetDefinition valueSet, int maxItems)
+    private IReadOnlyList<ValueSetCode> ExpandFromComposeIncludes(ValueSetRegistryEntry valueSet, int maxItems)
     {
-        if (valueSet.ComposeIncludes == null)
+        if (valueSet.ComposeIncludes == null || valueSet.ComposeIncludes.Count == 0)
         {
             return Array.Empty<ValueSetCode>();
         }
@@ -136,12 +144,11 @@ internal sealed class Hl7R5RegistryV2
         
         foreach (var include in valueSet.ComposeIncludes)
         {
-            var includeIdentity = CanonicalParser.GetIdentity(include.System);
+            var systemIdentity = CanonicalParser.GetIdentity(include.System);
             
-            if (!_codeSystems.TryGetValue(includeIdentity, out var codeSystem))
+            if (!_codeSystems.TryGetValue(systemIdentity, out var codeSystem))
             {
-                // CodeSystem not found - skip
-                continue;
+                continue; // CodeSystem not found - skip
             }
             
             if (include.IncludeAll)
@@ -158,7 +165,7 @@ internal sealed class Hl7R5RegistryV2
                 // Include specific concepts only
                 foreach (var conceptCode in include.Concepts)
                 {
-                    var concept = codeSystem.FindConcept(conceptCode);
+                    var concept = codeSystem.Concepts.FirstOrDefault(c => c.Code == conceptCode);
                     if (concept != null)
                     {
                         allCodes.Add(new ValueSetCode
@@ -169,114 +176,15 @@ internal sealed class Hl7R5RegistryV2
                     }
                 }
             }
+            
+            // Stop if we've collected enough codes
+            if (allCodes.Count >= maxItems)
+            {
+                break;
+            }
         }
         
-        return allCodes
-            .Take(maxItems)
-            .ToList();
-    }
-    
-    #endregion
-    
-    #region Seed Data Builders
-    
-    private static IReadOnlyDictionary<string, CodeSystemDefinition> BuildCodeSystemRegistry()
-    {
-        // Currently empty - will be populated when R5 package JSON import is implemented
-        // For now, ValueSets use explicit codes rather than compose references
-        return new Dictionary<string, CodeSystemDefinition>();
-    }
-    
-    private static IReadOnlyDictionary<string, ValueSetDefinition> BuildValueSetRegistry()
-    {
-        var valueSets = new List<ValueSetDefinition>
-        {
-            // Administrative Gender
-            new()
-            {
-                Url = "http://hl7.org/fhir/ValueSet/administrative-gender",
-                Name = "AdministrativeGender",
-                Publisher = "HL7 International",
-                Description = "The gender of a person used for administrative purposes.",
-                Strategy = ExpansionStrategy.ExplicitCodes,
-                ExplicitCodes = new[]
-                {
-                    new CodeDefinition { Code = "male", Display = "Male", System = "http://hl7.org/fhir/administrative-gender" },
-                    new CodeDefinition { Code = "female", Display = "Female", System = "http://hl7.org/fhir/administrative-gender" },
-                    new CodeDefinition { Code = "other", Display = "Other", System = "http://hl7.org/fhir/administrative-gender" },
-                    new CodeDefinition { Code = "unknown", Display = "Unknown", System = "http://hl7.org/fhir/administrative-gender" }
-                }
-            },
-            
-            // Observation Status
-            new()
-            {
-                Url = "http://hl7.org/fhir/ValueSet/observation-status",
-                Name = "ObservationStatus",
-                Publisher = "HL7 International",
-                Description = "Codes providing the status of an observation.",
-                Strategy = ExpansionStrategy.ExplicitCodes,
-                ExplicitCodes = new[]
-                {
-                    new CodeDefinition { Code = "registered", Display = "Registered", System = "http://hl7.org/fhir/observation-status" },
-                    new CodeDefinition { Code = "preliminary", Display = "Preliminary", System = "http://hl7.org/fhir/observation-status" },
-                    new CodeDefinition { Code = "final", Display = "Final", System = "http://hl7.org/fhir/observation-status" },
-                    new CodeDefinition { Code = "amended", Display = "Amended", System = "http://hl7.org/fhir/observation-status" },
-                    new CodeDefinition { Code = "corrected", Display = "Corrected", System = "http://hl7.org/fhir/observation-status" },
-                    new CodeDefinition { Code = "cancelled", Display = "Cancelled", System = "http://hl7.org/fhir/observation-status" },
-                    new CodeDefinition { Code = "entered-in-error", Display = "Entered in Error", System = "http://hl7.org/fhir/observation-status" },
-                    new CodeDefinition { Code = "unknown", Display = "Unknown", System = "http://hl7.org/fhir/observation-status" }
-                }
-            },
-            
-            // Marital Status
-            new()
-            {
-                Url = "http://hl7.org/fhir/ValueSet/marital-status",
-                Name = "MaritalStatus",
-                Publisher = "HL7 International",
-                Description = "The domestic partnership status of a person.",
-                Strategy = ExpansionStrategy.ExplicitCodes,
-                ExplicitCodes = new[]
-                {
-                    new CodeDefinition { Code = "A", Display = "Annulled", System = "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus" },
-                    new CodeDefinition { Code = "D", Display = "Divorced", System = "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus" },
-                    new CodeDefinition { Code = "I", Display = "Interlocutory", System = "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus" },
-                    new CodeDefinition { Code = "L", Display = "Legally Separated", System = "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus" },
-                    new CodeDefinition { Code = "M", Display = "Married", System = "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus" },
-                    new CodeDefinition { Code = "P", Display = "Polygamous", System = "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus" },
-                    new CodeDefinition { Code = "S", Display = "Never Married", System = "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus" },
-                    new CodeDefinition { Code = "T", Display = "Domestic partner", System = "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus" },
-                    new CodeDefinition { Code = "U", Display = "unmarried", System = "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus" },
-                    new CodeDefinition { Code = "W", Display = "Widowed", System = "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus" },
-                    new CodeDefinition { Code = "UNK", Display = "unknown", System = "http://terminology.hl7.org/CodeSystem/v3-NullFlavor" }
-                }
-            },
-            
-            // Condition Clinical Status
-            new()
-            {
-                Url = "http://hl7.org/fhir/ValueSet/condition-clinical",
-                Name = "ConditionClinicalStatusCodes",
-                Publisher = "HL7 International",
-                Description = "Preferred value set for Condition Clinical Status.",
-                Strategy = ExpansionStrategy.ExplicitCodes,
-                ExplicitCodes = new[]
-                {
-                    new CodeDefinition { Code = "active", Display = "Active", System = "http://terminology.hl7.org/CodeSystem/condition-clinical" },
-                    new CodeDefinition { Code = "recurrence", Display = "Recurrence", System = "http://terminology.hl7.org/CodeSystem/condition-clinical" },
-                    new CodeDefinition { Code = "relapse", Display = "Relapse", System = "http://terminology.hl7.org/CodeSystem/condition-clinical" },
-                    new CodeDefinition { Code = "inactive", Display = "Inactive", System = "http://terminology.hl7.org/CodeSystem/condition-clinical" },
-                    new CodeDefinition { Code = "remission", Display = "Remission", System = "http://terminology.hl7.org/CodeSystem/condition-clinical" },
-                    new CodeDefinition { Code = "resolved", Display = "Resolved", System = "http://terminology.hl7.org/CodeSystem/condition-clinical" }
-                }
-            }
-        };
-        
-        // Build dictionary keyed by canonical identity (no version)
-        return valueSets.ToDictionary(
-            vs => CanonicalParser.GetIdentity(vs.Url),
-            vs => vs);
+        return allCodes.Take(maxItems).ToList();
     }
     
     #endregion

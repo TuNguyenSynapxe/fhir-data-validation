@@ -1,0 +1,24 @@
+{
+  "resourceType": "ValueSet",
+  "url": "http://example.org/fhir/ValueSet/test-gender-vs",
+  "version": "1.0.0",
+  "name": "TestGenderVS",
+  "title": "Test Gender ValueSet",
+  "status": "active",
+  "publisher": "Test Publisher",
+  "description": "Test gender value set using explicit expansion",
+  "expansion": {
+    "contains": [
+      {
+        "system": "http://example.org/fhir/CodeSystem/test-gender",
+        "code": "M",
+        "display": "Male"
+      },
+      {
+        "system": "http://example.org/fhir/CodeSystem/test-gender",
+        "code": "F",
+        "display": "Female"
+      }
+    ]
+  }
+}

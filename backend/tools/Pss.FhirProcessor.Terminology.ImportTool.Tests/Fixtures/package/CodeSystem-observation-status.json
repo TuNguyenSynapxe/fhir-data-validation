@@ -1,0 +1,44 @@
+{
+  "resourceType": "CodeSystem",
+  "url": "http://hl7.org/fhir/CodeSystem/observation-status",
+  "version": "5.0.0",
+  "name": "ObservationStatus",
+  "title": "Observation Status",
+  "status": "active",
+  "publisher": "HL7 International",
+  "description": "Codes providing the status of an observation.",
+  "concept": [
+    {
+      "code": "registered",
+      "display": "Registered"
+    },
+    {
+      "code": "preliminary",
+      "display": "Preliminary"
+    },
+    {
+      "code": "final",
+      "display": "Final"
+    },
+    {
+      "code": "amended",
+      "display": "Amended"
+    },
+    {
+      "code": "corrected",
+      "display": "Corrected"
+    },
+    {
+      "code": "cancelled",
+      "display": "Cancelled"
+    },
+    {
+      "code": "entered-in-error",
+      "display": "Entered in Error"
+    },
+    {
+      "code": "unknown",
+      "display": "Unknown"
+    }
+  ]
+}

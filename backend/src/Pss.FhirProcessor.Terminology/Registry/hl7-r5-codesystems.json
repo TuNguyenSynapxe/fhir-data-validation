@@ -1,0 +1,210 @@
+{
+  "http://example.org/fhir/CodeSystem/test-gender": {
+    "url": "http://example.org/fhir/CodeSystem/test-gender",
+    "version": "1.0.0",
+    "name": "TestGender",
+    "title": "Test Gender Codes",
+    "description": "Test gender code system for fixture data",
+    "publisher": "Test Publisher",
+    "concepts": [
+      {
+        "code": "M",
+        "display": "Male"
+      },
+      {
+        "code": "F",
+        "display": "Female"
+      },
+      {
+        "code": "O",
+        "display": "Other"
+      }
+    ]
+  },
+  "http://example.org/fhir/CodeSystem/test-status": {
+    "url": "http://example.org/fhir/CodeSystem/test-status",
+    "version": "1.0.0",
+    "name": "TestStatus",
+    "title": "Test Status Codes",
+    "description": "Test status code system for fixture data",
+    "publisher": "Test Publisher",
+    "concepts": [
+      {
+        "code": "active",
+        "display": "Active"
+      },
+      {
+        "code": "inactive",
+        "display": "Inactive"
+      },
+      {
+        "code": "pending",
+        "display": "Pending"
+      },
+      {
+        "code": "pending-review",
+        "display": "Pending Review"
+      },
+      {
+        "code": "pending-approval",
+        "display": "Pending Approval"
+      }
+    ]
+  },
+  "http://hl7.org/fhir/CodeSystem/administrative-gender": {
+    "url": "http://hl7.org/fhir/CodeSystem/administrative-gender",
+    "version": "5.0.0",
+    "name": "AdministrativeGender",
+    "title": "Administrative Gender",
+    "description": "The gender of a person used for administrative purposes.",
+    "publisher": "HL7 International",
+    "concepts": [
+      {
+        "code": "male",
+        "display": "Male"
+      },
+      {
+        "code": "female",
+        "display": "Female"
+      },
+      {
+        "code": "other",
+        "display": "Other"
+      },
+      {
+        "code": "unknown",
+        "display": "Unknown"
+      }
+    ]
+  },
+  "http://hl7.org/fhir/CodeSystem/observation-status": {
+    "url": "http://hl7.org/fhir/CodeSystem/observation-status",
+    "version": "5.0.0",
+    "name": "ObservationStatus",
+    "title": "Observation Status",
+    "description": "Codes providing the status of an observation.",
+    "publisher": "HL7 International",
+    "concepts": [
+      {
+        "code": "registered",
+        "display": "Registered"
+      },
+      {
+        "code": "preliminary",
+        "display": "Preliminary"
+      },
+      {
+        "code": "final",
+        "display": "Final"
+      },
+      {
+        "code": "amended",
+        "display": "Amended"
+      },
+      {
+        "code": "corrected",
+        "display": "Corrected"
+      },
+      {
+        "code": "cancelled",
+        "display": "Cancelled"
+      },
+      {
+        "code": "entered-in-error",
+        "display": "Entered in Error"
+      },
+      {
+        "code": "unknown",
+        "display": "Unknown"
+      }
+    ]
+  },
+  "http://terminology.hl7.org/CodeSystem/condition-clinical": {
+    "url": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+    "version": "5.0.0",
+    "name": "ConditionClinicalStatusCodes",
+    "title": "Condition Clinical Status Codes",
+    "description": "Preferred value set for Condition Clinical Status.",
+    "publisher": "HL7 International",
+    "concepts": [
+      {
+        "code": "active",
+        "display": "Active"
+      },
+      {
+        "code": "recurrence",
+        "display": "Recurrence"
+      },
+      {
+        "code": "relapse",
+        "display": "Relapse"
+      },
+      {
+        "code": "inactive",
+        "display": "Inactive"
+      },
+      {
+        "code": "remission",
+        "display": "Remission"
+      },
+      {
+        "code": "resolved",
+        "display": "Resolved"
+      }
+    ]
+  },
+  "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus": {
+    "url": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+    "version": "5.0.0",
+    "name": "MaritalStatus",
+    "title": "Marital Status",
+    "description": "The domestic partnership status of a person.",
+    "publisher": "HL7 International",
+    "concepts": [
+      {
+        "code": "A",
+        "display": "Annulled"
+      },
+      {
+        "code": "D",
+        "display": "Divorced"
+      },
+      {
+        "code": "I",
+        "display": "Interlocutory"
+      },
+      {
+        "code": "L",
+        "display": "Legally Separated"
+      },
+      {
+        "code": "M",
+        "display": "Married"
+      },
+      {
+        "code": "P",
+        "display": "Polygamous"
+      },
+      {
+        "code": "S",
+        "display": "Never Married"
+      },
+      {
+        "code": "T",
+        "display": "Domestic partner"
+      },
+      {
+        "code": "U",
+        "display": "unmarried"
+      },
+      {
+        "code": "W",
+        "display": "Widowed"
+      },
+      {
+        "code": "UNK",
+        "display": "unknown"
+      }
+    ]
+  }
+}

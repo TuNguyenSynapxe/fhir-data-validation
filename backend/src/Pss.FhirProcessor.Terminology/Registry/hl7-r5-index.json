@@ -1,0 +1,98 @@
+[
+  {
+    "url": "http://example.org/fhir/CodeSystem/test-gender",
+    "resourceType": "CodeSystem",
+    "name": "TestGender",
+    "title": "Test Gender Codes",
+    "publisher": "Test Publisher",
+    "description": "Test gender code system for fixture data"
+  },
+  {
+    "url": "http://example.org/fhir/CodeSystem/test-status",
+    "resourceType": "CodeSystem",
+    "name": "TestStatus",
+    "title": "Test Status Codes",
+    "publisher": "Test Publisher",
+    "description": "Test status code system for fixture data"
+  },
+  {
+    "url": "http://example.org/fhir/ValueSet/test-gender-vs",
+    "resourceType": "ValueSet",
+    "name": "TestGenderVS",
+    "title": "Test Gender ValueSet",
+    "publisher": "Test Publisher",
+    "description": "Test gender value set using explicit expansion"
+  },
+  {
+    "url": "http://example.org/fhir/ValueSet/test-status-compose",
+    "resourceType": "ValueSet",
+    "name": "TestStatusCompose",
+    "title": "Test Status ValueSet (Compose)",
+    "publisher": "Test Publisher",
+    "description": "Test status value set using compose.include"
+  },
+  {
+    "url": "http://hl7.org/fhir/CodeSystem/administrative-gender",
+    "resourceType": "CodeSystem",
+    "name": "AdministrativeGender",
+    "title": "Administrative Gender",
+    "publisher": "HL7 International",
+    "description": "The gender of a person used for administrative purposes."
+  },
+  {
+    "url": "http://hl7.org/fhir/CodeSystem/observation-status",
+    "resourceType": "CodeSystem",
+    "name": "ObservationStatus",
+    "title": "Observation Status",
+    "publisher": "HL7 International",
+    "description": "Codes providing the status of an observation."
+  },
+  {
+    "url": "http://hl7.org/fhir/ValueSet/administrative-gender",
+    "resourceType": "ValueSet",
+    "name": "AdministrativeGender",
+    "title": "Administrative Gender",
+    "publisher": "HL7 International",
+    "description": "The gender of a person used for administrative purposes."
+  },
+  {
+    "url": "http://hl7.org/fhir/ValueSet/condition-clinical",
+    "resourceType": "ValueSet",
+    "name": "ConditionClinicalStatusCodes",
+    "title": "Condition Clinical Status Codes",
+    "publisher": "HL7 International",
+    "description": "Preferred value set for Condition Clinical Status."
+  },
+  {
+    "url": "http://hl7.org/fhir/ValueSet/marital-status",
+    "resourceType": "ValueSet",
+    "name": "MaritalStatus",
+    "title": "Marital Status",
+    "publisher": "HL7 International",
+    "description": "The domestic partnership status of a person."
+  },
+  {
+    "url": "http://hl7.org/fhir/ValueSet/observation-status",
+    "resourceType": "ValueSet",
+    "name": "ObservationStatus",
+    "title": "Observation Status",
+    "publisher": "HL7 International",
+    "description": "Codes providing the status of an observation."
+  },
+  {
+    "url": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+    "resourceType": "CodeSystem",
+    "name": "ConditionClinicalStatusCodes",
+    "title": "Condition Clinical Status Codes",
+    "publisher": "HL7 International",
+    "description": "Preferred value set for Condition Clinical Status."
+  },
+  {
+    "url": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+    "resourceType": "CodeSystem",
+    "name": "MaritalStatus",
+    "title": "Marital Status",
+    "publisher": "HL7 International",
+    "description": "The domestic partnership status of a person."
+  }
+]

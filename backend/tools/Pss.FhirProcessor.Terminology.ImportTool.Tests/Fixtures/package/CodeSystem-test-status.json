@@ -1,0 +1,34 @@
+{
+  "resourceType": "CodeSystem",
+  "url": "http://example.org/fhir/CodeSystem/test-status",
+  "version": "1.0.0",
+  "name": "TestStatus",
+  "title": "Test Status Codes",
+  "status": "active",
+  "publisher": "Test Publisher",
+  "description": "Test status code system for fixture data",
+  "concept": [
+    {
+      "code": "active",
+      "display": "Active"
+    },
+    {
+      "code": "inactive",
+      "display": "Inactive"
+    },
+    {
+      "code": "pending",
+      "display": "Pending",
+      "concept": [
+        {
+          "code": "pending-review",
+          "display": "Pending Review"
+        },
+        {
+          "code": "pending-approval",
+          "display": "Pending Approval"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "resourceType": "ValueSet",
+  "url": "http://example.org/fhir/ValueSet/test-status-compose",
+  "version": "1.0.0",
+  "name": "TestStatusCompose",
+  "title": "Test Status ValueSet (Compose)",
+  "status": "active",
+  "publisher": "Test Publisher",
+  "description": "Test status value set using compose.include",
+  "compose": {
+    "include": [
+      {
+        "system": "http://example.org/fhir/CodeSystem/test-status",
+        "concept": [
+          {
+            "code": "active"
+          },
+          {
+            "code": "inactive"
+          }
+        ]
+      }
+    ]
+  }
+}

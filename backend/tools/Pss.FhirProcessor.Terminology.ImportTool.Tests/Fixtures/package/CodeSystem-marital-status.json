@@ -1,0 +1,56 @@
+{
+  "resourceType": "CodeSystem",
+  "url": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+  "version": "5.0.0",
+  "name": "MaritalStatus",
+  "title": "Marital Status",
+  "status": "active",
+  "publisher": "HL7 International",
+  "description": "The domestic partnership status of a person.",
+  "concept": [
+    {
+      "code": "A",
+      "display": "Annulled"
+    },
+    {
+      "code": "D",
+      "display": "Divorced"
+    },
+    {
+      "code": "I",
+      "display": "Interlocutory"
+    },
+    {
+      "code": "L",
+      "display": "Legally Separated"
+    },
+    {
+      "code": "M",
+      "display": "Married"
+    },
+    {
+      "code": "P",
+      "display": "Polygamous"
+    },
+    {
+      "code": "S",
+      "display": "Never Married"
+    },
+    {
+      "code": "T",
+      "display": "Domestic partner"
+    },
+    {
+      "code": "U",
+      "display": "unmarried"
+    },
+    {
+      "code": "W",
+      "display": "Widowed"
+    },
+    {
+      "code": "UNK",
+      "display": "unknown"
+    }
+  ]
+}
