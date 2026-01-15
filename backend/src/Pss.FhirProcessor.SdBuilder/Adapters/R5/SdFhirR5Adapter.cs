@@ -3,42 +3,50 @@ using Pss.FhirProcessor.SdBuilder.Abstractions;
 using Pss.FhirProcessor.SdBuilder.Domain;
 using Pss.FhirProcessor.SdBuilder.Engine;
 using Pss.FhirProcessor.SdBuilder.Export;
+using Pss.FhirProcessor.Terminology.Abstractions;
+using Pss.FhirProcessor.Terminology.Domain;
 
 namespace Pss.FhirProcessor.SdBuilder.Adapters.R5;
 
 /// <summary>
 /// FHIR R5 adapter for SD Builder.
-/// Delegates to existing Phase 3 components without modification.
+/// Delegates to Terminology DLL for all ValueSet operations.
 /// </summary>
 public sealed class SdFhirR5Adapter : ISdFhirAdapter
 {
     public FhirVersion Version => FhirVersion.R5;
 
     private readonly IStructureDefinitionRepository _repository;
+    private readonly ITerminologyService _terminologyService;
     private readonly SdImportEngine _importer;
-    private readonly IReadOnlyList<ValueSetSummaryDto> _knownValueSets;
-    private readonly IReadOnlyDictionary<string, ValueSetPreviewDto> _previewByUrl;
 
-    public SdFhirR5Adapter(IStructureDefinitionRepository repository)
+    public SdFhirR5Adapter(
+        IStructureDefinitionRepository repository,
+        ITerminologyService terminologyService)
     {
-        _repository = repository;
+        _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+        _terminologyService = terminologyService ?? throw new ArgumentNullException(nameof(terminologyService));
         _importer = new SdImportEngine();
-        
-        // Curated registry (MVP - deterministic and pure)
-        _knownValueSets = InitializeKnownValueSets();
-        _previewByUrl = InitializePreviewRegistry();
     }
 
     /// <summary>
-    /// Load base StructureDefinition from repository.
+    /// Load base StructureDefinition from offline repository.
+    /// Adapter does NOT know about file paths or package structure.
     /// </summary>
     public async Task<StructureDefinition> LoadBaseAsync(string canonicalUrl)
     {
         var result = await _repository.FindByUrlAsync(canonicalUrl, CancellationToken.None);
-        return result as StructureDefinition
-            ?? throw new InvalidOperationException(
-                $"Base StructureDefinition not found: {canonicalUrl}"
-            );
+        
+        if (result is StructureDefinition sd)
+        {
+            return sd;
+        }
+        
+        // Repository returned null - offline cache missing this SD
+        throw new InvalidOperationException(
+            $"Base StructureDefinition not found in offline cache: {canonicalUrl}. " +
+            "Ensure spec-cache/hl7.fhir.r5.core/ contains required StructureDefinition JSON files. " +
+            "Download from: https://hl7.org/fhir/R5/downloads.html");
     }
 
     /// <summary>
@@ -64,238 +72,95 @@ public sealed class SdFhirR5Adapter : ISdFhirAdapter
     }
 
     /// <summary>
-    /// Search for ValueSets (read-only UX helper).
+    /// Search for ValueSets (delegates to Terminology DLL).
     /// </summary>
-    public System.Threading.Tasks.Task<IReadOnlyList<ValueSetSummaryDto>> SearchValueSetsAsync(
+    public async Task<IReadOnlyList<ValueSetSummaryDto>> SearchValueSetsAsync(
         ValueSetSearchRequest request,
         CancellationToken cancellationToken = default)
     {
-        var query = request.Query?.Trim() ?? string.Empty;
-        var limit = Math.Clamp(request.Limit, 1, 50);
+        var terminologyRequest = new Pss.FhirProcessor.Terminology.Domain.ValueSetSearchRequest
+        {
+            Query = request.Query,
+            ElementPath = request.ElementPath,
+            ResourceType = request.ResourceType
+        };
 
-        var results = _knownValueSets
-            .Where(vs =>
-            {
-                if (string.IsNullOrEmpty(query))
-                    return true;
-
-                return vs.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                       vs.Url.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                       (vs.Description?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false);
-            })
-            .OrderBy(vs => vs.Name)
-            .ThenBy(vs => vs.Url)
-            .Take(limit)
+        var results = await _terminologyService.SearchAsync(terminologyRequest, cancellationToken);
+        
+        // Map Terminology DTOs to Adapter DTOs
+        return results
+            .Select(MapToValueSetSummaryDto)
             .ToList();
-
-        return System.Threading.Tasks.Task.FromResult<IReadOnlyList<ValueSetSummaryDto>>(results);
     }
 
     /// <summary>
-    /// Preview ValueSet codes (read-only UX helper).
+    /// Preview ValueSet codes (delegates to Terminology DLL).
     /// </summary>
-    public System.Threading.Tasks.Task<ValueSetPreviewDto> PreviewValueSetAsync(
+    public async Task<ValueSetPreviewDto> PreviewValueSetAsync(
         string valueSetUrl,
         int maxItems,
         CancellationToken cancellationToken = default)
     {
         var clampedMax = Math.Clamp(maxItems, 1, 200);
 
-        if (_previewByUrl.TryGetValue(valueSetUrl, out var preview))
+        var preview = await _terminologyService.PreviewAsync(valueSetUrl, clampedMax, cancellationToken);
+        
+        if (preview == null)
         {
-            // Return limited codes
-            var limitedPreview = preview with
+            // Not found - return empty preview
+            return new ValueSetPreviewDto
             {
-                Codes = preview.Codes.Take(clampedMax).ToList()
+                Url = valueSetUrl,
+                Name = valueSetUrl,
+                Codes = Array.Empty<CodeDisplayDto>()
             };
-            return System.Threading.Tasks.Task.FromResult(limitedPreview);
         }
 
-        // Not found - return empty preview
-        return System.Threading.Tasks.Task.FromResult(new ValueSetPreviewDto
-        {
-            Url = valueSetUrl,
-            Name = valueSetUrl,
-            Codes = Array.Empty<CodeDisplayDto>()
-        });
+        return MapToValueSetPreviewDto(preview);
+    }
+
+    /// <summary>
+    /// Check if ValueSet exists (delegates to Terminology DLL).
+    /// </summary>
+    public async Task<bool> ValueSetExistsAsync(
+        string valueSetUrl,
+        CancellationToken cancellationToken = default)
+    {
+        return await _terminologyService.ExistsAsync(valueSetUrl, cancellationToken);
     }
 
     // ========================================================================
-    // Curated Registry (MVP)
+    // Terminology DTO Mapping (Terminology Domain → Adapter DTOs)
     // ========================================================================
 
-    private static List<ValueSetSummaryDto> InitializeKnownValueSets()
+    private static ValueSetSummaryDto MapToValueSetSummaryDto(Pss.FhirProcessor.Terminology.Domain.ValueSetSummary summary)
     {
-        return new List<ValueSetSummaryDto>
+        return new ValueSetSummaryDto
         {
-            new()
-            {
-                Url = "http://hl7.org/fhir/ValueSet/administrative-gender",
-                Name = "AdministrativeGender",
-                Publisher = "HL7 International",
-                Description = "The gender of a person used for administrative purposes"
-            },
-            new()
-            {
-                Url = "http://hl7.org/fhir/ValueSet/marital-status",
-                Name = "Marital Status",
-                Publisher = "HL7 International",
-                Description = "The domestic partnership status of a person"
-            },
-            new()
-            {
-                Url = "http://hl7.org/fhir/ValueSet/observation-category",
-                Name = "Observation Category",
-                Publisher = "HL7 International",
-                Description = "Observation Category codes"
-            },
-            new()
-            {
-                Url = "http://hl7.org/fhir/ValueSet/observation-status",
-                Name = "Observation Status",
-                Publisher = "HL7 International",
-                Description = "Codes providing the status of an observation"
-            },
-            new()
-            {
-                Url = "http://hl7.org/fhir/ValueSet/condition-clinical",
-                Name = "Condition Clinical Status",
-                Publisher = "HL7 International",
-                Description = "The clinical status of the condition or diagnosis"
-            },
-            new()
-            {
-                Url = "http://hl7.org/fhir/ValueSet/condition-ver-status",
-                Name = "Condition Verification Status",
-                Publisher = "HL7 International",
-                Description = "The verification status to support or decline the clinical status"
-            },
-            new()
-            {
-                Url = "http://hl7.org/fhir/ValueSet/identifier-use",
-                Name = "Identifier Use",
-                Publisher = "HL7 International",
-                Description = "Identifies the purpose for this identifier"
-            },
-            new()
-            {
-                Url = "http://hl7.org/fhir/ValueSet/contact-point-system",
-                Name = "Contact Point System",
-                Publisher = "HL7 International",
-                Description = "Telecommunications form for contact point"
-            },
-            new()
-            {
-                Url = "http://hl7.org/fhir/ValueSet/address-use",
-                Name = "Address Use",
-                Publisher = "HL7 International",
-                Description = "The use of an address"
-            },
-            new()
-            {
-                Url = "http://hl7.org/fhir/ValueSet/name-use",
-                Name = "Name Use",
-                Publisher = "HL7 International",
-                Description = "The use of a human name"
-            }
+            Url = summary.Url,
+            Name = summary.Name,
+            Publisher = summary.Publisher,
+            Description = summary.Description
         };
     }
 
-    private static Dictionary<string, ValueSetPreviewDto> InitializePreviewRegistry()
+    private static ValueSetPreviewDto MapToValueSetPreviewDto(Pss.FhirProcessor.Terminology.Domain.ValueSetPreview preview)
     {
-        return new Dictionary<string, ValueSetPreviewDto>
+        return new ValueSetPreviewDto
         {
-            ["http://hl7.org/fhir/ValueSet/administrative-gender"] = new()
-            {
-                Url = "http://hl7.org/fhir/ValueSet/administrative-gender",
-                Name = "AdministrativeGender",
-                Codes = new List<CodeDisplayDto>
-                {
-                    new() { Code = "male", Display = "Male" },
-                    new() { Code = "female", Display = "Female" },
-                    new() { Code = "other", Display = "Other" },
-                    new() { Code = "unknown", Display = "Unknown" }
-                }
-            },
-            ["http://hl7.org/fhir/ValueSet/observation-status"] = new()
-            {
-                Url = "http://hl7.org/fhir/ValueSet/observation-status",
-                Name = "Observation Status",
-                Codes = new List<CodeDisplayDto>
-                {
-                    new() { Code = "registered", Display = "Registered" },
-                    new() { Code = "preliminary", Display = "Preliminary" },
-                    new() { Code = "final", Display = "Final" },
-                    new() { Code = "amended", Display = "Amended" },
-                    new() { Code = "corrected", Display = "Corrected" },
-                    new() { Code = "cancelled", Display = "Cancelled" },
-                    new() { Code = "entered-in-error", Display = "Entered in Error" },
-                    new() { Code = "unknown", Display = "Unknown" }
-                }
-            },
-            ["http://hl7.org/fhir/ValueSet/observation-category"] = new()
-            {
-                Url = "http://hl7.org/fhir/ValueSet/observation-category",
-                Name = "Observation Category",
-                Codes = new List<CodeDisplayDto>
-                {
-                    new() { Code = "social-history", Display = "Social History" },
-                    new() { Code = "vital-signs", Display = "Vital Signs" },
-                    new() { Code = "imaging", Display = "Imaging" },
-                    new() { Code = "laboratory", Display = "Laboratory" },
-                    new() { Code = "procedure", Display = "Procedure" },
-                    new() { Code = "survey", Display = "Survey" },
-                    new() { Code = "exam", Display = "Exam" },
-                    new() { Code = "therapy", Display = "Therapy" }
-                }
-            },
-            ["http://hl7.org/fhir/ValueSet/condition-clinical"] = new()
-            {
-                Url = "http://hl7.org/fhir/ValueSet/condition-clinical",
-                Name = "Condition Clinical Status",
-                Codes = new List<CodeDisplayDto>
-                {
-                    new() { Code = "active", Display = "Active" },
-                    new() { Code = "recurrence", Display = "Recurrence" },
-                    new() { Code = "relapse", Display = "Relapse" },
-                    new() { Code = "inactive", Display = "Inactive" },
-                    new() { Code = "remission", Display = "Remission" },
-                    new() { Code = "resolved", Display = "Resolved" }
-                }
-            },
-            ["http://hl7.org/fhir/ValueSet/condition-ver-status"] = new()
-            {
-                Url = "http://hl7.org/fhir/ValueSet/condition-ver-status",
-                Name = "Condition Verification Status",
-                Codes = new List<CodeDisplayDto>
-                {
-                    new() { Code = "unconfirmed", Display = "Unconfirmed" },
-                    new() { Code = "provisional", Display = "Provisional" },
-                    new() { Code = "differential", Display = "Differential" },
-                    new() { Code = "confirmed", Display = "Confirmed" },
-                    new() { Code = "refuted", Display = "Refuted" },
-                    new() { Code = "entered-in-error", Display = "Entered in Error" }
-                }
-            },
-            ["http://hl7.org/fhir/ValueSet/marital-status"] = new()
-            {
-                Url = "http://hl7.org/fhir/ValueSet/marital-status",
-                Name = "Marital Status",
-                Codes = new List<CodeDisplayDto>
-                {
-                    new() { Code = "A", Display = "Annulled" },
-                    new() { Code = "D", Display = "Divorced" },
-                    new() { Code = "I", Display = "Interlocutory" },
-                    new() { Code = "L", Display = "Legally Separated" },
-                    new() { Code = "M", Display = "Married" },
-                    new() { Code = "P", Display = "Polygamous" },
-                    new() { Code = "S", Display = "Never Married" },
-                    new() { Code = "T", Display = "Domestic Partner" },
-                    new() { Code = "U", Display = "Unmarried" },
-                    new() { Code = "W", Display = "Widowed" },
-                    new() { Code = "UNK", Display = "Unknown" }
-                }
-            }
+            Url = preview.Url,
+            Name = preview.Name,
+            Codes = preview.Codes.Select(MapToCodeDisplayDto).ToList()
+        };
+    }
+
+    private static CodeDisplayDto MapToCodeDisplayDto(Pss.FhirProcessor.Terminology.Domain.ValueSetCode code)
+    {
+        return new CodeDisplayDto
+        {
+            Code = code.Code,
+            Display = code.Display,
+            System = null // System not currently stored in Terminology DLL DTOs (future enhancement)
         };
     }
 }

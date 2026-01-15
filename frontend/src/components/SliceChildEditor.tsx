@@ -16,6 +16,7 @@
 import React, { useState } from 'react';
 import { useSdBuilderStore } from '../stores/useSdBuilderStore';
 import type { ElementDesign, SliceDesign } from '../api/sdBuilderApi';
+import { ValueSetPicker } from './ValueSetPicker';
 
 // ============================================================================
 // Props
@@ -291,7 +292,8 @@ export const SliceChildEditor: React.FC<SliceChildEditorProps> = ({
                   {/* Binding */}
                   {(() => {
                     const binding = child.overrideBinding ?? child.baseBinding;
-                    return binding && (
+                    if (!binding) return null;
+                    return (
                       <div className="text-sm text-gray-600">
                         Binding: {binding.valueSetUrl} ({binding.strength})
                       </div>
@@ -387,12 +389,10 @@ export const SliceChildEditor: React.FC<SliceChildEditorProps> = ({
                 Binding (Optional)
               </label>
               <div className="space-y-2">
-                <input
-                  type="text"
-                  placeholder="ValueSet URL"
-                  value={bindingUrl}
-                  onChange={(e) => setBindingUrl(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                <ValueSetPicker
+                  value={bindingUrl || null}
+                  onChange={(url) => setBindingUrl(url || '')}
+                  disabled={false}
                 />
                 <select
                   value={bindingStrength}

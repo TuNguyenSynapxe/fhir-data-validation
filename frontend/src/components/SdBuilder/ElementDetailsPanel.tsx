@@ -6,7 +6,7 @@
  * Features:
  * - Element metadata display
  * - Cardinality editor
- * - Binding editor
+ * - Binding editor (Phase 4A refactored: ValueSet selection + inline strength control)
  * - Slicing configuration
  * - Extension management
  * 
@@ -14,6 +14,11 @@
  * - Show base vs current cardinality
  * - No include/exclude toggle
  * - Cardinality editing controls "Not allowed" state
+ * 
+ * BINDING UX (Phase 4A):
+ * - Wide drawer for ValueSet selection only
+ * - Inline strength control (separate from drawer)
+ * - Two independent actions: select ValueSet, adjust strength
  */
 
 import React, { useState } from 'react';
@@ -25,16 +30,18 @@ import {
   isBindingEligible, 
   getBaseBinding, 
   getCurrentBinding, 
-  hasBindingOverride 
+  hasBindingOverride,
+  type BindingStrength
 } from '../../utils/bindingHelpers';
-import { BindingEditorDrawer } from './BindingEditorDrawer';
+import { ValueSetSelectionDrawer } from './ValueSetSelectionDrawer';
+import { BindingStrengthControl } from './BindingStrengthControl';
 
 export const ElementDetailsPanel: React.FC = () => {
   const design = useSdBuilderStore((state) => state.design);
   const selectedPath = useSdBuilderStore((state) => state.selectedPath);
   const applyCommand = useSdBuilderStore((state) => state.applyCommand);
   
-  const [bindingDrawerOpen, setBindingDrawerOpen] = useState(false);
+  const [valueSetDrawerOpen, setValueSetDrawerOpen] = useState(false);
 
   // Find selected element
   const selectedElement = React.useMemo(() => {
@@ -43,6 +50,42 @@ export const ElementDetailsPanel: React.FC = () => {
     const tree = buildTree(design.elements);
     return findNodeByPath(tree, selectedPath);
   }, [design, selectedPath]);
+  
+  const handleSelectValueSet = async (url: string) => {
+    if (!selectedElement) return;
+    
+    const currentBinding = getCurrentBinding(selectedElement);
+    const baseBinding = getBaseBinding(selectedElement);
+    
+    // Use current strength if exists, else base strength, else default to 'required'
+    const strength = currentBinding?.strength || baseBinding?.strength || 'Required';
+    
+    try {
+      await applyCommand({
+        commandType: 'SetBinding',
+        path: selectedElement.path,
+        valueSetUrl: url,
+        strength: strength,
+      });
+      
+      toast.success(`ValueSet updated: ${selectedElement.name}`, {
+        duration: 2000,
+        position: 'bottom-right',
+        style: {
+          background: '#10b981',
+          color: '#fff',
+          fontSize: '13px',
+          padding: '8px 12px',
+        },
+      });
+    } catch (err) {
+      console.error('Failed to set ValueSet:', err);
+      toast.error('Failed to update ValueSet', {
+        duration: 3000,
+        position: 'bottom-right',
+      });
+    }
+  };
   
   const handleClearBinding = async () => {
     if (!selectedElement) return;
@@ -150,82 +193,85 @@ export const ElementDetailsPanel: React.FC = () => {
         <div className="details-section">
           <h4>Binding</h4>
           
+          {/* No Binding Defined */}
           {!currentBinding && !baseBinding && (
             <>
               <p className="binding-none">None defined</p>
               <button 
                 className="action-btn" 
-                onClick={() => setBindingDrawerOpen(true)}
+                onClick={() => setValueSetDrawerOpen(true)}
               >
                 Add Binding
               </button>
             </>
           )}
           
+          {/* Base Binding Only (No Override) */}
           {baseBinding && !hasOverride && (
             <>
               <div className="binding-summary">
-                <div className="binding-base">
-                  <strong>Base:</strong>
+                <div className="binding-info">
                   <dl className="details-list compact">
                     <dt>ValueSet:</dt>
                     <dd>{baseBinding.valueSetUrl}</dd>
-                    <dt>Strength:</dt>
-                    <dd>{baseBinding.strength}</dd>
                   </dl>
+                  <button 
+                    className="action-btn-small" 
+                    onClick={() => setValueSetDrawerOpen(true)}
+                  >
+                    Change ValueSet
+                  </button>
                 </div>
-                <div className="binding-current">
-                  <strong>Current:</strong>
-                  <p className="binding-inherited">Inherited from base</p>
-                </div>
+                {/* Inline Strength Control */}
+                <BindingStrengthControl
+                  elementPath={node.path}
+                  elementName={node.name}
+                  valueSetUrl={baseBinding.valueSetUrl}
+                  currentStrength={baseBinding.strength.toLowerCase() as BindingStrength}
+                  baseStrength={baseBinding.strength.toLowerCase() as BindingStrength}
+                />
               </div>
-              <button 
-                className="action-btn" 
-                onClick={() => setBindingDrawerOpen(true)}
-              >
-                Change Binding
-              </button>
             </>
           )}
           
+          {/* Override Binding */}
           {currentBinding && hasOverride && (
             <>
               <div className="binding-summary">
-                {baseBinding && (
-                  <div className="binding-base">
-                    <strong>Base:</strong>
-                    <dl className="details-list compact">
-                      <dt>ValueSet:</dt>
-                      <dd>{baseBinding.valueSetUrl}</dd>
-                      <dt>Strength:</dt>
-                      <dd>{baseBinding.strength}</dd>
-                    </dl>
-                  </div>
-                )}
-                <div className="binding-current">
-                  <strong>Current:</strong>
+                <div className="binding-info">
                   <dl className="details-list compact">
                     <dt>ValueSet:</dt>
                     <dd className="binding-override">{currentBinding.valueSetUrl}</dd>
-                    <dt>Strength:</dt>
-                    <dd className="binding-override">{currentBinding.strength}</dd>
                   </dl>
+                  <div className="button-group-inline">
+                    <button 
+                      className="action-btn-small" 
+                      onClick={() => setValueSetDrawerOpen(true)}
+                    >
+                      Change ValueSet
+                    </button>
+                    <button 
+                      className="action-btn-small secondary" 
+                      onClick={handleClearBinding}
+                    >
+                      Clear Override
+                    </button>
+                  </div>
                 </div>
+                {/* Inline Strength Control */}
+                <BindingStrengthControl
+                  elementPath={node.path}
+                  elementName={node.name}
+                  valueSetUrl={currentBinding.valueSetUrl}
+                  currentStrength={currentBinding.strength.toLowerCase() as BindingStrength}
+                  baseStrength={baseBinding?.strength.toLowerCase() as BindingStrength}
+                />
               </div>
-              <div className="button-group">
-                <button 
-                  className="action-btn" 
-                  onClick={() => setBindingDrawerOpen(true)}
-                >
-                  Edit Binding
-                </button>
-                <button 
-                  className="action-btn secondary" 
-                  onClick={handleClearBinding}
-                >
-                  Clear Override
-                </button>
-              </div>
+              {baseBinding && (
+                <div className="base-binding-reference">
+                  <small>Base: {baseBinding.valueSetUrl} ({baseBinding.strength})</small>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -285,14 +331,17 @@ export const ElementDetailsPanel: React.FC = () => {
       </div>
     </div>
     
-    {/* Binding Editor Drawer */}
+    {/* ValueSet Selection Drawer (Phase 4A) */}
     {bindingEligible && (
-      <BindingEditorDrawer
-        node={node}
+      <ValueSetSelectionDrawer
+        elementPath={node.path}
+        elementName={node.name}
+        fhirType={element.baseTypeCode || 'unknown'}
         baseBinding={baseBinding}
-        currentBinding={currentBinding}
-        open={bindingDrawerOpen}
-        onClose={() => setBindingDrawerOpen(false)}
+        currentValueSetUrl={currentBinding?.valueSetUrl || null}
+        open={valueSetDrawerOpen}
+        onSelectValueSet={handleSelectValueSet}
+        onClose={() => setValueSetDrawerOpen(false)}
       />
     )}
   </>

@@ -207,9 +207,21 @@ const ElementNode: React.FC<ElementNodeProps> = ({ element, validation }) => {
           {/* Binding Badge */}
           {(() => {
             const binding = element.overrideBinding ?? element.baseBinding;
-            return binding && (
-              <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">
-                {binding.strength}
+            if (!binding) return null;
+            
+            // Extract ValueSet name from URL (last segment)
+            const urlParts = binding.valueSetUrl.split('/');
+            const valueSetName = urlParts[urlParts.length - 1] || 'ValueSet';
+            const truncatedName = valueSetName.length > 20 
+              ? valueSetName.substring(0, 20) + '...' 
+              : valueSetName;
+
+            return (
+              <span 
+                className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded cursor-help"
+                title={`${binding.valueSetUrl} (${binding.strength})`}
+              >
+                🔗 {binding.strength}: {truncatedName}
               </span>
             );
           })()}
@@ -293,7 +305,8 @@ const ElementNode: React.FC<ElementNodeProps> = ({ element, validation }) => {
                       )}
                       {(() => {
                         const binding = child.overrideBinding ?? child.baseBinding;
-                        return binding && (
+                        if (!binding) return null;
+                        return (
                           <span className="ml-2 px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">
                             {binding.strength}
                           </span>

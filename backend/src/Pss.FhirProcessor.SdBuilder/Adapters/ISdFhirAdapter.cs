@@ -43,6 +43,7 @@ public sealed record CodeDisplayDto
 {
     public required string Code { get; init; }
     public string? Display { get; init; }
+    public string? System { get; init; }
 }
 
 /// <summary>
@@ -73,6 +74,7 @@ public interface ISdFhirAdapter
 
     /// <summary>
     /// Search for ValueSets (read-only UX helper).
+    /// Delegates to Terminology DLL.
     /// </summary>
     Task<IReadOnlyList<ValueSetSummaryDto>> SearchValueSetsAsync(
         ValueSetSearchRequest request, 
@@ -80,9 +82,18 @@ public interface ISdFhirAdapter
 
     /// <summary>
     /// Preview ValueSet codes (read-only UX helper).
+    /// Delegates to Terminology DLL.
     /// </summary>
     Task<ValueSetPreviewDto> PreviewValueSetAsync(
         string valueSetUrl, 
         int maxItems, 
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Check if a ValueSet exists by canonical URL.
+    /// Delegates to Terminology DLL.
+    /// </summary>
+    Task<bool> ValueSetExistsAsync(
+        string valueSetUrl, 
         CancellationToken cancellationToken = default);
 }

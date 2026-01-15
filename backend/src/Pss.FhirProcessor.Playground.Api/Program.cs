@@ -144,9 +144,18 @@ try
         return new Pss.FhirProcessor.Terminology.Engine.TerminologyService(sources);
     });
 
-    // Register SD Builder StructureDefinition Repository (FHIR Spec Loader)
-    builder.Services.AddSingleton<Pss.FhirProcessor.SdBuilder.Abstractions.IStructureDefinitionRepository,
-        Pss.FhirProcessor.SdBuilder.Infrastructure.FhirSpecStructureDefinitionRepository>();
+    // Register SD Builder StructureDefinition Repository (Offline R5 Package Cache)
+    builder.Services.AddSingleton<Pss.FhirProcessor.SdBuilder.Abstractions.IStructureDefinitionRepository>(sp =>
+    {
+        // Get package cache path from configuration or use default
+        var packagePath = builder.Configuration["Fhir:R5:PackagePath"] 
+            ?? Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "spec-cache", "hl7.fhir.r5.core");
+        
+        var absolutePath = Path.GetFullPath(packagePath);
+        Log.Information("SD Builder using offline R5 package cache: {PackagePath}", absolutePath);
+        
+        return new Pss.FhirProcessor.SdBuilder.Infrastructure.OfflineR5StructureDefinitionRepository(absolutePath);
+    });
     
     // Register SD Builder Terminology Registry (delegates to ITerminologyService)
     builder.Services.AddSingleton<Pss.FhirProcessor.SdBuilder.Abstractions.ITerminologyRegistry>(sp =>
@@ -159,7 +168,8 @@ try
     builder.Services.AddScoped<Pss.FhirProcessor.SdBuilder.Adapters.ISdFhirAdapter>(sp =>
     {
         var repo = sp.GetRequiredService<Pss.FhirProcessor.SdBuilder.Abstractions.IStructureDefinitionRepository>();
-        return new Pss.FhirProcessor.SdBuilder.Adapters.R5.SdFhirR5Adapter(repo);
+        var terminologyService = sp.GetRequiredService<Pss.FhirProcessor.Terminology.Abstractions.ITerminologyService>();
+        return new Pss.FhirProcessor.SdBuilder.Adapters.R5.SdFhirR5Adapter(repo, terminologyService);
     });
     
     // Register SD Builder Session Store (In-Memory)

@@ -191,9 +191,9 @@ export const BindingEditorDrawer: React.FC<BindingEditorDrawerProps> = ({
                 ValueSet <span className="required">*</span>
               </label>
               <ValueSetPicker
-                value={valueSetUrl}
-                onSelect={setValueSetUrl}
-                elementPath={node.path}
+                value={valueSetUrl || null}
+                onChange={(url) => setValueSetUrl(url || '')}
+                disabled={false}
               />
               <span className="form-hint">
                 Search for a ValueSet by name or publisher
