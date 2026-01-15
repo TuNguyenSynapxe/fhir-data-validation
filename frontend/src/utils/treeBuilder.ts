@@ -75,7 +75,7 @@ export function buildTree(elements: ElementDesign[]): TreeNode[] {
       
       // Modifications
       hasCardinalityOverride: element.overrideCardinality !== null,
-      hasBinding: element.binding !== null,
+      hasBinding: element.overrideBinding !== null || element.baseBinding !== null,
       hasSlicing: element.slicing !== null,
       sliceCount: element.slices.length,
       

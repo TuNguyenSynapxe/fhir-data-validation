@@ -11,8 +11,8 @@
 
   <ItemGroup>
     <PackageReference Include="FluentAssertions" Version="6.12.0" />
-    <PackageReference Include="Hl7.Fhir.R4" Version="6.0.2" />
-    <PackageReference Include="Hl7.Fhir.Specification.Data.R4" Version="6.0.2" />
+    <PackageReference Include="Hl7.Fhir.R5" Version="5.11.1" />
+    <PackageReference Include="Hl7.Fhir.Specification.R5" Version="5.11.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.6.0" />
     <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="xunit" Version="2.4.2" />

@@ -54,7 +54,7 @@ public sealed class SdBuilderSession
     public void SetBinding(string path, BindingConfig? binding)
     {
         var element = FindElement(path);
-        element.Binding = binding;
+        element.OverrideBinding = binding;
     }
 
     /// <summary>
@@ -64,7 +64,7 @@ public sealed class SdBuilderSession
     public void ClearBindingOverride(string path)
     {
         var element = FindElement(path);
-        element.Binding = null;
+        element.OverrideBinding = null;
     }
 
     /// <summary>

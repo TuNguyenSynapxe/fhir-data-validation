@@ -34,6 +34,23 @@ public sealed class SdDesignInitializer
 
         foreach (var element in baseSd.Snapshot.Element)
         {
+            // Extract type codes from ElementDefinition.Type (supports value[x])
+            var typeCodes = element.Type?
+                .Select(t => t.Code?.ToString() ?? string.Empty)
+                .Where(code => !string.IsNullOrEmpty(code))
+                .ToArray() ?? Array.Empty<string>();
+            
+            // Extract base binding from snapshot (if exists)
+            BindingConfig? baseBinding = null;
+            if (element.Binding != null)
+            {
+                baseBinding = new BindingConfig
+                {
+                    ValueSetUrl = element.Binding.ValueSet ?? string.Empty,
+                    Strength = MapBindingStrength(element.Binding.Strength)
+                };
+            }
+            
             var elementDesign = new ElementDesignState
             {
                 Path = element.Path ?? string.Empty,
@@ -41,10 +58,11 @@ public sealed class SdDesignInitializer
                     element.Min ?? 0,
                     element.Max ?? "*"
                 ),
-                BaseTypeCode = element.Type?.FirstOrDefault()?.Code ?? string.Empty,
+                TypeCodes = typeCodes,
                 IsIncluded = DetermineInclusion(element, startMode),
                 OverrideCardinality = null,
-                Binding = null,
+                BaseBinding = baseBinding,
+                OverrideBinding = null,
                 Extensions = new List<ExtensionConfig>()
             };
 
@@ -52,6 +70,18 @@ public sealed class SdDesignInitializer
         }
 
         return designState;
+    }
+    
+    private static Domain.BindingStrength MapBindingStrength(Hl7.Fhir.Model.BindingStrength? fhirStrength)
+    {
+        return fhirStrength switch
+        {
+            Hl7.Fhir.Model.BindingStrength.Required => Domain.BindingStrength.Required,
+            Hl7.Fhir.Model.BindingStrength.Extensible => Domain.BindingStrength.Extensible,
+            Hl7.Fhir.Model.BindingStrength.Preferred => Domain.BindingStrength.Preferred,
+            Hl7.Fhir.Model.BindingStrength.Example => Domain.BindingStrength.Preferred, // Map Example to Preferred
+            _ => Domain.BindingStrength.Preferred // Default fallback
+        };
     }
 
     private static bool DetermineInclusion(ElementDefinition element, VisibilityMode startMode)

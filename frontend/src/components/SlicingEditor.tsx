@@ -311,9 +311,10 @@ export const SlicingEditor: React.FC<SlicingEditorProps> = ({
 
                     {/* Slice Info */}
                     <div className="text-sm text-gray-600">
-                      {slice.binding && (
-                        <div>Binding: {slice.binding.valueSetUrl}</div>
-                      )}
+                      {(() => {
+                        const binding = slice.overrideBinding ?? slice.baseBinding;
+                        return binding && <div>Binding: {binding.valueSetUrl}</div>;
+                      })()}
                       {slice.children.length > 0 && (
                         <div>{slice.children.length} child constraint(s)</div>
                       )}

@@ -45,13 +45,11 @@ export function isBindingEligible(node: TreeNode): boolean {
     return false;
   }
   
-  // Get type codes from backend
-  // TODO: Backend needs to provide elementDesign.typeCodes array
-  // For now, fail closed if not available
-  const typeCodes = (node.elementDesign as any).typeCodes as string[] | undefined;
+  // Get type codes from backend (backend-authoritative)
+  const typeCodes = node.elementDesign.typeCodes;
   
   if (!typeCodes || typeCodes.length === 0) {
-    return false; // Fail closed - never guess
+    return false; // No types = not bindable
   }
   
   // Check if any type code is bindable
@@ -67,10 +65,7 @@ export function isBindingEligible(node: TreeNode): boolean {
  * @returns Base binding config or null
  */
 export function getBaseBinding(node: TreeNode): BindingConfig | null {
-  // TODO: Backend needs to provide elementDesign.baseBinding
-  // For now, return null until backend separation is implemented
-  const baseBinding = (node.elementDesign as any).baseBinding as BindingConfig | undefined;
-  return baseBinding ?? null;
+  return node.elementDesign.baseBinding ?? null;
 }
 
 /**
@@ -82,10 +77,7 @@ export function getBaseBinding(node: TreeNode): BindingConfig | null {
  * @returns Override binding config or null
  */
 export function getOverrideBinding(node: TreeNode): BindingConfig | null {
-  // TODO: Backend needs to provide elementDesign.overrideBinding
-  // For now, return null until backend separation is implemented
-  const overrideBinding = (node.elementDesign as any).overrideBinding as BindingConfig | undefined;
-  return overrideBinding ?? null;
+  return node.elementDesign.overrideBinding ?? null;
 }
 
 /**

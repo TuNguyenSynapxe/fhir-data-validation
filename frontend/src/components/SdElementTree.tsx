@@ -205,11 +205,14 @@ const ElementNode: React.FC<ElementNodeProps> = ({ element, validation }) => {
           )}
 
           {/* Binding Badge */}
-          {element.binding && (
-            <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">
-              {element.binding.strength}
-            </span>
-          )}
+          {(() => {
+            const binding = element.overrideBinding ?? element.baseBinding;
+            return binding && (
+              <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">
+                {binding.strength}
+              </span>
+            );
+          })()}
 
           {/* Slicing Badge */}
           {element.slicing && (
@@ -264,11 +267,14 @@ const ElementNode: React.FC<ElementNodeProps> = ({ element, validation }) => {
                     {formatCardinality(slice.cardinality)}
                   </span>
                 )}
-                {slice.binding && (
-                  <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">
-                    {slice.binding.strength}
-                  </span>
-                )}
+                {(() => {
+                  const binding = slice.overrideBinding ?? slice.baseBinding;
+                  return binding && (
+                    <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">
+                      {binding.strength}
+                    </span>
+                  );
+                })()}
               </div>
 
               {/* Slice Children */}
@@ -285,11 +291,14 @@ const ElementNode: React.FC<ElementNodeProps> = ({ element, validation }) => {
                           {formatCardinality(child.cardinality)}
                         </span>
                       )}
-                      {child.binding && (
-                        <span className="ml-2 px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">
-                          {child.binding.strength}
-                        </span>
-                      )}
+                      {(() => {
+                        const binding = child.overrideBinding ?? child.baseBinding;
+                        return binding && (
+                          <span className="ml-2 px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">
+                            {binding.strength}
+                          </span>
+                        );
+                      })()}
                       {child.fixedValue && (
                         <span className="ml-2 px-2 py-1 text-xs bg-indigo-100 text-indigo-800 rounded">
                           Fixed

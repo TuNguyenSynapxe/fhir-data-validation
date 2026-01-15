@@ -41,7 +41,9 @@ export interface ElementDesign {
   baseCardinality: Cardinality;
   overrideCardinality: Cardinality | null;
   isIncluded: boolean;
-  binding: BindingConfig | null;
+  typeCodes: string[];  // Array of FHIR type codes (e.g., ["code"], ["string", "integer"])
+  baseBinding: BindingConfig | null;  // Inherited from base profile
+  overrideBinding: BindingConfig | null;  // User-defined override
   slicing: SlicingConfig | null;
   slices: SliceDesign[];
 }
@@ -70,14 +72,16 @@ export interface Discriminator {
 export interface SliceDesign {
   sliceName: string;
   cardinality: Cardinality | null;
-  binding: BindingConfig | null;
+  baseBinding: BindingConfig | null;
+  overrideBinding: BindingConfig | null;
   children: SliceChildConstraint[];
 }
 
 export interface SliceChildConstraint {
   relativePath: string;
   cardinality: Cardinality | null;
-  binding: BindingConfig | null;
+  baseBinding: BindingConfig | null;
+  overrideBinding: BindingConfig | null;
   fixedValue: unknown | null;
   patternValue: unknown | null;
 }
@@ -279,6 +283,91 @@ export async function exportStructureDefinition(
     },
     body: JSON.stringify({ metadata }),
   });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new SdBuilderApiError(response.status, response.statusText, body);
+  }
+
+  return response.json();
+}
+
+// ============================================================================
+// ValueSet Lookup API (Read-only UX helpers)
+// ============================================================================
+
+export interface ValueSetSummaryDto {
+  url: string;
+  name: string;
+  publisher?: string;
+  description?: string;
+}
+
+export interface ValueSetPreviewDto {
+  url: string;
+  name: string;
+  codes: CodeDisplayDto[];
+}
+
+export interface CodeDisplayDto {
+  code: string;
+  display?: string;
+}
+
+export interface ValueSetSearchParams {
+  query?: string;
+  resourceType?: string;
+  elementPath?: string;
+  limit?: number;
+}
+
+/**
+ * Search for ValueSets (read-only UX helper)
+ * @param params - Search parameters
+ * @param signal - AbortSignal for cancellation
+ * @returns List of ValueSet summaries
+ * @throws SdBuilderApiError on non-2xx response
+ */
+export async function searchValueSets(
+  params: ValueSetSearchParams = {},
+  signal?: AbortSignal
+): Promise<ValueSetSummaryDto[]> {
+  const searchParams = new URLSearchParams();
+  if (params.query) searchParams.set('query', params.query);
+  if (params.resourceType) searchParams.set('resourceType', params.resourceType);
+  if (params.elementPath) searchParams.set('elementPath', params.elementPath);
+  if (params.limit) searchParams.set('limit', params.limit.toString());
+
+  const url = `${API_BASE_URL}/sd-builder/valuesets/search${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+  
+  const response = await fetch(url, { signal });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new SdBuilderApiError(response.status, response.statusText, body);
+  }
+
+  return response.json();
+}
+
+/**
+ * Preview ValueSet codes (read-only UX helper)
+ * @param url - ValueSet canonical URL
+ * @param maxItems - Maximum number of codes to return (default 50)
+ * @returns ValueSet preview with codes
+ * @throws SdBuilderApiError on non-2xx response
+ */
+export async function previewValueSet(
+  url: string,
+  maxItems: number = 50
+): Promise<ValueSetPreviewDto> {
+  const searchParams = new URLSearchParams();
+  searchParams.set('url', url);
+  searchParams.set('maxItems', maxItems.toString());
+
+  const response = await fetch(
+    `${API_BASE_URL}/sd-builder/valuesets/preview?${searchParams.toString()}`
+  );
 
   if (!response.ok) {
     const body = await response.text();

@@ -16,9 +16,11 @@ public sealed class ElementDesignState
     public Cardinality BaseCardinality { get; set; } = new(0, "*");
 
     /// <summary>
-    /// Base type code (e.g., "string", "code", "Coding").
+    /// FHIR type codes for this element (e.g., ["code"], ["Coding"], ["Quantity", "CodeableConcept"]).
+    /// Populated from ElementDefinition.Type[].Code.
+    /// Multiple types for value[x] polymorphic elements.
     /// </summary>
-    public string BaseTypeCode { get; set; } = string.Empty;
+    public string[] TypeCodes { get; set; } = Array.Empty<string>();
 
     /// <summary>
     /// Whether this element is included in the design.
@@ -31,9 +33,16 @@ public sealed class ElementDesignState
     public Cardinality? OverrideCardinality { get; set; }
 
     /// <summary>
-    /// Optional terminology binding (null if no binding).
+    /// Base terminology binding from FHIR snapshot (read-only reference).
+    /// Null if no base binding exists.
     /// </summary>
-    public BindingConfig? Binding { get; set; }
+    public BindingConfig? BaseBinding { get; set; }
+
+    /// <summary>
+    /// User-defined binding override (null if inheriting from base).
+    /// Only populated when user explicitly changes binding.
+    /// </summary>
+    public BindingConfig? OverrideBinding { get; set; }
 
     /// <summary>
     /// Collection of extensions applied to this element.

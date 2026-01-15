@@ -1,6 +1,8 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using NSubstitute;
 using Pss.FhirProcessor.Application.Projects.Import;
+using Pss.FhirProcessor.Application.Services;
 using Pss.FhirProcessor.Persistence.Data;
 using Pss.FhirProcessor.Persistence.Models;
 
@@ -31,6 +33,7 @@ public class ProjectImportServiceIntegrationTests : IDisposable
         var classifier = new ArtifactClassifier();
         var sdClassifier = new StructureDefinitionClassifier();
         var ruleGenerator = new StructureDefinitionRuleGenerator();
+        var autoTagging = Substitute.For<IBundleAutoTaggingService>();
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<ProjectImportService>.Instance;
 
         _importService = new ProjectImportService(
@@ -39,6 +42,7 @@ public class ProjectImportServiceIntegrationTests : IDisposable
             classifier,
             sdClassifier,
             ruleGenerator,
+            autoTagging,
             logger
         );
     }

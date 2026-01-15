@@ -13,7 +13,8 @@ public sealed class FhirSpecStructureDefinitionRepository : IStructureDefinition
 
     public FhirSpecStructureDefinitionRepository()
     {
-        // Use ZipSource to load from embedded FHIR spec
+        // Use ZipSource to load from embedded FHIR R5 spec
+        // The specification.zip is provided by Hl7.Fhir.Specification.R5 package
         _resolver = ZipSource.CreateValidationSource();
     }
 

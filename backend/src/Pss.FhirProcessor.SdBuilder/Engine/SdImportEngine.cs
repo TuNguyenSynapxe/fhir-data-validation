@@ -110,8 +110,8 @@ public sealed class SdImportEngine
                             _ => Domain.BindingStrength.Preferred // Default fallback
                         };
 
-                        // Create binding configuration
-                        elementDesign.Binding = new BindingConfig
+                        // Create binding configuration (import as override since it's from differential)
+                        elementDesign.OverrideBinding = new BindingConfig
                         {
                             Strength = domainStrength,
                             ValueSetUrl = valueSetUrl

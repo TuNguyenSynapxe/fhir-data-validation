@@ -289,11 +289,14 @@ export const SliceChildEditor: React.FC<SliceChildEditorProps> = ({
                   )}
 
                   {/* Binding */}
-                  {child.binding && (
-                    <div className="text-sm text-gray-600">
-                      Binding: {child.binding.valueSetUrl} ({child.binding.strength})
-                    </div>
-                  )}
+                  {(() => {
+                    const binding = child.overrideBinding ?? child.baseBinding;
+                    return binding && (
+                      <div className="text-sm text-gray-600">
+                        Binding: {binding.valueSetUrl} ({binding.strength})
+                      </div>
+                    );
+                  })()}
 
                   {/* Fixed Value */}
                   {child.fixedValue && (

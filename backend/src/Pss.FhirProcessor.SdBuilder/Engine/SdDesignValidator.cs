@@ -51,7 +51,7 @@ public static class SdDesignValidator
             ValidateBindingEligibility(element, result);
 
             // Rule 4: ValueSet Resolution
-            if (element.Binding != null)
+            if (element.OverrideBinding != null)
             {
                 await ValidateValueSetResolution(element, terminology, result, ct);
             }
@@ -130,15 +130,20 @@ public static class SdDesignValidator
 
     private static void ValidateBindingEligibility(ElementDesignState element, SdValidationResult result)
     {
-        if (element.Binding == null) return;
+        if (element.OverrideBinding == null) return;
 
         // Binding only allowed for coded types
         var allowedTypes = new[] { "code", "Coding", "CodeableConcept" };
-        if (!allowedTypes.Contains(element.BaseTypeCode))
+        
+        // Check if any type code is bindable
+        var hasBindableType = element.TypeCodes.Any(type => allowedTypes.Contains(type));
+        
+        if (!hasBindableType)
         {
+            var typesStr = string.Join(", ", element.TypeCodes);
             result.AddError(
                 "BINDING_INVALID_TYPE",
-                $"Binding not allowed for type '{element.BaseTypeCode}'. Only code, Coding, or CodeableConcept are permitted.",
+                $"Binding not allowed for type(s) '{typesStr}'. Only code, Coding, or CodeableConcept are permitted.",
                 element.Path);
         }
     }
@@ -149,9 +154,9 @@ public static class SdDesignValidator
         SdValidationResult result,
         CancellationToken ct)
     {
-        if (element.Binding != null)
+        if (element.OverrideBinding != null)
         {
-            var valueSetUrl = element.Binding.ValueSetUrl;
+            var valueSetUrl = element.OverrideBinding.ValueSetUrl;
             var exists = await terminology.ValueSetExistsAsync(valueSetUrl, ct);
 
             if (!exists)
@@ -185,7 +190,7 @@ public static class SdDesignValidator
     private static void GenerateWarnings(ElementDesignState element, SdValidationResult result)
     {
         // Warning: Preferred binding strength
-        if (element.Binding != null && element.Binding.Strength == DomainBindingStrength.Preferred)
+        if (element.OverrideBinding != null && element.OverrideBinding.Strength == DomainBindingStrength.Preferred)
         {
             result.AddWarning(
                 "BINDING_PREFERRED",

@@ -94,7 +94,7 @@ public static class DifferentialWriter
             effectiveCardinality.Min != baseMin || 
             effectiveCardinality.Max != baseMax;
 
-        var hasBindingConstraint = element.Binding != null;
+        var hasBindingConstraint = element.OverrideBinding != null;
 
         // Only emit differential element if there are actual constraints
         if (!hasCardinalityConstraint && !hasBindingConstraint)
@@ -114,13 +114,13 @@ public static class DifferentialWriter
             diffElement.Max = effectiveCardinality.Max;
         }
 
-        // Write binding if present
+        // Write binding if present (only write overrides, not base)
         if (hasBindingConstraint)
         {
             diffElement.Binding = new ElementDefinition.ElementDefinitionBindingComponent
             {
-                Strength = MapBindingStrength(element.Binding!.Strength),
-                ValueSet = element.Binding.ValueSetUrl
+                Strength = MapBindingStrength(element.OverrideBinding!.Strength),
+                ValueSet = element.OverrideBinding.ValueSetUrl
             };
         }
 

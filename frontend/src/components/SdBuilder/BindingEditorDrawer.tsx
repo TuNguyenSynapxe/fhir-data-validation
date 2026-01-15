@@ -20,6 +20,8 @@ import {
   type BindingStrength 
 } from '../../utils/bindingHelpers';
 import { useSdBuilderStore } from '../../stores/useSdBuilderStore';
+import { ValueSetPicker } from '../ValueSetPicker';
+import { ValueSetPreview } from '../ValueSetPreview';
 
 interface BindingEditorDrawerProps {
   node: TreeNode;
@@ -188,18 +190,15 @@ export const BindingEditorDrawer: React.FC<BindingEditorDrawerProps> = ({
               <label htmlFor="valueSetUrl">
                 ValueSet <span className="required">*</span>
               </label>
-              <input
-                id="valueSetUrl"
-                ref={valueSetInputRef}
-                type="text"
+              <ValueSetPicker
                 value={valueSetUrl}
-                onChange={(e) => setValueSetUrl(e.target.value)}
-                placeholder="http://hl7.org/fhir/ValueSet/..."
-                className="form-input"
+                onSelect={setValueSetUrl}
+                elementPath={node.path}
               />
               <span className="form-hint">
-                Canonical URL of the ValueSet
+                Search for a ValueSet by name or publisher
               </span>
+              <ValueSetPreview valueSetUrl={valueSetUrl} />
             </div>
             
             <div className="form-group">

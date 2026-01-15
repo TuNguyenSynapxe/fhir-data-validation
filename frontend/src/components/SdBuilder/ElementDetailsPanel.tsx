@@ -231,20 +231,6 @@ export const ElementDetailsPanel: React.FC = () => {
         </div>
       )}
 
-      {/* Old Binding Section - Remove this */}
-      {!bindingEligible && element.binding && (
-        <div className="details-section">
-          <h4>Binding</h4>
-          <dl className="details-list">
-            <dt>Strength:</dt>
-            <dd>{element.binding.strength}</dd>
-
-            <dt>ValueSet:</dt>
-            <dd>{element.binding.valueSetUrl}</dd>
-          </dl>
-        </div>
-      )}
-
       {/* Slicing */}
       {element.slicing && (
         <div className="details-section">
