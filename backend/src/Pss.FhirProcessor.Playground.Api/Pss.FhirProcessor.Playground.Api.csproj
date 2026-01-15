@@ -5,6 +5,7 @@
     <ProjectReference Include="..\Pss.FhirProcessor.Persistence\Pss.FhirProcessor.Persistence.csproj" />
     <ProjectReference Include="..\Pss.FhirProcessor.Application\Pss.FhirProcessor.Application.csproj" />
     <ProjectReference Include="..\Pss.FhirProcessor.SdBuilder\Pss.FhirProcessor.SdBuilder.csproj" />
+    <ProjectReference Include="..\Pss.FhirProcessor.Terminology\Pss.FhirProcessor.Terminology.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

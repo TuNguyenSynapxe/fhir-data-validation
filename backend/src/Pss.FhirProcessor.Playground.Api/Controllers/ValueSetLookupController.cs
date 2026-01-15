@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using Pss.FhirProcessor.SdBuilder.Adapters;
+using Pss.FhirProcessor.Terminology.Abstractions;
+using Pss.FhirProcessor.Terminology.Domain;
 
 namespace Pss.FhirProcessor.Playground.Api.Controllers;
 
@@ -10,21 +11,21 @@ namespace Pss.FhirProcessor.Playground.Api.Controllers;
 /// - Read-only UX helper only
 /// - NO instance validation
 /// - NO Firely SDK usage
-/// - Uses ISdFhirAdapter only
+/// - Uses ITerminologyService (Standalone DLL)
 /// - Deterministic, paged, max-limited results
 /// </summary>
 [ApiController]
 [Route("api/sd-builder/valuesets")]
 public sealed class ValueSetLookupController : ControllerBase
 {
-    private readonly ISdFhirAdapter _adapter;
+    private readonly ITerminologyService _terminologyService;
     private readonly ILogger<ValueSetLookupController> _logger;
 
     public ValueSetLookupController(
-        ISdFhirAdapter adapter,
+        ITerminologyService terminologyService,
         ILogger<ValueSetLookupController> logger)
     {
-        _adapter = adapter;
+        _terminologyService = terminologyService;
         _logger = logger;
     }
 
@@ -47,18 +48,25 @@ public sealed class ValueSetLookupController : ControllerBase
         // Guardrails
         var clampedLimit = Math.Clamp(limit, 1, 50);
 
-        var request = new SdBuilder.Adapters.ValueSetSearchRequest
+        var request = new ValueSetSearchRequest
         {
             Query = query,
             ElementPath = elementPath,
-            ResourceType = resourceType,
-            Limit = clampedLimit
+            ResourceType = resourceType
         };
 
         try
         {
-            var results = await _adapter.SearchValueSetsAsync(request, ct);
-            return Ok(results);
+            var results = await _terminologyService.SearchAsync(request, ct);
+            
+            // Apply limit after deduplication
+            var limitedResults = results.Take(clampedLimit).ToList();
+            
+            _logger.LogInformation(
+                "ValueSet search: query='{Query}', found={Count}, returned={Returned}",
+                query ?? "(none)", results.Count, limitedResults.Count);
+            
+            return Ok(limitedResults);
         }
         catch (Exception ex)
         {
@@ -90,7 +98,19 @@ public sealed class ValueSetLookupController : ControllerBase
 
         try
         {
-            var preview = await _adapter.PreviewValueSetAsync(url, clampedMax, ct);
+            var preview = await _terminologyService.PreviewAsync(url, clampedMax, ct);
+            
+            if (preview == null)
+            {
+                _logger.LogWarning("ValueSet not found: {Url}", url);
+                // Return empty preview for graceful degradation
+                return Ok(ValueSetPreview.Empty(url));
+            }
+            
+            _logger.LogInformation(
+                "ValueSet preview: url='{Url}', codes={Count}",
+                url, preview.Codes.Count);
+            
             return Ok(preview);
         }
         catch (Exception ex)

@@ -132,14 +132,28 @@ try
     });
     
     Log.Information("Persistence layer configured with PostgreSQL (admin + public + bundle profiles)");
+    // =========================================================================
+    // Terminology Services (Standalone DLL - No Firely leakage)
+    // =========================================================================
+    builder.Services.AddSingleton<Pss.FhirProcessor.Terminology.Abstractions.IValueSetSource,
+        Pss.FhirProcessor.Terminology.Sources.Hl7.Hl7ValueSetSource>();
+    
+    builder.Services.AddSingleton<Pss.FhirProcessor.Terminology.Abstractions.ITerminologyService>(sp =>
+    {
+        var sources = sp.GetServices<Pss.FhirProcessor.Terminology.Abstractions.IValueSetSource>();
+        return new Pss.FhirProcessor.Terminology.Engine.TerminologyService(sources);
+    });
 
     // Register SD Builder StructureDefinition Repository (FHIR Spec Loader)
     builder.Services.AddSingleton<Pss.FhirProcessor.SdBuilder.Abstractions.IStructureDefinitionRepository,
         Pss.FhirProcessor.SdBuilder.Infrastructure.FhirSpecStructureDefinitionRepository>();
     
-    // Register SD Builder Terminology Registry (FHIR Spec ValueSets)
-    builder.Services.AddSingleton<Pss.FhirProcessor.SdBuilder.Abstractions.ITerminologyRegistry,
-        Pss.FhirProcessor.SdBuilder.Infrastructure.FhirSpecTerminologyRegistry>();
+    // Register SD Builder Terminology Registry (delegates to ITerminologyService)
+    builder.Services.AddSingleton<Pss.FhirProcessor.SdBuilder.Abstractions.ITerminologyRegistry>(sp =>
+    {
+        var terminologyService = sp.GetRequiredService<Pss.FhirProcessor.Terminology.Abstractions.ITerminologyService>();
+        return new Pss.FhirProcessor.SdBuilder.Infrastructure.FhirSpecTerminologyRegistry(terminologyService);
+    });
 
     // Register SD Builder Adapter Layer (R5 MVP)
     builder.Services.AddScoped<Pss.FhirProcessor.SdBuilder.Adapters.ISdFhirAdapter>(sp =>

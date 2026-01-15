@@ -11,4 +11,8 @@
     <PackageReference Include="Hl7.Fhir.Specification.R5" Version="5.11.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../Pss.FhirProcessor.Terminology/Pss.FhirProcessor.Terminology.csproj" />
+  </ItemGroup>
+
 </Project>
