@@ -16,7 +16,12 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { previewValueSetCodes, type ValueSetPreviewDto, type ValueSetCodeDto } from '../../api/terminologyApi';
+import { 
+  previewValueSetCodes, 
+  getPreviewability,
+  type ValueSetPreviewDto, 
+  type ValueSetCodeDto
+} from '../../api/terminologyApi';
 import type { BindingConfig } from '../../api/sdBuilderApi';
 import { parseCanonicalUrl, formatFhirVersion } from '../../features/sd-builder/utils/canonicalUrlUtils';
 
@@ -41,20 +46,24 @@ export const BindingDisplay: React.FC<BindingDisplayProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch ValueSet preview on mount
+  // Fetch ValueSet preview (now includes metadata)
   useEffect(() => {
     let cancelled = false;
 
-    const fetchPreview = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await previewValueSetCodes(binding.valueSetUrl, 20);
+        
+        const previewData = await previewValueSetCodes(binding.valueSetUrl, 20);
+        
         if (!cancelled) {
-          setPreview(data);
+          console.log('[BindingDisplay] ValueSet preview loaded:', previewData);
+          setPreview(previewData);
         }
       } catch (err: any) {
         if (!cancelled) {
+          console.error('Failed to fetch preview:', err);
           setError(err.message || 'Failed to load ValueSet');
         }
       } finally {
@@ -64,7 +73,7 @@ export const BindingDisplay: React.FC<BindingDisplayProps> = ({
       }
     };
 
-    fetchPreview();
+    fetchData();
 
     return () => {
       cancelled = true;
@@ -75,9 +84,30 @@ export const BindingDisplay: React.FC<BindingDisplayProps> = ({
     navigator.clipboard.writeText(text);
   };
 
-  // Build code summary: "code1, code2, code3 (+N more)"
-  const getCodeSummary = (): string => {
-    if (!preview || preview.codes.length === 0) return 'No codes available';
+  // Get contextual message based on previewability
+  const getCodeMessage = (): string => {
+    if (!preview || preview.codes.length === 0) {
+      // If still loading, show loading state
+      if (loading) return 'Loading...';
+      
+      // If we have preview metadata, use previewability for contextual message
+      if (preview && (preview.capability || preview.previewability)) {
+        const previewability = getPreviewability(preview);
+        
+        if (previewability === 'External') {
+          return 'External standard (BCP-47/IANA/ISO) - no offline preview';
+        }
+        
+        if (previewability === 'Unsupported') {
+          return 'Preview not supported (uses filters/imports)';
+        }
+        
+        return 'No codes returned';
+      }
+      
+      // Fallback if preview failed entirely
+      return 'No codes available';
+    }
     
     const displayCodes = preview.codes.slice(0, 3).map(c => c.code);
     const remaining = preview.codes.length - 3;
@@ -177,7 +207,7 @@ export const BindingDisplay: React.FC<BindingDisplayProps> = ({
               {/* Code Summary Line */}
               <div className="binding-code-summary">
                 <span className="summary-label">Codes:</span>
-                <span className="summary-value">{getCodeSummary()}</span>
+                <span className="summary-value">{getCodeMessage()}</span>
               </div>
             </>
           );

@@ -70,12 +70,30 @@ export async function deleteCodeSystem(
 /**
  * ValueSet summary (search results)
  */
+export type ValueSetPreviewability = "Explicit" | "Computed" | "External" | "Unsupported";
+
 export interface ValueSetSummaryDto {
   url: string; // Canonical URL (authoritative)
   name: string;
   description?: string;
   publisher?: string;
   layer: 'Hl7' | 'Pss' | 'Project';
+  capability?: "Previewable" | "ExternalSystem" | "Computed"; // Legacy, keep for backward compatibility
+  previewability?: ValueSetPreviewability; // New runtime previewability
+}
+
+/**
+ * Get runtime previewability with backward compatibility fallback.
+ * Prefers new `previewability` field, falls back to `capability` if missing.
+ */
+export function getPreviewability(vs: ValueSetSummaryDto): ValueSetPreviewability {
+  // Prefer new field
+  if (vs.previewability) return vs.previewability;
+
+  // Legacy fallback: if capability says previewable -> treat as Computed (safe default)
+  if (vs.capability?.toLowerCase() === "previewable") return "Computed";
+
+  return "Unsupported";
 }
 
 /**
@@ -92,6 +110,10 @@ export interface ValueSetCodeDto {
 export interface ValueSetPreviewDto {
   url: string;
   name: string;
+  publisher?: string;
+  description?: string;
+  capability?: "Previewable" | "ExternalSystem" | "Computed";
+  previewability?: ValueSetPreviewability;
   codes: ValueSetCodeDto[];
   totalCodes: number;
 }

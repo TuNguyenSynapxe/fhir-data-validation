@@ -52,12 +52,18 @@ internal sealed class Hl7R5RegistryV2
                 (idx.Description?.Contains(queryLower, StringComparison.OrdinalIgnoreCase) ?? false));
         }
         
-        return results.Select(idx => new ValueSetSummary
+        return results.Select(idx =>
         {
-            Url = idx.Url,
-            Name = idx.Name,
-            Publisher = idx.Publisher ?? "Unknown",
-            Description = idx.Description
+            var entry = _valueSets[idx.Url];
+            return new ValueSetSummary
+            {
+                Url = idx.Url,
+                Name = idx.Name,
+                Publisher = idx.Publisher ?? "Unknown",
+                Description = idx.Description,
+                Capability = MapCapability(entry.Capability),
+                Previewability = DeterminePreviewability(entry)
+            };
         }).ToList();
     }
     
@@ -97,6 +103,10 @@ internal sealed class Hl7R5RegistryV2
         {
             Url = valueSet.Url,
             Name = valueSet.Name,
+            Publisher = valueSet.Publisher ?? "Unknown",
+            Description = valueSet.Description,
+            Capability = MapCapability(valueSet.Capability),
+            Previewability = DeterminePreviewability(valueSet),
             Codes = codes
         };
     }
@@ -185,6 +195,91 @@ internal sealed class Hl7R5RegistryV2
         }
         
         return allCodes.Take(maxItems).ToList();
+    }
+    
+    #endregion
+    
+    #region Capability Mapping
+    
+    /// <summary>
+    /// Map registry capability type to domain model.
+    /// </summary>
+    private static ValueSetCapability MapCapability(ValueSetCapabilityType capability)
+    {
+        return capability switch
+        {
+            ValueSetCapabilityType.Previewable => ValueSetCapability.Previewable,
+            ValueSetCapabilityType.ExternalSystem => ValueSetCapability.ExternalSystem,
+            ValueSetCapabilityType.Computed => ValueSetCapability.Computed,
+            _ => throw new ArgumentOutOfRangeException(nameof(capability), capability, "Unknown capability type")
+        };
+    }
+    
+    /// <summary>
+    /// Determine runtime previewability based on expansion strategy and system references.
+    /// 
+    /// LOGIC:
+    /// - Explicit: Has embedded codes, no computation needed
+    /// - Computed: References local CodeSystems that we can resolve
+    /// - External: References external standards (BCP-47, IANA, MIME, ISO)
+    /// - Unsupported: Cannot be expanded (filters, missing systems)
+    /// </summary>
+    private ValueSetPreviewability DeterminePreviewability(ValueSetRegistryEntry entry)
+    {
+        // Explicit codes available
+        if (entry.ExpansionStrategy == ExpansionStrategyType.ExplicitCodes && 
+            entry.ExplicitCodes != null && 
+            entry.ExplicitCodes.Count > 0)
+        {
+            return ValueSetPreviewability.Explicit;
+        }
+        
+        // Compose-based expansion
+        if (entry.ExpansionStrategy == ExpansionStrategyType.ComposeIncludes && 
+            entry.ComposeIncludes != null)
+        {
+            // Check if all referenced systems are external standards
+            var allSystemsExternal = entry.ComposeIncludes.All(i => IsExternalSystem(i.System));
+            if (allSystemsExternal)
+            {
+                return ValueSetPreviewability.External;
+            }
+            
+            // Check if all referenced systems exist locally
+            var allSystemsLocal = entry.ComposeIncludes.All(i => _codeSystems.ContainsKey(i.System));
+            if (allSystemsLocal)
+            {
+                return ValueSetPreviewability.Computed;
+            }
+            
+            // Mixed or unknown systems
+            return ValueSetPreviewability.Unsupported;
+        }
+        
+        // Unsupported expansion strategy
+        return ValueSetPreviewability.Unsupported;
+    }
+    
+    /// <summary>
+    /// Check if a system URL represents an external standard.
+    /// External systems: BCP-47, IANA, MIME, ISO, UN, Unicode, etc.
+    /// </summary>
+    private static bool IsExternalSystem(string systemUrl)
+    {
+        // Match URNs: urn:ietf:bcp:47, urn:iso:std:iso:...
+        if (systemUrl.StartsWith("urn:ietf:", StringComparison.OrdinalIgnoreCase) ||
+            systemUrl.StartsWith("urn:iso:", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+        
+        // Match external domains (but not HL7 paths containing these strings)
+        return systemUrl.Contains("://iana.org/", StringComparison.OrdinalIgnoreCase) ||      // MIME types
+               systemUrl.Contains("://iso.org/", StringComparison.OrdinalIgnoreCase) ||       // ISO standards
+               systemUrl.Contains("://unece.org/", StringComparison.OrdinalIgnoreCase) ||     // UN/CEFACT
+               systemUrl.Contains("://unicode.org/", StringComparison.OrdinalIgnoreCase) ||   // Unicode
+               systemUrl.Contains("/bcp47", StringComparison.OrdinalIgnoreCase) ||            // BCP-47 language tags
+               systemUrl.Contains("/mimetype", StringComparison.OrdinalIgnoreCase);           // MIME types
     }
     
     #endregion

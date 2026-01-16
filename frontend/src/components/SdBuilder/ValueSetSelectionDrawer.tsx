@@ -23,7 +23,9 @@ import React, { useState, useEffect } from 'react';
 import { useTerminologyStore } from '../../stores/useTerminologyStore';
 import type { BindingConfig } from '../../api/sdBuilderApi';
 import type { TerminologyLayer } from '../../api/terminologyApi';
+import { getPreviewability } from '../../api/terminologyApi';
 import { parseCanonicalUrl, isSameCanonical } from '../../features/sd-builder/utils/canonicalUrlUtils';
+import { ValueSetPreviewEmptyState } from './ValueSetPreviewEmptyState';
 
 interface ValueSetSelectionDrawerProps {
   elementPath: string;
@@ -199,6 +201,7 @@ export const ValueSetSelectionDrawer: React.FC<ValueSetSelectionDrawerProps> = (
                     const isSelected = clickedValueSetUrl === vs.url;
                     const isCurrent = currentValueSetUrl ? isSameCanonical(currentValueSetUrl, vs.url) : false;
                     const { baseUrl, version } = parseCanonicalUrl(vs.url);
+                    const previewability = getPreviewability(vs);
                     
                     return (
                       <li 
@@ -214,11 +217,34 @@ export const ValueSetSelectionDrawer: React.FC<ValueSetSelectionDrawerProps> = (
                             </h4>
                             <p className="valueset-publisher">{vs.publisher}</p>
                           </div>
-                          {vs.layer && (
-                            <span className={`layer-badge layer-${vs.layer.toLowerCase()}`}>
-                              {vs.layer}
-                            </span>
-                          )}
+                          <div className="badges">
+                            {vs.layer && (
+                              <span className={`layer-badge layer-${vs.layer.toLowerCase()}`}>
+                                {vs.layer}
+                              </span>
+                            )}
+                            {/* Previewability badge */}
+                            {previewability === 'Explicit' && (
+                              <span className="previewability-badge previewability-explicit" title="Has explicit codes available">
+                                Explicit
+                              </span>
+                            )}
+                            {previewability === 'Computed' && (
+                              <span className="previewability-badge previewability-computed" title="Derived from local CodeSystems">
+                                Computed
+                              </span>
+                            )}
+                            {previewability === 'External' && (
+                              <span className="previewability-badge previewability-external" title="External standard (BCP-47, IANA, ISO)">
+                                External
+                              </span>
+                            )}
+                            {previewability === 'Unsupported' && (
+                              <span className="previewability-badge previewability-unsupported" title="Cannot be previewed offline">
+                                Unsupported
+                              </span>
+                            )}
+                          </div>
                         </div>
                         {vs.description && (
                           <p className="valueset-description">{vs.description}</p>
@@ -304,9 +330,27 @@ export const ValueSetSelectionDrawer: React.FC<ValueSetSelectionDrawerProps> = (
                   </div>
                 )}
 
-                {!previewLoading && !previewError && previewCodes.length === 0 && (
-                  <p className="no-codes">No codes available for preview</p>
-                )}
+                {!previewLoading && !previewError && previewCodes.length === 0 && (() => {
+                  const clickedVs = searchResults.find(vs => vs.url === clickedValueSetUrl);
+                  const previewability = clickedVs ? getPreviewability(clickedVs) : 'Unsupported';
+                  return (
+                    <>
+                      <ValueSetPreviewEmptyState 
+                        previewability={previewability}
+                        url={clickedValueSetUrl}
+                      />
+                      {(previewability === 'Explicit' || previewability === 'Computed') && (
+                        <button
+                          onClick={() => handleSelectValueSet(clickedValueSetUrl)}
+                          className="btn-select-primary-large"
+                          style={{ marginTop: '1rem' }}
+                        >
+                          Select this ValueSet
+                        </button>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             ) : (
               <div className="empty-right-col">
