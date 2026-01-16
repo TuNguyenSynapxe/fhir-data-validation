@@ -309,8 +309,9 @@ export interface ValueSetSummaryDto {
 
 /**
  * Get runtime previewability with backward compatibility fallback.
+ * Works with both ValueSetSummaryDto and ValueSetPreviewDto.
  */
-export function getPreviewability(vs: ValueSetSummaryDto): ValueSetPreviewability {
+export function getPreviewability(vs: ValueSetSummaryDto | ValueSetPreviewDto): ValueSetPreviewability {
   if (vs.previewability) return vs.previewability;
   if (vs.capability?.toLowerCase() === "previewable") return "Computed";
   return "Unsupported";
@@ -319,6 +320,10 @@ export function getPreviewability(vs: ValueSetSummaryDto): ValueSetPreviewabilit
 export interface ValueSetPreviewDto {
   url: string;
   name: string;
+  publisher?: string;
+  description?: string;
+  capability?: "Previewable" | "ExternalSystem" | "Computed"; // Legacy
+  previewability?: ValueSetPreviewability; // New runtime previewability
   codes: CodeDisplayDto[];
 }
 

@@ -15,11 +15,15 @@
  * - Leaf: May show Required/Optional/Not allowed states
  */
 
-import React from 'react';
-import { ChevronRight, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronRight, ChevronDown, Link } from 'lucide-react';
 import type { TreeNode as TreeNodeType } from '../../types/treeNode';
 import { CardinalityPresets } from './CardinalityPresets';
 import { useSdBuilderStore } from '../../stores/useSdBuilderStore';
+import { BindingTooltip } from './BindingTooltip';
+import { CardinalityTooltip } from './CardinalityTooltip';
+import type { BindingConfig } from '../../api/sdBuilderApi';
+import { previewValueSetCodes, getPreviewability, type ValueSetPreviewability } from '../../api/terminologyApi';
 
 interface TreeNodeProps {
   node: TreeNodeType;
@@ -29,6 +33,21 @@ interface TreeNodeProps {
   onToggleExpand: (path: string) => void;
   onSelect: (path: string) => void;
   expandedPaths: Set<string>;
+}
+
+// Helper to get the active binding (override takes precedence)
+function getActiveBinding(node: TreeNodeType): { binding: BindingConfig; isOverride: boolean } | null {
+  const { baseBinding, overrideBinding } = node.elementDesign;
+  
+  if (overrideBinding) {
+    return { binding: overrideBinding, isOverride: true };
+  }
+  
+  if (baseBinding) {
+    return { binding: baseBinding, isOverride: false };
+  }
+  
+  return null;
 }
 
 export const TreeNode: React.FC<TreeNodeProps> = ({
@@ -41,6 +60,37 @@ export const TreeNode: React.FC<TreeNodeProps> = ({
   expandedPaths,
 }) => {
   const isCardinalityModeEnabled = useSdBuilderStore((state) => state.isCardinalityModeEnabled);
+  const [showBindingTooltip, setShowBindingTooltip] = useState(false);
+  const [showCardinalityTooltip, setShowCardinalityTooltip] = useState(false);
+  const [previewability, setPreviewability] = useState<ValueSetPreviewability>('Unsupported');
+  
+  const bindingInfo = getActiveBinding(node);
+
+  // Fetch previewability when binding exists
+  useEffect(() => {
+    if (!bindingInfo) return;
+
+    let cancelled = false;
+
+    const fetchPreviewability = async () => {
+      try {
+        const preview = await previewValueSetCodes(bindingInfo.binding.valueSetUrl, 1);
+        if (!cancelled) {
+          setPreviewability(getPreviewability(preview));
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setPreviewability('Unsupported');
+        }
+      }
+    };
+
+    fetchPreviewability();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bindingInfo?.binding.valueSetUrl]);
   
   if (!node.isVisible) return null;
 
@@ -60,66 +110,105 @@ export const TreeNode: React.FC<TreeNodeProps> = ({
   const isGreyedOut = node.role === 'leaf' && node.isNotAllowed;
   const isStrikethrough = node.role === 'leaf' && node.isNotAllowed;
 
+  // Get tooltip text based on previewability
+  const getBindingTooltipText = (): string => {
+    switch (previewability) {
+      case 'Computed':
+      case 'Explicit':
+        return 'Binding: Local expansion available';
+      case 'External':
+        return 'Binding: External standard (no preview)';
+      case 'Unsupported':
+        return 'Binding: Complex ValueSet (no preview)';
+      default:
+        return 'Binding';
+    }
+  };
+
   return (
     <div className="tree-node">
       {/* Node Row */}
       <div
-        className={`tree-node-row ${isSelected ? 'selected' : ''} ${isGreyedOut ? 'not-allowed' : ''}`}
+        className={`tree-node-row ${isSelected ? 'selected' : ''} ${isGreyedOut ? 'not-allowed' : ''} ${node.isRequired ? 'is-required' : ''}`}
         style={{ paddingLeft: `${node.depth * 16 + 4}px` }}
         onClick={handleClick}
       >
-        {/* Chevron */}
-        <div 
-          className="tree-node-chevron"
-          onClick={handleChevronClick}
-        >
-          {node.isExpandable ? (
-            isExpanded ? (
-              <ChevronDown size={16} />
+        {/* LEFT SIDE: Chevron + Name + Binding Icon */}
+        <div className="tree-node-left">
+          {/* Chevron */}
+          <div 
+            className="tree-node-chevron"
+            onClick={handleChevronClick}
+          >
+            {node.isExpandable ? (
+              isExpanded ? (
+                <ChevronDown size={16} />
+              ) : (
+                <ChevronRight size={16} />
+              )
             ) : (
-              <ChevronRight size={16} />
-            )
-          ) : (
-            <span className="tree-node-spacer" />
+              <span className="tree-node-spacer" />
+            )}
+          </div>
+
+          {/* Name */}
+          <span className={`tree-node-name ${isStrikethrough ? 'strikethrough' : ''}`}>
+            {node.name}
+          </span>
+
+          {/* Binding Icon with Tooltip (after name, hidden in Cardinality Mode) */}
+          {!isCardinalityModeEnabled && bindingInfo && (
+            <div 
+              className="binding-icon-container"
+              onMouseEnter={() => setShowBindingTooltip(true)}
+              onMouseLeave={() => setShowBindingTooltip(false)}
+              title={getBindingTooltipText()}
+            >
+              <Link size={12} className="binding-link-icon" />
+              {showBindingTooltip && (
+                <BindingTooltip 
+                  binding={bindingInfo.binding}
+                  isOverride={bindingInfo.isOverride}
+                />
+              )}
+            </div>
           )}
         </div>
 
-        {/* State Icons (cardinality-derived) */}
-        <div className="tree-node-icons">
-          {node.isRequired && <span className="icon-required" title="Required (min ≥ 1)">●</span>}
-          {node.isRepeatable && <span className="icon-repeatable" title="Repeatable (max = *)">[]</span>}
-          {node.hasCardinalityOverride && <span className="icon-modified" title="Cardinality override">✎</span>}
-          {node.hasSlicing && <span className="icon-sliced" title="Sliced">⧉</span>}
+        {/* RIGHT SIDE: Cardinality only */}
+        <div className="tree-node-right">
+          {/* Cardinality Badge (leaf nodes only) */}
+          {node.role === 'leaf' && (
+            <div 
+              className="cardinality-container"
+              onMouseEnter={() => setShowCardinalityTooltip(true)}
+              onMouseLeave={() => setShowCardinalityTooltip(false)}
+            >
+              <span 
+                className={`tree-node-cardinality ${node.baseCardinality.min === 1 && node.baseCardinality.max === '1' ? 'fixed' : ''} ${node.isRequired ? 'required' : ''}`}
+              >
+                {node.currentCardinality.min}..{node.currentCardinality.max}
+              </span>
+              {showCardinalityTooltip && (
+                <CardinalityTooltip
+                  currentCardinality={node.currentCardinality}
+                  baseCardinality={node.baseCardinality}
+                  isFixed={node.baseCardinality.min === 1 && node.baseCardinality.max === '1'}
+                />
+              )}
+            </div>
+          )}
+
+          {/* Slice Count */}
+          {node.sliceCount > 0 && (
+            <span className="tree-node-slice-count">+{node.sliceCount}</span>
+          )}
+
+          {/* Cardinality Presets (leaf nodes only, when mode is ON) */}
+          {node.role === 'leaf' && isCardinalityModeEnabled && (
+            <CardinalityPresets node={node} isSelected={isSelected} />
+          )}
         </div>
-
-        {/* Name */}
-        <span className={`tree-node-name ${isStrikethrough ? 'strikethrough' : ''}`}>
-          {node.name}
-        </span>
-
-        {/* Cardinality Badge (leaf nodes only) */}
-        {node.role === 'leaf' && (
-          <span 
-            className={`tree-node-cardinality ${node.baseCardinality.min === 1 && node.baseCardinality.max === '1' ? 'fixed' : ''}`}
-            title={
-              node.baseCardinality.min === 1 && node.baseCardinality.max === '1'
-                ? 'Cardinality fixed by base FHIR specification'
-                : `${node.currentCardinality.min}..${node.currentCardinality.max}`
-            }
-          >
-            {node.currentCardinality.min}..{node.currentCardinality.max}
-          </span>
-        )}
-
-        {/* Slice Count */}
-        {node.sliceCount > 0 && (
-          <span className="tree-node-slice-count">+{node.sliceCount}</span>
-        )}
-
-        {/* Cardinality Presets (leaf nodes only, when mode is ON) */}
-        {node.role === 'leaf' && isCardinalityModeEnabled && (
-          <CardinalityPresets node={node} isSelected={isSelected} />
-        )}
       </div>
 
       {/* Children (recursive) */}

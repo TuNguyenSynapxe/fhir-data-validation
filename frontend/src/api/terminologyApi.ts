@@ -85,8 +85,9 @@ export interface ValueSetSummaryDto {
 /**
  * Get runtime previewability with backward compatibility fallback.
  * Prefers new `previewability` field, falls back to `capability` if missing.
+ * Works with both ValueSetSummaryDto and ValueSetPreviewDto.
  */
-export function getPreviewability(vs: ValueSetSummaryDto): ValueSetPreviewability {
+export function getPreviewability(vs: ValueSetSummaryDto | ValueSetPreviewDto): ValueSetPreviewability {
   // Prefer new field
   if (vs.previewability) return vs.previewability;
 

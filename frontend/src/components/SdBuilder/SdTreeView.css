@@ -176,10 +176,10 @@
 }
 
 .tree-node-row {
-  display: grid;
-  grid-template-columns: 16px 48px 1fr 56px auto minmax(0, auto);
+  display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  gap: 8px;
   padding: 4px 8px;
   padding-right: 16px;
   cursor: pointer;
@@ -187,6 +187,24 @@
   line-height: 20px;
   color: #111827;
   transition: background 0.1s;
+}
+
+/* Left side container */
+.tree-node-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Right side container */
+.tree-node-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .tree-node-row:hover {
@@ -197,6 +215,11 @@
   background: #dbeafe;
   color: #1e40af;
   font-weight: 500;
+}
+
+/* Required element subtle emphasis */
+.tree-node-row.is-required {
+  border-left: 2px solid #3b82f6;
 }
 
 /* Not Allowed State (leaf nodes with max = 0) */
@@ -224,33 +247,141 @@
   height: 16px;
 }
 
-/* State Icons */
-.tree-node-icons {
+/* State Icons - REMOVED, keeping only necessary ones */
+
+/* Binding Icon Container (left side) */
+.binding-icon-container {
   display: flex;
   align-items: center;
-  gap: 4px;
-  min-width: 48px;
+  position: relative;
+  flex-shrink: 0;
 }
 
-.icon-required {
-  color: #ef4444;
-  font-size: 8px;
+/* Binding Link Icon */
+.binding-link-icon {
+  color: #6b7280;
+  flex-shrink: 0;
 }
 
-.icon-repeatable {
-  color: #3b82f6;
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.icon-modified {
-  color: #f59e0b;
+/* Binding Tooltip */
+.binding-tooltip {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: #1f2937;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 6px;
   font-size: 12px;
+  white-space: nowrap;
+  z-index: 1000;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
 }
 
-.icon-sliced {
-  color: #8b5cf6;
+.binding-tooltip::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 8px;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 4px solid #1f2937;
+}
+
+.binding-tooltip-header {
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.binding-tooltip-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.binding-tooltip-label {
+  color: #9ca3af;
+  min-width: 50px;
+}
+
+.binding-tooltip-value {
+  color: #fff;
+  font-weight: 500;
+}
+
+.binding-tooltip-error {
+  color: #fca5a5;
+  font-style: italic;
+}
+
+/* Cardinality Container */
+.cardinality-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Cardinality Tooltip */
+.cardinality-tooltip {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: #1f2937;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 6px;
   font-size: 12px;
+  white-space: nowrap;
+  z-index: 1000;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
+}
+
+.cardinality-tooltip::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  right: 8px;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 4px solid #1f2937;
+}
+
+.cardinality-tooltip-header {
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.cardinality-tooltip-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.cardinality-tooltip-label {
+  color: #9ca3af;
+  min-width: 40px;
+}
+
+.cardinality-tooltip-value {
+  color: #fff;
+  font-weight: 500;
+}
+
+.cardinality-tooltip-footer {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  color: #9ca3af;
+  font-size: 11px;
+  font-style: italic;
 }
 
 /* Name */
@@ -258,6 +389,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 /* Cardinality Badge (leaf nodes only) */
@@ -274,6 +407,14 @@
   text-align: center;
   display: inline-block;
   position: relative;
+}
+
+/* Required cardinality - stronger emphasis */
+.tree-node-cardinality.required {
+  background: #dbeafe;
+  color: #1e40af;
+  font-weight: 600;
+  border: 1px solid #93c5fd;
 }
 
 .tree-node-cardinality.fixed {
