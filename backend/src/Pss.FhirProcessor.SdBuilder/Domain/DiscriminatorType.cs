@@ -18,5 +18,10 @@ public enum DiscriminatorType
     /// <summary>
     /// Discriminates based on the type of an element.
     /// </summary>
-    Type
+    Type,
+
+    /// <summary>
+    /// Discriminates based on the StructureDefinition profile URL.
+    /// </summary>
+    Profile
 }

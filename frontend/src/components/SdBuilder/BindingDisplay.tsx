@@ -24,6 +24,7 @@ import {
 } from '../../api/terminologyApi';
 import type { BindingConfig } from '../../api/sdBuilderApi';
 import { parseCanonicalUrl, formatFhirVersion } from '../../features/sd-builder/utils/canonicalUrlUtils';
+import { getBindingExplanation, isPreviewable } from '../../constants/bindingExplanations';
 
 interface BindingDisplayProps {
   binding: BindingConfig;
@@ -93,20 +94,17 @@ export const BindingDisplay: React.FC<BindingDisplayProps> = ({
       // If we have preview metadata, use previewability for contextual message
       if (preview && (preview.capability || preview.previewability)) {
         const previewability = getPreviewability(preview);
+        const explanation = getBindingExplanation(previewability);
         
-        if (previewability === 'External') {
-          return 'External standard (BCP-47/IANA/ISO) - no offline preview';
-        }
-        
-        if (previewability === 'Unsupported') {
-          return 'Preview not supported (uses filters/imports)';
+        if (!isPreviewable(previewability)) {
+          return `${explanation.label} - ${explanation.description}`;
         }
         
         return 'No codes returned';
       }
       
       // Fallback if preview failed entirely
-      return 'No codes available';
+      return 'Unable to load codes';
     }
     
     const displayCodes = preview.codes.slice(0, 3).map(c => c.code);

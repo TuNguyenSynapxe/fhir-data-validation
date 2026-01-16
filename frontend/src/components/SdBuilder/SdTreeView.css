@@ -1698,6 +1698,23 @@
   font-weight: 500;
 }
 
+/* Tone-based styling */
+.previewability-badge.previewability-info {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.previewability-badge.previewability-neutral {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.previewability-badge.previewability-warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* Legacy support (backward compatibility) */
 .previewability-badge.previewability-explicit {
   background: #d1fae5;
   color: #065f46;
@@ -1709,13 +1726,13 @@
 }
 
 .previewability-badge.previewability-external {
-  background: #fef3c7;
-  color: #92400e;
+  background: #f3f4f6;
+  color: #4b5563;
 }
 
 .previewability-badge.previewability-unsupported {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: #fef3c7;
+  color: #92400e;
 }
 
 /* Empty state explanation */

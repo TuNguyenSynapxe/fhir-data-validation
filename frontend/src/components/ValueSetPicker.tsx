@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTerminologyStore } from '../stores/useTerminologyStore';
 import type { TerminologyLayer } from '../api/terminologyApi';
+import { getPreviewability } from '../api/terminologyApi';
+import { getBindingExplanation, isPreviewable } from '../constants/bindingExplanations';
 
 interface ValueSetPickerProps {
   value: string | null;
@@ -224,15 +226,30 @@ export function ValueSetPicker({
                 <span className="text-gray-900">{selectedValueSet.publisher}</span>
               </div>
             )}
+            {(() => {
+              const previewability = getPreviewability(selectedValueSet);
+              const explanation = getBindingExplanation(previewability);
+              return (
+                <div>
+                  <span className="font-medium text-gray-700">Type:</span>{' '}
+                  <span className="text-gray-900">{explanation.label}</span>
+                  {!isPreviewable(previewability) && (
+                    <span className="ml-2 text-xs text-gray-600">({explanation.description})</span>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
-          <button
-            onClick={handleShowPreview}
-            disabled={disabled || previewLoading}
-            className="mt-3 w-full rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:bg-gray-300"
-          >
-            {previewLoading ? 'Loading Preview...' : 'Preview Codes'}
-          </button>
+          {isPreviewable(getPreviewability(selectedValueSet)) && (
+            <button
+              onClick={handleShowPreview}
+              disabled={disabled || previewLoading}
+              className="mt-3 w-full rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:bg-gray-300"
+            >
+              {previewLoading ? 'Loading Preview...' : 'Preview Codes'}
+            </button>
+          )}
 
           {detailsError && (
             <div className="mt-2 text-sm text-red-600">{detailsError}</div>
@@ -297,9 +314,16 @@ export function ValueSetPicker({
                 </>
               )}
 
-              {!previewLoading && previewCodes.length === 0 && !previewError && (
-                <div className="py-8 text-center text-gray-600">No codes available</div>
-              )}
+              {!previewLoading && previewCodes.length === 0 && !previewError && selectedValueSet && (() => {
+                const previewability = getPreviewability(selectedValueSet);
+                const explanation = getBindingExplanation(previewability);
+                return (
+                  <div className="py-8 text-center">
+                    <div className="text-gray-700 font-medium mb-2">{explanation.label}</div>
+                    <div className="text-gray-600">{explanation.description}</div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

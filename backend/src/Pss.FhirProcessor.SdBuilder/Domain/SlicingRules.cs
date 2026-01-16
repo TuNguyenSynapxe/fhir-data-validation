@@ -13,5 +13,10 @@ public enum SlicingRules
     /// <summary>
     /// No additional slices are permitted beyond those explicitly defined.
     /// </summary>
-    Closed
+    Closed,
+
+    /// <summary>
+    /// No additional slices are permitted after the last explicitly defined slice.
+    /// </summary>
+    OpenAtEnd
 }

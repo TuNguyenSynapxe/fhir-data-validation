@@ -207,8 +207,35 @@ public sealed class SdBuilderController : ControllerBase
             case "ConfigureSlicing":
                 {
                     var path = payload.GetProperty("path").GetString()!;
-                    // TODO: Parse slicing configuration
-                    throw new NotImplementedException("Slicing configuration parsing not yet implemented");
+                    var ordered = payload.GetProperty("ordered").GetBoolean();
+                    var rulesStr = payload.GetProperty("rules").GetString()!;
+                    
+                    // Parse slicing rules
+                    if (!Enum.TryParse<SlicingRules>(rulesStr, true, out var rules))
+                    {
+                        throw new ArgumentException($"Invalid slicing rules: {rulesStr}. Valid values are: Open, Closed, OpenAtEnd");
+                    }
+                    
+                    // Parse discriminators
+                    var discriminators = new List<SliceDiscriminator>();
+                    if (payload.TryGetProperty("discriminators", out var discsArray))
+                    {
+                        foreach (var discElement in discsArray.EnumerateArray())
+                        {
+                            var typeStr = discElement.GetProperty("type").GetString()!;
+                            var discPath = discElement.GetProperty("path").GetString()!;
+                            
+                            if (!Enum.TryParse<DiscriminatorType>(typeStr, true, out var discType))
+                            {
+                                throw new ArgumentException($"Invalid discriminator type: {typeStr}. Valid values are: Value, Pattern, Type, Profile");
+                            }
+                            
+                            discriminators.Add(new SliceDiscriminator(discType, discPath));
+                        }
+                    }
+                    
+                    session.ConfigureSlicing(path, ordered, rules, discriminators);
+                    break;
                 }
             case "AddSlice":
                 {

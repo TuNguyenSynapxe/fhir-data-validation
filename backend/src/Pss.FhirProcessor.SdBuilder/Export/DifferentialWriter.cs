@@ -265,6 +265,7 @@ public static class DifferentialWriter
         {
             SlicingRules.Open => ElementDefinition.SlicingRules.Open,
             SlicingRules.Closed => ElementDefinition.SlicingRules.Closed,
+            SlicingRules.OpenAtEnd => ElementDefinition.SlicingRules.OpenAtEnd,
             _ => ElementDefinition.SlicingRules.Open
         };
     }
@@ -276,6 +277,7 @@ public static class DifferentialWriter
             DiscriminatorType.Value => ElementDefinition.DiscriminatorType.Value,
             DiscriminatorType.Pattern => ElementDefinition.DiscriminatorType.Pattern,
             DiscriminatorType.Type => ElementDefinition.DiscriminatorType.Type,
+            DiscriminatorType.Profile => ElementDefinition.DiscriminatorType.Profile,
             _ => ElementDefinition.DiscriminatorType.Value
         };
     }

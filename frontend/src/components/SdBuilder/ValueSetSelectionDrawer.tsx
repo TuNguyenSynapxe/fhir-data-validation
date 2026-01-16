@@ -26,6 +26,7 @@ import type { TerminologyLayer } from '../../api/terminologyApi';
 import { getPreviewability } from '../../api/terminologyApi';
 import { parseCanonicalUrl, isSameCanonical } from '../../features/sd-builder/utils/canonicalUrlUtils';
 import { ValueSetPreviewEmptyState } from './ValueSetPreviewEmptyState';
+import { getBindingExplanation } from '../../constants/bindingExplanations';
 
 interface ValueSetSelectionDrawerProps {
   elementPath: string;
@@ -224,26 +225,18 @@ export const ValueSetSelectionDrawer: React.FC<ValueSetSelectionDrawerProps> = (
                               </span>
                             )}
                             {/* Previewability badge */}
-                            {previewability === 'Explicit' && (
-                              <span className="previewability-badge previewability-explicit" title="Has explicit codes available">
-                                Explicit
-                              </span>
-                            )}
-                            {previewability === 'Computed' && (
-                              <span className="previewability-badge previewability-computed" title="Derived from local CodeSystems">
-                                Computed
-                              </span>
-                            )}
-                            {previewability === 'External' && (
-                              <span className="previewability-badge previewability-external" title="External standard (BCP-47, IANA, ISO)">
-                                External
-                              </span>
-                            )}
-                            {previewability === 'Unsupported' && (
-                              <span className="previewability-badge previewability-unsupported" title="Cannot be previewed offline">
-                                Unsupported
-                              </span>
-                            )}
+                            {(() => {
+                              const explanation = getBindingExplanation(previewability);
+                              const toneClass = `previewability-${explanation.tone}`;
+                              return (
+                                <span 
+                                  className={`previewability-badge ${toneClass}`} 
+                                  title={explanation.description}
+                                >
+                                  {explanation.label}
+                                </span>
+                              );
+                            })()}
                           </div>
                         </div>
                         {vs.description && (

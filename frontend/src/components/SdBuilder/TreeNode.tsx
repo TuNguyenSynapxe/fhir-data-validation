@@ -18,6 +18,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronRight, ChevronDown, Link } from 'lucide-react';
 import type { TreeNode as TreeNodeType } from '../../types/treeNode';
+import { getBindingExplanation, isPreviewable } from '../../constants/bindingExplanations';
 import { CardinalityPresets } from './CardinalityPresets';
 import { useSdBuilderStore } from '../../stores/useSdBuilderStore';
 import { BindingTooltip } from './BindingTooltip';
@@ -112,17 +113,9 @@ export const TreeNode: React.FC<TreeNodeProps> = ({
 
   // Get tooltip text based on previewability
   const getBindingTooltipText = (): string => {
-    switch (previewability) {
-      case 'Computed':
-      case 'Explicit':
-        return 'Binding: Local expansion available';
-      case 'External':
-        return 'Binding: External standard (no preview)';
-      case 'Unsupported':
-        return 'Binding: Complex ValueSet (no preview)';
-      default:
-        return 'Binding';
-    }
+    const explanation = getBindingExplanation(previewability);
+    const preview = isPreviewable(previewability) ? 'preview available' : 'no offline preview';
+    return `Binding: ${explanation.label} (${preview})`;
   };
 
   return (

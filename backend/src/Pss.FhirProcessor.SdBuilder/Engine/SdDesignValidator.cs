@@ -227,7 +227,19 @@ public static class SdDesignValidator
 
     private static void ValidateSlicing(ElementDesignState element, ResourceDesignState design, SdValidationResult result)
     {
-        // Error: Slicing without discriminator
+        // Rule 1: Element must be repeatable (max = * or max > 1)
+        var effectiveMax = element.OverrideCardinality?.Max ?? element.BaseCardinality.Max;
+        var isRepeatable = effectiveMax == "*" || (int.TryParse(effectiveMax, out var maxInt) && maxInt > 1);
+        
+        if (element.Slicing != null && !isRepeatable)
+        {
+            result.AddError(
+                "SLICING_NON_REPEATABLE",
+                $"Cannot apply slicing to element with max ≤ 1 (current max: {effectiveMax})",
+                element.Path);
+        }
+
+        // Rule 2: Slicing without discriminator
         if (element.Slicing != null && element.Slicing.Discriminators.Count == 0)
         {
             result.AddError(
@@ -236,7 +248,7 @@ public static class SdDesignValidator
                 element.Path);
         }
 
-        // Error: Slices defined but no slicing configuration
+        // Rule 3: Slices defined but no slicing configuration
         if (element.Slices.Count > 0 && element.Slicing == null)
         {
             result.AddError(
@@ -245,10 +257,10 @@ public static class SdDesignValidator
                 element.Path);
         }
 
-        // Validate each slice
+        // Rule 4: Validate each slice
         foreach (var (sliceName, slice) in element.Slices)
         {
-            // Error: Empty slice name
+            // Empty slice name
             if (string.IsNullOrWhiteSpace(sliceName))
             {
                 result.AddError(
@@ -256,9 +268,50 @@ public static class SdDesignValidator
                     "Slice name cannot be empty or whitespace",
                     element.Path);
             }
+
+            // Slice cardinality must not exceed parent
+            if (slice.OverrideCardinality != null)
+            {
+                var parentMin = element.OverrideCardinality?.Min ?? element.BaseCardinality.Min;
+                var parentMax = element.OverrideCardinality?.Max ?? element.BaseCardinality.Max;
+                var sliceMin = slice.OverrideCardinality.Min;
+                var sliceMax = slice.OverrideCardinality.Max;
+
+                // Check min
+                if (sliceMin > parentMin && parentMin >= 1)
+                {
+                    // This is actually OK - slices can be more restrictive
+                }
+
+                // Check max
+                bool maxExceeded = false;
+                if (parentMax != "*" && sliceMax == "*")
+                {
+                    maxExceeded = true;
+                }
+                else if (parentMax != "*" && sliceMax != "*")
+                {
+                    if (int.TryParse(parentMax, out var parentMaxInt) && 
+                        int.TryParse(sliceMax, out var sliceMaxInt))
+                    {
+                        if (sliceMaxInt > parentMaxInt)
+                        {
+                            maxExceeded = true;
+                        }
+                    }
+                }
+
+                if (maxExceeded)
+                {
+                    result.AddError(
+                        "SLICE_CARDINALITY_EXCEEDS_PARENT",
+                        $"Slice '{sliceName}' cardinality ({sliceMin}..{sliceMax}) exceeds parent element cardinality ({parentMin}..{parentMax})",
+                        element.Path);
+                }
+            }
         }
 
-        // Error: Duplicate slice names (case-sensitive)
+        // Rule 5: Duplicate slice names (case-sensitive)
         var sliceNames = element.Slices.Keys.ToList();
         var duplicates = sliceNames.GroupBy(n => n).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
         
@@ -270,22 +323,29 @@ public static class SdDesignValidator
                 element.Path);
         }
 
-        // Error: Discriminator path references unknown element
+        // Rule 6: Discriminator path validation
         if (element.Slicing != null)
         {
             foreach (var discriminator in element.Slicing.Discriminators)
             {
-                // Simple check: verify discriminator path isn't completely invalid
-                // Full path resolution would require base SD traversal (forbidden)
-                // We only check for obvious errors like empty path
+                // Structural validation only - no expression evaluation
                 if (string.IsNullOrWhiteSpace(discriminator.Path))
                 {
                     result.AddError(
-                        "SLICING_UNKNOWN_PATH",
+                        "SLICING_INVALID_DISCRIMINATOR_PATH",
                         "Discriminator path cannot be empty or whitespace",
                         element.Path);
                 }
             }
+        }
+
+        // Warning: Closed slicing
+        if (element.Slicing?.Rules == SlicingRules.Closed && element.Slices.Count == 0)
+        {
+            result.AddWarning(
+                "SLICING_CLOSED_WITHOUT_SLICES",
+                "Closed slicing without any defined slices may reject all instances",
+                element.Path);
         }
     }
 

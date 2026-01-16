@@ -150,6 +150,7 @@ public sealed class SdImportEngine
                                 ElementDefinition.DiscriminatorType.Value => DiscriminatorType.Value,
                                 ElementDefinition.DiscriminatorType.Pattern => DiscriminatorType.Pattern,
                                 ElementDefinition.DiscriminatorType.Type => DiscriminatorType.Type,
+                                ElementDefinition.DiscriminatorType.Profile => DiscriminatorType.Profile,
                                 _ => DiscriminatorType.Value // Default fallback
                             };
 
@@ -160,6 +161,7 @@ public sealed class SdImportEngine
                     var rules = diffElement.Slicing.Rules switch
                     {
                         ElementDefinition.SlicingRules.Closed => Domain.SlicingRules.Closed,
+                        ElementDefinition.SlicingRules.OpenAtEnd => Domain.SlicingRules.OpenAtEnd,
                         _ => Domain.SlicingRules.Open // Default to Open
                     };
 

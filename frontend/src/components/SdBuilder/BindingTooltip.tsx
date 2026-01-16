@@ -2,16 +2,17 @@
  * BindingTooltip Component
  * 
  * Shows ValueSet binding information on hover in the tree.
+ * Uses BindingExplanation registry for consistent messaging.
  * Displays:
  * - ValueSet name
- * - Previewability status
- * - Whether binding is base or overridden
- * - Preview availability
+ * - Previewability type (from registry)
+ * - Preview availability explanation
  */
 
 import React, { useEffect, useState } from 'react';
 import type { BindingConfig } from '../../api/sdBuilderApi';
 import { previewValueSetCodes, type ValueSetPreviewDto, getPreviewability, type ValueSetPreviewability } from '../../api/terminologyApi';
+import { getBindingExplanation, isPreviewable } from '../../constants/bindingExplanations';
 
 interface BindingTooltipProps {
   binding: BindingConfig;
@@ -48,36 +49,9 @@ export const BindingTooltip: React.FC<BindingTooltipProps> = ({ binding, isOverr
     };
   }, [binding.valueSetUrl]);
 
-  const getPreviewabilityLabel = (previewability: ValueSetPreviewability): string => {
-    switch (previewability) {
-      case 'Explicit':
-        return 'Explicit codes';
-      case 'Computed':
-        return 'Computed expansion';
-      case 'External':
-        return 'External standard';
-      case 'Unsupported':
-        return 'No preview';
-      default:
-        return 'Unknown';
-    }
-  };
-
-  const getPreviewAvailability = (previewability: ValueSetPreviewability): string => {
-    switch (previewability) {
-      case 'Explicit':
-      case 'Computed':
-        return 'Preview available';
-      case 'External':
-        return 'External system - no offline preview';
-      case 'Unsupported':
-        return 'Preview not supported';
-      default:
-        return 'Unknown';
-    }
-  };
-
   const previewability = preview ? getPreviewability(preview) : 'Unsupported';
+  const explanation = getBindingExplanation(previewability);
+  const previewAvailable = isPreviewable(previewability);
 
   return (
     <div className="binding-tooltip">
@@ -89,18 +63,13 @@ export const BindingTooltip: React.FC<BindingTooltipProps> = ({ binding, isOverr
         <>
           <div className="binding-tooltip-row">
             <span className="binding-tooltip-label">Type:</span>
-            <span className="binding-tooltip-value">{getPreviewabilityLabel(previewability)}</span>
+            <span className="binding-tooltip-value">{explanation.label}</span>
           </div>
           
           <div className="binding-tooltip-row">
-            <span className="binding-tooltip-label">Status:</span>
-            <span className="binding-tooltip-value">{getPreviewAvailability(previewability)}</span>
-          </div>
-          
-          <div className="binding-tooltip-row">
-            <span className="binding-tooltip-label">Binding:</span>
+            <span className="binding-tooltip-label">Preview:</span>
             <span className="binding-tooltip-value">
-              {isOverride ? 'Overridden' : 'Base'} ({binding.strength})
+              {previewAvailable ? 'Available offline' : 'Not available offline'}
             </span>
           </div>
         </>

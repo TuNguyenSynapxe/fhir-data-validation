@@ -297,21 +297,6 @@ export const ElementDetailsPanel: React.FC = () => {
         </div>
       )}
 
-      {/* Action Buttons */}
-      <div className="details-actions">
-        <button className="action-btn" disabled>
-          Set Cardinality
-        </button>
-        <button className="action-btn" disabled>
-          Set Binding
-        </button>
-        {node.isRepeatable && (
-          <button className="action-btn" disabled>
-            Add Slice
-          </button>
-        )}
-      </div>
-
       {/* Info Footer */}
       <div className="details-footer">
         <small>Element details and editing</small>
