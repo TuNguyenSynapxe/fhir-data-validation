@@ -24,6 +24,8 @@ public sealed record ValueSetSummaryDto
     public required string Name { get; init; }
     public string? Publisher { get; init; }
     public string? Description { get; init; }
+    public required string Capability { get; init; }
+    public required string Previewability { get; init; }
 }
 
 /// <summary>

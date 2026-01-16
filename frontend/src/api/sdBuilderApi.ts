@@ -296,11 +296,24 @@ export async function exportStructureDefinition(
 // ValueSet Lookup API (Read-only UX helpers)
 // ============================================================================
 
+export type ValueSetPreviewability = "Explicit" | "Computed" | "External" | "Unsupported";
+
 export interface ValueSetSummaryDto {
   url: string;
   name: string;
   publisher?: string;
   description?: string;
+  capability?: "Previewable" | "ExternalSystem" | "Computed"; // Legacy
+  previewability?: ValueSetPreviewability; // New runtime previewability
+}
+
+/**
+ * Get runtime previewability with backward compatibility fallback.
+ */
+export function getPreviewability(vs: ValueSetSummaryDto): ValueSetPreviewability {
+  if (vs.previewability) return vs.previewability;
+  if (vs.capability?.toLowerCase() === "previewable") return "Computed";
+  return "Unsupported";
 }
 
 export interface ValueSetPreviewDto {

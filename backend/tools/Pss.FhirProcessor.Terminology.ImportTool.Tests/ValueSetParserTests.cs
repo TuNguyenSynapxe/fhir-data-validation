@@ -21,6 +21,7 @@ public sealed class ValueSetParserTests
         result.Should().NotBeNull();
         result!.Url.Should().Be("http://example.org/fhir/ValueSet/test-gender-vs");
         result.ExpansionStrategy.Should().Be(ExpansionStrategyType.ExplicitCodes);
+        result.Capability.Should().Be(ValueSetCapabilityType.Previewable);
         
         result.ExplicitCodes.Should().HaveCount(2);
         result.ExplicitCodes![0].Code.Should().Be("M");
@@ -45,6 +46,7 @@ public sealed class ValueSetParserTests
         result.Should().NotBeNull();
         result!.Url.Should().Be("http://example.org/fhir/ValueSet/test-status-compose");
         result.ExpansionStrategy.Should().Be(ExpansionStrategyType.ComposeIncludes);
+        result.Capability.Should().Be(ValueSetCapabilityType.Previewable);
         
         result.ComposeIncludes.Should().HaveCount(1);
         result.ComposeIncludes![0].System.Should().Be("http://example.org/fhir/CodeSystem/test-status");
@@ -83,7 +85,104 @@ public sealed class ValueSetParserTests
             // Assert
             result.Should().NotBeNull();
             result!.ExpansionStrategy.Should().Be(ExpansionStrategyType.Unsupported);
+            result.Capability.Should().Be(ValueSetCapabilityType.Computed);
             warnings.Should().Contain(w => w.Contains("filter") && w.Contains("unsupported"));
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public void Parse_ExternalSystemSNOMED_MarkedAsExternalSystem()
+    {
+        // Arrange
+        var tempFile = Path.GetTempFileName();
+        File.WriteAllText(tempFile, @"{
+            ""resourceType"": ""ValueSet"",
+            ""url"": ""http://example.org/snomed-vs"",
+            ""name"": ""SNOMEDValueSet"",
+            ""compose"": {
+                ""include"": [{
+                    ""system"": ""http://snomed.info/sct""
+                }]
+            }
+        }");
+        var warnings = new List<string>();
+
+        try
+        {
+            // Act
+            var result = ValueSetParser.Parse(tempFile, warnings);
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.Capability.Should().Be(ValueSetCapabilityType.ExternalSystem);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public void Parse_ExternalSystemLOINC_MarkedAsExternalSystem()
+    {
+        // Arrange
+        var tempFile = Path.GetTempFileName();
+        File.WriteAllText(tempFile, @"{
+            ""resourceType"": ""ValueSet"",
+            ""url"": ""http://example.org/loinc-vs"",
+            ""name"": ""LOINCValueSet"",
+            ""compose"": {
+                ""include"": [{
+                    ""system"": ""http://loinc.org""
+                }]
+            }
+        }");
+        var warnings = new List<string>();
+
+        try
+        {
+            // Act
+            var result = ValueSetParser.Parse(tempFile, warnings);
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.Capability.Should().Be(ValueSetCapabilityType.ExternalSystem);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public void Parse_ValueSetImport_MarkedAsComputed()
+    {
+        // Arrange
+        var tempFile = Path.GetTempFileName();
+        File.WriteAllText(tempFile, @"{
+            ""resourceType"": ""ValueSet"",
+            ""url"": ""http://example.org/imported-vs"",
+            ""name"": ""ImportedValueSet"",
+            ""compose"": {
+                ""include"": [{
+                    ""valueSet"": [""http://example.org/base-vs""]
+                }]
+            }
+        }");
+        var warnings = new List<string>();
+
+        try
+        {
+            // Act
+            var result = ValueSetParser.Parse(tempFile, warnings);
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.Capability.Should().Be(ValueSetCapabilityType.Computed);
         }
         finally
         {

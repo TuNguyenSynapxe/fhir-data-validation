@@ -19,12 +19,12 @@ public sealed class TerminologyServiceTests
         // Arrange
         var hl7Source = CreateMockSource(TerminologyLayer.Hl7, new[]
         {
-            new ValueSetSummary { Url = "http://hl7.org/fhir/ValueSet/vs1", Name = "VS1", Publisher = "HL7" }
+            new ValueSetSummary { Url = "http://hl7.org/fhir/ValueSet/vs1", Name = "VS1", Publisher = "HL7", Capability = ValueSetCapability.Previewable, Previewability = ValueSetPreviewability.Explicit }
         });
         
         var pssSource = CreateMockSource(TerminologyLayer.Pss, new[]
         {
-            new ValueSetSummary { Url = "http://pss.sg/ValueSet/vs2", Name = "VS2", Publisher = "PSS" }
+            new ValueSetSummary { Url = "http://pss.sg/ValueSet/vs2", Name = "VS2", Publisher = "PSS", Capability = ValueSetCapability.Previewable, Previewability = ValueSetPreviewability.Explicit }
         });
         
         var service = new TerminologyService(new[] { hl7Source, pssSource });
@@ -49,7 +49,9 @@ public sealed class TerminologyServiceTests
             { 
                 Url = "http://example.org/ValueSet/duplicate", 
                 Name = "HL7 Version", 
-                Publisher = "HL7" 
+                Publisher = "HL7",
+                Capability = ValueSetCapability.Previewable,
+                Previewability = ValueSetPreviewability.Explicit
             }
         });
         
@@ -59,7 +61,9 @@ public sealed class TerminologyServiceTests
             { 
                 Url = "http://example.org/ValueSet/duplicate", 
                 Name = "PSS Version", 
-                Publisher = "PSS" 
+                Publisher = "PSS",
+                Capability = ValueSetCapability.Previewable,
+                Previewability = ValueSetPreviewability.Explicit
             }
         });
         
@@ -81,9 +85,9 @@ public sealed class TerminologyServiceTests
         // Arrange
         var source = CreateMockSource(TerminologyLayer.Hl7, new[]
         {
-            new ValueSetSummary { Url = "http://b.org/vs", Name = "Zebra", Publisher = "HL7" },
-            new ValueSetSummary { Url = "http://a.org/vs", Name = "Alpha", Publisher = "HL7" },
-            new ValueSetSummary { Url = "http://c.org/vs", Name = "Alpha", Publisher = "HL7" }, // Same name, URL decides
+            new ValueSetSummary { Url = "http://b.org/vs", Name = "Zebra", Publisher = "HL7", Capability = ValueSetCapability.Previewable, Previewability = ValueSetPreviewability.Explicit },
+            new ValueSetSummary { Url = "http://a.org/vs", Name = "Alpha", Publisher = "HL7", Capability = ValueSetCapability.Previewable, Previewability = ValueSetPreviewability.Explicit },
+            new ValueSetSummary { Url = "http://c.org/vs", Name = "Alpha", Publisher = "HL7", Capability = ValueSetCapability.Previewable, Previewability = ValueSetPreviewability.Explicit }, // Same name, URL decides
         });
         
         var service = new TerminologyService(new[] { source });

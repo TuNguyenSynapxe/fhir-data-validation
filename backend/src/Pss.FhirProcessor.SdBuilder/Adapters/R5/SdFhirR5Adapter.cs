@@ -140,7 +140,9 @@ public sealed class SdFhirR5Adapter : ISdFhirAdapter
             Url = summary.Url,
             Name = summary.Name,
             Publisher = summary.Publisher,
-            Description = summary.Description
+            Description = summary.Description,
+            Capability = summary.Capability.ToString(),
+            Previewability = summary.Previewability.ToString()
         };
     }
 

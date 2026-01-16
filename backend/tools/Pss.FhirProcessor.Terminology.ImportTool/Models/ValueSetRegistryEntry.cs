@@ -28,6 +28,9 @@ public sealed class ValueSetRegistryEntry
     [JsonPropertyName("expansionStrategy")]
     public required ExpansionStrategyType ExpansionStrategy { get; init; }
     
+    [JsonPropertyName("capability")]
+    public required ValueSetCapabilityType Capability { get; init; }
+    
     [JsonPropertyName("explicitCodes")]
     public List<ExplicitCodeEntry>? ExplicitCodes { get; init; }
     
@@ -41,6 +44,14 @@ public enum ExpansionStrategyType
     ExplicitCodes,
     ComposeIncludes,
     Unsupported
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum ValueSetCapabilityType
+{
+    Previewable,
+    ExternalSystem,
+    Computed
 }
 
 public sealed class ExplicitCodeEntry

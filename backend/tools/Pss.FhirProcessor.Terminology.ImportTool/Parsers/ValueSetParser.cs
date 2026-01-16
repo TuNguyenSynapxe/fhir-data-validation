@@ -70,8 +70,9 @@ public static class ValueSetParser
                 ? pubElement.GetString()
                 : null;
 
-            // Determine expansion strategy
+            // Determine expansion strategy and capability
             var (strategy, explicitCodes, composeIncludes) = DetermineExpansionStrategy(root, url, warnings);
+            var capability = DetermineCapability(root, strategy);
 
             return new ValueSetRegistryEntry
             {
@@ -82,6 +83,7 @@ public static class ValueSetParser
                 Description = description,
                 Publisher = publisher,
                 ExpansionStrategy = strategy,
+                Capability = capability,
                 ExplicitCodes = explicitCodes,
                 ComposeIncludes = composeIncludes
             };
@@ -218,5 +220,75 @@ public static class ValueSetParser
         // No supported strategy found
         warnings.Add($"ValueSet {url}: no supported expansion strategy found, marking as Unsupported");
         return (ExpansionStrategyType.Unsupported, null, null);
+    }
+
+    /// <summary>
+    /// Determine ValueSet capability structurally.
+    /// Decides based on ValueSet definition, not size or heuristics.
+    /// </summary>
+    private static ValueSetCapabilityType DetermineCapability(JsonElement root, ExpansionStrategyType strategy)
+    {
+        // If we have explicit expansion, it's previewable
+        if (root.TryGetProperty("expansion", out var expansion) &&
+            expansion.TryGetProperty("contains", out _))
+        {
+            return ValueSetCapabilityType.Previewable;
+        }
+
+        // Check compose.include structure
+        if (root.TryGetProperty("compose", out var compose) &&
+            compose.TryGetProperty("include", out var includes))
+        {
+            foreach (var include in includes.EnumerateArray())
+            {
+                // If it has explicit concept list, it's previewable
+                if (include.TryGetProperty("concept", out var concepts) &&
+                    concepts.ValueKind == JsonValueKind.Array &&
+                    concepts.GetArrayLength() > 0)
+                {
+                    return ValueSetCapabilityType.Previewable;
+                }
+
+                // If it has filters or valueSet imports, it's computed
+                if (include.TryGetProperty("filter", out _) ||
+                    include.TryGetProperty("valueSet", out _))
+                {
+                    return ValueSetCapabilityType.Computed;
+                }
+
+                // Check if system is external terminology
+                if (include.TryGetProperty("system", out var system))
+                {
+                    var systemUrl = system.GetString() ?? "";
+                    if (IsExternalTerminology(systemUrl))
+                    {
+                        return ValueSetCapabilityType.ExternalSystem;
+                    }
+                }
+            }
+        }
+
+        // Default: if unsupported strategy, mark as computed
+        if (strategy == ExpansionStrategyType.Unsupported)
+        {
+            return ValueSetCapabilityType.Computed;
+        }
+
+        // Otherwise previewable (we can resolve it locally)
+        return ValueSetCapabilityType.Previewable;
+    }
+
+    /// <summary>
+    /// Check if a system URL references large external terminology.
+    /// </summary>
+    private static bool IsExternalTerminology(string systemUrl)
+    {
+        return systemUrl.Contains("snomed", StringComparison.OrdinalIgnoreCase)
+            || systemUrl.Contains("loinc", StringComparison.OrdinalIgnoreCase)
+            || systemUrl.Contains("ucum", StringComparison.OrdinalIgnoreCase)
+            || systemUrl.Contains("iso.org", StringComparison.OrdinalIgnoreCase)
+            || systemUrl.Contains("rxnorm", StringComparison.OrdinalIgnoreCase)
+            || systemUrl.Contains("icd-10", StringComparison.OrdinalIgnoreCase)
+            || systemUrl.Contains("icd-9", StringComparison.OrdinalIgnoreCase);
     }
 }

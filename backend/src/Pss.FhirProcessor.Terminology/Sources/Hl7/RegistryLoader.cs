@@ -86,6 +86,7 @@ internal sealed class ValueSetRegistryEntry
     public string? Description { get; init; }
     public string? Publisher { get; init; }
     public required ExpansionStrategyType ExpansionStrategy { get; init; }
+    public required ValueSetCapabilityType Capability { get; init; }
     public List<ExplicitCodeEntry>? ExplicitCodes { get; init; }
     public List<ComposeIncludeEntry>? ComposeIncludes { get; init; }
 }
@@ -95,6 +96,13 @@ internal enum ExpansionStrategyType
     ExplicitCodes,
     ComposeIncludes,
     Unsupported
+}
+
+internal enum ValueSetCapabilityType
+{
+    Previewable,
+    ExternalSystem,
+    Computed
 }
 
 internal sealed class ExplicitCodeEntry
