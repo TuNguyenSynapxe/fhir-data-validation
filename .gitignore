@@ -61,3 +61,6 @@ logs/
 
 # FHIR Spec backups (local only)
 **/StructureDefinitions.backup/
+
+# FHIR Spec cache (downloaded packages)
+backend/spec-cache/
