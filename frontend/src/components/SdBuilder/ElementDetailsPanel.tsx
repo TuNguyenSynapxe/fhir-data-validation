@@ -39,7 +39,7 @@ import { BindingDisplay } from './BindingDisplay';
 import { SlicingRulesDrawer } from './SlicingRulesDrawer';
 import { AddDiscriminatorDrawer } from './AddDiscriminatorDrawer';
 import { AddSliceDrawer } from './AddSliceDrawer';
-import { SliceConstraintPanel } from './SliceConstraintPanel';
+import { SliceConstraintDrawer } from './SliceConstraintDrawer';
 
 export const ElementDetailsPanel: React.FC = () => {
   const design = useSdBuilderStore((state) => state.design);
@@ -49,7 +49,7 @@ export const ElementDetailsPanel: React.FC = () => {
   const [valueSetDrawerOpen, setValueSetDrawerOpen] = useState(false);
   const [slicingRulesDrawerOpen, setSlicingRulesDrawerOpen] = useState(false);
   const [addSliceDrawerOpen, setAddSliceDrawerOpen] = useState(false);
-  const [sliceConstraintPanelOpen, setSliceConstraintPanelOpen] = useState(false);
+  const [sliceConstraintDrawerOpen, setSliceConstraintDrawerOpen] = useState(false);
   const [selectedSliceName, setSelectedSliceName] = useState<string | null>(null);
 
   // Find selected element
@@ -249,9 +249,20 @@ export const ElementDetailsPanel: React.FC = () => {
               {element.slices && Object.keys(element.slices).length > 0 && (
                 <div className="mb-3">
                   <dt className="text-sm font-medium text-gray-700">Slices:</dt>
-                  <ul className="text-sm text-gray-700 list-disc list-inside">
+                  <ul className="text-sm text-gray-700 space-y-2">
                     {Object.keys(element.slices).sort().map((sliceName: string) => (
-                      <li key={sliceName}>{sliceName}</li>
+                      <li key={sliceName} className="flex items-center justify-between">
+                        <span>• {sliceName}</span>
+                        <button
+                          onClick={() => {
+                            setSelectedSliceName(sliceName);
+                            setSliceConstraintDrawerOpen(true);
+                          }}
+                          className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                        >
+                          Configure
+                        </button>
+                      </li>
                     ))}
                   </ul>
                 </div>
@@ -432,13 +443,14 @@ export const ElementDetailsPanel: React.FC = () => {
       />
     )}
 
-    {/* EPIC 3: Slice Constraint Panel */}
-    {sliceConstraintPanelOpen && selectedSliceName && (
-      <SliceConstraintPanel
+    {/* EPIC 3: Slice Constraint Drawer */}
+    {sliceConstraintDrawerOpen && selectedSliceName && (
+      <SliceConstraintDrawer
+        isOpen={sliceConstraintDrawerOpen}
         element={element}
         sliceName={selectedSliceName}
         onClose={() => {
-          setSliceConstraintPanelOpen(false);
+          setSliceConstraintDrawerOpen(false);
           setSelectedSliceName(null);
         }}
       />
