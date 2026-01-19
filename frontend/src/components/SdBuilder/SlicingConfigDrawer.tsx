@@ -52,7 +52,6 @@ export function SlicingConfigDrawer({
 
   // Early return after hooks (Rules of Hooks compliance)
   if (!isOpen || !element) return null;
-  const [showAddSlice, setShowAddSlice] = useState(false);
 
   // Handle discriminator operations
   const handleAddDiscriminator = (type: string, path: string) => {
