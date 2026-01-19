@@ -11,8 +11,9 @@ interface SliceConstraintDrawerProps {
 interface SliceCondition {
   discriminatorPath: string;
   discriminatorType: string;
-  conditionType: 'none' | 'fixed' | 'pattern';
-  value: any;
+  operator: 'none' | 'equals' | 'in' | 'regex' | 'exists';
+  value?: string;
+  system?: string;
 }
 
 /**
@@ -53,34 +54,38 @@ export function SliceConstraintDrawer({
   useEffect(() => {
     if (!isOpen || !slice) return;
 
-    // Initialize conditions from existing pattern/fixed values
+    // Initialize conditions from existing conditions array
     const initialConditions: Record<string, SliceCondition> = {};
     discriminators.forEach((disc: any) => {
       const key = `${disc.type}:${disc.path}`;
-      initialConditions[key] = {
-        discriminatorPath: disc.path,
-        discriminatorType: disc.type,
-        conditionType: 'none',
-        value: null,
-      };
+      
+      // Find existing condition for this discriminator
+      const existingCondition = slice.Conditions?.find(
+        (c: any) => c.DiscriminatorType === disc.type && c.DiscriminatorPath === disc.path
+      );
 
-      // Check if there's an existing pattern value
-      if (slice.PatternValues && slice.PatternValues[disc.path]) {
-        initialConditions[key].conditionType = 'pattern';
-        initialConditions[key].value = slice.PatternValues[disc.path];
-      }
-      // Check if there's an existing fixed value
-      else if (slice.FixedValues && slice.FixedValues[disc.path]) {
-        initialConditions[key].conditionType = 'fixed';
-        initialConditions[key].value = slice.FixedValues[disc.path];
+      if (existingCondition) {
+        initialConditions[key] = {
+          discriminatorPath: disc.path,
+          discriminatorType: disc.type,
+          operator: existingCondition.Operator,
+          value: existingCondition.Value,
+          system: existingCondition.System,
+        };
+      } else {
+        initialConditions[key] = {
+          discriminatorPath: disc.path,
+          discriminatorType: disc.type,
+          operator: 'none',
+        };
       }
     });
 
     setConditions(initialConditions);
     setMinCardinality(slice.OverrideCardinality?.min?.toString() || '');
     setMaxCardinality(slice.OverrideCardinality?.max || '');
-    setShortLabel(''); // TODO: Load from metadata
-    setDescription(''); // TODO: Load from metadata
+    setShortLabel(slice.Metadata?.ShortLabel || '');
+    setDescription(slice.Metadata?.Description || '');
   }, [isOpen, slice, discriminators]);
 
   if (!isOpen || !element) return null;
@@ -96,9 +101,9 @@ export function SliceConstraintDrawer({
   const validateAndSave = async () => {
     setError('');
 
-    // Validate: At least one discriminator must have a condition
+    // Validate: At least one discriminator must have a non-"none" operator
     const hasCondition = Object.values(conditions).some(
-      c => c.conditionType !== 'none' && c.value
+      c => c.operator !== 'none'
     );
 
     if (!hasCondition) {
@@ -117,29 +122,35 @@ export function SliceConstraintDrawer({
       }
     }
 
-    // Build command payload
-    const patternValues: Record<string, any> = {};
-    const fixedValues: Record<string, any> = {};
-
-    Object.values(conditions).forEach(condition => {
-      if (condition.conditionType === 'pattern' && condition.value) {
-        patternValues[condition.discriminatorPath] = condition.value;
-      } else if (condition.conditionType === 'fixed' && condition.value) {
-        fixedValues[condition.discriminatorPath] = condition.value;
-      }
-    });
+    // Build conditions array
+    const conditionsArray = Object.values(conditions)
+      .filter(c => c.operator !== 'none')
+      .map(c => ({
+        discriminatorType: c.discriminatorType,
+        discriminatorPath: c.discriminatorPath,
+        operator: c.operator,
+        ...(c.value && { value: c.value }),
+        ...(c.system && { system: c.system }),
+      }));
 
     try {
       await applyCommand({
-        commandType: 'SetSliceConstraint',
-        path: element.path,
+        commandType: 'SetSliceConstraints',
+        elementPath: element.path,
         sliceName,
-        patternValues,
-        fixedValues,
-        cardinality: (minCardinality || maxCardinality) ? {
-          min: parseInt(minCardinality) || 0,
-          max: maxCardinality || '*'
-        } : null,
+        conditions: conditionsArray,
+        ...(minCardinality || maxCardinality ? {
+          overrideCardinality: {
+            min: parseInt(minCardinality) || 0,
+            max: maxCardinality || '*'
+          }
+        } : {}),
+        ...((shortLabel || description) ? {
+          metadata: {
+            ...(shortLabel && { shortLabel }),
+            ...(description && { description }),
+          }
+        } : {}),
       });
       onClose();
     } catch (err) {
@@ -149,7 +160,7 @@ export function SliceConstraintDrawer({
   };
 
   const hasAnyCondition = Object.values(conditions).some(
-    c => c.conditionType !== 'none'
+    c => c.operator !== 'none'
   );
 
   return (
@@ -225,8 +236,7 @@ export function SliceConstraintDrawer({
               const condition = conditions[key] || {
                 discriminatorPath: disc.path,
                 discriminatorType: disc.type,
-                conditionType: 'none',
-                value: null,
+                operator: 'none',
               };
 
               return (
@@ -244,25 +254,29 @@ export function SliceConstraintDrawer({
                       Condition Type
                     </label>
                     <select
-                      value={condition.conditionType}
+                      value={condition.operator}
                       onChange={(e) => handleConditionChange(key, {
-                        conditionType: e.target.value as any,
-                        value: e.target.value === 'none' ? null : condition.value
+                        operator: e.target.value as any,
+                        value: e.target.value === 'none' ? undefined : condition.value
                       })}
                       className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                     >
                       <option value="none">No condition</option>
-                      <option value="pattern">Pattern (recommended)</option>
-                      <option value="fixed">Fixed (strict)</option>
+                      <option value="equals">Equals</option>
+                      <option value="in">In (value set)</option>
+                      <option value="regex">Regex pattern</option>
+                      <option value="exists">Exists</option>
                     </select>
                     <p className="text-xs text-gray-500 mt-1">
-                      {condition.conditionType === 'none' && 'This discriminator is not constrained'}
-                      {condition.conditionType === 'pattern' && 'Pattern: Value must match this pattern'}
-                      {condition.conditionType === 'fixed' && 'Fixed: Value must exactly match this value'}
+                      {condition.operator === 'none' && 'This discriminator is not constrained'}
+                      {condition.operator === 'equals' && 'Value must exactly match'}
+                      {condition.operator === 'in' && 'Value must be in the specified set'}
+                      {condition.operator === 'regex' && 'Value must match regex pattern'}
+                      {condition.operator === 'exists' && 'Value must exist'}
                     </p>
                   </div>
 
-                  {condition.conditionType !== 'none' && (
+                  {condition.operator !== 'none' && condition.operator !== 'exists' && (
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         Value
@@ -271,7 +285,7 @@ export function SliceConstraintDrawer({
                         type="text"
                         value={condition.value || ''}
                         onChange={(e) => handleConditionChange(key, { value: e.target.value })}
-                        placeholder={`Enter ${condition.conditionType} value...`}
+                        placeholder={`Enter ${condition.operator} value...`}
                         className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                       />
                       <p className="text-xs text-gray-500 mt-1">

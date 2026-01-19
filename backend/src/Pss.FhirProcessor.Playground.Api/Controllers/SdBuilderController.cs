@@ -238,6 +238,112 @@ public sealed class SdBuilderController : ControllerBase
                     session.RemoveSlice(path, sliceName);
                     break;
                 }
+            case "SetSliceConstraints":
+                {
+                    var path = payload.GetProperty("elementPath").GetString()!;
+                    var sliceName = payload.GetProperty("sliceName").GetString()!;
+                    
+                    // Validate element exists
+                    var element = session.DesignState.Elements.FirstOrDefault(e => e.Path == path);
+                    if (element == null)
+                        throw new InvalidOperationException($"Element not found: {path}");
+                    
+                    // Validate slice exists
+                    if (element.Slices == null || !element.Slices.ContainsKey(sliceName))
+                        throw new InvalidOperationException($"Slice not found: {sliceName} at {path}");
+                    
+                    var sliceState = element.Slices[sliceName];
+                    
+                    // Parse conditions array
+                    var conditions = new List<SliceCondition>();
+                    if (payload.TryGetProperty("conditions", out var conditionsArray))
+                    {
+                        foreach (var condElem in conditionsArray.EnumerateArray())
+                        {
+                            var discTypeStr = condElem.GetProperty("discriminatorType").GetString()!;
+                            var discPath = condElem.GetProperty("discriminatorPath").GetString()!;
+                            var op = condElem.GetProperty("operator").GetString()!;
+                            
+                            // Parse discriminator type enum
+                            if (!Enum.TryParse<DiscriminatorType>(discTypeStr, ignoreCase: true, out var discType))
+                            {
+                                throw new InvalidOperationException($"Invalid discriminator type: {discTypeStr}");
+                            }
+                            
+                            // Validate discriminator exists
+                            if (element.Slicing?.Discriminators == null || 
+                                !element.Slicing.Discriminators.Any(d => d.Type == discType && d.Path == discPath))
+                            {
+                                throw new InvalidOperationException(
+                                    $"Discriminator not found: {discType} @ {discPath}");
+                            }
+                            
+                            var condition = new SliceCondition
+                            {
+                                DiscriminatorType = discTypeStr,
+                                DiscriminatorPath = discPath,
+                                Operator = op
+                            };
+                            
+                            if (condElem.TryGetProperty("value", out var valProp))
+                                condition.Value = valProp.GetString();
+                            if (condElem.TryGetProperty("system", out var sysProp))
+                                condition.System = sysProp.GetString();
+                            
+                            conditions.Add(condition);
+                        }
+                    }
+                    
+                    // Validate at least one non-"none" condition
+                    if (!conditions.Any(c => c.Operator != "none"))
+                        throw new InvalidOperationException("At least one condition with operator != 'none' is required");
+                    
+                    sliceState.Conditions = conditions;
+                    
+                    // Parse optional cardinality
+                    if (payload.TryGetProperty("overrideCardinality", out var cardProp))
+                    {
+                        var cardObj = cardProp;
+                        var min = cardObj.GetProperty("min").GetInt32();
+                        var maxStr = cardObj.GetProperty("max").GetString()!;
+                        
+                        var cardinality = new Cardinality(min, maxStr);
+                        
+                        // Validate against base cardinality
+                        if (element.BaseCardinality != null)
+                        {
+                            var baseCard = element.BaseCardinality;
+                            if (min < baseCard.Min)
+                                throw new InvalidOperationException(
+                                    $"Slice cardinality min ({min}) cannot be less than element min ({baseCard.Min})");
+                            
+                            if (!baseCard.Max.Equals("*") && !maxStr.Equals("*"))
+                            {
+                                var baseMaxInt = int.Parse(baseCard.Max);
+                                var sliceMaxInt = int.Parse(maxStr);
+                                if (sliceMaxInt > baseMaxInt)
+                                    throw new InvalidOperationException(
+                                        $"Slice cardinality max ({maxStr}) cannot exceed element max ({baseCard.Max})");
+                            }
+                        }
+                        
+                        sliceState.OverrideCardinality = cardinality;
+                    }
+                    
+                    // Parse optional metadata
+                    if (payload.TryGetProperty("metadata", out var metaProp))
+                    {
+                        var metadata = new SliceMetadata();
+                        if (metaProp.TryGetProperty("shortLabel", out var shortProp))
+                            metadata.ShortLabel = shortProp.GetString();
+                        if (metaProp.TryGetProperty("description", out var descProp))
+                            metadata.Description = descProp.GetString();
+                        
+                        sliceState.Metadata = metadata;
+                    }
+                    
+                    break;
+                }
             case "AddExtension":
                 {
                     var path = payload.GetProperty("path").GetString()!;
