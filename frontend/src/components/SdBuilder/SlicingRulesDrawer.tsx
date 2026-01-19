@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useSdBuilderStore } from '../../stores/useSdBuilderStore';
 import { AddDiscriminatorDrawer } from './AddDiscriminatorDrawer';
+import { Layers, FlaskConical, CircleDot, XCircle, Key, Plus, Info, AlertTriangle, Trash2, Hash } from 'lucide-react';
 
 interface SlicingRulesDrawerProps {
   isOpen: boolean;
@@ -113,8 +114,8 @@ export function SlicingRulesDrawer({
           <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
             {/* SECTION A: Slicing Rules */}
             <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                🧪 Slicing Rules
+              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                <FlaskConical className="w-4 h-4" /> Slicing Rules
               </h3>
 
               {/* Matching */}
@@ -154,8 +155,8 @@ export function SlicingRulesDrawer({
                     Order matters
                   </span>
                 </label>
-                <p className="text-xs text-gray-500 mt-1 ml-6">
-                  ℹ️ When enabled, elements must appear in the order defined by slices.
+                <p className="text-xs text-gray-500 mt-1 ml-6 flex items-start gap-1.5">
+                  <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" /> When enabled, elements must appear in the order defined by slices.
                 </p>
               </div>
             </div>
@@ -163,26 +164,26 @@ export function SlicingRulesDrawer({
             {/* SECTION B: Discriminators */}
             <div className="space-y-4 border-t pt-6">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                  🔑 Discriminators
+                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                  <Key className="w-4 h-4" /> Discriminators
                 </h3>
                 <button
                   onClick={() => setShowAddDiscriminator(true)}
-                  className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700"
+                  className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 flex items-center gap-2"
                 >
-                  ➕ Add Discriminator
+                  <Plus className="w-4 h-4" /> Add Discriminator
                 </button>
               </div>
 
-              <p className="text-xs text-gray-600">
-                ℹ️ Discriminators define how items are matched to slices. All slices use the same discriminators.
+              <p className="text-xs text-gray-600 flex items-start gap-2">
+                <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" /> Discriminators define how items are matched to slices. All slices use the same discriminators.
               </p>
 
               {/* Discriminator List */}
               {discriminators.length === 0 ? (
                 <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
-                  <p className="text-sm text-yellow-800">
-                    ⚠️ No discriminators defined. Add at least one to enable slicing.
+                  <p className="text-sm text-yellow-800 flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" /> No discriminators defined. Add at least one to enable slicing.
                   </p>
                 </div>
               ) : (
@@ -193,17 +194,17 @@ export function SlicingRulesDrawer({
                       className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded p-3"
                     >
                       <div>
-                        <span className="text-sm font-medium text-gray-900">
-                          🔑 {disc.type}
+                        <span className="text-sm font-medium text-gray-900 flex items-center gap-1.5">
+                          <Key className="w-3.5 h-3.5" /> {disc.type}
                         </span>
                         <span className="text-sm text-gray-500 mx-2">→</span>
                         <span className="text-sm text-gray-700">{disc.path}</span>
                       </div>
                       <button
                         onClick={() => handleRemoveDiscriminator(index)}
-                        className="text-red-600 hover:text-red-800 text-sm"
+                        className="text-red-600 hover:text-red-800 text-sm flex items-center gap-1.5"
                       >
-                        🗑️ Remove
+                        <Trash2 className="w-3.5 h-3.5" /> Remove
                       </button>
                     </div>
                   ))}
@@ -213,16 +214,16 @@ export function SlicingRulesDrawer({
 
             {/* INFO BOX: What this drawer does NOT do */}
             <div className="bg-blue-50 border border-blue-200 rounded p-4 mt-6">
-              <h4 className="text-sm font-semibold text-blue-900 mb-2">
-                ℹ️ What this configures
+              <h4 className="text-sm font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                <Info className="w-4 h-4" /> What this configures
               </h4>
-              <ul className="text-xs text-blue-800 space-y-1 list-none pl-0">
-                <li>🧪 How items are matched to slices</li>
-                <li>🔢 Whether order matters</li>
-                <li>🔑 Which element paths distinguish slices</li>
+              <ul className="text-xs text-blue-800 space-y-1.5 list-none pl-0">
+                <li className="flex items-start gap-1.5"><FlaskConical className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" /> How items are matched to slices</li>
+                <li className="flex items-start gap-1.5"><Hash className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" /> Whether order matters</li>
+                <li className="flex items-start gap-1.5"><Key className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" /> Which element paths distinguish slices</li>
               </ul>
-              <p className="text-xs text-blue-800 mt-3">
-                ➕ To define slice-specific rules, use <strong>Add Slice</strong>.
+              <p className="text-xs text-blue-800 mt-3 flex items-start gap-1.5">
+                <Plus className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" /> To define slice-specific rules, use <strong>Add Slice</strong>.
               </p>
             </div>
           </div>

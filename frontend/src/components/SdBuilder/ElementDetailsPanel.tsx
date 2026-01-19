@@ -23,6 +23,7 @@
 
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
+import { Layers, Key, Info, Edit, Plus } from 'lucide-react';
 import { useSdBuilderStore } from '../../stores/useSdBuilderStore';
 import { findNodeByPath } from '../../utils/treeBuilder';
 import { buildTree } from '../../utils/treeBuilder';
@@ -200,13 +201,14 @@ export const ElementDetailsPanel: React.FC = () => {
       {/* EPIC 2: Progressive Disclosure Slicing UI */}
       {node.isRepeatable && (
         <div className="details-section">
-          <h4>🧩 Slicing</h4>
+          <h4 className="flex items-center gap-2"><Layers className="w-4 h-4" /> Slicing</h4>
           
           {/* STATE 1: No slicing configured */}
           {!element.slicing && (
             <>
-              <p className="text-sm text-gray-600 mb-3">
-                ℹ️ Defines how repeated elements are grouped and distinguished.
+              <p className="text-sm text-gray-600 mb-3 flex items-start gap-2">
+                <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <span>Defines how repeated elements are grouped and distinguished.</span>
               </p>
               <button
                 onClick={() => setSlicingRulesDrawerOpen(true)}
@@ -231,14 +233,14 @@ export const ElementDetailsPanel: React.FC = () => {
 
               {/* Discriminators */}
               <div className="mb-3">
-                <dt className="text-sm font-medium text-gray-700">🔑 Discriminators:</dt>
+                <dt className="text-sm font-medium text-gray-700 flex items-center gap-1"><Key className="w-3.5 h-3.5" /> Discriminators:</dt>
                 {(!element.slicing.discriminators || element.slicing.discriminators.length === 0) ? (
                   <dd className="text-sm text-gray-600 italic">None</dd>
                 ) : (
-                  <ul className="text-sm text-gray-700 list-none pl-0">
+                  <ul className="text-sm text-gray-700 list-none pl-0 space-y-1">
                     {element.slicing.discriminators.map((disc: any, idx: number) => (
-                      <li key={idx}>
-                        🔑 {disc.type.toLowerCase()} → {disc.path}
+                      <li key={idx} className="flex items-center gap-1.5">
+                        <Key className="w-3.5 h-3.5" /> {disc.type.toLowerCase()} → {disc.path}
                       </li>
                     ))}
                   </ul>
@@ -248,7 +250,7 @@ export const ElementDetailsPanel: React.FC = () => {
               {/* Slices */}
               {element.slices && Object.keys(element.slices).length > 0 && (
                 <div className="mb-3">
-                  <dt className="text-sm font-medium text-gray-700">🧩 Slices:</dt>
+                  <dt className="text-sm font-medium text-gray-700 flex items-center gap-1"><Layers className="w-3.5 h-3.5" /> Slices:</dt>
                   <ul className="text-sm text-gray-700 space-y-2">
                     {Object.keys(element.slices).sort().map((sliceName: string) => (
                       <li key={sliceName} className="flex items-center justify-between">
@@ -280,9 +282,9 @@ export const ElementDetailsPanel: React.FC = () => {
                     </div>
                     <button
                       onClick={() => setSlicingRulesDrawerOpen(true)}
-                      className="action-btn"
+                      className="action-btn flex items-center justify-center gap-2"
                     >
-                      ✏️ Edit Slicing Rules
+                      <Edit className="w-4 h-4" /> Edit Slicing Rules
                     </button>
                   </>
                 )}
@@ -292,15 +294,15 @@ export const ElementDetailsPanel: React.FC = () => {
                   <>
                     <button
                       onClick={() => setSlicingRulesDrawerOpen(true)}
-                      className="action-btn"
+                      className="action-btn flex items-center justify-center gap-2"
                     >
-                      ✏️ Edit Slicing Rules
+                      <Edit className="w-4 h-4" /> Edit Slicing Rules
                     </button>
                     <button
                       onClick={() => setAddSliceDrawerOpen(true)}
-                      className="action-btn"
+                      className="action-btn flex items-center justify-center gap-2"
                     >
-                      ➕ Add Slice
+                      <Plus className="w-4 h-4" /> Add Slice
                     </button>
                   </>
                 )}

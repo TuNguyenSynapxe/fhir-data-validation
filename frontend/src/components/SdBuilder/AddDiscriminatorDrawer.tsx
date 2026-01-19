@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { ElementDesign } from '../../api/sdBuilderApi';
+import { Key, Info } from 'lucide-react';
 
 interface AddDiscriminatorDrawerProps {
   isOpen: boolean;
@@ -124,9 +125,9 @@ export function AddDiscriminatorDrawer({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">🔑 Add Discriminator</h2>
-            <p className="text-sm text-gray-600 mt-1">
-              ℹ️ Select an element path used to distinguish slices.
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2"><Key className="w-5 h-5" /> Add Discriminator</h2>
+            <p className="text-sm text-gray-600 mt-1 flex items-start gap-2">
+              <Info className="w-4 h-4 mt-0.5 flex-shrink-0" /> Select an element path used to distinguish slices.
             </p>
           </div>
           <button
