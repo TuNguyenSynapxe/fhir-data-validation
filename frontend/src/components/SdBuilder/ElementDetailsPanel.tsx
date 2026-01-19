@@ -36,6 +36,11 @@ import {
 import { ValueSetSelectionDrawer } from './ValueSetSelectionDrawer';
 import { BindingStrengthControl } from './BindingStrengthControl';
 import { BindingDisplay } from './BindingDisplay';
+import { shouldShowConfigureSlicing } from '../SlicingEditor';
+import { SlicingConfigDrawer } from './SlicingConfigDrawer';
+import { SliceChildEditor } from '../SliceChildEditor';
+import { SlicingSummaryPanel } from './SlicingSummaryPanel';
+import { SliceConstraintPanel } from './SliceConstraintPanel';
 
 export const ElementDetailsPanel: React.FC = () => {
   const design = useSdBuilderStore((state) => state.design);
@@ -43,6 +48,10 @@ export const ElementDetailsPanel: React.FC = () => {
   const applyCommand = useSdBuilderStore((state) => state.applyCommand);
   
   const [valueSetDrawerOpen, setValueSetDrawerOpen] = useState(false);
+  const [slicingEditorOpen, setSlicingEditorOpen] = useState(false);
+  const [sliceChildEditorOpen, setSliceChildEditorOpen] = useState(false);
+  const [sliceConstraintPanelOpen, setSliceConstraintPanelOpen] = useState(false);
+  const [selectedSliceName, setSelectedSliceName] = useState<string | null>(null);
 
   // Find selected element
   const selectedElement = React.useMemo(() => {
@@ -189,6 +198,18 @@ export const ElementDetailsPanel: React.FC = () => {
         </dl>
       </div>
 
+      {/* EPIC 2: Slicing Summary (Read-Only) */}
+      {element.slicing && (
+        <SlicingSummaryPanel
+          slicing={element.slicing}
+          sliceNames={element.slices && typeof element.slices === 'object' ? Object.keys(element.slices) : []}
+          onConfigureSlice={(sliceName) => {
+            setSelectedSliceName(sliceName);
+            setSliceConstraintPanelOpen(true);
+          }}
+        />
+      )}
+
       {/* Binding */}
       {bindingEligible && (
         <div className="details-section">
@@ -264,36 +285,28 @@ export const ElementDetailsPanel: React.FC = () => {
         </div>
       )}
 
-      {/* Slicing */}
-      {element.slicing && (
+      {/* EPIC 2: Slicing Actions */}
+      {shouldShowConfigureSlicing(element) && (
         <div className="details-section">
-          <h4>Slicing</h4>
-          <dl className="details-list">
-            <dt>Rules:</dt>
-            <dd>{element.slicing.rules}</dd>
-
-            <dt>Discriminators:</dt>
-            <dd>{element.slicing.discriminators.length}</dd>
-          </dl>
-        </div>
-      )}
-
-      {/* Slices */}
-      {element.slices.length > 0 && (
-        <div className="details-section">
-          <h4>Slices ({element.slices.length})</h4>
-          <ul className="slice-list">
-            {element.slices.map(slice => (
-              <li key={slice.sliceName}>
-                <strong>{slice.sliceName}</strong>
-                {slice.cardinality && (
-                  <span className="slice-cardinality">
-                    {slice.cardinality.min}..{slice.cardinality.max}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
+          <h4>Slicing Configuration</h4>
+          <div className="action-buttons">
+            <button
+              onClick={() => setSlicingEditorOpen(true)}
+              className="btn btn-primary"
+              title="Modify slicing rules and discriminators for this element."
+            >
+              Edit Slicing Rules
+            </button>
+            {element.slices.length > 0 && (
+              <button
+                onClick={() => setSliceChildEditorOpen(true)}
+                className="btn btn-secondary"
+                title="Add constraints to slice child elements"
+              >
+                Edit Slice Constraints
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -308,12 +321,40 @@ export const ElementDetailsPanel: React.FC = () => {
       <ValueSetSelectionDrawer
         elementPath={node.path}
         elementName={node.name}
-        fhirType={element.baseTypeCode || 'unknown'}
+        fhirType={element.typeCodes[0] || 'unknown'}
         baseBinding={baseBinding}
         currentValueSetUrl={currentBinding?.valueSetUrl || null}
         open={valueSetDrawerOpen}
         onSelectValueSet={handleSelectValueSet}
         onClose={() => setValueSetDrawerOpen(false)}
+      />
+    )}
+
+    {/* EPIC 2: Slicing Config Drawer */}
+    <SlicingConfigDrawer
+      isOpen={slicingEditorOpen}
+      element={element}
+      allElements={design?.elements}
+      onClose={() => setSlicingEditorOpen(false)}
+    />
+
+    {/* EPIC 2: Slice Child Editor Modal */}
+    {sliceChildEditorOpen && (
+      <SliceChildEditor
+        element={element}
+        onClose={() => setSliceChildEditorOpen(false)}
+      />
+    )}
+
+    {/* EPIC 3: Slice Constraint Panel */}
+    {sliceConstraintPanelOpen && selectedSliceName && (
+      <SliceConstraintPanel
+        element={element}
+        sliceName={selectedSliceName}
+        onClose={() => {
+          setSliceConstraintPanelOpen(false);
+          setSelectedSliceName(null);
+        }}
       />
     )}
   </>

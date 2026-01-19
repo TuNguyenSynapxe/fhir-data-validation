@@ -19,7 +19,7 @@ import React, { useState, useEffect } from 'react';
 import { useSdBuilderStore } from '../stores/useSdBuilderStore';
 import { SdTreeView } from '../components/SdBuilder/SdTreeView';
 import { ElementDetailsPanel } from '../components/SdBuilder/ElementDetailsPanel';
-import { SlicingEditor } from '../components/SlicingEditor';
+import { SlicingConfigDrawer } from '../components/SdBuilder/SlicingConfigDrawer';
 import { SliceChildEditor } from '../components/SliceChildEditor';
 import { ExportSdModal } from '../components/ExportSdModal';
 import type { ElementDesign } from '../api/sdBuilderApi';
@@ -185,13 +185,13 @@ export const SdBuilderPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Modals */}
-      {selectedElementForSlicing && (
-        <SlicingEditor
-          element={selectedElementForSlicing}
-          onClose={() => setSelectedElementForSlicing(null)}
-        />
-      )}
+      {/* Drawers */}
+      <SlicingConfigDrawer
+        isOpen={!!selectedElementForSlicing}
+        element={selectedElementForSlicing!}
+        allElements={design?.elements}
+        onClose={() => setSelectedElementForSlicing(null)}
+      />
 
       {selectedElementForChildren && (
         <SliceChildEditor
