@@ -94,10 +94,10 @@ export function SlicingRulesDrawer({
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">
-                  Slicing Rules & Discriminators
+                  🧩 Slicing Rules & Discriminators
                 </h2>
                 <p className="text-sm text-gray-600 mt-1">
-                  Configure how repeated elements are distinguished
+                  ℹ️ Configure how repeated elements are distinguished.
                 </p>
               </div>
               <button
@@ -114,7 +114,7 @@ export function SlicingRulesDrawer({
             {/* SECTION A: Slicing Rules */}
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                Slicing Rules
+                🧪 Slicing Rules
               </h3>
 
               {/* Matching */}
@@ -127,13 +127,16 @@ export function SlicingRulesDrawer({
                   onChange={(e) => setRules(e.target.value as 'Open' | 'Closed' | 'OpenAtEnd')}
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                 >
-                  <option value="Open">Open</option>
-                  <option value="Closed">Closed</option>
+                  <option value="Open">🟢 Open</option>
+                  <option value="Closed">🔴 Closed</option>
                   <option value="OpenAtEnd">OpenAtEnd</option>
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  {rules === 'Open' && 'Additional slices not matching any discriminator are allowed anywhere.'}
-                  {rules === 'Closed' && 'Only slices matching discriminators are allowed.'}
+                  ℹ️ Controls whether items outside defined slices are allowed.
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {rules === 'Open' && '🟢 Open — Items not matching any slice are allowed'}
+                  {rules === 'Closed' && '🔴 Closed — All items must match a defined slice'}
                   {rules === 'OpenAtEnd' && 'Additional slices allowed only at the end.'}
                 </p>
               </div>
@@ -152,7 +155,7 @@ export function SlicingRulesDrawer({
                   </span>
                 </label>
                 <p className="text-xs text-gray-500 mt-1 ml-6">
-                  When enabled, elements must appear in the order defined by slicing.
+                  ℹ️ When enabled, elements must appear in the order defined by slices.
                 </p>
               </div>
             </div>
@@ -161,26 +164,25 @@ export function SlicingRulesDrawer({
             <div className="space-y-4 border-t pt-6">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                  Discriminators
+                  🔑 Discriminators
                 </h3>
                 <button
                   onClick={() => setShowAddDiscriminator(true)}
                   className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700"
                 >
-                  Add Discriminator
+                  ➕ Add Discriminator
                 </button>
               </div>
 
               <p className="text-xs text-gray-600">
-                Discriminators define how to distinguish one slice from another.
-                All slices share the same discriminators.
+                ℹ️ Discriminators define how items are matched to slices. All slices use the same discriminators.
               </p>
 
               {/* Discriminator List */}
               {discriminators.length === 0 ? (
                 <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
                   <p className="text-sm text-yellow-800">
-                    ⚠️ No discriminators defined. Add at least one discriminator to enable slicing.
+                    ⚠️ No discriminators defined. Add at least one to enable slicing.
                   </p>
                 </div>
               ) : (
@@ -192,7 +194,7 @@ export function SlicingRulesDrawer({
                     >
                       <div>
                         <span className="text-sm font-medium text-gray-900">
-                          {disc.type}
+                          🔑 {disc.type}
                         </span>
                         <span className="text-sm text-gray-500 mx-2">→</span>
                         <span className="text-sm text-gray-700">{disc.path}</span>
@@ -201,7 +203,7 @@ export function SlicingRulesDrawer({
                         onClick={() => handleRemoveDiscriminator(index)}
                         className="text-red-600 hover:text-red-800 text-sm"
                       >
-                        Remove
+                        🗑️ Remove
                       </button>
                     </div>
                   ))}
@@ -212,15 +214,15 @@ export function SlicingRulesDrawer({
             {/* INFO BOX: What this drawer does NOT do */}
             <div className="bg-blue-50 border border-blue-200 rounded p-4 mt-6">
               <h4 className="text-sm font-semibold text-blue-900 mb-2">
-                What this configures
+                ℹ️ What this configures
               </h4>
-              <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
-                <li>How to match slices (matching rules)</li>
-                <li>Whether order matters</li>
-                <li>What paths distinguish slices (discriminators)</li>
+              <ul className="text-xs text-blue-800 space-y-1 list-none pl-0">
+                <li>🧪 How items are matched to slices</li>
+                <li>🔢 Whether order matters</li>
+                <li>🔑 Which element paths distinguish slices</li>
               </ul>
               <p className="text-xs text-blue-800 mt-3">
-                To add named slices, use the <strong>Add Slice</strong> action.
+                ➕ To define slice-specific rules, use <strong>Add Slice</strong>.
               </p>
             </div>
           </div>

@@ -200,13 +200,13 @@ export const ElementDetailsPanel: React.FC = () => {
       {/* EPIC 2: Progressive Disclosure Slicing UI */}
       {node.isRepeatable && (
         <div className="details-section">
-          <h4>SLICING</h4>
+          <h4>🧩 Slicing</h4>
           
           {/* STATE 1: No slicing configured */}
           {!element.slicing && (
             <>
               <p className="text-sm text-gray-600 mb-3">
-                This element is repeatable and can be sliced.
+                ℹ️ Defines how repeated elements are grouped and distinguished.
               </p>
               <button
                 onClick={() => setSlicingRulesDrawerOpen(true)}
@@ -231,14 +231,14 @@ export const ElementDetailsPanel: React.FC = () => {
 
               {/* Discriminators */}
               <div className="mb-3">
-                <dt className="text-sm font-medium text-gray-700">Discriminators:</dt>
+                <dt className="text-sm font-medium text-gray-700">🔑 Discriminators:</dt>
                 {(!element.slicing.discriminators || element.slicing.discriminators.length === 0) ? (
                   <dd className="text-sm text-gray-600 italic">None</dd>
                 ) : (
-                  <ul className="text-sm text-gray-700 list-disc list-inside">
+                  <ul className="text-sm text-gray-700 list-none pl-0">
                     {element.slicing.discriminators.map((disc: any, idx: number) => (
                       <li key={idx}>
-                        {disc.type.toLowerCase()} → {disc.path}
+                        🔑 {disc.type.toLowerCase()} → {disc.path}
                       </li>
                     ))}
                   </ul>
@@ -248,7 +248,7 @@ export const ElementDetailsPanel: React.FC = () => {
               {/* Slices */}
               {element.slices && Object.keys(element.slices).length > 0 && (
                 <div className="mb-3">
-                  <dt className="text-sm font-medium text-gray-700">Slices:</dt>
+                  <dt className="text-sm font-medium text-gray-700">🧩 Slices:</dt>
                   <ul className="text-sm text-gray-700 space-y-2">
                     {Object.keys(element.slices).sort().map((sliceName: string) => (
                       <li key={sliceName} className="flex items-center justify-between">
@@ -275,14 +275,14 @@ export const ElementDetailsPanel: React.FC = () => {
                   <>
                     <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-2">
                       <p className="text-xs text-yellow-800">
-                        ⚠️ Add at least one discriminator to define how slices are distinguished.
+                        ⚠️ Add at least one discriminator before creating slices.
                       </p>
                     </div>
                     <button
                       onClick={() => setSlicingRulesDrawerOpen(true)}
                       className="action-btn"
                     >
-                      Edit Slicing Rules
+                      ✏️ Edit Slicing Rules
                     </button>
                   </>
                 )}
@@ -294,13 +294,13 @@ export const ElementDetailsPanel: React.FC = () => {
                       onClick={() => setSlicingRulesDrawerOpen(true)}
                       className="action-btn"
                     >
-                      Edit Slicing Rules
+                      ✏️ Edit Slicing Rules
                     </button>
                     <button
                       onClick={() => setAddSliceDrawerOpen(true)}
                       className="action-btn"
                     >
-                      Add Slice
+                      ➕ Add Slice
                     </button>
                   </>
                 )}

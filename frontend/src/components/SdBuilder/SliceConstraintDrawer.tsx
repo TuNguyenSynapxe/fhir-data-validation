@@ -178,7 +178,7 @@ export function SliceConstraintDrawer({
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">
-                Slice: {sliceName}
+                🧩 Slice: {sliceName}
               </h2>
               <p className="text-sm text-gray-600 mt-1">
                 Configure constraints for this slice
@@ -198,7 +198,7 @@ export function SliceConstraintDrawer({
           {/* A: Discriminator Reference (READ-ONLY) */}
           <div className="bg-green-50 border-2 border-green-300 rounded p-4">
             <h3 className="text-sm font-semibold text-green-900 mb-3">
-              Discriminator Rules (from slicing)
+              🔒 Discriminator rules (from slicing)
             </h3>
             {discriminators.length > 0 ? (
               <div className="space-y-2">
@@ -218,17 +218,17 @@ export function SliceConstraintDrawer({
               <p className="text-sm text-green-800">No discriminators configured</p>
             )}
             <p className="text-xs text-green-700 mt-3 bg-white p-2 rounded border border-green-200">
-              ℹ️ All slices use the same discriminator paths (cannot be edited per slice)
+              🔒 All slices share the same discriminator paths. This slice defines which values match them.
             </p>
           </div>
 
           {/* B: Slice Conditions (CORE EPIC 3) */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-              Slice Conditions
+              🧪 Slice Conditions
             </h3>
             <p className="text-xs text-gray-600">
-              Define conditions for at least one discriminator to save this slice.
+              ℹ️ Define the values that match this slice for each discriminator.
             </p>
 
             {discriminators.map((disc: any, idx: number) => {
@@ -261,18 +261,18 @@ export function SliceConstraintDrawer({
                       })}
                       className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                     >
-                      <option value="none">No condition</option>
-                      <option value="equals">Equals</option>
-                      <option value="in">In (value set)</option>
-                      <option value="regex">Regex pattern</option>
-                      <option value="exists">Exists</option>
+                      <option value="none">🚫 No condition</option>
+                      <option value="equals">🎯 Equals</option>
+                      <option value="in">📋 In (value set)</option>
+                      <option value="regex">🧵 Regex pattern</option>
+                      <option value="exists">✔️ Exists</option>
                     </select>
                     <p className="text-xs text-gray-500 mt-1">
-                      {condition.operator === 'none' && 'This discriminator is not constrained'}
-                      {condition.operator === 'equals' && 'Value must exactly match'}
-                      {condition.operator === 'in' && 'Value must be in the specified set'}
-                      {condition.operator === 'regex' && 'Value must match regex pattern'}
-                      {condition.operator === 'exists' && 'Value must exist'}
+                      {condition.operator === 'none' && '🚫 This discriminator is not constrained'}
+                      {condition.operator === 'equals' && '🎯 Value must exactly match'}
+                      {condition.operator === 'in' && '📋 Value must be in the specified set'}
+                      {condition.operator === 'regex' && '🧵 Value must match regex pattern'}
+                      {condition.operator === 'exists' && '✔️ Value must exist'}
                     </p>
                   </div>
 
@@ -301,9 +301,12 @@ export function SliceConstraintDrawer({
           {/* C: Slice Cardinality (Optional) */}
           <div className="border-t pt-6 space-y-4">
             <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-              Slice Cardinality (Optional)
+              📐 Slice Cardinality (Optional)
             </h3>
             <p className="text-xs text-gray-600">
+              ℹ️ Overrides how many times this slice may appear. Must remain within the base element's cardinality.
+            </p>
+            <p className="text-xs text-gray-500">
               Base: {element.baseCardinality?.min || 0}..{element.baseCardinality?.max || '*'}
             </p>
 
@@ -348,7 +351,7 @@ export function SliceConstraintDrawer({
           {/* D: Slice Metadata (Optional) */}
           <div className="border-t pt-6 space-y-4">
             <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-              Slice Metadata (Optional)
+              🏷️ Slice Metadata (Optional)
             </h3>
 
             <div>
@@ -359,11 +362,11 @@ export function SliceConstraintDrawer({
                 type="text"
                 value={shortLabel}
                 onChange={(e) => setShortLabel(e.target.value)}
-                placeholder="e.g., Hearing"
+                placeholder="🏷️ Display label for this slice"
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Brief human-readable label
+                ℹ️ Used to show a friendly name in the tree and UI.
               </p>
             </div>
 
@@ -374,7 +377,7 @@ export function SliceConstraintDrawer({
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="e.g., Used for hearing-related observations"
+                placeholder="ℹ️ Detailed description of this slice"
                 rows={3}
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
               />
@@ -388,7 +391,7 @@ export function SliceConstraintDrawer({
           {!hasAnyCondition && (
             <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
               <p className="text-xs text-yellow-800">
-                ⚠️ At least one discriminator must have a condition before saving
+                ⚠️ At least one discriminator must have a matching condition.
               </p>
             </div>
           )}
@@ -416,7 +419,7 @@ export function SliceConstraintDrawer({
             disabled={!hasAnyCondition}
             className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
-            Save Constraints
+            💾 Save Slice Configuration
           </button>
         </div>
       </div>
