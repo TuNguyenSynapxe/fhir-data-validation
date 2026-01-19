@@ -77,7 +77,7 @@ export function SlicingConfigDrawer({
 
   const handleRemoveSlice = (sliceName: string) => {
     applyCommand({
-      command: 'RemoveSlice',
+      commandType: 'RemoveSlice',
       elementPath: element.path,
       sliceName,
     });
@@ -86,7 +86,7 @@ export function SlicingConfigDrawer({
   // Apply slicing configuration
   const handleApplyConfiguration = () => {
     applyCommand({
-      command: 'ConfigureSlicing',
+      commandType: 'ConfigureSlicing',
       elementPath: element.path,
       ordered,
       rules,
@@ -94,7 +94,7 @@ export function SlicingConfigDrawer({
     });
   };
 
-  const existingSliceNames = (element.slices || []).map((s: any) => s.sliceName);
+  const existingSliceNames = (Array.isArray(element.slices) ? element.slices : []).map((s: any) => s.sliceName);
 
   return (
     <>
@@ -258,12 +258,12 @@ export function SlicingConfigDrawer({
               )}
 
               {/* Slice List */}
-              {(element.slices || []).length > 0 ? (
+              {(Array.isArray(element.slices) ? element.slices : []).length > 0 ? (
                 <div className="space-y-2">
                   <div className="text-xs font-medium text-gray-700 mb-2">
                     Configured slices:
                   </div>
-                  {[...(element.slices || [])]
+                  {[...(Array.isArray(element.slices) ? element.slices : [])]
                     .sort((a, b) => a.sliceName.localeCompare(b.sliceName))
                     .map((slice) => (
                       <div

@@ -19,7 +19,6 @@ import React, { useState, useEffect } from 'react';
 import { useSdBuilderStore } from '../stores/useSdBuilderStore';
 import { SdTreeView } from '../components/SdBuilder/SdTreeView';
 import { ElementDetailsPanel } from '../components/SdBuilder/ElementDetailsPanel';
-import { SlicingConfigDrawer } from '../components/SdBuilder/SlicingConfigDrawer';
 import { SliceChildEditor } from '../components/SliceChildEditor';
 import { ExportSdModal } from '../components/ExportSdModal';
 import type { ElementDesign } from '../api/sdBuilderApi';
@@ -41,7 +40,6 @@ export const SdBuilderPage: React.FC = () => {
   } = useSdBuilderStore();
 
   // Modal state
-  const [selectedElementForSlicing, setSelectedElementForSlicing] = useState<ElementDesign | null>(null);
   const [selectedElementForChildren, setSelectedElementForChildren] = useState<ElementDesign | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showStartModal, setShowStartModal] = useState(!sessionId);
@@ -69,10 +67,6 @@ export const SdBuilderPage: React.FC = () => {
     }
     clearSession();
     setShowStartModal(true);
-  };
-
-  const handleOpenSlicingEditor = (element: ElementDesign) => {
-    setSelectedElementForSlicing(element);
   };
 
   const handleOpenSliceChildEditor = (element: ElementDesign) => {
@@ -186,15 +180,6 @@ export const SdBuilderPage: React.FC = () => {
       </div>
 
       {/* Drawers */}
-      {selectedElementForSlicing && (
-        <SlicingConfigDrawer
-          isOpen={true}
-          element={selectedElementForSlicing}
-          allElements={design?.elements}
-          onClose={() => setSelectedElementForSlicing(null)}
-        />
-      )}
-
       {selectedElementForChildren && (
         <SliceChildEditor
           element={selectedElementForChildren}

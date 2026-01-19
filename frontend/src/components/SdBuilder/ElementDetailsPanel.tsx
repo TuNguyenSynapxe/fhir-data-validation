@@ -36,10 +36,9 @@ import {
 import { ValueSetSelectionDrawer } from './ValueSetSelectionDrawer';
 import { BindingStrengthControl } from './BindingStrengthControl';
 import { BindingDisplay } from './BindingDisplay';
-import { shouldShowConfigureSlicing } from '../SlicingEditor';
-import { SlicingConfigDrawer } from './SlicingConfigDrawer';
-import { SliceChildEditor } from '../SliceChildEditor';
-import { SlicingSummaryPanel } from './SlicingSummaryPanel';
+import { SlicingRulesDrawer } from './SlicingRulesDrawer';
+import { AddDiscriminatorDrawer } from './AddDiscriminatorDrawer';
+import { AddSliceDrawer } from './AddSliceDrawer';
 import { SliceConstraintPanel } from './SliceConstraintPanel';
 
 export const ElementDetailsPanel: React.FC = () => {
@@ -48,8 +47,8 @@ export const ElementDetailsPanel: React.FC = () => {
   const applyCommand = useSdBuilderStore((state) => state.applyCommand);
   
   const [valueSetDrawerOpen, setValueSetDrawerOpen] = useState(false);
-  const [slicingEditorOpen, setSlicingEditorOpen] = useState(false);
-  const [sliceChildEditorOpen, setSliceChildEditorOpen] = useState(false);
+  const [slicingRulesDrawerOpen, setSlicingRulesDrawerOpen] = useState(false);
+  const [addSliceDrawerOpen, setAddSliceDrawerOpen] = useState(false);
   const [sliceConstraintPanelOpen, setSliceConstraintPanelOpen] = useState(false);
   const [selectedSliceName, setSelectedSliceName] = useState<string | null>(null);
 
@@ -198,16 +197,106 @@ export const ElementDetailsPanel: React.FC = () => {
         </dl>
       </div>
 
-      {/* EPIC 2: Slicing Summary (Read-Only) */}
-      {element.slicing && (
-        <SlicingSummaryPanel
-          slicing={element.slicing}
-          sliceNames={element.slices && typeof element.slices === 'object' ? Object.keys(element.slices) : []}
-          onConfigureSlice={(sliceName) => {
-            setSelectedSliceName(sliceName);
-            setSliceConstraintPanelOpen(true);
-          }}
-        />
+      {/* EPIC 2: Progressive Disclosure Slicing UI */}
+      {node.isRepeatable && (
+        <div className="details-section">
+          <h4>SLICING</h4>
+          
+          {/* STATE 1: No slicing configured */}
+          {!element.slicing && (
+            <>
+              <p className="text-sm text-gray-600 mb-3">
+                This element is repeatable and can be sliced.
+              </p>
+              <button
+                onClick={() => setSlicingRulesDrawerOpen(true)}
+                className="action-btn"
+              >
+                Enable Slicing
+              </button>
+            </>
+          )}
+
+          {/* STATE 2-4: Slicing enabled */}
+          {element.slicing && (
+            <>
+              {/* Read-only summary */}
+              <dl className="details-list text-sm mb-3">
+                <dt>Matching:</dt>
+                <dd>{element.slicing.rules}</dd>
+
+                <dt>Order matters:</dt>
+                <dd>{element.slicing.ordered ? 'Yes' : 'No'}</dd>
+              </dl>
+
+              {/* Discriminators */}
+              <div className="mb-3">
+                <dt className="text-sm font-medium text-gray-700">Discriminators:</dt>
+                {(!element.slicing.discriminators || element.slicing.discriminators.length === 0) ? (
+                  <dd className="text-sm text-gray-600 italic">None</dd>
+                ) : (
+                  <ul className="text-sm text-gray-700 list-disc list-inside">
+                    {element.slicing.discriminators.map((disc: any, idx: number) => (
+                      <li key={idx}>
+                        {disc.type.toLowerCase()} → {disc.path}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {/* Slices */}
+              {Array.isArray(element.slices) && element.slices.length > 0 && (
+                <div className="mb-3">
+                  <dt className="text-sm font-medium text-gray-700">Slices:</dt>
+                  <ul className="text-sm text-gray-700 list-disc list-inside">
+                    {element.slices.map((slice: any) => (
+                      <li key={slice.sliceName}>{slice.sliceName}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-2 mt-4">
+                {/* STATE 2: No discriminators - only show Add Discriminator */}
+                {(!element.slicing.discriminators || element.slicing.discriminators.length === 0) && (
+                  <>
+                    <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-2">
+                      <p className="text-xs text-yellow-800">
+                        ⚠️ Add at least one discriminator to define how slices are distinguished.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setSlicingRulesDrawerOpen(true)}
+                      className="action-btn"
+                    >
+                      Edit Slicing Rules
+                    </button>
+                  </>
+                )}
+
+                {/* STATE 3-4: Has discriminators - show all actions */}
+                {element.slicing.discriminators && element.slicing.discriminators.length > 0 && (
+                  <>
+                    <button
+                      onClick={() => setSlicingRulesDrawerOpen(true)}
+                      className="action-btn"
+                    >
+                      Edit Slicing Rules
+                    </button>
+                    <button
+                      onClick={() => setAddSliceDrawerOpen(true)}
+                      className="action-btn"
+                    >
+                      Add Slice
+                    </button>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       )}
 
       {/* Binding */}
@@ -285,31 +374,6 @@ export const ElementDetailsPanel: React.FC = () => {
         </div>
       )}
 
-      {/* EPIC 2: Slicing Actions */}
-      {shouldShowConfigureSlicing(element) && (
-        <div className="details-section">
-          <h4>Slicing Configuration</h4>
-          <div className="action-buttons">
-            <button
-              onClick={() => setSlicingEditorOpen(true)}
-              className="btn btn-primary"
-              title="Modify slicing rules and discriminators for this element."
-            >
-              Edit Slicing Rules
-            </button>
-            {element.slices.length > 0 && (
-              <button
-                onClick={() => setSliceChildEditorOpen(true)}
-                className="btn btn-secondary"
-                title="Add constraints to slice child elements"
-              >
-                Edit Slice Constraints
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Info Footer */}
       <div className="details-footer">
         <small>Element details and editing</small>
@@ -330,19 +394,32 @@ export const ElementDetailsPanel: React.FC = () => {
       />
     )}
 
-    {/* EPIC 2: Slicing Config Drawer */}
-    <SlicingConfigDrawer
-      isOpen={slicingEditorOpen}
-      element={element}
-      allElements={design?.elements}
-      onClose={() => setSlicingEditorOpen(false)}
-    />
-
-    {/* EPIC 2: Slice Child Editor Modal */}
-    {sliceChildEditorOpen && (
-      <SliceChildEditor
+    {/* EPIC 2: Slicing Rules Drawer */}
+    {slicingRulesDrawerOpen && (
+      <SlicingRulesDrawer
+        isOpen={slicingRulesDrawerOpen}
         element={element}
-        onClose={() => setSliceChildEditorOpen(false)}
+        allElements={design?.elements || []}
+        onClose={() => setSlicingRulesDrawerOpen(false)}
+      />
+    )}
+
+    {/* EPIC 2: Add Slice Drawer */}
+    {addSliceDrawerOpen && element.slicing && (
+      <AddSliceDrawer
+        isOpen={addSliceDrawerOpen}
+        elementPath={element.path}
+        discriminators={element.slicing.discriminators || []}
+        existingSliceNames={(Array.isArray(element.slices) ? element.slices : []).map((s: any) => s.sliceName)}
+        onAdd={(sliceName: string) => {
+          applyCommand({
+            commandType: 'AddSlice',
+            elementPath: element.path,
+            sliceName,
+          });
+          setAddSliceDrawerOpen(false);
+        }}
+        onClose={() => setAddSliceDrawerOpen(false)}
       />
     )}
 
