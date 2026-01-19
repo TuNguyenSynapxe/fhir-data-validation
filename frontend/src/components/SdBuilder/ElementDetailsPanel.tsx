@@ -413,6 +413,7 @@ export const ElementDetailsPanel: React.FC = () => {
         existingSliceNames={(Array.isArray(element.slices) ? element.slices : []).map((s: any) => s.sliceName)}
         onAdd={async (sliceName: string) => {
           console.log('[ElementDetailsPanel] onAdd called with sliceName:', sliceName);
+          console.log('[ElementDetailsPanel] Current element.slices before command:', element.slices);
           try {
             await applyCommand({
               commandType: 'AddSlice',
@@ -420,6 +421,8 @@ export const ElementDetailsPanel: React.FC = () => {
               sliceName,
             });
             console.log('[ElementDetailsPanel] AddSlice command completed successfully');
+            console.log('[ElementDetailsPanel] Current element.slices after command:', element.slices);
+            console.log('[ElementDetailsPanel] design.elements after command:', design?.elements.find(e => e.path === element.path)?.slices);
             setAddSliceDrawerOpen(false);
           } catch (err) {
             console.error('[ElementDetailsPanel] AddSlice command failed:', err);
