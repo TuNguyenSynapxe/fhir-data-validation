@@ -23,7 +23,7 @@
 
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
-import { Layers, Key, Info, Edit, Plus } from 'lucide-react';
+import { Layers, Key, Info, Edit, Plus, Scissors } from 'lucide-react';
 import { useSdBuilderStore } from '../../stores/useSdBuilderStore';
 import { findNodeByPath } from '../../utils/treeBuilder';
 import { buildTree } from '../../utils/treeBuilder';
@@ -53,13 +53,27 @@ export const ElementDetailsPanel: React.FC = () => {
   const [sliceConstraintDrawerOpen, setSliceConstraintDrawerOpen] = useState(false);
   const [selectedSliceName, setSelectedSliceName] = useState<string | null>(null);
 
-  // Find selected element
-  const selectedElement = React.useMemo(() => {
-    if (!design || !selectedPath) return null;
+  // Parse selectedPath to detect slice node selection
+  const selectionInfo = React.useMemo(() => {
+    if (!selectedPath) return { type: 'none' as const };
     
+    const sliceMarker = '::slice::';
+    if (selectedPath.includes(sliceMarker)) {
+      const [elementPath, sliceName] = selectedPath.split(sliceMarker);
+      return { type: 'slice' as const, elementPath, sliceName };
+    }
+    
+    return { type: 'element' as const, elementPath: selectedPath };
+  }, [selectedPath]);
+
+  // Find selected element (always the parent element for slice nodes)
+  const selectedElement = React.useMemo(() => {
+    if (!design || selectionInfo.type === 'none') return null;
+    
+    const elementPath = selectionInfo.type === 'slice' ? selectionInfo.elementPath : selectionInfo.elementPath;
     const tree = buildTree(design.elements);
-    return findNodeByPath(tree, selectedPath);
-  }, [design, selectedPath]);
+    return findNodeByPath(tree, elementPath);
+  }, [design, selectionInfo]);
   
   const handleSelectValueSet = async (url: string) => {
     if (!selectedElement) return;
@@ -147,6 +161,160 @@ export const ElementDetailsPanel: React.FC = () => {
   if (node.isNotAllowed) semanticState = 'Not allowed';
   else if (node.isRequired) semanticState = 'Required';
 
+  // EPIC 3: Handle slice node selection
+  if (selectionInfo.type === 'slice') {
+    const sliceName = selectionInfo.sliceName;
+    const slice = element.slices?.[sliceName];
+    
+    if (!slice) {
+      return (
+        <div className="element-details-panel-empty">
+          <p>Slice not found: {sliceName}</p>
+        </div>
+      );
+    }
+    
+    const sliceLabel = slice.Metadata?.ShortLabel || sliceName;
+    
+    return (
+      <>
+        <div className="element-details-panel">
+          {/* Slice Header */}
+          <div className="details-header">
+            <h3 className="details-title flex items-center gap-2">
+              <Scissors className="w-5 h-5 text-purple-600" />
+              <span className="text-purple-700">Slice: {sliceLabel}</span>
+            </h3>
+          </div>
+
+          {/* Parent Element Reference */}
+          <div className="details-section">
+            <h4>Parent Element</h4>
+            <dl className="details-list">
+              <dt>Path:</dt>
+              <dd className="text-sm">{element.path}</dd>
+            </dl>
+          </div>
+
+          {/* Discriminators (Read-Only) */}
+          <div className="details-section">
+            <h4 className="flex items-center gap-2">
+              <Key className="w-4 h-4" /> Discriminators
+            </h4>
+            {element.slicing?.discriminators && element.slicing.discriminators.length > 0 ? (
+              <ul className="text-sm space-y-1">
+                {element.slicing.discriminators.map((disc: any, idx: number) => (
+                  <li key={idx} className="flex items-center gap-1.5 text-gray-700">
+                    <Key className="w-3.5 h-3.5" /> {disc.type.toLowerCase()} → {disc.path}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-gray-500 italic">None defined</p>
+            )}
+          </div>
+
+          {/* Slice Conditions */}
+          <div className="details-section">
+            <h4>Conditions</h4>
+            {slice.Conditions && slice.Conditions.length > 0 ? (
+              <ul className="text-sm space-y-2">
+                {slice.Conditions.map((cond: any, idx: number) => (
+                  <li key={idx} className="bg-gray-50 p-2 rounded border border-gray-200">
+                    <div className="font-medium text-gray-700">{cond.DiscriminatorPath}</div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      <span className="font-semibold">{cond.Operator}</span>
+                      {cond.Value && <span> → {cond.Value}</span>}
+                      {cond.System && <span className="text-gray-500 ml-1">({cond.System})</span>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-gray-500 italic">No conditions defined</p>
+            )}
+          </div>
+
+          {/* Slice Cardinality */}
+          <div className="details-section">
+            <h4>Cardinality</h4>
+            <dl className="details-list">
+              <dt>Base (element):</dt>
+              <dd>{element.baseCardinality.min}..{element.baseCardinality.max}</dd>
+
+              {slice.OverrideCardinality ? (
+                <>
+                  <dt>Slice (override):</dt>
+                  <dd className="cardinality-override">
+                    {slice.OverrideCardinality.Min}..{slice.OverrideCardinality.Max}
+                  </dd>
+                </>
+              ) : (
+                <>
+                  <dt>Slice:</dt>
+                  <dd className="text-gray-500 italic">Inherits from element</dd>
+                </>
+              )}
+            </dl>
+          </div>
+
+          {/* Slice Metadata */}
+          {slice.Metadata && (
+            <div className="details-section">
+              <h4>Metadata</h4>
+              <dl className="details-list">
+                {slice.Metadata.ShortLabel && (
+                  <>
+                    <dt>Short Label:</dt>
+                    <dd>{slice.Metadata.ShortLabel}</dd>
+                  </>
+                )}
+                {slice.Metadata.Description && (
+                  <>
+                    <dt>Description:</dt>
+                    <dd className="text-sm">{slice.Metadata.Description}</dd>
+                  </>
+                )}
+              </dl>
+            </div>
+          )}
+
+          {/* Action: Configure Slice */}
+          <div className="details-section">
+            <button
+              onClick={() => {
+                setSelectedSliceName(sliceName);
+                setSliceConstraintDrawerOpen(true);
+              }}
+              className="action-btn w-full flex items-center justify-center gap-2"
+            >
+              <Edit className="w-4 h-4" /> Configure Slice
+            </button>
+          </div>
+
+          {/* Info Footer */}
+          <div className="details-footer">
+            <small>Slice-level constraints and metadata</small>
+          </div>
+        </div>
+
+        {/* EPIC 3: Slice Constraint Drawer */}
+        {sliceConstraintDrawerOpen && selectedSliceName && (
+          <SliceConstraintDrawer
+            isOpen={sliceConstraintDrawerOpen}
+            element={element}
+            sliceName={selectedSliceName}
+            onClose={() => {
+              setSliceConstraintDrawerOpen(false);
+              setSelectedSliceName(null);
+            }}
+          />
+        )}
+      </>
+    );
+  }
+
+  // Regular element view
   return (
     <>
       <div className="element-details-panel">
