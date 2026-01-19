@@ -102,10 +102,15 @@ export function SliceConstraintDrawer({
   const validateAndSave = async () => {
     setError('');
 
+    console.log('[SliceConstraintDrawer] validateAndSave called');
+    console.log('[SliceConstraintDrawer] conditions:', conditions);
+
     // Validate: At least one discriminator must have a non-"none" operator
     const hasCondition = Object.values(conditions).some(
       c => c.operator !== 'none'
     );
+
+    console.log('[SliceConstraintDrawer] hasCondition:', hasCondition);
 
     if (!hasCondition) {
       setError('At least one discriminator must have a condition defined');
@@ -134,29 +139,36 @@ export function SliceConstraintDrawer({
         ...(c.system && { system: c.system }),
       }));
 
+    console.log('[SliceConstraintDrawer] conditionsArray:', conditionsArray);
+
+    const command = {
+      commandType: 'SetSliceConstraints',
+      elementPath: element.path,
+      sliceName,
+      conditions: conditionsArray,
+      ...(minCardinality || maxCardinality ? {
+        overrideCardinality: {
+          min: parseInt(minCardinality) || 0,
+          max: maxCardinality || '*'
+        }
+      } : {}),
+      ...((shortLabel || description) ? {
+        metadata: {
+          ...(shortLabel && { shortLabel }),
+          ...(description && { description }),
+        }
+      } : {}),
+    };
+
+    console.log('[SliceConstraintDrawer] Sending command:', command);
+
     try {
-      await applyCommand({
-        commandType: 'SetSliceConstraints',
-        elementPath: element.path,
-        sliceName,
-        conditions: conditionsArray,
-        ...(minCardinality || maxCardinality ? {
-          overrideCardinality: {
-            min: parseInt(minCardinality) || 0,
-            max: maxCardinality || '*'
-          }
-        } : {}),
-        ...((shortLabel || description) ? {
-          metadata: {
-            ...(shortLabel && { shortLabel }),
-            ...(description && { description }),
-          }
-        } : {}),
-      });
+      await applyCommand(command);
+      console.log('[SliceConstraintDrawer] Command succeeded, closing drawer');
       onClose();
     } catch (err) {
-      console.error('Failed to save slice constraint:', err);
-      setError('Failed to save constraints. Please try again.');
+      console.error('[SliceConstraintDrawer] Failed to save slice constraint:', err);
+      setError(`Failed to save constraints: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 

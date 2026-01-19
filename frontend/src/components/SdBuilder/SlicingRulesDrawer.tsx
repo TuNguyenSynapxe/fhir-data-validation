@@ -94,11 +94,11 @@ export function SlicingRulesDrawer({
           <div className="border-b px-6 py-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  🧩 Slicing Rules & Discriminators
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Layers className="w-5 h-5" /> Slicing Rules & Discriminators
                 </h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  ℹ️ Configure how repeated elements are distinguished.
+                <p className="text-sm text-gray-600 mt-1 flex items-start gap-2">
+                  <Info className="w-4 h-4 mt-0.5 flex-shrink-0" /> Configure how repeated elements are distinguished.
                 </p>
               </div>
               <button
@@ -128,17 +128,17 @@ export function SlicingRulesDrawer({
                   onChange={(e) => setRules(e.target.value as 'Open' | 'Closed' | 'OpenAtEnd')}
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                 >
-                  <option value="Open">🟢 Open</option>
-                  <option value="Closed">🔴 Closed</option>
+                  <option value="Open">Open</option>
+                  <option value="Closed">Closed</option>
                   <option value="OpenAtEnd">OpenAtEnd</option>
                 </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  ℹ️ Controls whether items outside defined slices are allowed.
+                <p className="text-xs text-gray-500 mt-1 flex items-start gap-1.5">
+                  <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" /> Controls whether items outside defined slices are allowed.
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {rules === 'Open' && '🟢 Open — Items not matching any slice are allowed'}
-                  {rules === 'Closed' && '🔴 Closed — All items must match a defined slice'}
-                  {rules === 'OpenAtEnd' && 'Additional slices allowed only at the end.'}
+                <p className="text-xs text-gray-500 mt-1 flex items-start gap-1.5">
+                  {rules === 'Open' && <><CircleDot className="w-3.5 h-3.5 text-green-600 mt-0.5 flex-shrink-0" /> Open — Items not matching any slice are allowed</>}
+                  {rules === 'Closed' && <><XCircle className="w-3.5 h-3.5 text-red-600 mt-0.5 flex-shrink-0" /> Closed — All items must match a defined slice</>}
+                  {rules === 'OpenAtEnd' && <><CircleDot className="w-3.5 h-3.5 text-orange-600 mt-0.5 flex-shrink-0" /> Additional slices allowed only at the end.</>}
                 </p>
               </div>
 
