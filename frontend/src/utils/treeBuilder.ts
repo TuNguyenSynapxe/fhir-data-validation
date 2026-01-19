@@ -105,9 +105,70 @@ export function buildTree(elements: ElementDesign[]): TreeNode[] {
     }
   });
   
-  // Phase 3: Sort children by path for consistent order
+  // Phase 3: Inject slice nodes for elements with slicing
   nodeMap.forEach(node => {
-    node.children.sort((a, b) => a.path.localeCompare(b.path));
+    const element = node.elementDesign;
+    
+    // Check if element has slicing with slices
+    if (element.slicing && element.slices && Object.keys(element.slices).length > 0) {
+      const slices = element.slices;
+      
+      // Create virtual slice nodes
+      Object.entries(slices).forEach(([sliceName, sliceDesign]) => {
+        const sliceNode: TreeNode = {
+          id: `${element.path}::slice::${sliceName}`,
+          path: element.path,
+          name: (sliceDesign as any).Metadata?.ShortLabel || sliceName,
+          parent: node,
+          children: [],
+          depth: node.depth + 1,
+          role: 'leaf' as NodeRole,
+          
+          // Slice-specific properties
+          isSlice: true,
+          sliceName,
+          parentPath: element.path,
+          
+          // Reference to parent element design (slices don't have separate elementDesign)
+          elementDesign: element,
+          
+          // Cardinality from slice override or inherit from parent
+          baseCardinality: element.baseCardinality,
+          currentCardinality: (sliceDesign as any).OverrideCardinality || element.baseCardinality,
+          
+          // Derived state
+          isRepeatable: ((sliceDesign as any).OverrideCardinality?.max || element.baseCardinality.max) === '*',
+          isRequired: ((sliceDesign as any).OverrideCardinality?.min || element.baseCardinality.min) >= 1,
+          isOptional: ((sliceDesign as any).OverrideCardinality?.min || element.baseCardinality.min) === 0,
+          isNotAllowed: ((sliceDesign as any).OverrideCardinality?.max || element.baseCardinality.max) === '0',
+          
+          // Modifications
+          hasCardinalityOverride: !!(sliceDesign as any).OverrideCardinality,
+          hasBinding: false,
+          hasSlicing: false,
+          sliceCount: 0,
+          
+          // Visual state
+          isVisible: true,
+          isExpandable: false,
+        };
+        
+        // Add slice node as child of sliced element
+        node.children.push(sliceNode);
+        node.isExpandable = true;
+      });
+    }
+  });
+  
+  // Phase 4: Sort children by path for consistent order (slices will sort after regular children)
+  nodeMap.forEach(node => {
+    node.children.sort((a, b) => {
+      // Slice nodes sort after regular nodes, then by name
+      if (a.isSlice && !b.isSlice) return 1;
+      if (!a.isSlice && b.isSlice) return -1;
+      if (a.isSlice && b.isSlice) return a.name.localeCompare(b.name);
+      return a.path.localeCompare(b.path);
+    });
   });
   
   return rootNodes;

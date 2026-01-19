@@ -21,7 +21,7 @@ export type NodeRole = 'root' | 'backbone' | 'leaf';
 
 export interface TreeNode {
   // Identity
-  id: string;                    // Unique node ID (same as path)
+  id: string;                    // Unique node ID (same as path, or path::slice::sliceName for slices)
   path: string;                  // Full FHIR path (e.g., "Patient.contact.telecom")
   name: string;                  // Display name (e.g., "telecom")
   
@@ -30,6 +30,11 @@ export interface TreeNode {
   children: TreeNode[];
   depth: number;
   role: NodeRole;                // root | backbone | leaf
+  
+  // Slice Support (EPIC 3)
+  isSlice?: boolean;             // True for virtual slice nodes
+  sliceName?: string;            // Slice identifier (only for slice nodes)
+  parentPath?: string;           // Link back to sliced element (only for slice nodes)
   
   // FHIR Metadata
   elementDesign: ElementDesign;  // Reference to backend element

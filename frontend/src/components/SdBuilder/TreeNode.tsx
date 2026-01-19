@@ -25,7 +25,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, ChevronDown, Link, AlertCircle, Layers } from 'lucide-react';
+import { ChevronRight, ChevronDown, Link, AlertCircle, Layers, Scissors } from 'lucide-react';
 import type { TreeNode as TreeNodeType } from '../../types/treeNode';
 import { getBindingExplanation, isPreviewable } from '../../constants/bindingExplanations';
 import { CardinalityPresets } from './CardinalityPresets';
@@ -153,8 +153,9 @@ export const TreeNode: React.FC<TreeNodeProps> = ({
             )}
           </div>
 
-          {/* Name */}
-          <span className={`tree-node-name ${isStrikethrough ? 'strikethrough' : ''}`}>
+          {/* Name with slice icon if applicable */}
+          <span className={`tree-node-name ${isStrikethrough ? 'strikethrough' : ''} ${node.isSlice ? 'text-purple-700 font-medium' : ''}`}>
+            {node.isSlice && <Scissors size={14} className="inline mr-1.5 text-purple-600" />}
             {node.name}
           </span>
         </div>
