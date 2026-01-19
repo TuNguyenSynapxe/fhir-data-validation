@@ -44,10 +44,23 @@ public sealed class ElementDesignState
     /// </summary>
     public BindingConfig? OverrideBinding { get; set; }
 
+    private readonly List<ExtensionConfig> _extensions = new();
+
     /// <summary>
-    /// Collection of extensions applied to this element.
+    /// FHIR extensions applied to this element.
+    /// Extensions are implemented as slicing on the 'extension' path.
     /// </summary>
-    public List<ExtensionConfig> Extensions { get; set; } = new();
+    /// <remarks>
+    /// Extensions are NOT normal child elements.
+    /// They are managed through AddExtension/RemoveExtension methods.
+    /// Reading this property returns the current extension list.
+    /// </remarks>
+    public IReadOnlyList<ExtensionConfig> Extensions => _extensions;
+
+    /// <summary>
+    /// Internal accessor for extension list (used by engine).
+    /// </summary>
+    internal List<ExtensionConfig> ExtensionsList => _extensions;
 
     /// <summary>
     /// Optional slicing configuration (null if element is not sliced).

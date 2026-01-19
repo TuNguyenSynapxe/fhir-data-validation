@@ -149,11 +149,10 @@ public class SdBuilderEngineTests
                 {
                     Path = "Patient.name",
                     BaseCardinality = new Cardinality(0, "*"),
-                    BaseTypeCode = "HumanName",
+                    TypeCodes = new[] { "HumanName" },
                     IsIncluded = true,
                     OverrideCardinality = new Cardinality(1, "1"), // Valid tightening
-                    Binding = null,
-                    Extensions = new List<ExtensionConfig>()
+                    OverrideBinding = null
                 }
             }
         };
@@ -187,11 +186,10 @@ public class SdBuilderEngineTests
                 {
                     Path = "Patient.identifier",
                     BaseCardinality = new Cardinality(1, "*"), // Required base
-                    BaseTypeCode = "Identifier",
+                    TypeCodes = new[] { "Identifier" },
                     IsIncluded = false, // INVALID - excluded required element
                     OverrideCardinality = null,
-                    Binding = null,
-                    Extensions = new List<ExtensionConfig>()
+                    OverrideBinding = null
                 }
             }
         };
@@ -231,11 +229,10 @@ public class SdBuilderEngineTests
                 {
                     Path = "Patient.name",
                     BaseCardinality = new Cardinality(0, "*"),
-                    BaseTypeCode = "HumanName",
+                    TypeCodes = new[] { "HumanName" },
                     IsIncluded = true,
                     OverrideCardinality = new Cardinality(1, "1"), // Valid tightening - warning only
-                    Binding = null,
-                    Extensions = new List<ExtensionConfig>()
+                    OverrideBinding = null
                 }
             }
         };
@@ -319,11 +316,10 @@ public class SdBuilderEngineTests
                 {
                     Path = "Patient.name",
                     BaseCardinality = new Cardinality(0, "*"),
-                    BaseTypeCode = "HumanName",
+                    TypeCodes = new[] { "HumanName" },
                     IsIncluded = false, // Excluded optional - creates 0..0 constraint
                     OverrideCardinality = null,
-                    Binding = null,
-                    Extensions = new List<ExtensionConfig>()
+                    OverrideBinding = null
                 }
             }
         };

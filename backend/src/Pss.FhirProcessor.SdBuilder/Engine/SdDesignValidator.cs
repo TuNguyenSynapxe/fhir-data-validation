@@ -65,6 +65,9 @@ public static class SdDesignValidator
             // Rule 6: Slicing Validation
             ValidateSlicing(element, design, result);
 
+            // Rule 6b: Extension Validation (EPIC 3)
+            ValidateExtensions(element, result);
+
             // Rule 7: Slice Child Constraint Validation (Phase 2.2)
             ValidateSliceChildConstraints(element, baseSd, result);
 
@@ -346,6 +349,106 @@ public static class SdDesignValidator
                 "SLICING_CLOSED_WITHOUT_SLICES",
                 "Closed slicing without any defined slices may reject all instances",
                 element.Path);
+        }
+    }
+
+    // ============================================
+    // EPIC 3: Extension Validation Rules
+    // ============================================
+    
+    private static void ValidateExtensions(ElementDesignState element, SdValidationResult result)
+    {
+        if (element.Extensions.Count == 0)
+            return;
+
+        // Rule 1: Extension path must be 'extension' or 'modifierExtension'
+        var pathSegments = element.Path.Split('.');
+        var lastSegment = pathSegments[^1];
+        
+        if (lastSegment != "extension" && lastSegment != "modifierExtension")
+        {
+            result.AddError(
+                "EXTENSION_INVALID_PATH",
+                $"Extensions can only be added to 'extension' or 'modifierExtension' paths, not '{element.Path}'",
+                element.Path);
+            return;
+        }
+
+        // Rule 2: Duplicate extension URL forbidden
+        var extensionUrls = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var ext in element.Extensions)
+        {
+            if (!extensionUrls.Add(ext.Url))
+            {
+                result.AddError(
+                    "EXTENSION_DUPLICATE_URL",
+                    $"Duplicate extension URL: {ext.Url}",
+                    element.Path);
+            }
+        }
+
+        // Rule 3: Extension slicing must use 'url' discriminator
+        if (element.Slicing != null)
+        {
+            var hasUrlDiscriminator = element.Slicing.Discriminators.Any(
+                d => d.Type == DiscriminatorType.Value && d.Path.Equals("url", StringComparison.OrdinalIgnoreCase));
+
+            if (!hasUrlDiscriminator)
+            {
+                result.AddError(
+                    "EXTENSION_INVALID_DISCRIMINATOR",
+                    "Extension slicing must use discriminator type 'value' on path 'url'",
+                    element.Path);
+            }
+        }
+
+        // Rule 4: Simple extension must define value[x]
+        foreach (var ext in element.Extensions)
+        {
+            if (ext.IsSimple && string.IsNullOrWhiteSpace(ext.ValueType))
+            {
+                result.AddError(
+                    "EXTENSION_SIMPLE_NO_VALUE_TYPE",
+                    $"Simple extension '{ext.Url}' must define value[x] type",
+                    element.Path);
+            }
+        }
+
+        // Rule 5: Modifier extension warning
+        foreach (var ext in element.Extensions.Where(e => e.IsModifier))
+        {
+            result.AddWarning(
+                "EXTENSION_IS_MODIFIER",
+                $"Modifier extension '{ext.Url}' alters interpretation of the containing element",
+                element.Path);
+        }
+
+        // Rule 6: Complex extension validation
+        foreach (var ext in element.Extensions.Where(e => e.IsComplex))
+        {
+            if (ext.SubExtensions == null || ext.SubExtensions.Count == 0)
+            {
+                result.AddError(
+                    "EXTENSION_COMPLEX_NO_SUBEXTENSIONS",
+                    $"Complex extension '{ext.Url}' must have at least one sub-extension",
+                    element.Path);
+            }
+            
+            // Validate sub-extension URLs are unique
+            if (ext.SubExtensions != null)
+            {
+                var subExtUrls = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var subExt in ext.SubExtensions)
+                {
+                    if (!subExtUrls.Add(subExt.Url))
+                    {
+                        result.AddError(
+                            "EXTENSION_DUPLICATE_SUBEXTENSION_URL",
+                            $"Duplicate sub-extension URL in '{ext.Url}': {subExt.Url}",
+                            element.Path);
+                    }
+                }
+            }
         }
     }
 

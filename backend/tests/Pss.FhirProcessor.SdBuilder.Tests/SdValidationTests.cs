@@ -20,11 +20,9 @@ public sealed class SdValidationTests
         {
             Path = "Patient.identifier",
             BaseCardinality = new Cardinality(1, "*"), // Required (min=1)
-            BaseTypeCode = "Identifier",
+            TypeCodes = new[] { "Identifier" },
             IsIncluded = false, // Excluded - INVALID
-            OverrideCardinality = null,
-            Binding = null,
-            Extensions = new List<ExtensionConfig>()
+            OverrideCardinality = null
         };
         design.Elements.Add(requiredElement);
 
@@ -49,11 +47,9 @@ public sealed class SdValidationTests
         {
             Path = "Patient.identifier",
             BaseCardinality = new Cardinality(1, "*"), // Base requires min=1
-            BaseTypeCode = "Identifier",
+            TypeCodes = new[] { "Identifier" },
             IsIncluded = true,
-            OverrideCardinality = new Cardinality(0, "*"), // Override reduces to 0 - INVALID
-            Binding = null,
-            Extensions = new List<ExtensionConfig>()
+            OverrideCardinality = new Cardinality(0, "*") // Override reduces to 0 - INVALID
         };
         design.Elements.Add(element);
 
@@ -78,11 +74,9 @@ public sealed class SdValidationTests
         {
             Path = "Patient.active",
             BaseCardinality = new Cardinality(0, "1"), // Base allows max=1
-            BaseTypeCode = "boolean",
+            TypeCodes = new[] { "boolean" },
             IsIncluded = true,
-            OverrideCardinality = new Cardinality(0, "*"), // Override increases to * - INVALID
-            Binding = null,
-            Extensions = new List<ExtensionConfig>()
+            OverrideCardinality = new Cardinality(0, "*") // Override increases to * - INVALID
         };
         design.Elements.Add(element);
 
@@ -107,15 +101,14 @@ public sealed class SdValidationTests
         {
             Path = "Patient.birthDate",
             BaseCardinality = new Cardinality(0, "1"),
-            BaseTypeCode = "date", // NOT a coded type
+            TypeCodes = new[] { "date" }, // NOT a coded type
             IsIncluded = true,
             OverrideCardinality = null,
-            Binding = new BindingConfig // INVALID - can't bind to date
+            OverrideBinding = new BindingConfig // INVALID - can't bind to date
             {
                 Strength = BindingStrength.Required,
                 ValueSetUrl = "http://example.com/vs"
-            },
-            Extensions = new List<ExtensionConfig>()
+            }
         };
         design.Elements.Add(element);
 
@@ -140,15 +133,14 @@ public sealed class SdValidationTests
         {
             Path = "Patient.gender",
             BaseCardinality = new Cardinality(0, "1"),
-            BaseTypeCode = "code",
+            TypeCodes = new[] { "code" },
             IsIncluded = true,
             OverrideCardinality = null,
-            Binding = new BindingConfig
+            OverrideBinding = new BindingConfig
             {
                 Strength = BindingStrength.Required,
                 ValueSetUrl = "http://example.com/missing-valueset"
-            },
-            Extensions = new List<ExtensionConfig>()
+            }
         };
         design.Elements.Add(element);
 
@@ -176,18 +168,19 @@ public sealed class SdValidationTests
         {
             Path = "Patient",
             BaseCardinality = new Cardinality(0, "*"),
-            BaseTypeCode = "Patient",
+            TypeCodes = new[] { "Patient" },
             IsIncluded = true,
             OverrideCardinality = null,
-            Binding = null,
-            Extensions = new List<ExtensionConfig>
-            {
-                new ExtensionConfig
-                {
-                    Url = "http://example.com/missing-extension"
-                }
-            }
+            OverrideBinding = null
         };
+        
+        var session = new SdBuilderSession(design);
+        session.AddExtension("Patient", new ExtensionConfig
+        {
+            Url = "http://example.com/missing-extension",
+            Name = "missingExtension"
+        });
+        design.Elements.Add(element);
         design.Elements.Add(element);
 
         var (sdRepo, terminology) = CreateMockRepositories();
@@ -214,15 +207,14 @@ public sealed class SdValidationTests
         {
             Path = "Patient.maritalStatus",
             BaseCardinality = new Cardinality(0, "1"),
-            BaseTypeCode = "CodeableConcept",
+            TypeCodes = new[] { "CodeableConcept" },
             IsIncluded = true,
             OverrideCardinality = null,
-            Binding = new BindingConfig
+            OverrideBinding = new BindingConfig
             {
                 Strength = BindingStrength.Preferred, // Warning expected
                 ValueSetUrl = "http://hl7.org/fhir/ValueSet/marital-status"
-            },
-            Extensions = new List<ExtensionConfig>()
+            }
         };
         design.Elements.Add(element);
 
@@ -250,11 +242,10 @@ public sealed class SdValidationTests
         {
             Path = "Patient.name",
             BaseCardinality = new Cardinality(0, "*"), // Optional
-            BaseTypeCode = "HumanName",
+            TypeCodes = new[] { "HumanName" },
             IsIncluded = true,
             OverrideCardinality = new Cardinality(1, "1"), // Tightened to required - Warning expected
-            Binding = null,
-            Extensions = new List<ExtensionConfig>()
+            OverrideBinding = null
         };
         design.Elements.Add(element);
 
@@ -280,15 +271,14 @@ public sealed class SdValidationTests
         {
             Path = "Patient.gender",
             BaseCardinality = new Cardinality(0, "1"),
-            BaseTypeCode = "code",
+            TypeCodes = new[] { "code" },
             IsIncluded = true,
             OverrideCardinality = new Cardinality(1, "1"), // Valid tightening
-            Binding = new BindingConfig
+            OverrideBinding = new BindingConfig
             {
                 Strength = BindingStrength.Required, // Valid binding
                 ValueSetUrl = "http://hl7.org/fhir/ValueSet/administrative-gender"
-            },
-            Extensions = new List<ExtensionConfig>()
+            }
         };
         design.Elements.Add(element);
 
@@ -315,15 +305,14 @@ public sealed class SdValidationTests
         {
             Path = "Patient.gender",
             BaseCardinality = new Cardinality(0, "1"),
-            BaseTypeCode = "code", // Valid for binding
+            TypeCodes = new[] { "code" }, // Valid for binding
             IsIncluded = true,
             OverrideCardinality = null,
-            Binding = new BindingConfig
+            OverrideBinding = new BindingConfig
             {
                 Strength = BindingStrength.Required,
                 ValueSetUrl = "http://hl7.org/fhir/ValueSet/test"
-            },
-            Extensions = new List<ExtensionConfig>()
+            }
         };
         design.Elements.Add(element);
 
@@ -347,15 +336,14 @@ public sealed class SdValidationTests
         {
             Path = "Patient.someField",
             BaseCardinality = new Cardinality(0, "1"),
-            BaseTypeCode = "Coding", // Valid for binding
+            TypeCodes = new[] { "Coding" }, // Valid for binding
             IsIncluded = true,
             OverrideCardinality = null,
-            Binding = new BindingConfig
+            OverrideBinding = new BindingConfig
             {
                 Strength = BindingStrength.Extensible,
                 ValueSetUrl = "http://hl7.org/fhir/ValueSet/test"
-            },
-            Extensions = new List<ExtensionConfig>()
+            }
         };
         design.Elements.Add(element);
 
@@ -379,15 +367,14 @@ public sealed class SdValidationTests
         {
             Path = "Patient.maritalStatus",
             BaseCardinality = new Cardinality(0, "1"),
-            BaseTypeCode = "CodeableConcept", // Valid for binding
+            TypeCodes = new[] { "CodeableConcept" }, // Valid for binding
             IsIncluded = true,
             OverrideCardinality = null,
-            Binding = new BindingConfig
+            OverrideBinding = new BindingConfig
             {
                 Strength = BindingStrength.Required,
                 ValueSetUrl = "http://hl7.org/fhir/ValueSet/marital-status"
-            },
-            Extensions = new List<ExtensionConfig>()
+            }
         };
         design.Elements.Add(element);
 
@@ -411,18 +398,19 @@ public sealed class SdValidationTests
         {
             Path = "Patient",
             BaseCardinality = new Cardinality(0, "*"),
-            BaseTypeCode = "Patient",
+            TypeCodes = new[] { "Patient" },
             IsIncluded = true,
             OverrideCardinality = null,
-            Binding = null,
-            Extensions = new List<ExtensionConfig>
-            {
-                new ExtensionConfig
-                {
-                    Url = "http://hl7.org/fhir/StructureDefinition/patient-birthPlace"
-                }
-            }
+            OverrideBinding = null
         };
+        
+        var session = new SdBuilderSession(design);
+        session.AddExtension("Patient", new ExtensionConfig
+        {
+            Url = "http://hl7.org/fhir/StructureDefinition/patient-birthPlace",
+            Name = "patientBirthPlace"
+        });
+        design.Elements.Add(element);
         design.Elements.Add(element);
 
         var (sdRepo, terminology) = CreateMockRepositories();
@@ -450,11 +438,10 @@ public sealed class SdValidationTests
         {
             Path = "Patient.identifier",
             BaseCardinality = new Cardinality(0, "*"),
-            BaseTypeCode = "Identifier",
+            TypeCodes = new[] { "Identifier" },
             IsIncluded = true,
             OverrideCardinality = null,
-            Binding = null,
-            Extensions = new List<ExtensionConfig>(),
+            OverrideBinding = null,
             Slicing = new SlicingConfig
             {
                 Ordered = false,
@@ -486,11 +473,10 @@ public sealed class SdValidationTests
         {
             Path = "Patient.identifier",
             BaseCardinality = new Cardinality(0, "*"),
-            BaseTypeCode = "Identifier",
+            TypeCodes = new[] { "Identifier" },
             IsIncluded = true,
             OverrideCardinality = null,
-            Binding = null,
-            Extensions = new List<ExtensionConfig>(),
+            OverrideBinding = null,
             Slicing = new SlicingConfig
             {
                 Ordered = false,
@@ -523,11 +509,10 @@ public sealed class SdValidationTests
         {
             Path = "Patient.identifier",
             BaseCardinality = new Cardinality(0, "*"),
-            BaseTypeCode = "Identifier",
+            TypeCodes = new[] { "Identifier" },
             IsIncluded = true,
             OverrideCardinality = null,
-            Binding = null,
-            Extensions = new List<ExtensionConfig>(),
+            OverrideBinding = null,
             Slicing = new SlicingConfig
             {
                 Ordered = false,
@@ -563,11 +548,10 @@ public sealed class SdValidationTests
         {
             Path = "Patient.identifier",
             BaseCardinality = new Cardinality(0, "*"),
-            BaseTypeCode = "Identifier",
+            TypeCodes = new[] { "Identifier" },
             IsIncluded = true,
             OverrideCardinality = null,
-            Binding = null,
-            Extensions = new List<ExtensionConfig>(),
+            OverrideBinding = null,
             Slicing = null // No slicing config but has slices - INVALID
         };
         element.Slices["nric"] = new SliceDesignState { SliceName = "nric" };
@@ -595,11 +579,10 @@ public sealed class SdValidationTests
         {
             Path = "Patient.identifier",
             BaseCardinality = new Cardinality(0, "*"),
-            BaseTypeCode = "Identifier",
+            TypeCodes = new[] { "Identifier" },
             IsIncluded = true,
             OverrideCardinality = null,
-            Binding = null,
-            Extensions = new List<ExtensionConfig>(),
+            OverrideBinding = null,
             Slicing = new SlicingConfig
             {
                 Ordered = false,
@@ -634,11 +617,10 @@ public sealed class SdValidationTests
         {
             Path = "Patient.identifier",
             BaseCardinality = new Cardinality(0, "*"),
-            BaseTypeCode = "Identifier",
+            TypeCodes = new[] { "Identifier" },
             IsIncluded = true,
             OverrideCardinality = null,
-            Binding = null,
-            Extensions = new List<ExtensionConfig>(),
+            OverrideBinding = null,
             Slicing = new SlicingConfig
             {
                 Ordered = false,
@@ -673,11 +655,10 @@ public sealed class SdValidationTests
         {
             Path = "Patient.identifier",
             BaseCardinality = new Cardinality(0, "*"),
-            BaseTypeCode = "Identifier",
+            TypeCodes = new[] { "Identifier" },
             IsIncluded = true,
             OverrideCardinality = null,
-            Binding = null,
-            Extensions = new List<ExtensionConfig>(),
+            OverrideBinding = null,
             Slicing = new SlicingConfig
             {
                 Ordered = true,
@@ -722,7 +703,7 @@ public sealed class SdValidationTests
         {
             Path = "Observation.component",
             BaseCardinality = new Cardinality(0, "*"),
-            BaseTypeCode = "BackboneElement",
+            TypeCodes = new[] { "BackboneElement" },
             IsIncluded = true
         };
 
@@ -779,7 +760,7 @@ public sealed class SdValidationTests
         {
             Path = "Observation.component",
             BaseCardinality = new Cardinality(0, "*"),
-            BaseTypeCode = "BackboneElement",
+            TypeCodes = new[] { "BackboneElement" },
             IsIncluded = true
         };
 

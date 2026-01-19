@@ -268,14 +268,15 @@ const ElementNode: React.FC<ElementNodeProps> = ({ element, validation }) => {
           {element.slices.map((slice) => (
             <div
               key={slice.sliceName}
-              className="border-l-2 border-gray-300 pl-3"
+              className="border-l-2 border-blue-300 pl-3 bg-blue-50 rounded py-2"
             >
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-gray-700">
-                  Slice: {slice.sliceName}
+                <span className="text-lg" title="Slice">🔖</span>
+                <span className="text-sm font-semibold text-blue-800">
+                  {slice.sliceName}
                 </span>
                 {slice.cardinality && (
-                  <span className="text-xs text-gray-600">
+                  <span className="text-xs text-blue-600 font-medium">
                     {formatCardinality(slice.cardinality)}
                   </span>
                 )}

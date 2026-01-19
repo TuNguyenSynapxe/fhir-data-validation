@@ -77,7 +77,7 @@ public sealed class SdBuilderSession
         if (extension == null) throw new ArgumentNullException(nameof(extension));
 
         var element = FindElement(path);
-        element.Extensions.Add(extension);
+        element.ExtensionsList.Add(extension);
     }
 
     /// <summary>
@@ -89,12 +89,12 @@ public sealed class SdBuilderSession
     public bool RemoveExtension(string path, string extensionUrl)
     {
         var element = FindElement(path);
-        var toRemove = element.Extensions.FirstOrDefault(e => e.Url == extensionUrl);
+        var toRemove = element.ExtensionsList.FirstOrDefault(e => e.Url == extensionUrl);
         
         if (toRemove == null)
             return false;
 
-        element.Extensions.Remove(toRemove);
+        element.ExtensionsList.Remove(toRemove);
         return true;
     }
 

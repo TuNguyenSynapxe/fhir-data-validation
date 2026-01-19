@@ -217,9 +217,9 @@ public sealed class SdImportEngineTests
         var maritalStatusElement = designState.Elements.FirstOrDefault(e => e.Path == "Patient.maritalStatus");
         Assert.NotNull(maritalStatusElement);
         Assert.True(maritalStatusElement.IsIncluded, "Element with binding should be included");
-        Assert.NotNull(maritalStatusElement.Binding);
-        Assert.Equal(Domain.BindingStrength.Required, maritalStatusElement.Binding.Strength);
-        Assert.Equal("http://example.org/fhir/ValueSet/custom-marital-status", maritalStatusElement.Binding.ValueSetUrl);
+        Assert.NotNull(maritalStatusElement.OverrideBinding);
+        Assert.Equal(Domain.BindingStrength.Required, maritalStatusElement.OverrideBinding.Strength);
+        Assert.Equal("http://example.org/fhir/ValueSet/custom-marital-status", maritalStatusElement.OverrideBinding.ValueSetUrl);
     }
 
     [Fact]

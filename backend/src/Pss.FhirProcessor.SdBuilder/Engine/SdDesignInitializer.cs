@@ -62,8 +62,7 @@ public sealed class SdDesignInitializer
                 IsIncluded = DetermineInclusion(element, startMode),
                 OverrideCardinality = null,
                 BaseBinding = baseBinding,
-                OverrideBinding = null,
-                Extensions = new List<ExtensionConfig>()
+                OverrideBinding = null
             };
 
             designState.Elements.Add(elementDesign);

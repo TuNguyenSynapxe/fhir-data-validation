@@ -184,19 +184,6 @@ public sealed class SdBuilderController : ControllerBase
                     session.SetBinding(path, null); // Clear by setting to null
                     break;
                 }
-            case "AddExtension":
-                {
-                    var path = payload.GetProperty("path").GetString()!;
-                    // TODO: Parse ExtensionConfig from payload
-                    throw new NotImplementedException("Extension parsing not yet implemented");
-                }
-            case "RemoveExtension":
-                {
-                    var path = payload.GetProperty("path").GetString()!;
-                    var extensionUrl = payload.GetProperty("extensionUrl").GetString()!;
-                    session.RemoveExtension(path, extensionUrl);
-                    break;
-                }
             case "SetVisibilityMode":
                 {
                     var mode = payload.GetProperty("mode").GetString()!;
@@ -249,6 +236,105 @@ public sealed class SdBuilderController : ControllerBase
                     var path = payload.GetProperty("path").GetString()!;
                     var sliceName = payload.GetProperty("sliceName").GetString()!;
                     session.RemoveSlice(path, sliceName);
+                    break;
+                }
+            case "AddExtension":
+                {
+                    var path = payload.GetProperty("path").GetString()!;
+                    var url = payload.GetProperty("url").GetString()!;
+                    var name = payload.GetProperty("name").GetString()!;
+                    var isModifier = payload.TryGetProperty("isModifier", out var modProp) && modProp.GetBoolean();
+                    
+                    // Parse cardinality if provided
+                    Cardinality cardinality = new(0, "1");
+                    if (payload.TryGetProperty("cardinality", out var cardProp))
+                    {
+                        var min = cardProp.GetProperty("min").GetInt32();
+                        var max = cardProp.GetProperty("max").GetString()!;
+                        cardinality = new Cardinality(min, max);
+                    }
+                    
+                    // Parse valueType for simple extensions
+                    string? valueType = null;
+                    if (payload.TryGetProperty("valueType", out var vtProp))
+                    {
+                        valueType = vtProp.GetString();
+                    }
+                    
+                    // Parse subExtensions for complex extensions
+                    IReadOnlyList<ExtensionConfig>? subExtensions = null;
+                    if (payload.TryGetProperty("subExtensions", out var subExtArray))
+                    {
+                        var subExtList = new List<ExtensionConfig>();
+                        foreach (var subExtElement in subExtArray.EnumerateArray())
+                        {
+                            var subUrl = subExtElement.GetProperty("url").GetString()!;
+                            var subName = subExtElement.GetProperty("name").GetString()!;
+                            var subIsModifier = subExtElement.TryGetProperty("isModifier", out var subModProp) && subModProp.GetBoolean();
+                            
+                            Cardinality subCard = new(0, "1");
+                            if (subExtElement.TryGetProperty("cardinality", out var subCardProp))
+                            {
+                                var subMin = subCardProp.GetProperty("min").GetInt32();
+                                var subMax = subCardProp.GetProperty("max").GetString()!;
+                                subCard = new Cardinality(subMin, subMax);
+                            }
+                            
+                            string? subValueType = null;
+                            if (subExtElement.TryGetProperty("valueType", out var subVtProp))
+                            {
+                                subValueType = subVtProp.GetString();
+                            }
+                            
+                            subExtList.Add(new ExtensionConfig
+                            {
+                                Url = subUrl,
+                                Name = subName,
+                                IsModifier = subIsModifier,
+                                Cardinality = subCard,
+                                ValueType = subValueType
+                            });
+                        }
+                        subExtensions = subExtList;
+                    }
+                    
+                    var extension = new ExtensionConfig
+                    {
+                        Url = url,
+                        Name = name,
+                        IsModifier = isModifier,
+                        Cardinality = cardinality,
+                        ValueType = valueType,
+                        SubExtensions = subExtensions
+                    };
+                    
+                    session.AddExtension(path, extension);
+                    break;
+                }
+            case "RemoveExtension":
+                {
+                    var path = payload.GetProperty("path").GetString()!;
+                    var url = payload.GetProperty("url").GetString()!;
+                    session.RemoveExtension(path, url);
+                    break;
+                }
+            case "UpdateExtensionCardinality":
+                {
+                    var path = payload.GetProperty("path").GetString()!;
+                    var url = payload.GetProperty("url").GetString()!;
+                    var min = payload.GetProperty("min").GetInt32();
+                    var max = payload.GetProperty("max").GetString()!;
+                    
+                    // Find the extension and update its cardinality directly
+                    var element = session.DesignState.Elements.FirstOrDefault(e => e.Path == path);
+                    if (element != null)
+                    {
+                        var extension = element.Extensions.FirstOrDefault(e => e.Url == url);
+                        if (extension != null)
+                        {
+                            extension.Cardinality = new Cardinality(min, max);
+                        }
+                    }
                     break;
                 }
             default:

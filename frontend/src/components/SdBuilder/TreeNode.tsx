@@ -1,12 +1,21 @@
 /**
- * TreeNode Component (Recursive)
+ * TreeNode Component (Recursive) — EPIC 2 Clean Indicators
  * 
  * Renders a single tree node with:
  * - Expand/collapse chevron
- * - Visual state indicators (cardinality-derived)
  * - Name display
  * - Selection highlighting
+ * - Right-aligned icon-only indicators (Required, Binding, Slicing, Error)
+ * - Cardinality tooltip (shows in Cardinality mode AND on hover)
  * - Recursive children rendering
+ * 
+ * EPIC 2 RULE 7: Clean Tree Indicators
+ * - Right-aligned, icon-only
+ * - No duplicate information (cardinality is source of truth)
+ * - Required: min ≥ 1 icon
+ * - Binding: icon when binding exists
+ * - Slicing: glyph when slicing configured
+ * - Error: badge when validation error
  * 
  * CARDINALITY-FIRST DESIGN:
  * - Visual states derived from currentCardinality
@@ -16,7 +25,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, ChevronDown, Link } from 'lucide-react';
+import { ChevronRight, ChevronDown, Link, AlertCircle, Layers } from 'lucide-react';
 import type { TreeNode as TreeNodeType } from '../../types/treeNode';
 import { getBindingExplanation, isPreviewable } from '../../constants/bindingExplanations';
 import { CardinalityPresets } from './CardinalityPresets';
@@ -126,7 +135,7 @@ export const TreeNode: React.FC<TreeNodeProps> = ({
         style={{ paddingLeft: `${node.depth * 16 + 4}px` }}
         onClick={handleClick}
       >
-        {/* LEFT SIDE: Chevron + Name + Binding Icon */}
+        {/* LEFT SIDE: Chevron + Name */}
         <div className="tree-node-left">
           {/* Chevron */}
           <div 
@@ -148,16 +157,31 @@ export const TreeNode: React.FC<TreeNodeProps> = ({
           <span className={`tree-node-name ${isStrikethrough ? 'strikethrough' : ''}`}>
             {node.name}
           </span>
+        </div>
 
-          {/* Binding Icon with Tooltip (after name, hidden in Cardinality Mode) */}
+        {/* RIGHT SIDE: EPIC 2 Clean Icon-Only Indicators + Cardinality */}
+        <div className="tree-node-right flex items-center gap-2">
+          {/* EPIC 2 RULE 7: Icon-Only Indicators */}
+          
+          {/* Required Indicator (min ≥ 1) */}
+          {node.isRequired && !isCardinalityModeEnabled && (
+            <span
+              className="text-red-500"
+              title="Required (min ≥ 1)"
+            >
+              <AlertCircle size={14} />
+            </span>
+          )}
+
+          {/* Binding Indicator */}
           {!isCardinalityModeEnabled && bindingInfo && (
             <div 
-              className="binding-icon-container"
+              className="binding-icon-indicator"
               onMouseEnter={() => setShowBindingTooltip(true)}
               onMouseLeave={() => setShowBindingTooltip(false)}
               title={getBindingTooltipText()}
             >
-              <Link size={12} className="binding-link-icon" />
+              <Link size={12} className="text-blue-500" />
               {showBindingTooltip && (
                 <BindingTooltip 
                   binding={bindingInfo.binding}
@@ -166,11 +190,18 @@ export const TreeNode: React.FC<TreeNodeProps> = ({
               )}
             </div>
           )}
-        </div>
 
-        {/* RIGHT SIDE: Cardinality only */}
-        <div className="tree-node-right">
-          {/* Cardinality Badge (leaf nodes only) */}
+          {/* Slicing Indicator */}
+          {node.elementDesign.slicing && !isCardinalityModeEnabled && (
+            <span
+              className="text-purple-500"
+              title="Slicing configured"
+            >
+              <Layers size={14} />
+            </span>
+          )}
+
+          {/* Cardinality Badge (leaf nodes only) — EPIC 2 RULE 8: Show tooltip on hover AND in mode */}
           {node.role === 'leaf' && (
             <div 
               className="cardinality-container"

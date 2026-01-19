@@ -111,9 +111,9 @@ public sealed class SdBuilderSessionTests
         session.SetBinding(element.Path, binding);
 
         // Assert
-        Assert.NotNull(element.Binding);
-        Assert.Equal(BindingStrength.Required, element.Binding.Strength);
-        Assert.Equal("http://hl7.org/fhir/ValueSet/test", element.Binding.ValueSetUrl);
+        Assert.NotNull(element.OverrideBinding);
+        Assert.Equal(BindingStrength.Required, element.OverrideBinding.Strength);
+        Assert.Equal("http://hl7.org/fhir/ValueSet/test", element.OverrideBinding.ValueSetUrl);
     }
 
     [Fact]
@@ -123,7 +123,7 @@ public sealed class SdBuilderSessionTests
         var designState = CreateTestDesignState();
         var session = new SdBuilderSession(designState);
         var element = designState.Elements[0];
-        element.Binding = new BindingConfig
+        element.OverrideBinding = new BindingConfig
         {
             Strength = BindingStrength.Required,
             ValueSetUrl = "http://example.com/vs"
@@ -133,7 +133,7 @@ public sealed class SdBuilderSessionTests
         session.SetBinding(element.Path, null);
 
         // Assert
-        Assert.Null(element.Binding);
+        Assert.Null(element.OverrideBinding);
     }
 
     [Fact]
@@ -145,7 +145,8 @@ public sealed class SdBuilderSessionTests
         var element = designState.Elements[0];
         var extension = new ExtensionConfig
         {
-            Url = "http://hl7.org/fhir/StructureDefinition/patient-birthPlace"
+            Url = "http://hl7.org/fhir/StructureDefinition/patient-birthPlace",
+            Name = "patientBirthPlace"
         };
 
         // Act
@@ -177,8 +178,8 @@ public sealed class SdBuilderSessionTests
         var designState = CreateTestDesignState();
         var session = new SdBuilderSession(designState);
         var element = designState.Elements[0];
-        var ext1 = new ExtensionConfig { Url = "http://example.com/ext1" };
-        var ext2 = new ExtensionConfig { Url = "http://example.com/ext2" };
+        var ext1 = new ExtensionConfig { Url = "http://example.com/ext1", Name = "ext1" };
+        var ext2 = new ExtensionConfig { Url = "http://example.com/ext2", Name = "ext2" };
 
         // Act
         session.AddExtension(element.Path, ext1);
@@ -197,8 +198,8 @@ public sealed class SdBuilderSessionTests
         var designState = CreateTestDesignState();
         var session = new SdBuilderSession(designState);
         var element = designState.Elements[0];
-        var extension = new ExtensionConfig { Url = "http://example.com/ext" };
-        element.Extensions.Add(extension);
+        var extension = new ExtensionConfig { Url = "http://example.com/ext", Name = "ext" };
+        session.AddExtension(element.Path, extension);
 
         // Act
         var result = session.RemoveExtension(element.Path, "http://example.com/ext");
@@ -254,14 +255,14 @@ public sealed class SdBuilderSessionTests
             Strength = BindingStrength.Extensible,
             ValueSetUrl = "http://test.com/vs"
         });
-        session.AddExtension(element.Path, new ExtensionConfig { Url = "http://test.com/ext" });
+        session.AddExtension(element.Path, new ExtensionConfig { Url = "http://test.com/ext", Name = "ext" });
 
         // Assert - Verify all changes applied
         Assert.True(element.IsIncluded);
         Assert.NotNull(element.OverrideCardinality);
         Assert.Equal(1, element.OverrideCardinality.Min);
-        Assert.NotNull(element.Binding);
-        Assert.Equal(BindingStrength.Extensible, element.Binding.Strength);
+        Assert.NotNull(element.OverrideBinding);
+        Assert.Equal(BindingStrength.Extensible, element.OverrideBinding.Strength);
         Assert.Single(element.Extensions);
     }
 
@@ -278,31 +279,28 @@ public sealed class SdBuilderSessionTests
                 {
                     Path = "Patient.name",
                     BaseCardinality = new Cardinality(0, "*"),
-                    BaseTypeCode = "HumanName",
+                    TypeCodes = new[] { "HumanName" },
                     IsIncluded = false,
                     OverrideCardinality = null,
-                    Binding = null,
-                    Extensions = new List<ExtensionConfig>()
+                    OverrideBinding = null
                 },
                 new ElementDesignState
                 {
                     Path = "Patient.gender",
                     BaseCardinality = new Cardinality(0, "1"),
-                    BaseTypeCode = "code",
+                    TypeCodes = new[] { "code" },
                     IsIncluded = true,
                     OverrideCardinality = null,
-                    Binding = null,
-                    Extensions = new List<ExtensionConfig>()
+                    OverrideBinding = null
                 },
                 new ElementDesignState
                 {
                     Path = "Patient.identifier",
                     BaseCardinality = new Cardinality(0, "*"),
-                    BaseTypeCode = "Identifier",
+                    TypeCodes = new[] { "Identifier" },
                     IsIncluded = true,
                     OverrideCardinality = null,
-                    Binding = null,
-                    Extensions = new List<ExtensionConfig>()
+                    OverrideBinding = null,
                 }
             }
         };

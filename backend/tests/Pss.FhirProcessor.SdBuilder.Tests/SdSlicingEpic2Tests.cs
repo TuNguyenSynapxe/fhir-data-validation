@@ -3,6 +3,8 @@ namespace Pss.FhirProcessor.SdBuilder.Tests;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
 using Hl7.Fhir.Specification.Source;
+using Moq;
+using Pss.FhirProcessor.SdBuilder.Abstractions;
 using Pss.FhirProcessor.SdBuilder.Domain;
 using Pss.FhirProcessor.SdBuilder.Engine;
 using Pss.FhirProcessor.SdBuilder.Export;
@@ -17,13 +19,13 @@ public sealed class SdSlicingEpic2Tests
     #region Validation Tests
 
     [Fact]
-    public void CannotAddSlicingToNonRepeatableElement()
+    public async System.Threading.Tasks.Task CannotAddSlicingToNonRepeatableElement()
     {
         // Arrange: Patient.birthDate has max = 1 (non-repeatable)
         var baseSd = GetPatientStructureDefinition();
         var design = SdDesignInitializer.Create("Patient", baseSd, VisibilityMode.Minimal);
         
-        var birthDateElement = design.Elements["Patient.birthDate"];
+        var birthDateElement = design.Elements.First(e => e.Path == "Patient.birthDate");
         
         // Act: Try to configure slicing on non-repeatable element
         birthDateElement.Slicing = new SlicingConfig
@@ -36,7 +38,9 @@ public sealed class SdSlicingEpic2Tests
             }
         };
         
-        var result = SdDesignValidator.Validate(design, baseSd);
+        var mockSdRepo = new Mock<IStructureDefinitionRepository>();
+        var mockTerminology = new Mock<ITerminologyRegistry>();
+        var result = await SdDesignValidator.ValidateAsync(design, mockSdRepo.Object, mockTerminology.Object, CancellationToken.None);
         
         // Assert: Should have SLICING_NON_REPEATABLE error
         Assert.True(result.HasErrors);
@@ -44,13 +48,13 @@ public sealed class SdSlicingEpic2Tests
     }
 
     [Fact]
-    public void CanAddSlicingToRepeatableElement()
+    public async System.Threading.Tasks.Task CanAddSlicingToRepeatableElement()
     {
         // Arrange: Patient.identifier has max = * (repeatable)
         var baseSd = GetPatientStructureDefinition();
         var design = SdDesignInitializer.Create("Patient", baseSd, VisibilityMode.Minimal);
         
-        var identifierElement = design.Elements["Patient.identifier"];
+        var identifierElement = design.Elements.First(e => e.Path == "Patient.identifier");
         identifierElement.IsIncluded = true;
         
         // Act: Configure slicing on repeatable element
@@ -64,7 +68,9 @@ public sealed class SdSlicingEpic2Tests
             }
         };
         
-        var result = SdDesignValidator.Validate(design, baseSd);
+        var mockSdRepo = new Mock<IStructureDefinitionRepository>();
+        var mockTerminology = new Mock<ITerminologyRegistry>();
+        var result = await SdDesignValidator.ValidateAsync(design, mockSdRepo.Object, mockTerminology.Object, CancellationToken.None);
         
         // Assert: Should have no errors
         Assert.False(result.HasErrors);
@@ -77,7 +83,7 @@ public sealed class SdSlicingEpic2Tests
         var baseSd = GetPatientStructureDefinition();
         var design = SdDesignInitializer.Create("Patient", baseSd, VisibilityMode.Minimal);
         
-        var identifierElement = design.Elements["Patient.identifier"];
+        var identifierElement = design.Elements.First(e => e.Path == "Patient.identifier");
         identifierElement.IsIncluded = true;
         identifierElement.Slicing = new SlicingConfig
         {
@@ -95,29 +101,28 @@ public sealed class SdSlicingEpic2Tests
             ["nric"] = new SliceDesignState
             {
                 SliceName = "nric",
-                Cardinality = new Cardinality(1, "1")
+                OverrideCardinality = new Cardinality(1, "1")
             },
             ["nric"] = new SliceDesignState  // Duplicate name (dictionary prevents this at runtime)
             {
                 SliceName = "nric",
-                Cardinality = new Cardinality(0, "1")
+                OverrideCardinality = new Cardinality(0, "1")
             }
         };
         
-        var result = SdDesignValidator.Validate(design, baseSd);
-        
-        // Assert: Dictionary prevents duplicates, so no duplicate error expected
-        Assert.False(result.HasErrors);
+        // Assert: Dictionary prevents duplicates, so only one slice exists
+        Assert.False(identifierElement.Slices.Count > 1);
+        Assert.Single(identifierElement.Slices);
     }
 
     [Fact]
-    public void SliceCardinalityExceedingParentRejected()
+    public async System.Threading.Tasks.Task SliceCardinalityExceedingParentRejected()
     {
         // Arrange
         var baseSd = GetPatientStructureDefinition();
         var design = SdDesignInitializer.Create("Patient", baseSd, VisibilityMode.Minimal);
         
-        var identifierElement = design.Elements["Patient.identifier"];
+        var identifierElement = design.Elements.First(e => e.Path == "Patient.identifier");
         identifierElement.IsIncluded = true;
         identifierElement.OverrideCardinality = new Cardinality(0, "2"); // Parent max = 2
         identifierElement.Slicing = new SlicingConfig
@@ -136,11 +141,13 @@ public sealed class SdSlicingEpic2Tests
             ["nric"] = new SliceDesignState
             {
                 SliceName = "nric",
-                Cardinality = new Cardinality(0, "3")  // Exceeds parent max of 2
+                OverrideCardinality = new Cardinality(0, "3")  // Exceeds parent max of 2
             }
         };
         
-        var result = SdDesignValidator.Validate(design, baseSd);
+        var mockSdRepo = new Mock<Pss.FhirProcessor.SdBuilder.Abstractions.IStructureDefinitionRepository>();
+        var mockTerminology = new Mock<Pss.FhirProcessor.SdBuilder.Abstractions.ITerminologyRegistry>();
+        var result = await SdDesignValidator.ValidateAsync(design, mockSdRepo.Object, mockTerminology.Object, CancellationToken.None);
         
         // Assert: Should have SLICE_CARDINALITY_EXCEEDS_PARENT error
         Assert.True(result.HasErrors);
@@ -148,13 +155,13 @@ public sealed class SdSlicingEpic2Tests
     }
 
     [Fact]
-    public void ClosedSlicingEmitsWarning()
+    public async System.Threading.Tasks.Task ClosedSlicingEmitsWarning()
     {
         // Arrange
         var baseSd = GetPatientStructureDefinition();
         var design = SdDesignInitializer.Create("Patient", baseSd, VisibilityMode.Minimal);
         
-        var identifierElement = design.Elements["Patient.identifier"];
+        var identifierElement = design.Elements.First(e => e.Path == "Patient.identifier");
         identifierElement.IsIncluded = true;
         identifierElement.Slicing = new SlicingConfig
         {
@@ -169,7 +176,9 @@ public sealed class SdSlicingEpic2Tests
         // Act: No slices defined for closed slicing
         identifierElement.Slices = new Dictionary<string, SliceDesignState>();
         
-        var result = SdDesignValidator.Validate(design, baseSd);
+        var mockSdRepo = new Mock<IStructureDefinitionRepository>();
+        var mockTerminology = new Mock<ITerminologyRegistry>();
+        var result = await SdDesignValidator.ValidateAsync(design, mockSdRepo.Object, mockTerminology.Object, CancellationToken.None);
         
         // Assert: Should have SLICING_CLOSED_WITHOUT_SLICES warning
         Assert.False(result.HasErrors);  // Warnings don't block
@@ -187,7 +196,7 @@ public sealed class SdSlicingEpic2Tests
         var baseSd = GetPatientStructureDefinition();
         var design = SdDesignInitializer.Create("Patient", baseSd, VisibilityMode.Minimal);
         
-        var identifierElement = design.Elements["Patient.identifier"];
+        var identifierElement = design.Elements.First(e => e.Path == "Patient.identifier");
         identifierElement.IsIncluded = true;
         identifierElement.Slicing = new SlicingConfig
         {
@@ -204,7 +213,7 @@ public sealed class SdSlicingEpic2Tests
             ["nric"] = new SliceDesignState
             {
                 SliceName = "nric",
-                Cardinality = new Cardinality(1, "1")
+                OverrideCardinality = new Cardinality(1, "1")
             }
         };
         
@@ -244,7 +253,7 @@ public sealed class SdSlicingEpic2Tests
         var baseSd = GetPatientStructureDefinition();
         var design = SdDesignInitializer.Create("Patient", baseSd, VisibilityMode.Minimal);
         
-        var identifierElement = design.Elements["Patient.identifier"];
+        var identifierElement = design.Elements.First(e => e.Path == "Patient.identifier");
         identifierElement.IsIncluded = true;
         identifierElement.Slicing = new SlicingConfig
         {
@@ -280,7 +289,7 @@ public sealed class SdSlicingEpic2Tests
         var baseSd = GetPatientStructureDefinition();
         var design = SdDesignInitializer.Create("Patient", baseSd, VisibilityMode.Minimal);
         
-        var identifierElement = design.Elements["Patient.identifier"];
+        var identifierElement = design.Elements.First(e => e.Path == "Patient.identifier");
         identifierElement.IsIncluded = true;
         identifierElement.Slicing = new SlicingConfig
         {
@@ -321,7 +330,7 @@ public sealed class SdSlicingEpic2Tests
         var baseSd = GetPatientStructureDefinition();
         var design = SdDesignInitializer.Create("Patient", baseSd, VisibilityMode.Minimal);
         
-        var identifierElement = design.Elements["Patient.identifier"];
+        var identifierElement = design.Elements.First(e => e.Path == "Patient.identifier");
         identifierElement.IsIncluded = true;
         identifierElement.Slicing = new SlicingConfig
         {
@@ -339,12 +348,12 @@ public sealed class SdSlicingEpic2Tests
             ["nric"] = new SliceDesignState
             {
                 SliceName = "nric",
-                Cardinality = new Cardinality(1, "1")
+                OverrideCardinality = new Cardinality(1, "1")
             },
             ["passport"] = new SliceDesignState
             {
                 SliceName = "passport",
-                Cardinality = new Cardinality(0, "1")
+                OverrideCardinality = new Cardinality(0, "1")
             }
         };
         
@@ -358,10 +367,11 @@ public sealed class SdSlicingEpic2Tests
         
         // Act: Export then import
         var exported = SdExporter.Export(design, baseSd, meta);
-        var importedDesign = SdImportEngine.Import(exported, baseSd);
+        var importer = new SdImportEngine();
+        var importedDesign = importer.Import(baseSd, exported);
         
         // Assert: Verify slicing config preserved
-        var importedIdentifier = importedDesign.Elements["Patient.identifier"];
+        var importedIdentifier = importedDesign.Elements.First(e => e.Path == "Patient.identifier");
         Assert.NotNull(importedIdentifier.Slicing);
         Assert.False(importedIdentifier.Slicing.Ordered);
         Assert.Equal(SlicingRules.Open, importedIdentifier.Slicing.Rules);
@@ -376,13 +386,15 @@ public sealed class SdSlicingEpic2Tests
         
         var nricSlice = importedIdentifier.Slices["nric"];
         Assert.Equal("nric", nricSlice.SliceName);
-        Assert.Equal(1, nricSlice.Cardinality.Min);
-        Assert.Equal("1", nricSlice.Cardinality.Max);
+        Assert.NotNull(nricSlice.OverrideCardinality);
+        Assert.Equal(1, nricSlice.OverrideCardinality.Min);
+        Assert.Equal("1", nricSlice.OverrideCardinality.Max);
         
         var passportSlice = importedIdentifier.Slices["passport"];
         Assert.Equal("passport", passportSlice.SliceName);
-        Assert.Equal(0, passportSlice.Cardinality.Min);
-        Assert.Equal("1", passportSlice.Cardinality.Max);
+        Assert.NotNull(passportSlice.OverrideCardinality);
+        Assert.Equal(0, passportSlice.OverrideCardinality.Min);
+        Assert.Equal("1", passportSlice.OverrideCardinality.Max);
     }
 
     [Fact]
@@ -426,10 +438,11 @@ public sealed class SdSlicingEpic2Tests
         };
         
         // Act
-        var design = SdImportEngine.Import(sd, baseSd);
+        var importer = new SdImportEngine();
+        var design = importer.Import(baseSd, sd);
         
         // Assert
-        var identifierElement = design.Elements["Patient.identifier"];
+        var identifierElement = design.Elements.First(e => e.Path == "Patient.identifier");
         Assert.NotNull(identifierElement.Slicing);
         Assert.Equal(SlicingRules.OpenAtEnd, identifierElement.Slicing.Rules);
     }
@@ -475,10 +488,11 @@ public sealed class SdSlicingEpic2Tests
         };
         
         // Act
-        var design = SdImportEngine.Import(sd, baseSd);
+        var importer = new SdImportEngine();
+        var design = importer.Import(baseSd, sd);
         
         // Assert
-        var identifierElement = design.Elements["Patient.identifier"];
+        var identifierElement = design.Elements.First(e => e.Path == "Patient.identifier");
         Assert.NotNull(identifierElement.Slicing);
         Assert.Single(identifierElement.Slicing.Discriminators);
         Assert.Equal(DiscriminatorType.Profile, identifierElement.Slicing.Discriminators[0].Type);

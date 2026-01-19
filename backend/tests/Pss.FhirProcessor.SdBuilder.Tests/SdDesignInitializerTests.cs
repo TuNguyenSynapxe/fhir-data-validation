@@ -122,7 +122,7 @@ public sealed class SdDesignInitializerTests
         // Assert
         Assert.All(designState.Elements, element =>
         {
-            Assert.Null(element.Binding);
+            Assert.Null(element.OverrideBinding);
         });
     }
 
@@ -155,7 +155,7 @@ public sealed class SdDesignInitializerTests
         // Patient.maritalStatus has type CodeableConcept
         var maritalStatus = designState.Elements.FirstOrDefault(e => e.Path == "Patient.maritalStatus");
         Assert.NotNull(maritalStatus);
-        Assert.Equal("CodeableConcept", maritalStatus.BaseTypeCode);
+        Assert.Equal("CodeableConcept", maritalStatus.TypeCodes[0]);
     }
 
     [Fact]
@@ -171,7 +171,7 @@ public sealed class SdDesignInitializerTests
         // Patient.gender has type code
         var gender = designState.Elements.FirstOrDefault(e => e.Path == "Patient.gender");
         Assert.NotNull(gender);
-        Assert.Equal("code", gender.BaseTypeCode);
+        Assert.Equal("code", gender.TypeCodes[0]);
     }
 
     [Fact]

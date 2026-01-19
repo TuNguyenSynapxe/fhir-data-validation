@@ -161,11 +161,10 @@ public class SdBuilderGuardrailTests
         {
             Path = "Patient.active",
             BaseCardinality = new Cardinality(0, "1"),
-            BaseTypeCode = "boolean",
+            TypeCodes = new[] { "boolean" },
             IsIncluded = true,
             OverrideCardinality = new Cardinality(0, "1"), // SAME as base - redundant
-            Binding = null,
-            Extensions = new List<ExtensionConfig>()
+            OverrideBinding = null
         };
         design.Elements.Add(redundantElement);
 
@@ -194,11 +193,10 @@ public class SdBuilderGuardrailTests
         {
             Path = "Patient.name",
             BaseCardinality = new Cardinality(0, "*"),
-            BaseTypeCode = "HumanName",
+            TypeCodes = new[] { "HumanName" },
             IsIncluded = false, // Excluded
             OverrideCardinality = null,
-            Binding = null,
-            Extensions = new List<ExtensionConfig>()
+            OverrideBinding = null
         };
         design.Elements.Add(nameElement);
 
@@ -234,11 +232,10 @@ public class SdBuilderGuardrailTests
         {
             Path = "Patient.identifier",
             BaseCardinality = new Cardinality(1, "*"), // Required
-            BaseTypeCode = "Identifier",
+            TypeCodes = new[] { "Identifier" },
             IsIncluded = false, // INVALID - excluded required element
             OverrideCardinality = null,
-            Binding = null,
-            Extensions = new List<ExtensionConfig>()
+            OverrideBinding = null
         };
         design.Elements.Add(invalidElement);
 
@@ -266,11 +263,10 @@ public class SdBuilderGuardrailTests
         {
             Path = "Patient.name",
             BaseCardinality = new Cardinality(0, "*"),
-            BaseTypeCode = "HumanName",
+            TypeCodes = new[] { "HumanName" },
             IsIncluded = true,
             OverrideCardinality = new Cardinality(1, "1"), // Valid tightening - generates warning
-            Binding = null,
-            Extensions = new List<ExtensionConfig>()
+            OverrideBinding = null
         };
         design.Elements.Add(warningElement);
 
@@ -301,11 +297,10 @@ public class SdBuilderGuardrailTests
         {
             Path = "Patient.name",
             BaseCardinality = new Cardinality(0, "*"),
-            BaseTypeCode = "HumanName",
+            TypeCodes = new[] { "HumanName" },
             IsIncluded = true,
             OverrideCardinality = new Cardinality(1, "1"),
-            Binding = null,
-            Extensions = new List<ExtensionConfig>()
+            OverrideBinding = null
         };
         design.Elements.Add(element);
 
@@ -338,11 +333,10 @@ public class SdBuilderGuardrailTests
         {
             Path = "Patient.name",
             BaseCardinality = new Cardinality(0, "*"),
-            BaseTypeCode = "HumanName",
+            TypeCodes = new[] { "HumanName" },
             IsIncluded = false,
             OverrideCardinality = null,
-            Binding = null,
-            Extensions = new List<ExtensionConfig>()
+            OverrideBinding = null
         };
         design.Elements.Add(element);
 
@@ -377,11 +371,10 @@ public class SdBuilderGuardrailTests
         {
             Path = "Patient.name",
             BaseCardinality = new Cardinality(0, "*"),
-            BaseTypeCode = "HumanName",
+            TypeCodes = new[] { "HumanName" },
             IsIncluded = true,
             OverrideCardinality = null,
-            Binding = null,
-            Extensions = new List<ExtensionConfig>()
+            OverrideBinding = null
         };
         design.Elements.Add(nameElement);
         
