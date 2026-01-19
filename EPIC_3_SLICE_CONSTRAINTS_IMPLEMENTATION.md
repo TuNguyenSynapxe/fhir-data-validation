@@ -1,9 +1,9 @@
 # EPIC 3: Slice Constraint Panel Implementation
 
 ## Overview
-Complete implementation of slice constraints with condition-based matching, cardinality overrides, and metadata support.
+Complete implementation of slice constraints with condition-based matching, cardinality overrides, metadata support, slice-aware selection model, and slice children visualization.
 
-## Status: ✅ **IMPLEMENTATION COMPLETE**
+## Status: ✅ **IMPLEMENTATION COMPLETE** (incl. EPIC 3.5 + EPIC 4 preview)
 
 ---
 
@@ -543,6 +543,8 @@ discriminatorElement.Fixed.Should().BeOfType<CodeableConcept>();
 ✅ Error handling with toast notifications
 ✅ Tree view Part 1: Virtual slice nodes rendering
 ✅ Tree view Part 2: Right panel integration
+✅ **EPIC 3.5: Slice-aware selection model**
+✅ **EPIC 4 PREVIEW: Slice children in tree**
 ⚠️ Backend unit tests pending
 ⚠️ Frontend vitest tests pending
 ⚠️ Export mapping (StructureDefinition differential) pending
@@ -550,6 +552,58 @@ discriminatorElement.Fixed.Should().BeOfType<CodeableConcept>();
 ---
 
 ## Recent Changes
+
+### Commit `4ce48f0` - EPIC 3.5 + EPIC 4 Preview (Slice-Aware Selection + Slice Children)
+
+**EPIC 3.5: Explicit Selection Model**
+- Created `SdBuilderSelection` discriminated union type
+  - `{ kind: 'element', path }` for element nodes
+  - `{ kind: 'slice', path, sliceName }` for slice nodes
+- Replaced `selectedPath` (string) with `selection` (object) in store
+- All components use selection object directly (no string parsing)
+- Tree node click handlers emit proper selection based on node type
+- ElementDetailsPanel strictly routes based on `selection.kind`
+
+**EPIC 4 PREVIEW: Slice Children**
+- Slice nodes now have children mirroring parent element structure
+- Example tree output:
+  ```
+  Patient.contact [0..*] (sliced)
+   ├─ 🔪 Emergency Contact (slice)
+   │  ├─ ↳ extension
+   │  ├─ ↳ relationship
+   │  └─ ↳ telecom
+   └─ 🔪 Family Contact (slice)
+      ├─ ↳ extension
+      ├─ ↳ relationship
+      └─ ↳ telecom
+  ```
+- Slice children marked with `isSliceChild` flag
+- Visual indicators: `↳` arrow + gray text + context badge
+- Click behavior: selecting slice child selects parent slice
+- Read-only in EPIC 4 (editing in future iterations)
+
+**Visual Differentiation**:
+- **Slice node**: Scissors icon 🔪 + purple text
+- **Slice child**: ↳ arrow + gray text + slice name badge
+- **Element node**: Standard styling
+
+**Files Modified**:
+- `types/sdBuilderSelection.ts` (NEW) - Selection type + helper functions
+- `types/treeNode.ts` - Added `isSliceChild`, `sliceContext` properties
+- `stores/useSdBuilderStore.ts` - Replaced `selectedPath` with `selection`
+- `utils/treeBuilder.ts` - Added `createSliceChildNode()` helper + mirroring logic
+- `components/SdBuilder/TreeNode.tsx` - Selection emission + slice child visual rendering
+- `components/SdBuilder/SdTreeView.tsx` - Selection matching helper
+- `components/SdBuilder/ElementDetailsPanel.tsx` - Direct `selection.kind` routing
+
+**Compliance**:
+- ✅ No new panels or modes
+- ✅ No heuristics or AI inference
+- ✅ No Firely SDK usage
+- ✅ No modification of domain model (virtual nodes only)
+- ✅ Explicit, type-safe selection model
+- ✅ Forge-like tree visualization
 
 ### Commit `7ac2169` - Tree View Part 1 (Virtual Slice Nodes)
 - Extended TreeNode type with slice properties
@@ -583,6 +637,6 @@ discriminatorElement.Fixed.Should().BeOfType<CodeableConcept>();
 ---
 
 **Date**: 2026-01-19  
-**Implementation**: Core complete (backend + frontend UI + UX polish + tree view)  
+**Implementation**: Core complete + slice-aware selection + slice children preview  
 **Status**: Ready for testing, unit tests, and export integration  
-**Latest Commit**: `58d88b6`
+**Latest Commit**: `4ce48f0`
