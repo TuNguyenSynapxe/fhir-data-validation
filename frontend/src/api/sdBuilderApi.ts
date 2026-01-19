@@ -45,7 +45,7 @@ export interface ElementDesign {
   baseBinding: BindingConfig | null;  // Inherited from base profile
   overrideBinding: BindingConfig | null;  // User-defined override
   slicing: SlicingConfig | null;
-  slices: SliceDesign[];
+  slices: Record<string, SliceDesign>;  // Dictionary with slice name as key
 }
 
 export interface Cardinality {

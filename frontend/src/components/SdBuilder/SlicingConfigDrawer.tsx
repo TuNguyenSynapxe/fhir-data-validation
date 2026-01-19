@@ -94,7 +94,7 @@ export function SlicingConfigDrawer({
     });
   };
 
-  const existingSliceNames = (Array.isArray(element.slices) ? element.slices : []).map((s: any) => s.sliceName);
+  const existingSliceNames = element.slices ? Object.keys(element.slices) : [];
 
   return (
     <>
@@ -258,24 +258,24 @@ export function SlicingConfigDrawer({
               )}
 
               {/* Slice List */}
-              {(Array.isArray(element.slices) ? element.slices : []).length > 0 ? (
+              {element.slices && Object.keys(element.slices).length > 0 ? (
                 <div className="space-y-2">
                   <div className="text-xs font-medium text-gray-700 mb-2">
                     Configured slices:
                   </div>
-                  {[...(Array.isArray(element.slices) ? element.slices : [])]
-                    .sort((a, b) => a.sliceName.localeCompare(b.sliceName))
-                    .map((slice) => (
+                  {Object.keys(element.slices)
+                    .sort((a, b) => a.localeCompare(b))
+                    .map((sliceName) => (
                       <div
-                        key={slice.sliceName}
+                        key={sliceName}
                         className="flex items-center justify-between bg-white px-4 py-2 rounded border border-gray-200"
                       >
                         <div className="flex items-center gap-2">
                           <span className="text-lg">🔖</span>
-                          <span className="font-medium text-gray-900">{slice.sliceName}</span>
+                          <span className="font-medium text-gray-900">{sliceName}</span>
                         </div>
                         <button
-                          onClick={() => handleRemoveSlice(slice.sliceName)}
+                          onClick={() => handleRemoveSlice(sliceName)}
                           className="text-red-600 hover:text-red-800 text-sm"
                         >
                           Remove

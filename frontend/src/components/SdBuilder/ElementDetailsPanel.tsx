@@ -246,12 +246,12 @@ export const ElementDetailsPanel: React.FC = () => {
               </div>
 
               {/* Slices */}
-              {Array.isArray(element.slices) && element.slices.length > 0 && (
+              {element.slices && Object.keys(element.slices).length > 0 && (
                 <div className="mb-3">
                   <dt className="text-sm font-medium text-gray-700">Slices:</dt>
                   <ul className="text-sm text-gray-700 list-disc list-inside">
-                    {element.slices.map((slice: any) => (
-                      <li key={slice.sliceName}>{slice.sliceName}</li>
+                    {Object.keys(element.slices).sort().map((sliceName: string) => (
+                      <li key={sliceName}>{sliceName}</li>
                     ))}
                   </ul>
                 </div>
@@ -410,7 +410,7 @@ export const ElementDetailsPanel: React.FC = () => {
         isOpen={addSliceDrawerOpen}
         elementPath={element.path}
         discriminators={element.slicing.discriminators || []}
-        existingSliceNames={(Array.isArray(element.slices) ? element.slices : []).map((s: any) => s.sliceName)}
+        existingSliceNames={element.slices ? Object.keys(element.slices) : []}
         onAdd={async (sliceName: string) => {
           console.log('[ElementDetailsPanel] onAdd called with sliceName:', sliceName);
           console.log('[ElementDetailsPanel] Current element.slices before command:', element.slices);
