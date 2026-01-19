@@ -339,47 +339,49 @@ expect(mockApplyCommand).toHaveBeenCalledWith({
 
 ### C) Tree View Integration (Virtual Slice Nodes)
 
-**Prompt**:
-```
-Implement tree view support for rendering virtual slice nodes under sliced elements.
+**Status**: ✅ **COMPLETE** (Commits: `7ac2169`, `58d88b6`)
 
-Behavior:
-- If an element has element.slicing configured AND element.slices has entries:
-  - Render child nodes for each slice with:
-    - id: `${element.path}:${sliceName}` (use colon separator for slice identification)
-    - label: metadata.shortLabel if present, fallback to sliceName
-    - icon: distinct slice indicator icon (not the binding icon)
-    - cardinality badge: show slice.overrideCardinality if present, else inherit from parent element
+**Implementation Summary**:
 
-Selection Handling:
-- Clicking a slice node sets active selection to `{ path: element.path, sliceName: sliceName }`
-- ElementDetailsPanel must detect slice selection and show:
-  - Section title: "Slice: {sliceName}" (or shortLabel if present)
-  - Read-only discriminator summary
-  - Conditions summary (show operator and value per discriminator)
-  - Optional cardinality override display
-  - "Configure Slice Constraints" button that opens SliceConstraintDrawer
+**Part 1: Tree Node Rendering** (Commit `7ac2169`)
+- Extended TreeNode type with `isSlice`, `sliceName`, `parentPath` properties
+- Tree builder injects virtual slice nodes under sliced elements (Phase 3)
+- Slice node ID format: `${elementPath}::slice::${sliceName}`
+- Visual rendering: Scissors icon + purple text styling
+- Custom sorting: slices appear after regular children, alphabetically sorted
 
-Implementation Constraints:
-- Do NOT duplicate base element children under slice nodes (EPIC 3 scope limitation)
-- Keep existing selection behavior for normal element nodes working
-- Update tree node rendering logic to check for slices and render them as children
-- Ensure slice nodes are visually distinct (different icon, possibly indented)
-- Add minimal unit test: tree renders slice nodes when element.slicing exists and slices.length > 0
+**Part 2: Right Panel Integration** (Commit `58d88b6`)
+- Parse `selectedPath` to detect `::slice::` pattern
+- Extract `elementPath` and `sliceName` from slice node selection
+- Slice-specific panel view displays:
+  - Header with Scissors icon + slice label (metadata.shortLabel or sliceName)
+  - Parent element reference (read-only)
+  - Discriminators summary (read-only, inherited from element)
+  - Conditions display (operator + value per discriminator)
+  - Cardinality display (slice override or inherited from element)
+  - Metadata display (shortLabel, description if defined)
+  - "Configure Slice" button opens SliceConstraintDrawer
+- Element panel unchanged: "Edit Slicing Rules" and "Add Slice" remain element-level only
 
-Files to modify:
-- Tree rendering component (likely SdBuilderTree.tsx or similar)
-- ElementDetailsPanel.tsx to detect and display slice selection
-- Add slice icon to icon set
+**User Workflow**:
+1. Enable slicing on repeatable element (e.g., Patient.contact)
+2. Add discriminators (e.g., value @ relationship.coding.code)
+3. Add slices (e.g., "emergencyContact", "familyContact")
+4. Configure each slice (conditions, cardinality, metadata)
+5. Expand element in tree → see slice nodes with Scissors icon
+6. Click slice node → right panel shows slice-specific view
+7. Click "Configure Slice" → edit constraints in drawer
+8. Save → changes immediately reflected in slice panel summary
 
-Example tree structure output:
-```
-Patient
-  └─ contact [0..*] (sliced)
-      ├─ emergencyContact [1..1] (slice)
-      └─ familyContact [0..*] (slice)
-```
-```
+**Files Modified**:
+- `frontend/src/types/treeNode.ts` - TreeNode interface extensions
+- `frontend/src/utils/treeBuilder.ts` - Slice node injection logic
+- `frontend/src/components/SdBuilder/TreeNode.tsx` - Scissors icon + purple styling
+- `frontend/src/components/SdBuilder/ElementDetailsPanel.tsx` - Slice panel view routing
+
+**Testing**: ✅ TypeScript compilation successful, no errors
+
+~~**Prompt**: [Original implementation prompt removed - now complete]~~
 
 ### D) Export Mapping (StructureDefinition Differential)
 
@@ -538,27 +540,49 @@ discriminatorElement.Fixed.Should().BeOfType<CodeableConcept>();
 ✅ Validation logic complete
 ✅ UX improvements with semantic icons (emoji)
 ✅ Icon migration to Lucide React components
-⚠️ Tests pending
-⚠️ Tree view integration pending
+✅ Error handling with toast notifications
+✅ Tree view Part 1: Virtual slice nodes rendering
+✅ Tree view Part 2: Right panel integration
+⚠️ Backend unit tests pending
+⚠️ Frontend vitest tests pending
+⚠️ Export mapping (StructureDefinition differential) pending
 
 ---
 
 ## Recent Changes
+
+### Commit `7ac2169` - Tree View Part 1 (Virtual Slice Nodes)
+- Extended TreeNode type with slice properties
+- Tree builder injects slice nodes under sliced elements
+- Scissors icon + purple styling for visual distinction
+- Custom sorting: slices after regular children
+
+### Commit `58d88b6` - Tree View Part 2 (Right Panel Integration)
+- Selection detection for slice nodes
+- Slice-specific panel view with read-only summaries
+- "Configure Slice" button wired to SliceConstraintDrawer
+- Element panel unchanged (element-level actions preserved)
+
+### Commit `09db8a7` - Error Handling Enhancement
+- Enhanced error handling in SliceConstraintDrawer
+- Toast notifications for save success/failure
+- JSON error parsing in API layer
+- Console logging for debugging
+
+### Commit `c436cb2` + `8cf0f91` - Icon Migration (Lucide React)
+- Migrated all emoji unicode characters to Lucide React components
+- Maintains consistent icon library usage across project
+- Improved maintainability and accessibility
+- Icons: Layers, Key, FlaskConical, Ruler, Tag, Save, Ban, Target, List, Code, Check, Info, AlertTriangle, Trash2, Hash, Lock, Plus, Edit, CircleDot, XCircle, Scissors
 
 ### Commit `95adc68` - UX Improvements (Emoji Icons)
 - Added semantic emoji icons across all slicing components
 - Clearer instructional text and helper messages
 - Progressive disclosure with visual indicators
 
-### Commit `[pending]` - Icon Migration (Lucide React)
-- Migrated all emoji unicode characters to Lucide React components
-- Maintains consistent icon library usage across project
-- Improved maintainability and accessibility
-- Icons: Layers, Key, FlaskConical, Ruler, Tag, Save, Ban, Target, List, Code, Check, Info, AlertTriangle, Trash2, Hash, Lock, Plus, Edit, CircleDot, XCircle
-
 ---
 
 **Date**: 2026-01-19  
-**Implementation**: Core complete (backend + frontend UI + UX polish)  
-**Status**: Ready for testing and export integration  
-**Commits**: `8d95afe`, `95adc68`, `[pending]`
+**Implementation**: Core complete (backend + frontend UI + UX polish + tree view)  
+**Status**: Ready for testing, unit tests, and export integration  
+**Latest Commit**: `58d88b6`
