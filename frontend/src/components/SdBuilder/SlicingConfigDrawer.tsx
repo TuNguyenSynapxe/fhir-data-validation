@@ -37,20 +37,21 @@ export function SlicingConfigDrawer({
 }: SlicingConfigDrawerProps) {
   const applyCommand = useSdBuilderStore((state: any) => state.applyCommand);
 
-  // Early return if drawer is not open or element is null
-  if (!isOpen || !element) return null;
-
   // Slicing rules state
-  const [ordered, setOrdered] = useState(element.slicing?.ordered ?? false);
+  const [ordered, setOrdered] = useState(element?.slicing?.ordered ?? false);
   const [rules, setRules] = useState<'Open' | 'Closed' | 'OpenAtEnd'>(
-    element.slicing?.rules ?? 'Open'
+    element?.slicing?.rules ?? 'Open'
   );
   const [discriminators, setDiscriminators] = useState<Discriminator[]>(
-    element.slicing?.discriminators ?? []
+    element?.slicing?.discriminators ?? []
   );
 
   // Sub-drawer states
   const [showAddDiscriminator, setShowAddDiscriminator] = useState(false);
+  const [showAddSlice, setShowAddSlice] = useState(false);
+
+  // Early return after hooks (Rules of Hooks compliance)
+  if (!isOpen || !element) return null;
   const [showAddSlice, setShowAddSlice] = useState(false);
 
   // Handle discriminator operations
