@@ -54,7 +54,7 @@ export function AddSliceDrawer({
     onAdd(sliceName);
     setSliceName('');
     setError('');
-    onClose();
+    // Don't call onClose() here - parent handles it after command completes
   };
 
   const handleCancel = () => {

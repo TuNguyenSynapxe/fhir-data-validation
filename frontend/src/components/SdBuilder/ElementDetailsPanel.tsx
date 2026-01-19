@@ -411,8 +411,8 @@ export const ElementDetailsPanel: React.FC = () => {
         elementPath={element.path}
         discriminators={element.slicing.discriminators || []}
         existingSliceNames={(Array.isArray(element.slices) ? element.slices : []).map((s: any) => s.sliceName)}
-        onAdd={(sliceName: string) => {
-          applyCommand({
+        onAdd={async (sliceName: string) => {
+          await applyCommand({
             commandType: 'AddSlice',
             path: element.path,
             sliceName,
