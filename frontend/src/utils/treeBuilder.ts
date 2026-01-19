@@ -7,6 +7,10 @@
  * - All semantic states derived from cardinality
  * - No isIncluded/isExcluded storage
  * - Node roles: root | backbone | leaf
+ * 
+ * EPIC 4: Slice Children
+ * - Slice nodes mirror parent element's children
+ * - Slice children are virtual, read-only representations
  */
 
 import type { ElementDesign } from '../api/sdBuilderApi';
@@ -38,6 +42,34 @@ function deriveSemanticState(cardinality: Cardinality) {
   const isRepeatable = cardinality.max === '*';
   
   return { isNotAllowed, isRequired, isOptional, isRepeatable };
+}
+
+/**
+ * EPIC 4: Create slice child node (virtual mirror of parent element child)
+ * 
+ * These are read-only representations showing the same structure under slice context.
+ * Selection behavior: Clicking a slice child selects the slice, not the base element.
+ */
+function createSliceChildNode(sourceNode: TreeNode, sliceParent: TreeNode, sliceName: string): TreeNode {
+  const sliceChildId = `${sliceParent.id}::child::${sourceNode.name}`;
+  
+  const sliceChild: TreeNode = {
+    ...sourceNode,
+    id: sliceChildId,
+    parent: sliceParent,
+    depth: sliceParent.depth + 1,
+    
+    // Mark as slice child for visual differentiation
+    isSliceChild: true,
+    sliceContext: sliceName,
+    
+    // Recursively mirror children
+    children: sourceNode.children.map(grandChild => 
+      createSliceChildNode(grandChild, sliceParent, sliceName)
+    ),
+  };
+  
+  return sliceChild;
 }
 
 /**
@@ -105,7 +137,7 @@ export function buildTree(elements: ElementDesign[]): TreeNode[] {
     }
   });
   
-  // Phase 3: Inject slice nodes for elements with slicing
+  // Phase 3: Inject slice nodes for elements with slicing (EPIC 3 + EPIC 4)
   nodeMap.forEach(node => {
     const element = node.elementDesign;
     
@@ -115,14 +147,16 @@ export function buildTree(elements: ElementDesign[]): TreeNode[] {
       
       // Create virtual slice nodes
       Object.entries(slices).forEach(([sliceName, sliceDesign]) => {
+        const sliceNodeId = `${element.path}::slice::${sliceName}`;
+        
         const sliceNode: TreeNode = {
-          id: `${element.path}::slice::${sliceName}`,
+          id: sliceNodeId,
           path: element.path,
           name: (sliceDesign as any).Metadata?.ShortLabel || sliceName,
           parent: node,
-          children: [],
+          children: [], // EPIC 4: Will be populated below
           depth: node.depth + 1,
-          role: 'leaf' as NodeRole,
+          role: node.children.length > 0 ? 'backbone' : 'leaf', // EPIC 4: Backbone if has children
           
           // Slice-specific properties
           isSlice: true,
@@ -131,6 +165,9 @@ export function buildTree(elements: ElementDesign[]): TreeNode[] {
           
           // Reference to parent element design (slices don't have separate elementDesign)
           elementDesign: element,
+          
+          // Type codes for binding eligibility
+          typeCodes: node.typeCodes,
           
           // Cardinality from slice override or inherit from parent
           baseCardinality: element.baseCardinality,
@@ -150,8 +187,16 @@ export function buildTree(elements: ElementDesign[]): TreeNode[] {
           
           // Visual state
           isVisible: true,
-          isExpandable: false,
+          isExpandable: node.children.length > 0, // EPIC 4: Expandable if parent has children
         };
+        
+        // EPIC 4: Mirror parent element's children as slice children
+        // These are virtual nodes representing the same structure under a slice context
+        if (node.children.length > 0) {
+          sliceNode.children = node.children.map(childNode => 
+            createSliceChildNode(childNode, sliceNode, sliceName)
+          );
+        }
         
         // Add slice node as child of sliced element
         node.children.push(sliceNode);

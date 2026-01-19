@@ -8,11 +8,17 @@
  * - Always replace design with server response
  * - Mark dirty on any command
  * - Clear dirty after export
+ * 
+ * EPIC 3.5: Slice-aware selection model
+ * - Use discriminated union SdBuilderSelection
+ * - No string parsing in store
+ * - Explicit element vs slice selection
  */
 
 import { create } from 'zustand';
 import * as sdBuilderApi from '../api/sdBuilderApi';
 import type { VisibilityMode } from '../types/treeNode';
+import type { SdBuilderSelection } from '../types/sdBuilderSelection';
 
 // ============================================================================
 // Store State Interface
@@ -29,7 +35,7 @@ interface SdBuilderState {
 
   // Tree UI state
   expandedPaths: Set<string>;
-  selectedPath: string | null;
+  selection: SdBuilderSelection | null; // EPIC 3.5: Explicit selection model
   visibilityMode: VisibilityMode;
   isCardinalityModeEnabled: boolean;
 
@@ -44,7 +50,7 @@ interface SdBuilderState {
   toggleExpand: (path: string) => void;
   expandAll: () => void;
   collapseAll: () => void;
-  selectNode: (path: string | null) => void;
+  selectNode: (selection: SdBuilderSelection | null) => void; // EPIC 3.5: Selection object
   setVisibilityMode: (mode: VisibilityMode) => void;
   toggleCardinalityMode: () => void;
 }
@@ -64,7 +70,7 @@ export const useSdBuilderStore = create<SdBuilderState>((set, get) => ({
 
   // Tree UI state
   expandedPaths: new Set<string>(),
-  selectedPath: null,
+  selection: null, // EPIC 3.5: Explicit selection model
   visibilityMode: 'Full',
   isCardinalityModeEnabled: false,
 
@@ -240,7 +246,7 @@ export const useSdBuilderStore = create<SdBuilderState>((set, get) => ({
       loading: false,
       error: null,
       expandedPaths: new Set<string>(),
-      selectedPath: null,
+      selection: null, // EPIC 3.5: Clear selection
       visibilityMode: 'Full',
       isCardinalityModeEnabled: false,
     });
@@ -280,10 +286,10 @@ export const useSdBuilderStore = create<SdBuilderState>((set, get) => ({
   },
 
   /**
-   * Select a tree node
+   * Select a tree node (EPIC 3.5: Explicit selection model)
    */
-  selectNode: (path: string | null) => {
-    set({ selectedPath: path });
+  selectNode: (selection: SdBuilderSelection | null) => {
+    set({ selection });
   },
 
   /**

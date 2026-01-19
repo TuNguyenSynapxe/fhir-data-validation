@@ -44,7 +44,7 @@ import { SliceConstraintDrawer } from './SliceConstraintDrawer';
 
 export const ElementDetailsPanel: React.FC = () => {
   const design = useSdBuilderStore((state) => state.design);
-  const selectedPath = useSdBuilderStore((state) => state.selectedPath);
+  const selection = useSdBuilderStore((state) => state.selection); // EPIC 3.5: Use selection object
   const applyCommand = useSdBuilderStore((state) => state.applyCommand);
   
   const [valueSetDrawerOpen, setValueSetDrawerOpen] = useState(false);
@@ -53,27 +53,14 @@ export const ElementDetailsPanel: React.FC = () => {
   const [sliceConstraintDrawerOpen, setSliceConstraintDrawerOpen] = useState(false);
   const [selectedSliceName, setSelectedSliceName] = useState<string | null>(null);
 
-  // Parse selectedPath to detect slice node selection
-  const selectionInfo = React.useMemo(() => {
-    if (!selectedPath) return { type: 'none' as const };
-    
-    const sliceMarker = '::slice::';
-    if (selectedPath.includes(sliceMarker)) {
-      const [elementPath, sliceName] = selectedPath.split(sliceMarker);
-      return { type: 'slice' as const, elementPath, sliceName };
-    }
-    
-    return { type: 'element' as const, elementPath: selectedPath };
-  }, [selectedPath]);
-
-  // Find selected element (always the parent element for slice nodes)
+  // Find selected element based on selection
   const selectedElement = React.useMemo(() => {
-    if (!design || selectionInfo.type === 'none') return null;
+    if (!design || !selection) return null;
     
-    const elementPath = selectionInfo.type === 'slice' ? selectionInfo.elementPath : selectionInfo.elementPath;
+    const path = selection.kind === 'slice' ? selection.path : selection.path;
     const tree = buildTree(design.elements);
-    return findNodeByPath(tree, elementPath);
-  }, [design, selectionInfo]);
+    return findNodeByPath(tree, path);
+  }, [design, selection]);
   
   const handleSelectValueSet = async (url: string) => {
     if (!selectedElement) return;
@@ -161,9 +148,9 @@ export const ElementDetailsPanel: React.FC = () => {
   if (node.isNotAllowed) semanticState = 'Not allowed';
   else if (node.isRequired) semanticState = 'Required';
 
-  // EPIC 3: Handle slice node selection
-  if (selectionInfo.type === 'slice') {
-    const sliceName = selectionInfo.sliceName;
+  // EPIC 3.5: Handle slice selection
+  if (selection && selection.kind === 'slice') {
+    const sliceName = selection.sliceName;
     const slice = element.slices?.[sliceName];
     
     if (!slice) {

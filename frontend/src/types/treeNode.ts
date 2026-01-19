@@ -8,6 +8,10 @@
  * - No isIncluded/isExcluded flags
  * - Cardinality is the ONLY source of truth
  * - All semantic states derived from currentCardinality
+ * 
+ * EPIC 3 + EPIC 4: Slice Support
+ * - Slice nodes are virtual children under sliced elements
+ * - Slice child nodes mirror parent element structure
  */
 
 import type { ElementDesign } from '../api/sdBuilderApi';
@@ -21,7 +25,7 @@ export type NodeRole = 'root' | 'backbone' | 'leaf';
 
 export interface TreeNode {
   // Identity
-  id: string;                    // Unique node ID (same as path, or path::slice::sliceName for slices)
+  id: string;                    // Unique node ID (path, path::slice::name, or path::slice::name::child::childName)
   path: string;                  // Full FHIR path (e.g., "Patient.contact.telecom")
   name: string;                  // Display name (e.g., "telecom")
   
@@ -31,13 +35,16 @@ export interface TreeNode {
   depth: number;
   role: NodeRole;                // root | backbone | leaf
   
-  // Slice Support (EPIC 3)
+  // Slice Support (EPIC 3 + EPIC 4)
   isSlice?: boolean;             // True for virtual slice nodes
   sliceName?: string;            // Slice identifier (only for slice nodes)
   parentPath?: string;           // Link back to sliced element (only for slice nodes)
+  isSliceChild?: boolean;        // True for children under slice nodes (EPIC 4)
+  sliceContext?: string;         // Parent slice name (only for slice children, EPIC 4)
   
   // FHIR Metadata
   elementDesign: ElementDesign;  // Reference to backend element
+  typeCodes?: string[];          // Type codes for binding eligibility
   
   // Cardinality (SOURCE OF TRUTH)
   baseCardinality: Cardinality;     // From FHIR base definition

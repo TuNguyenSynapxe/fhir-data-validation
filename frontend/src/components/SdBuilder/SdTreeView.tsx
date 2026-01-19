@@ -8,7 +8,7 @@
  * - Progressive disclosure (Minimal/Full/Expert)
  * - Expand/Collapse controls
  * - Visual state indicators
- * - Selection handling
+ * - Selection handling (EPIC 3.5: slice-aware)
  */
 
 import React, { useMemo } from 'react';
@@ -21,7 +21,7 @@ import { BulkCardinalityMenu } from './BulkCardinalityMenu';
 export const SdTreeView: React.FC = () => {
   const design = useSdBuilderStore((state) => state.design);
   const expandedPaths = useSdBuilderStore((state) => state.expandedPaths);
-  const selectedPath = useSdBuilderStore((state) => state.selectedPath);
+  const selection = useSdBuilderStore((state) => state.selection); // EPIC 3.5: Selection object
   const visibilityMode = useSdBuilderStore((state) => state.visibilityMode);
   const isCardinalityModeEnabled = useSdBuilderStore((state) => state.isCardinalityModeEnabled);
   
@@ -130,8 +130,8 @@ export const SdTreeView: React.FC = () => {
             key={node.id}
             node={node}
             isExpanded={expandedPaths.has(node.path)}
-            isSelected={selectedPath === node.path}
-            selectedPath={selectedPath}
+            isSelected={isNodeSelected(selection, node)} // EPIC 3.5: Match by selection object
+            selection={selection}
             onToggleExpand={toggleExpand}
             onSelect={selectNode}
             expandedPaths={expandedPaths}
@@ -141,3 +141,18 @@ export const SdTreeView: React.FC = () => {
     </div>
   );
 };
+
+// EPIC 3.5: Helper to determine if a node is selected based on selection object
+function isNodeSelected(selection: any, node: any): boolean {
+  if (!selection) return false;
+  
+  if (selection.kind === 'element') {
+    return node.path === selection.path && !node.isSlice;
+  }
+  
+  if (selection.kind === 'slice') {
+    return node.isSlice && node.sliceName === selection.sliceName && node.parentPath === selection.path;
+  }
+  
+  return false;
+}

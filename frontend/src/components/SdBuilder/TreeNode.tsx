@@ -1,5 +1,5 @@
 /**
- * TreeNode Component (Recursive) — EPIC 2 Clean Indicators
+ * TreeNode Component (Recursive) — EPIC 2 Clean Indicators + EPIC 3.5 Slice-Aware Selection
  * 
  * Renders a single tree node with:
  * - Expand/collapse chevron
@@ -17,6 +17,11 @@
  * - Slicing: glyph when slicing configured
  * - Error: badge when validation error
  * 
+ * EPIC 3.5: Slice-Aware Selection
+ * - Element nodes emit { kind: 'element', path }
+ * - Slice nodes emit { kind: 'slice', path, sliceName }
+ * - No string parsing in component
+ * 
  * CARDINALITY-FIRST DESIGN:
  * - Visual states derived from currentCardinality
  * - Root: Never greyed, no cardinality display
@@ -27,6 +32,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronRight, ChevronDown, Link, AlertCircle, Layers, Scissors } from 'lucide-react';
 import type { TreeNode as TreeNodeType } from '../../types/treeNode';
+import type { SdBuilderSelection } from '../../types/sdBuilderSelection';
 import { getBindingExplanation, isPreviewable } from '../../constants/bindingExplanations';
 import { CardinalityPresets } from './CardinalityPresets';
 import { useSdBuilderStore } from '../../stores/useSdBuilderStore';
@@ -39,9 +45,9 @@ interface TreeNodeProps {
   node: TreeNodeType;
   isExpanded: boolean;
   isSelected: boolean;
-  selectedPath: string | null;
+  selection: SdBuilderSelection | null; // EPIC 3.5: Selection object
   onToggleExpand: (path: string) => void;
-  onSelect: (path: string) => void;
+  onSelect: (selection: SdBuilderSelection) => void; // EPIC 3.5: Emit selection object
   expandedPaths: Set<string>;
 }
 
@@ -64,7 +70,7 @@ export const TreeNode: React.FC<TreeNodeProps> = ({
   node,
   isExpanded,
   isSelected,
-  selectedPath,
+  selection,
   onToggleExpand,
   onSelect,
   expandedPaths,
@@ -104,9 +110,21 @@ export const TreeNode: React.FC<TreeNodeProps> = ({
   
   if (!node.isVisible) return null;
 
+  // EPIC 3.5 + EPIC 4: Handle click based on node type
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onSelect(node.path);
+    
+    if (node.isSliceChild && node.sliceContext && node.parentPath) {
+      // EPIC 4: Slice child node: select the parent slice
+      const sliceParentPath = node.parentPath.split('::slice::')[0]; // Extract base element path
+      onSelect({ kind: 'slice', path: sliceParentPath, sliceName: node.sliceContext });
+    } else if (node.isSlice && node.sliceName && node.parentPath) {
+      // EPIC 3: Slice node: emit slice selection
+      onSelect({ kind: 'slice', path: node.parentPath, sliceName: node.sliceName });
+    } else {
+      // Regular element node: emit element selection
+      onSelect({ kind: 'element', path: node.path });
+    }
   };
 
   const handleChevronClick = (e: React.MouseEvent) => {
@@ -153,10 +171,22 @@ export const TreeNode: React.FC<TreeNodeProps> = ({
             )}
           </div>
 
-          {/* Name with slice icon if applicable */}
-          <span className={`tree-node-name ${isStrikethrough ? 'strikethrough' : ''} ${node.isSlice ? 'text-purple-700 font-medium' : ''}`}>
-            {node.isSlice && <Scissors size={14} className="inline mr-1.5 text-purple-600" />}
+          {/* Name with visual indicators for slice/slice child nodes */}
+          <span className={`tree-node-name ${isStrikethrough ? 'strikethrough' : ''} ${node.isSlice ? 'text-purple-700 font-medium' : ''} ${node.isSliceChild ? 'text-gray-600' : ''}`}>
+            {/* EPIC 3: Slice icon */}
+            {node.isSlice && !node.isSliceChild && <Scissors size={14} className="inline mr-1.5 text-purple-600" />}
+            
+            {/* EPIC 4: Slice child indicator */}
+            {node.isSliceChild && <span className="inline mr-1.5 text-gray-400">↳</span>}
+            
             {node.name}
+            
+            {/* EPIC 4: Slice context badge (optional, for clarity) */}
+            {node.isSliceChild && node.sliceContext && (
+              <span className="text-[10px] ml-1.5 px-1 py-0.5 bg-gray-100 text-gray-500 rounded" title={`In slice: ${node.sliceContext}`}>
+                {node.sliceContext}
+              </span>
+            )}
           </span>
         </div>
 
@@ -244,8 +274,8 @@ export const TreeNode: React.FC<TreeNodeProps> = ({
               key={child.id}
               node={child}
               isExpanded={expandedPaths.has(child.path)}
-              isSelected={selectedPath === child.path}
-              selectedPath={selectedPath}
+              isSelected={child.id === selectedNodeId(selection, child)} // EPIC 3.5: Match by selection
+              selection={selection}
               onToggleExpand={onToggleExpand}
               onSelect={onSelect}
               expandedPaths={expandedPaths}
@@ -256,3 +286,18 @@ export const TreeNode: React.FC<TreeNodeProps> = ({
     </div>
   );
 };
+
+// EPIC 3.5: Helper to determine if a node is selected based on selection object
+function selectedNodeId(selection: SdBuilderSelection | null, node: TreeNodeType): boolean {
+  if (!selection) return false;
+  
+  if (selection.kind === 'element') {
+    return node.path === selection.path && !node.isSlice;
+  }
+  
+  if (selection.kind === 'slice') {
+    return node.isSlice && node.sliceName === selection.sliceName && node.parentPath === selection.path;
+  }
+  
+  return false;
+}
