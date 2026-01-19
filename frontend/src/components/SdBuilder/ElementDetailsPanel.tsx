@@ -412,12 +412,18 @@ export const ElementDetailsPanel: React.FC = () => {
         discriminators={element.slicing.discriminators || []}
         existingSliceNames={(Array.isArray(element.slices) ? element.slices : []).map((s: any) => s.sliceName)}
         onAdd={async (sliceName: string) => {
-          await applyCommand({
-            commandType: 'AddSlice',
-            path: element.path,
-            sliceName,
-          });
-          setAddSliceDrawerOpen(false);
+          console.log('[ElementDetailsPanel] onAdd called with sliceName:', sliceName);
+          try {
+            await applyCommand({
+              commandType: 'AddSlice',
+              path: element.path,
+              sliceName,
+            });
+            console.log('[ElementDetailsPanel] AddSlice command completed successfully');
+            setAddSliceDrawerOpen(false);
+          } catch (err) {
+            console.error('[ElementDetailsPanel] AddSlice command failed:', err);
+          }
         }}
         onClose={() => setAddSliceDrawerOpen(false)}
       />

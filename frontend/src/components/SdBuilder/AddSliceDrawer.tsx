@@ -32,6 +32,7 @@ export function AddSliceDrawer({
   const [error, setError] = useState('');
 
   const handleApply = () => {
+    console.log('[AddSliceDrawer] handleApply called with sliceName:', sliceName);
     setError('');
     
     if (!sliceName.trim()) {
@@ -51,6 +52,7 @@ export function AddSliceDrawer({
       return;
     }
     
+    console.log('[AddSliceDrawer] Calling onAdd with sliceName:', sliceName);
     onAdd(sliceName);
     setSliceName('');
     setError('');
