@@ -186,12 +186,14 @@ export const SdBuilderPage: React.FC = () => {
       </div>
 
       {/* Drawers */}
-      <SlicingConfigDrawer
-        isOpen={!!selectedElementForSlicing}
-        element={selectedElementForSlicing!}
-        allElements={design?.elements}
-        onClose={() => setSelectedElementForSlicing(null)}
-      />
+      {selectedElementForSlicing && (
+        <SlicingConfigDrawer
+          isOpen={true}
+          element={selectedElementForSlicing}
+          allElements={design?.elements}
+          onClose={() => setSelectedElementForSlicing(null)}
+        />
+      )}
 
       {selectedElementForChildren && (
         <SliceChildEditor

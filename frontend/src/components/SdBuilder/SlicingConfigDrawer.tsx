@@ -37,6 +37,9 @@ export function SlicingConfigDrawer({
 }: SlicingConfigDrawerProps) {
   const applyCommand = useSdBuilderStore((state: any) => state.applyCommand);
 
+  // Early return if drawer is not open or element is null
+  if (!isOpen || !element) return null;
+
   // Slicing rules state
   const [ordered, setOrdered] = useState(element.slicing?.ordered ?? false);
   const [rules, setRules] = useState<'Open' | 'Closed' | 'OpenAtEnd'>(
@@ -90,8 +93,6 @@ export function SlicingConfigDrawer({
       discriminators,
     });
   };
-
-  if (!isOpen) return null;
 
   const existingSliceNames = element.slices.map((s: any) => s.sliceName);
 
