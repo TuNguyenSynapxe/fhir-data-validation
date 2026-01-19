@@ -69,7 +69,7 @@ export function SlicingRulesDrawer({
   const handleApplyConfiguration = () => {
     applyCommand({
       commandType: 'ConfigureSlicing',
-      elementPath: element.path,
+      path: element.path,
       ordered,
       rules,
       discriminators,

@@ -414,7 +414,7 @@ export const ElementDetailsPanel: React.FC = () => {
         onAdd={(sliceName: string) => {
           applyCommand({
             commandType: 'AddSlice',
-            elementPath: element.path,
+            path: element.path,
             sliceName,
           });
           setAddSliceDrawerOpen(false);

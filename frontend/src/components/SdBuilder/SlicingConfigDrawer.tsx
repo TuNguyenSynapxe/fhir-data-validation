@@ -78,7 +78,7 @@ export function SlicingConfigDrawer({
   const handleRemoveSlice = (sliceName: string) => {
     applyCommand({
       commandType: 'RemoveSlice',
-      elementPath: element.path,
+      path: element.path,
       sliceName,
     });
   };
