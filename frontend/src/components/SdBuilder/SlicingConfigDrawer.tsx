@@ -94,7 +94,7 @@ export function SlicingConfigDrawer({
     });
   };
 
-  const existingSliceNames = element.slices.map((s: any) => s.sliceName);
+  const existingSliceNames = (element.slices || []).map((s: any) => s.sliceName);
 
   return (
     <>
@@ -258,12 +258,12 @@ export function SlicingConfigDrawer({
               )}
 
               {/* Slice List */}
-              {element.slices.length > 0 ? (
+              {(element.slices || []).length > 0 ? (
                 <div className="space-y-2">
                   <div className="text-xs font-medium text-gray-700 mb-2">
                     Configured slices:
                   </div>
-                  {[...element.slices]
+                  {[...(element.slices || [])]
                     .sort((a, b) => a.sliceName.localeCompare(b.sliceName))
                     .map((slice) => (
                       <div
