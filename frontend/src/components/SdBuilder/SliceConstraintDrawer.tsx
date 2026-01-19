@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { useSdBuilderStore } from '../../stores/useSdBuilderStore';
 import { Layers, Lock, FlaskConical, Ruler, Tag, Save, Ban, Target, List, Code, Check, Info, AlertTriangle } from 'lucide-react';
 
@@ -165,10 +166,13 @@ export function SliceConstraintDrawer({
     try {
       await applyCommand(command);
       console.log('[SliceConstraintDrawer] Command succeeded, closing drawer');
+      toast.success('Slice constraints saved successfully');
       onClose();
     } catch (err) {
       console.error('[SliceConstraintDrawer] Failed to save slice constraint:', err);
-      setError(`Failed to save constraints: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Failed to save constraints: ${errorMessage}`);
+      toast.error(`Failed to save: ${errorMessage}`);
     }
   };
 

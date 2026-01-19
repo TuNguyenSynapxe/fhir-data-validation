@@ -235,7 +235,22 @@ export async function sendCommand(
 
   if (!response.ok) {
     const body = await response.text();
-    throw new SdBuilderApiError(response.status, response.statusText, body);
+    let errorMessage = `${response.status}: ${response.statusText}`;
+    
+    // Try to parse JSON error response
+    try {
+      const errorJson = JSON.parse(body);
+      if (errorJson.error) {
+        errorMessage = errorJson.error;
+      }
+    } catch {
+      // If not JSON, use the raw body
+      if (body) {
+        errorMessage = body;
+      }
+    }
+    
+    throw new SdBuilderApiError(response.status, errorMessage, body);
   }
 
   return response.json();
