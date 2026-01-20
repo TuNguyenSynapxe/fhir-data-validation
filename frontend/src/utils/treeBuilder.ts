@@ -55,26 +55,58 @@ function deriveSemanticState(cardinality: Cardinality) {
  * 
  * IMPORTANT: This recursively mirrors children but NEVER attempts to create slicing
  * within slice children (slices cannot be nested).
+ * 
+ * CRITICAL: Must NOT use shallow spread - creates independent node with copied values
  */
 function createSliceChildNode(sourceNode: TreeNode, sliceParent: TreeNode, sliceName: string): TreeNode {
   const sliceChildId = `${sliceParent.id}::child::${sourceNode.name}`;
   
   const sliceChild: TreeNode = {
-    ...sourceNode,
+    // Identity
     id: sliceChildId,
+    path: sourceNode.path,
+    name: sourceNode.name,
     kind: 'element', // Slice children are element nodes in slice context
     parent: sliceParent,
+    children: [], // Will be populated below
     depth: sliceParent.depth + 1,
+    role: sourceNode.role,
     
-    // Mark as slice child for visual differentiation
+    // Element design reference (read-only)
+    elementDesign: sourceNode.elementDesign,
+    
+    // Type codes (for binding)
+    typeCodes: sourceNode.typeCodes,
+    
+    // Cardinality - copy values, not references
+    baseCardinality: { ...sourceNode.baseCardinality },
+    currentCardinality: { ...sourceNode.currentCardinality },
+    
+    // Derived semantic state - copy values
+    isRepeatable: sourceNode.isRepeatable,
+    isRequired: sourceNode.isRequired,
+    isOptional: sourceNode.isOptional,
+    isNotAllowed: sourceNode.isNotAllowed,
+    
+    // Modifications - copy flags
+    hasCardinalityOverride: sourceNode.hasCardinalityOverride,
+    hasBinding: sourceNode.hasBinding,
+    hasSlicing: false, // Slice children NEVER have slicing
+    sliceCount: 0, // Slice children NEVER have slices
+    
+    // Visual state
+    isVisible: sourceNode.isVisible,
+    isExpandable: sourceNode.isExpandable,
+    
+    // Slice child markers
     isSliceChild: true,
     sliceContext: sliceName,
-    
-    // Recursively mirror children (but NEVER render slicing within slice children)
-    children: sourceNode.children.map(grandChild => 
-      createSliceChildNode(grandChild, sliceParent, sliceName)
-    ),
   };
+  
+  // Recursively mirror children (but NEVER render slicing within slice children)
+  sliceChild.children = sourceNode.children.map(grandChild => 
+    createSliceChildNode(grandChild, sliceChild, sliceName)
+  );
   
   return sliceChild;
 }
