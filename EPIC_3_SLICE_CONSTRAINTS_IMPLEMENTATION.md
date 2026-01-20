@@ -1,9 +1,12 @@
 # EPIC 3: Slice Constraint Panel Implementation
 
 ## Overview
-Complete implementation of slice constraints with condition-based matching, cardinality overrides, metadata support, slice-aware selection model, and slice children visualization.
+Complete implementation of slice constraints with condition-based matching, cardinality overrides, metadata support, slice-aware selection model, and strict FHIR slicing tree semantics.
 
-## Status: ✅ **IMPLEMENTATION COMPLETE** (incl. EPIC 3.5 + EPIC 4 preview)
+## Status: ✅ **IMPLEMENTATION COMPLETE** (incl. EPIC 3.5 + EPIC 4 invariants)
+
+**Related Documentation**:
+- [EPIC 4: Slice Tree Invariants](./EPIC_4_SLICE_TREE_INVARIANTS.md) - Strict FHIR slicing semantics enforcement
 
 ---
 
@@ -634,9 +637,19 @@ discriminatorElement.Fixed.Should().BeOfType<CodeableConcept>();
 - Clearer instructional text and helper messages
 - Progressive disclosure with visual indicators
 
+### Commit `3313ee7` - EPIC 4 Invariants (Strict FHIR Slicing Semantics)
+- **CRITICAL FIX**: Enforced strict FHIR slicing tree rendering rules
+- Prevented child duplication (children no longer appear under both parent AND slices)
+- Prevented slice nesting (slices are ALWAYS siblings)
+- Added "Other (unsliced)" node for open matching scenarios
+- Introduced `TreeNodeKind` type: `'element' | 'slice' | 'slice-other'`
+- Complete tree builder refactor with Phase 2 guard against direct children
+- See [EPIC_4_SLICE_TREE_INVARIANTS.md](./EPIC_4_SLICE_TREE_INVARIANTS.md) for full details
+
 ---
 
-**Date**: 2026-01-19  
-**Implementation**: Core complete + slice-aware selection + slice children preview  
+**Date**: 2026-01-20  
+**Implementation**: Core complete + slice-aware selection + strict FHIR slicing semantics  
 **Status**: Ready for testing, unit tests, and export integration  
-**Latest Commit**: `4ce48f0`
+**Latest Commit**: `3313ee7` (EPIC 4 invariants)  
+**Previous Commit**: `4ce48f0` (EPIC 3.5 + EPIC 4 preview)
