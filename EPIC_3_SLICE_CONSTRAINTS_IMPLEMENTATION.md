@@ -646,10 +646,28 @@ discriminatorElement.Fixed.Should().BeOfType<CodeableConcept>();
 - Complete tree builder refactor with Phase 2 guard against direct children
 - See [EPIC_4_SLICE_TREE_INVARIANTS.md](./EPIC_4_SLICE_TREE_INVARIANTS.md) for full details
 
+### Commit `2fa347f` - FHIR Slicing Matching Rules (closed/open/openAtEnd)
+- **CRITICAL FIX**: Fixed unsliced node ordering bug for `openAtEnd` matching rule
+- Implemented `closed` rule: no unsliced node created
+- Implemented `open` rule: unsliced node first, then slices
+- Implemented `openAtEnd` rule: slices first, unsliced node LAST
+- Refactored Phase 3 with explicit `switch (matching)` statement
+- Refactored Phase 4 to preserve matching rule order
+- See [SLICING_MATCHING_RULES_IMPLEMENTATION.md](./docs/SLICING_MATCHING_RULES_IMPLEMENTATION.md) for details
+
+### Commit `c4b345b` - Slice-Scoped State Isolation (Expand/Collapse)
+- **CRITICAL FIX**: Fixed slice expand/collapse state sharing bug with parent elements
+- Renamed `expandedPaths` → `expandedNodes` (uses `node.id` instead of `node.path`)
+- Updated `toggleExpand` to accept `nodeId` parameter
+- Fixed `expandAll` to traverse full tree and include all slice node IDs
+- Each slice now has independent UI state from parent
+- Expanding/collapsing a slice does NOT affect parent element
+- See [SLICE_STATE_ISOLATION_FIX.md](./docs/SLICE_STATE_ISOLATION_FIX.md) for details
+
 ---
 
 **Date**: 2026-01-20  
-**Implementation**: Core complete + slice-aware selection + strict FHIR slicing semantics  
+**Implementation**: Core complete + slice-aware selection + strict FHIR slicing semantics + state isolation  
 **Status**: Ready for testing, unit tests, and export integration  
-**Latest Commit**: `3313ee7` (EPIC 4 invariants)  
-**Previous Commit**: `4ce48f0` (EPIC 3.5 + EPIC 4 preview)
+**Latest Commit**: `32879c5` (documentation)  
+**Previous Commits**: `c4b345b` (state isolation), `2fa347f` (matching rules), `3313ee7` (EPIC 4 invariants)
