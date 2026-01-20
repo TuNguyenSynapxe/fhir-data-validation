@@ -226,7 +226,9 @@ export const ElementDetailsPanel: React.FC = () => {
       );
     }
     
-    const sliceLabel = slice.Metadata?.ShortLabel || sliceName;
+    // BUGFIX: Backend returns camelCase property names
+    const sliceData = slice as any;
+    const sliceLabel = sliceData.metadata?.shortLabel || sliceName;
     
     return (
       <>
@@ -269,15 +271,15 @@ export const ElementDetailsPanel: React.FC = () => {
           {/* Slice Conditions */}
           <div className="details-section">
             <h4>Conditions</h4>
-            {slice.Conditions && slice.Conditions.length > 0 ? (
+            {sliceData.conditions && sliceData.conditions.length > 0 ? (
               <ul className="text-sm space-y-2">
-                {slice.Conditions.map((cond: any, idx: number) => (
+                {sliceData.conditions.map((cond: any, idx: number) => (
                   <li key={idx} className="bg-gray-50 p-2 rounded border border-gray-200">
-                    <div className="font-medium text-gray-700">{cond.DiscriminatorPath}</div>
+                    <div className="font-medium text-gray-700">{cond.discriminatorPath}</div>
                     <div className="text-xs text-gray-600 mt-1">
-                      <span className="font-semibold">{cond.Operator}</span>
-                      {cond.Value && <span> → {cond.Value}</span>}
-                      {cond.System && <span className="text-gray-500 ml-1">({cond.System})</span>}
+                      <span className="font-semibold">{cond.operator}</span>
+                      {cond.value && <span> → {cond.value}</span>}
+                      {cond.system && <span className="text-gray-500 ml-1">({cond.system})</span>}
                     </div>
                   </li>
                 ))}
@@ -294,11 +296,11 @@ export const ElementDetailsPanel: React.FC = () => {
               <dt>Base (element):</dt>
               <dd>{element.baseCardinality.min}..{element.baseCardinality.max}</dd>
 
-              {slice.OverrideCardinality ? (
+              {sliceData.overrideCardinality ? (
                 <>
                   <dt>Slice (override):</dt>
                   <dd className="cardinality-override">
-                    {slice.OverrideCardinality.Min}..{slice.OverrideCardinality.Max}
+                    {sliceData.overrideCardinality.min}..{sliceData.overrideCardinality.max}
                   </dd>
                 </>
               ) : (
@@ -311,20 +313,20 @@ export const ElementDetailsPanel: React.FC = () => {
           </div>
 
           {/* Slice Metadata */}
-          {(slice.Metadata?.ShortLabel || slice.Metadata?.Description) && (
+          {(sliceData.metadata?.shortLabel || sliceData.metadata?.description) && (
             <div className="details-section">
               <h4>Metadata</h4>
               <dl className="details-list">
-                {slice.Metadata.ShortLabel && (
+                {sliceData.metadata.shortLabel && (
                   <>
                     <dt>Short Label:</dt>
-                    <dd>{slice.Metadata.ShortLabel}</dd>
+                    <dd>{sliceData.metadata.shortLabel}</dd>
                   </>
                 )}
-                {slice.Metadata.Description && (
+                {sliceData.metadata.description && (
                   <>
                     <dt>Description:</dt>
-                    <dd className="text-sm">{slice.Metadata.Description}</dd>
+                    <dd className="text-sm">{sliceData.metadata.description}</dd>
                   </>
                 )}
               </dl>

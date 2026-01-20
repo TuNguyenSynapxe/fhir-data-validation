@@ -63,9 +63,9 @@ export function SliceConstraintDrawer({
     console.log('[SliceConstraintDrawer] element.path:', element.path);
     console.log('[SliceConstraintDrawer] element.slices:', element.slices);
     console.log('[SliceConstraintDrawer] slice data:', slice);
-    console.log('[SliceConstraintDrawer] slice?.Conditions:', slice?.Conditions);
-    console.log('[SliceConstraintDrawer] slice?.OverrideCardinality:', slice?.OverrideCardinality);
-    console.log('[SliceConstraintDrawer] slice?.Metadata:', slice?.Metadata);
+    console.log('[SliceConstraintDrawer] slice?.conditions:', (slice as any)?.conditions);
+    console.log('[SliceConstraintDrawer] slice?.overrideCardinality:', (slice as any)?.overrideCardinality);
+    console.log('[SliceConstraintDrawer] slice?.metadata:', (slice as any)?.metadata);
 
     if (!slice) {
       console.warn('[SliceConstraintDrawer] Slice not found:', sliceName);
@@ -79,9 +79,10 @@ export function SliceConstraintDrawer({
     discs.forEach((disc: any) => {
       const key = `${disc.type}:${disc.path}`;
       
-      // Find existing condition for this discriminator
-      const existingCondition = slice.Conditions?.find(
-        (c: any) => c.DiscriminatorType === disc.type && c.DiscriminatorPath === disc.path
+      // BUGFIX: Backend returns camelCase property names
+      const sliceData = slice as any;
+      const existingCondition = sliceData.conditions?.find(
+        (c: any) => c.discriminatorType === disc.type && c.discriminatorPath === disc.path
       );
 
       console.log(`[SliceConstraintDrawer] Discriminator ${key}:`, existingCondition);
@@ -90,9 +91,9 @@ export function SliceConstraintDrawer({
         initialConditions[key] = {
           discriminatorPath: disc.path,
           discriminatorType: disc.type,
-          operator: existingCondition.Operator?.toLowerCase() || 'none', // Ensure lowercase
-          value: existingCondition.Value,
-          system: existingCondition.System,
+          operator: existingCondition.operator || 'none', // Backend returns lowercase
+          value: existingCondition.value,
+          system: existingCondition.system,
         };
       } else {
         initialConditions[key] = {
@@ -106,11 +107,13 @@ export function SliceConstraintDrawer({
     console.log('[SliceConstraintDrawer] Initialized conditions:', initialConditions);
     console.log('[SliceConstraintDrawer] ========== FORM INIT END ==========');
 
+    // BUGFIX: Backend returns camelCase property names
+    const sliceData = slice as any;
     setConditions(initialConditions);
-    setMinCardinality(slice.OverrideCardinality?.Min?.toString() || '');
-    setMaxCardinality(slice.OverrideCardinality?.Max || '');
-    setShortLabel(slice.Metadata?.ShortLabel || '');
-    setDescription(slice.Metadata?.Description || '');
+    setMinCardinality(sliceData.overrideCardinality?.min?.toString() || '');
+    setMaxCardinality(sliceData.overrideCardinality?.max || '');
+    setShortLabel(sliceData.metadata?.shortLabel || '');
+    setDescription(sliceData.metadata?.description || '');
   }, [isOpen, sliceName, element.path]); // BUGFIX: Only depend on isOpen, sliceName, and element.path
 
   if (!isOpen || !element) return null;

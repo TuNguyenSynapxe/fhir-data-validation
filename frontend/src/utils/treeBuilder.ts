@@ -239,7 +239,7 @@ export function buildTree(elements: ElementDesign[]): TreeNode[] {
         const sliceNode: TreeNode = {
           id: sliceNodeId,
           path: element.path,
-          name: (sliceDesign as any).Metadata?.ShortLabel || sliceName,
+          name: (sliceDesign as any).metadata?.shortLabel || sliceName, // Backend returns camelCase
           kind: 'slice',
           parent: node,
           children: [], // Will be populated below
@@ -259,16 +259,16 @@ export function buildTree(elements: ElementDesign[]): TreeNode[] {
           
           // Cardinality from slice override or inherit from parent
           baseCardinality: element.baseCardinality,
-          currentCardinality: (sliceDesign as any).OverrideCardinality || element.baseCardinality,
+          currentCardinality: (sliceDesign as any).overrideCardinality || element.baseCardinality, // Backend returns camelCase
           
           // Derived state
-          isRepeatable: ((sliceDesign as any).OverrideCardinality?.max || element.baseCardinality.max) === '*',
-          isRequired: ((sliceDesign as any).OverrideCardinality?.min || element.baseCardinality.min) >= 1,
-          isOptional: ((sliceDesign as any).OverrideCardinality?.min || element.baseCardinality.min) === 0,
-          isNotAllowed: ((sliceDesign as any).OverrideCardinality?.max || element.baseCardinality.max) === '0',
+          isRepeatable: ((sliceDesign as any).overrideCardinality?.max || element.baseCardinality.max) === '*',
+          isRequired: ((sliceDesign as any).overrideCardinality?.min || element.baseCardinality.min) >= 1,
+          isOptional: ((sliceDesign as any).overrideCardinality?.min || element.baseCardinality.min) === 0,
+          isNotAllowed: ((sliceDesign as any).overrideCardinality?.max || element.baseCardinality.max) === '0',
           
           // Modifications
-          hasCardinalityOverride: !!(sliceDesign as any).OverrideCardinality,
+          hasCardinalityOverride: !!(sliceDesign as any).overrideCardinality, // Backend returns camelCase
           hasBinding: false,
           hasSlicing: false,
           sliceCount: 0,
