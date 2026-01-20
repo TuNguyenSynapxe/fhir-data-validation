@@ -19,6 +19,7 @@ import { create } from 'zustand';
 import * as sdBuilderApi from '../api/sdBuilderApi';
 import type { VisibilityMode } from '../types/treeNode';
 import type { SdBuilderSelection } from '../types/sdBuilderSelection';
+import { buildTree } from '../utils/treeBuilder';
 
 // ============================================================================
 // Store State Interface
@@ -34,7 +35,7 @@ interface SdBuilderState {
   error: string | null;
 
   // Tree UI state
-  expandedPaths: Set<string>;
+  expandedNodes: Set<string>; // Node IDs (includes slice IDs)
   selection: SdBuilderSelection | null; // EPIC 3.5: Explicit selection model
   visibilityMode: VisibilityMode;
   isCardinalityModeEnabled: boolean;
@@ -47,7 +48,7 @@ interface SdBuilderState {
   clearSession: () => void;
   
   // Tree actions
-  toggleExpand: (path: string) => void;
+  toggleExpand: (nodeId: string) => void;
   expandAll: () => void;
   collapseAll: () => void;
   selectNode: (selection: SdBuilderSelection | null) => void; // EPIC 3.5: Selection object
@@ -69,7 +70,7 @@ export const useSdBuilderStore = create<SdBuilderState>((set, get) => ({
   error: null,
 
   // Tree UI state
-  expandedPaths: new Set<string>(),
+  expandedNodes: new Set<string>(), // Node IDs (includes slice IDs)
   selection: null, // EPIC 3.5: Explicit selection model
   visibilityMode: 'Full',
   isCardinalityModeEnabled: false,
@@ -87,7 +88,7 @@ export const useSdBuilderStore = create<SdBuilderState>((set, get) => ({
     try {
       const response = await sdBuilderApi.startSession(request);
 
-      // Expand all nodes by default
+      // Expand all element nodes by default (slice nodes added separately)
       const allPaths = new Set(response.design.elements.map(e => e.path));
 
       set({
@@ -97,7 +98,7 @@ export const useSdBuilderStore = create<SdBuilderState>((set, get) => ({
         dirty: false,
         loading: false,
         error: null,
-        expandedPaths: allPaths,
+        expandedNodes: allPaths,
       });
     } catch (error) {
       const errorMessage =
@@ -245,7 +246,7 @@ export const useSdBuilderStore = create<SdBuilderState>((set, get) => ({
       dirty: false,
       loading: false,
       error: null,
-      expandedPaths: new Set<string>(),
+      expandedNodes: new Set<string>(),
       selection: null, // EPIC 3.5: Clear selection
       visibilityMode: 'Full',
       isCardinalityModeEnabled: false,
@@ -254,35 +255,49 @@ export const useSdBuilderStore = create<SdBuilderState>((set, get) => ({
 
   /**
    * Toggle expansion state of a tree node
+   * Uses node ID (not path) to support slice-specific expansion
    */
-  toggleExpand: (path: string) => {
+  toggleExpand: (nodeId: string) => {
     set((state) => {
-      const newExpanded = new Set(state.expandedPaths);
-      if (newExpanded.has(path)) {
-        newExpanded.delete(path);
+      const newExpanded = new Set(state.expandedNodes);
+      if (newExpanded.has(nodeId)) {
+        newExpanded.delete(nodeId);
       } else {
-        newExpanded.add(path);
+        newExpanded.add(nodeId);
       }
-      return { expandedPaths: newExpanded };
+      return { expandedNodes: newExpanded };
     });
   },
 
   /**
-   * Expand all tree nodes
+   * Expand all tree nodes (elements + slices)
    */
   expandAll: () => {
     const { design } = get();
     if (!design) return;
 
-    const allPaths = new Set(design.elements.map(e => e.path));
-    set({ expandedPaths: allPaths });
+    // Build tree and collect all node IDs (including slices)
+    const tree = buildTree(design.elements);
+    const allNodeIds = new Set<string>();
+    
+    const collectNodeIds = (nodes: any[]) => {
+      nodes.forEach(node => {
+        allNodeIds.add(node.id);
+        if (node.children.length > 0) {
+          collectNodeIds(node.children);
+        }
+      });
+    };
+    
+    collectNodeIds(tree);
+    set({ expandedNodes: allNodeIds });
   },
 
   /**
    * Collapse all tree nodes
    */
   collapseAll: () => {
-    set({ expandedPaths: new Set<string>() });
+    set({ expandedNodes: new Set<string>() });
   },
 
   /**

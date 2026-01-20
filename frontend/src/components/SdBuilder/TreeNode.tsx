@@ -46,9 +46,9 @@ interface TreeNodeProps {
   isExpanded: boolean;
   isSelected: boolean;
   selection: SdBuilderSelection | null; // EPIC 3.5: Selection object
-  onToggleExpand: (path: string) => void;
+  onToggleExpand: (nodeId: string) => void; // Use node ID for slice isolation
   onSelect: (selection: SdBuilderSelection) => void; // EPIC 3.5: Emit selection object
-  expandedPaths: Set<string>;
+  expandedNodes: Set<string>; // Node IDs (includes slice IDs)
 }
 
 // Helper to get the active binding (override takes precedence)
@@ -73,7 +73,7 @@ export const TreeNode: React.FC<TreeNodeProps> = ({
   selection,
   onToggleExpand,
   onSelect,
-  expandedPaths,
+  expandedNodes,
 }) => {
   const isCardinalityModeEnabled = useSdBuilderStore((state) => state.isCardinalityModeEnabled);
   const [showBindingTooltip, setShowBindingTooltip] = useState(false);
@@ -146,7 +146,7 @@ export const TreeNode: React.FC<TreeNodeProps> = ({
   const handleChevronClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (node.isExpandable) {
-      onToggleExpand(node.path);
+      onToggleExpand(node.id); // Use node.id for slice isolation
     }
   };
 
@@ -292,12 +292,12 @@ export const TreeNode: React.FC<TreeNodeProps> = ({
             <TreeNode
               key={child.id}
               node={child}
-              isExpanded={expandedPaths.has(child.path)}
+              isExpanded={expandedNodes.has(child.id)} // Use node.id for slice isolation
               isSelected={child.id === selectedNodeId(selection, child)} // EPIC 3.5: Match by selection
               selection={selection}
               onToggleExpand={onToggleExpand}
               onSelect={onSelect}
-              expandedPaths={expandedPaths}
+              expandedNodes={expandedNodes}
             />
           ))}
         </div>

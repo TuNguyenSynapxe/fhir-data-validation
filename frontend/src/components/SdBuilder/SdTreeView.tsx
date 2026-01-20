@@ -20,7 +20,7 @@ import { BulkCardinalityMenu } from './BulkCardinalityMenu';
 
 export const SdTreeView: React.FC = () => {
   const design = useSdBuilderStore((state) => state.design);
-  const expandedPaths = useSdBuilderStore((state) => state.expandedPaths);
+  const expandedNodes = useSdBuilderStore((state) => state.expandedNodes); // Node IDs (includes slices)
   const selection = useSdBuilderStore((state) => state.selection); // EPIC 3.5: Selection object
   const visibilityMode = useSdBuilderStore((state) => state.visibilityMode);
   const isCardinalityModeEnabled = useSdBuilderStore((state) => state.isCardinalityModeEnabled);
@@ -129,12 +129,12 @@ export const SdTreeView: React.FC = () => {
           <TreeNode
             key={node.id}
             node={node}
-            isExpanded={expandedPaths.has(node.path)}
+            isExpanded={expandedNodes.has(node.id)} // Use node.id for slice isolation
             isSelected={isNodeSelected(selection, node)} // EPIC 3.5: Match by selection object
             selection={selection}
             onToggleExpand={toggleExpand}
             onSelect={selectNode}
-            expandedPaths={expandedPaths}
+            expandedNodes={expandedNodes}
           />
         ))}
       </div>
