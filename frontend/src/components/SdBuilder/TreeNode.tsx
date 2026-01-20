@@ -110,20 +110,36 @@ export const TreeNode: React.FC<TreeNodeProps> = ({
   
   if (!node.isVisible) return null;
 
-  // EPIC 3.5 + EPIC 4: Handle click based on node type
+  // EPIC 3.5 + EPIC 4: Handle click based on node kind
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     
-    if (node.isSliceChild && node.sliceContext && node.parentPath) {
-      // EPIC 4: Slice child node: select the parent slice
-      const sliceParentPath = node.parentPath.split('::slice::')[0]; // Extract base element path
-      onSelect({ kind: 'slice', path: sliceParentPath, sliceName: node.sliceContext });
-    } else if (node.isSlice && node.sliceName && node.parentPath) {
-      // EPIC 3: Slice node: emit slice selection
-      onSelect({ kind: 'slice', path: node.parentPath, sliceName: node.sliceName });
-    } else {
-      // Regular element node: emit element selection
-      onSelect({ kind: 'element', path: node.path });
+    // Selection based on node kind
+    switch (node.kind) {
+      case 'slice':
+        // Slice node: emit slice selection
+        if (node.sliceName && node.parentPath) {
+          onSelect({ kind: 'slice', path: node.parentPath, sliceName: node.sliceName });
+        }
+        break;
+        
+      case 'slice-other':
+        // "Other (unsliced)" node: emit slice selection with 'other' slice name
+        if (node.parentPath) {
+          onSelect({ kind: 'slice', path: node.parentPath, sliceName: 'other' });
+        }
+        break;
+        
+      case 'element':
+        // Check if this is a slice child (element under slice context)
+        if (node.isSliceChild && node.sliceContext && node.parent?.parentPath) {
+          // Slice child: select the parent slice
+          onSelect({ kind: 'slice', path: node.parent.parentPath, sliceName: node.sliceContext });
+        } else {
+          // Regular element node: emit element selection
+          onSelect({ kind: 'element', path: node.path });
+        }
+        break;
     }
   };
 
@@ -172,9 +188,12 @@ export const TreeNode: React.FC<TreeNodeProps> = ({
           </div>
 
           {/* Name with visual indicators for slice/slice child nodes */}
-          <span className={`tree-node-name ${isStrikethrough ? 'strikethrough' : ''} ${node.isSlice ? 'text-purple-700 font-medium' : ''} ${node.isSliceChild ? 'text-gray-600' : ''}`}>
+          <span className={`tree-node-name ${isStrikethrough ? 'strikethrough' : ''} ${node.kind === 'slice' || node.kind === 'slice-other' ? 'text-purple-700 font-medium' : ''} ${node.isSliceChild ? 'text-gray-600' : ''}`}>
             {/* EPIC 3: Slice icon */}
-            {node.isSlice && !node.isSliceChild && <Scissors size={14} className="inline mr-1.5 text-purple-600" />}
+            {node.kind === 'slice' && <Scissors size={14} className="inline mr-1.5 text-purple-600" />}
+            
+            {/* EPIC 4: "Other" node icon */}
+            {node.kind === 'slice-other' && <Scissors size={14} className="inline mr-1.5 text-gray-500" />}
             
             {/* EPIC 4: Slice child indicator */}
             {node.isSliceChild && <span className="inline mr-1.5 text-gray-400">↳</span>}
@@ -182,7 +201,7 @@ export const TreeNode: React.FC<TreeNodeProps> = ({
             {node.name}
             
             {/* EPIC 4: Slice context badge (optional, for clarity) */}
-            {node.isSliceChild && node.sliceContext && (
+            {node.isSliceChild && node.sliceContext && node.sliceContext !== 'other' && (
               <span className="text-[10px] ml-1.5 px-1 py-0.5 bg-gray-100 text-gray-500 rounded" title={`In slice: ${node.sliceContext}`}>
                 {node.sliceContext}
               </span>

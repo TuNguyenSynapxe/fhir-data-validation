@@ -147,11 +147,16 @@ function isNodeSelected(selection: any, node: any): boolean {
   if (!selection) return false;
   
   if (selection.kind === 'element') {
-    return node.path === selection.path && !node.isSlice;
+    // Element selection: match path and ensure it's an element node (not slice)
+    return node.path === selection.path && node.kind === 'element' && !node.isSliceChild;
   }
   
   if (selection.kind === 'slice') {
-    return node.isSlice && node.sliceName === selection.sliceName && node.parentPath === selection.path;
+    // Slice selection: match slice name and parent path
+    // This handles both 'slice' and 'slice-other' node kinds
+    return (node.kind === 'slice' || node.kind === 'slice-other') && 
+           node.sliceName === selection.sliceName && 
+           node.parentPath === selection.path;
   }
   
   return false;

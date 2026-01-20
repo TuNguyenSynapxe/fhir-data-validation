@@ -151,6 +151,57 @@ export const ElementDetailsPanel: React.FC = () => {
   // EPIC 3.5: Handle slice selection
   if (selection && selection.kind === 'slice') {
     const sliceName = selection.sliceName;
+    
+    // Special case: "other" slice (unsliced base elements in open matching)
+    if (sliceName === 'other') {
+      return (
+        <div className="element-details-panel">
+          {/* Header for "Other" node */}
+          <div className="details-header">
+            <h3 className="details-title flex items-center gap-2">
+              <Scissors className="w-5 h-5 text-gray-500" />
+              <span className="text-gray-700">Other (Unsliced)</span>
+            </h3>
+          </div>
+
+          {/* Parent Element Reference */}
+          <div className="details-section">
+            <h4>Parent Element</h4>
+            <dl className="details-list">
+              <dt>Path:</dt>
+              <dd className="text-sm">{element.path}</dd>
+            </dl>
+          </div>
+
+          {/* Explanation */}
+          <div className="details-section">
+            <h4 className="flex items-center gap-2">
+              <Info className="w-4 h-4" /> About This Node
+            </h4>
+            <p className="text-sm text-gray-600">
+              This virtual node represents instances that don't match any defined slice. 
+              The parent element uses <strong>open matching</strong>, allowing unsliced instances.
+            </p>
+          </div>
+
+          {/* Base Cardinality */}
+          <div className="details-section">
+            <h4>Cardinality</h4>
+            <dl className="details-list">
+              <dt>Base:</dt>
+              <dd>{element.baseCardinality.min}..{element.baseCardinality.max}</dd>
+            </dl>
+          </div>
+
+          {/* Info Footer */}
+          <div className="details-footer">
+            <small>Configuration for unsliced instances</small>
+          </div>
+        </div>
+      );
+    }
+    
+    // Regular slice handling
     const slice = element.slices?.[sliceName];
     
     console.log('[ElementDetailsPanel] Slice selection:', { sliceName, slice });

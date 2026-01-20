@@ -12,6 +12,7 @@
  * EPIC 3 + EPIC 4: Slice Support
  * - Slice nodes are virtual children under sliced elements
  * - Slice child nodes mirror parent element structure
+ * - Strict FHIR slicing semantics: no children under sliced parent
  */
 
 import type { ElementDesign } from '../api/sdBuilderApi';
@@ -23,11 +24,21 @@ export interface Cardinality {
 
 export type NodeRole = 'root' | 'backbone' | 'leaf';
 
+/**
+ * TreeNodeKind - Explicit node type classification
+ * 
+ * - 'element': Regular FHIR element node
+ * - 'slice': Slice definition node (virtual, under sliced element)
+ * - 'slice-other': Virtual "Other (unsliced)" node for open matching
+ */
+export type TreeNodeKind = 'element' | 'slice' | 'slice-other';
+
 export interface TreeNode {
   // Identity
-  id: string;                    // Unique node ID (path, path::slice::name, or path::slice::name::child::childName)
+  id: string;                    // Unique node ID (path, path::slice::name, path::slice::other, or path::slice::name::child::childName)
   path: string;                  // Full FHIR path (e.g., "Patient.contact.telecom")
   name: string;                  // Display name (e.g., "telecom")
+  kind: TreeNodeKind;            // Node type: element | slice | slice-other
   
   // Hierarchy
   parent: TreeNode | null;
@@ -36,8 +47,8 @@ export interface TreeNode {
   role: NodeRole;                // root | backbone | leaf
   
   // Slice Support (EPIC 3 + EPIC 4)
-  isSlice?: boolean;             // True for virtual slice nodes
-  sliceName?: string;            // Slice identifier (only for slice nodes)
+  isSlice?: boolean;             // True for virtual slice nodes (deprecated, use kind === 'slice')
+  sliceName?: string;            // Slice identifier (only for slice/slice-other nodes)
   parentPath?: string;           // Link back to sliced element (only for slice nodes)
   isSliceChild?: boolean;        // True for children under slice nodes (EPIC 4)
   sliceContext?: string;         // Parent slice name (only for slice children, EPIC 4)

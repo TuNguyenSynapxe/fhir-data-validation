@@ -8,13 +8,16 @@
  * - No isIncluded/isExcluded storage
  * - Node roles: root | backbone | leaf
  * 
- * EPIC 4: Slice Children
- * - Slice nodes mirror parent element's children
- * - Slice children are virtual, read-only representations
+ * EPIC 4: Strict FHIR Slicing Semantics
+ * - When element has slicing: NO direct children under parent
+ * - Parent becomes configuration-only container
+ * - Slices are siblings (never nested)
+ * - Each slice has mirrored children from base element
+ * - "Other (unsliced)" node for open matching
  */
 
 import type { ElementDesign } from '../api/sdBuilderApi';
-import type { TreeNode, VisibilityMode, NodeRole, Cardinality } from '../types/treeNode';
+import type { TreeNode, VisibilityMode, NodeRole, Cardinality, TreeNodeKind } from '../types/treeNode';
 
 /**
  * Determine node role based on position and children
@@ -49,6 +52,9 @@ function deriveSemanticState(cardinality: Cardinality) {
  * 
  * These are read-only representations showing the same structure under slice context.
  * Selection behavior: Clicking a slice child selects the slice, not the base element.
+ * 
+ * IMPORTANT: This recursively mirrors children but NEVER attempts to create slicing
+ * within slice children (slices cannot be nested).
  */
 function createSliceChildNode(sourceNode: TreeNode, sliceParent: TreeNode, sliceName: string): TreeNode {
   const sliceChildId = `${sliceParent.id}::child::${sourceNode.name}`;
@@ -56,6 +62,7 @@ function createSliceChildNode(sourceNode: TreeNode, sliceParent: TreeNode, slice
   const sliceChild: TreeNode = {
     ...sourceNode,
     id: sliceChildId,
+    kind: 'element', // Slice children are element nodes in slice context
     parent: sliceParent,
     depth: sliceParent.depth + 1,
     
@@ -63,7 +70,7 @@ function createSliceChildNode(sourceNode: TreeNode, sliceParent: TreeNode, slice
     isSliceChild: true,
     sliceContext: sliceName,
     
-    // Recursively mirror children
+    // Recursively mirror children (but NEVER render slicing within slice children)
     children: sourceNode.children.map(grandChild => 
       createSliceChildNode(grandChild, sliceParent, sliceName)
     ),
@@ -74,6 +81,11 @@ function createSliceChildNode(sourceNode: TreeNode, sliceParent: TreeNode, slice
 
 /**
  * Build hierarchical tree from flat FHIR elements
+ * 
+ * EPIC 4: Strict FHIR Slicing Semantics
+ * - Elements with slicing do NOT render direct children
+ * - Only slice nodes (and optionally "Other" node) appear as children
+ * - Slices are always siblings, never nested
  */
 export function buildTree(elements: ElementDesign[]): TreeNode[] {
   const nodeMap = new Map<string, TreeNode>();
@@ -92,6 +104,7 @@ export function buildTree(elements: ElementDesign[]): TreeNode[] {
       id: element.path,
       path: element.path,
       name,
+      kind: 'element', // All base nodes are element kind
       parent: null,
       children: [],
       depth: segments.length - 1,
@@ -120,6 +133,8 @@ export function buildTree(elements: ElementDesign[]): TreeNode[] {
   });
   
   // Phase 2: Build parent-child relationships
+  // IMPORTANT: Only build relationships for non-sliced parents
+  // Sliced parents will get slice nodes as children in Phase 3
   const rootNodes: TreeNode[] = [];
   
   nodeMap.forEach(node => {
@@ -128,24 +143,96 @@ export function buildTree(elements: ElementDesign[]): TreeNode[] {
     if (parentPath) {
       const parent = nodeMap.get(parentPath);
       if (parent) {
-        node.parent = parent;
-        parent.children.push(node);
-        parent.isExpandable = true;
+        // Check if parent has slicing - if so, do NOT add this as a direct child
+        const parentHasSlicing = parent.elementDesign.slicing && 
+                                Object.keys(parent.elementDesign.slices).length > 0;
+        
+        if (!parentHasSlicing) {
+          // Normal parent-child relationship
+          node.parent = parent;
+          parent.children.push(node);
+          parent.isExpandable = true;
+        }
+        // If parent has slicing, this child will be added under slice nodes in Phase 3
       }
     } else {
       rootNodes.push(node);  // Top-level resource
     }
   });
   
-  // Phase 3: Inject slice nodes for elements with slicing (EPIC 3 + EPIC 4)
+  // Phase 3: Inject slice nodes for elements with slicing
+  // This replaces direct children with slice structure
   nodeMap.forEach(node => {
     const element = node.elementDesign;
     
     // Check if element has slicing with slices
     if (element.slicing && element.slices && Object.keys(element.slices).length > 0) {
       const slices = element.slices;
+      const slicingRules = element.slicing;
       
-      // Create virtual slice nodes
+      // Clear any direct children (they should not have been added due to Phase 2 guard)
+      node.children = [];
+      
+      // Get base children that would have been under this element
+      const baseChildren = getDirectChildrenOf(element.path, elements, nodeMap);
+      
+      // If matching is 'open', add "Other (unsliced)" node first
+      if (slicingRules.rules.toLowerCase() === 'open') {
+        const otherNodeId = `${element.path}::slice::other`;
+        
+        const otherNode: TreeNode = {
+          id: otherNodeId,
+          path: element.path,
+          name: 'Other (unsliced)',
+          kind: 'slice-other',
+          parent: node,
+          children: [], // Will be populated below
+          depth: node.depth + 1,
+          role: baseChildren.length > 0 ? 'backbone' : 'leaf',
+          
+          // Slice-specific properties
+          isSlice: true, // For backward compatibility
+          sliceName: 'other',
+          parentPath: element.path,
+          
+          // Reference to parent element design
+          elementDesign: element,
+          
+          // Type codes for binding eligibility
+          typeCodes: node.typeCodes,
+          
+          // Cardinality from base element
+          baseCardinality: element.baseCardinality,
+          currentCardinality: element.baseCardinality,
+          
+          // Derived state
+          isRepeatable: element.baseCardinality.max === '*',
+          isRequired: element.baseCardinality.min >= 1,
+          isOptional: element.baseCardinality.min === 0,
+          isNotAllowed: element.baseCardinality.max === '0',
+          
+          // Modifications
+          hasCardinalityOverride: false,
+          hasBinding: false,
+          hasSlicing: false,
+          sliceCount: 0,
+          
+          // Visual state
+          isVisible: true,
+          isExpandable: baseChildren.length > 0,
+        };
+        
+        // Mirror base children under "Other" node
+        if (baseChildren.length > 0) {
+          otherNode.children = baseChildren.map(childNode => 
+            createSliceChildNode(childNode, otherNode, 'other')
+          );
+        }
+        
+        node.children.push(otherNode);
+      }
+      
+      // Create virtual slice nodes (siblings, never nested)
       Object.entries(slices).forEach(([sliceName, sliceDesign]) => {
         const sliceNodeId = `${element.path}::slice::${sliceName}`;
         
@@ -153,17 +240,18 @@ export function buildTree(elements: ElementDesign[]): TreeNode[] {
           id: sliceNodeId,
           path: element.path,
           name: (sliceDesign as any).Metadata?.ShortLabel || sliceName,
+          kind: 'slice',
           parent: node,
-          children: [], // EPIC 4: Will be populated below
+          children: [], // Will be populated below
           depth: node.depth + 1,
-          role: node.children.length > 0 ? 'backbone' : 'leaf', // EPIC 4: Backbone if has children
+          role: baseChildren.length > 0 ? 'backbone' : 'leaf',
           
           // Slice-specific properties
           isSlice: true,
           sliceName,
           parentPath: element.path,
           
-          // Reference to parent element design (slices don't have separate elementDesign)
+          // Reference to parent element design
           elementDesign: element,
           
           // Type codes for binding eligibility
@@ -187,36 +275,64 @@ export function buildTree(elements: ElementDesign[]): TreeNode[] {
           
           // Visual state
           isVisible: true,
-          isExpandable: node.children.length > 0, // EPIC 4: Expandable if parent has children
+          isExpandable: baseChildren.length > 0,
         };
         
-        // EPIC 4: Mirror parent element's children as slice children
-        // These are virtual nodes representing the same structure under a slice context
-        if (node.children.length > 0) {
-          sliceNode.children = node.children.map(childNode => 
+        // Mirror parent element's children as slice children
+        if (baseChildren.length > 0) {
+          sliceNode.children = baseChildren.map(childNode => 
             createSliceChildNode(childNode, sliceNode, sliceName)
           );
         }
         
         // Add slice node as child of sliced element
         node.children.push(sliceNode);
-        node.isExpandable = true;
       });
+      
+      node.isExpandable = true;
     }
   });
   
-  // Phase 4: Sort children by path for consistent order (slices will sort after regular children)
+  // Phase 4: Sort children by path for consistent order
+  // Slices will sort after "Other" node, then alphabetically
   nodeMap.forEach(node => {
     node.children.sort((a, b) => {
+      // "Other" node always first
+      if (a.kind === 'slice-other') return -1;
+      if (b.kind === 'slice-other') return 1;
+      
       // Slice nodes sort after regular nodes, then by name
-      if (a.isSlice && !b.isSlice) return 1;
-      if (!a.isSlice && b.isSlice) return -1;
-      if (a.isSlice && b.isSlice) return a.name.localeCompare(b.name);
+      if (a.kind === 'slice' && b.kind !== 'slice') return 1;
+      if (a.kind !== 'slice' && b.kind === 'slice') return -1;
+      if (a.kind === 'slice' && b.kind === 'slice') return a.name.localeCompare(b.name);
+      
       return a.path.localeCompare(b.path);
     });
   });
   
   return rootNodes;
+}
+
+/**
+ * Get direct children of an element path (immediate children only)
+ * Used to build base children for slice mirroring
+ */
+function getDirectChildrenOf(elementPath: string, allElements: ElementDesign[], nodeMap: Map<string, TreeNode>): TreeNode[] {
+  const childPrefix = elementPath + '.';
+  const targetDepth = elementPath.split('.').length + 1;
+  
+  const children: TreeNode[] = [];
+  
+  allElements.forEach(element => {
+    if (element.path.startsWith(childPrefix) && element.path.split('.').length === targetDepth) {
+      const childNode = nodeMap.get(element.path);
+      if (childNode && childNode.kind === 'element') {
+        children.push(childNode);
+      }
+    }
+  });
+  
+  return children;
 }
 
 /**
