@@ -78,18 +78,19 @@ function createSliceChildNode(sourceNode: TreeNode, sliceParent: TreeNode, slice
     // Type codes (for binding)
     typeCodes: sourceNode.typeCodes,
     
-    // Cardinality - copy values, not references
+    // Cardinality - ALWAYS use base cardinality (slice children are read-only mirrors)
+    // Never inherit currentCardinality which may include element-level overrides
     baseCardinality: { ...sourceNode.baseCardinality },
-    currentCardinality: { ...sourceNode.currentCardinality },
+    currentCardinality: { ...sourceNode.baseCardinality }, // ✅ Use base, not current
     
-    // Derived semantic state - copy values
-    isRepeatable: sourceNode.isRepeatable,
-    isRequired: sourceNode.isRequired,
-    isOptional: sourceNode.isOptional,
-    isNotAllowed: sourceNode.isNotAllowed,
+    // Derived semantic state - calculate from BASE cardinality
+    isRepeatable: sourceNode.baseCardinality.max === '*',
+    isRequired: sourceNode.baseCardinality.min >= 1,
+    isOptional: sourceNode.baseCardinality.min === 0,
+    isNotAllowed: sourceNode.baseCardinality.max === '0',
     
-    // Modifications - copy flags
-    hasCardinalityOverride: sourceNode.hasCardinalityOverride,
+    // Modifications - slice children NEVER have overrides
+    hasCardinalityOverride: false, // Always false for slice children
     hasBinding: sourceNode.hasBinding,
     hasSlicing: false, // Slice children NEVER have slicing
     sliceCount: 0, // Slice children NEVER have slices
