@@ -53,12 +53,26 @@ export function SliceConstraintDrawer({
   const [error, setError] = useState<string>('');
 
   // Initialize from existing slice data
+  // BUGFIX: Only depend on isOpen and sliceName to prevent form reset on every render
   useEffect(() => {
-    if (!isOpen || !slice) return;
+    if (!isOpen) return;
+
+    console.log('[SliceConstraintDrawer] Initializing form');
+    console.log('[SliceConstraintDrawer] slice data:', slice);
+    console.log('[SliceConstraintDrawer] slice.Conditions:', slice?.Conditions);
+    console.log('[SliceConstraintDrawer] slice.OverrideCardinality:', slice?.OverrideCardinality);
+    console.log('[SliceConstraintDrawer] slice.Metadata:', slice?.Metadata);
+
+    if (!slice) {
+      console.warn('[SliceConstraintDrawer] Slice not found:', sliceName);
+      return;
+    }
 
     // Initialize conditions from existing conditions array
     const initialConditions: Record<string, SliceCondition> = {};
-    discriminators.forEach((disc: any) => {
+    const discs = element.slicing?.discriminators || [];
+    
+    discs.forEach((disc: any) => {
       const key = `${disc.type}:${disc.path}`;
       
       // Find existing condition for this discriminator
@@ -66,11 +80,13 @@ export function SliceConstraintDrawer({
         (c: any) => c.DiscriminatorType === disc.type && c.DiscriminatorPath === disc.path
       );
 
+      console.log(`[SliceConstraintDrawer] Discriminator ${key}:`, existingCondition);
+
       if (existingCondition) {
         initialConditions[key] = {
           discriminatorPath: disc.path,
           discriminatorType: disc.type,
-          operator: existingCondition.Operator,
+          operator: existingCondition.Operator?.toLowerCase() || 'none', // Ensure lowercase
           value: existingCondition.Value,
           system: existingCondition.System,
         };
@@ -83,12 +99,14 @@ export function SliceConstraintDrawer({
       }
     });
 
+    console.log('[SliceConstraintDrawer] Initialized conditions:', initialConditions);
+
     setConditions(initialConditions);
-    setMinCardinality(slice.OverrideCardinality?.min?.toString() || '');
-    setMaxCardinality(slice.OverrideCardinality?.max || '');
+    setMinCardinality(slice.OverrideCardinality?.Min?.toString() || '');
+    setMaxCardinality(slice.OverrideCardinality?.Max || '');
     setShortLabel(slice.Metadata?.ShortLabel || '');
     setDescription(slice.Metadata?.Description || '');
-  }, [isOpen, slice, discriminators]);
+  }, [isOpen, sliceName, element.path]); // BUGFIX: Only depend on isOpen, sliceName, and element.path
 
   if (!isOpen || !element) return null;
 

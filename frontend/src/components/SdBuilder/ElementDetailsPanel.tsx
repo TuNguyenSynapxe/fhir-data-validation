@@ -153,6 +153,9 @@ export const ElementDetailsPanel: React.FC = () => {
     const sliceName = selection.sliceName;
     const slice = element.slices?.[sliceName];
     
+    console.log('[ElementDetailsPanel] Slice selection:', { sliceName, slice });
+    console.log('[ElementDetailsPanel] element.slices:', element.slices);
+    
     if (!slice) {
       return (
         <div className="element-details-panel-empty">
@@ -246,7 +249,7 @@ export const ElementDetailsPanel: React.FC = () => {
           </div>
 
           {/* Slice Metadata */}
-          {slice.Metadata && (
+          {(slice.Metadata?.ShortLabel || slice.Metadata?.Description) && (
             <div className="details-section">
               <h4>Metadata</h4>
               <dl className="details-list">
