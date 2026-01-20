@@ -176,8 +176,11 @@ export function buildTree(elements: ElementDesign[]): TreeNode[] {
       // Get base children that would have been under this element
       const baseChildren = getDirectChildrenOf(element.path, elements, nodeMap);
       
-      // If matching is 'open', add "Other (unsliced)" node first
-      if (slicingRules.rules.toLowerCase() === 'open') {
+      // Determine matching rule (normalize to lowercase)
+      const matching = slicingRules.rules.toLowerCase();
+      
+      // Helper function to create "Other (unsliced)" node
+      const createUnslicedNode = (): TreeNode => {
         const otherNodeId = `${element.path}::slice::other`;
         
         const otherNode: TreeNode = {
@@ -229,8 +232,11 @@ export function buildTree(elements: ElementDesign[]): TreeNode[] {
           );
         }
         
-        node.children.push(otherNode);
-      }
+        return otherNode;
+      };
+      
+      // Build slice nodes array
+      const sliceNodes: TreeNode[] = [];
       
       // Create virtual slice nodes (siblings, never nested)
       Object.entries(slices).forEach(([sliceName, sliceDesign]) => {
@@ -285,29 +291,71 @@ export function buildTree(elements: ElementDesign[]): TreeNode[] {
           );
         }
         
-        // Add slice node as child of sliced element
-        node.children.push(sliceNode);
+        sliceNodes.push(sliceNode);
       });
+      
+      // Apply FHIR slicing matching rules
+      switch (matching) {
+        case 'closed':
+          // closed: Only slice nodes, NO unsliced node
+          node.children = sliceNodes;
+          break;
+          
+        case 'open':
+          // open: Unsliced node + slice nodes (order not enforced)
+          node.children = [createUnslicedNode(), ...sliceNodes];
+          break;
+          
+        case 'openatend':
+          // openAtEnd: Slice nodes first, then unsliced node LAST
+          node.children = [...sliceNodes, createUnslicedNode()];
+          break;
+          
+        default:
+          // Fallback: treat as open for safety
+          console.warn(`Unknown slicing matching rule: ${matching}. Treating as 'open'.`);
+          node.children = [createUnslicedNode(), ...sliceNodes];
+          break;
+      }
       
       node.isExpandable = true;
     }
   });
   
   // Phase 4: Sort children by path for consistent order
-  // Slices will sort after "Other" node, then alphabetically
+  // IMPORTANT: For sliced elements, preserve matching rule order (set in Phase 3)
   nodeMap.forEach(node => {
-    node.children.sort((a, b) => {
-      // "Other" node always first
-      if (a.kind === 'slice-other') return -1;
-      if (b.kind === 'slice-other') return 1;
+    const element = node.elementDesign;
+    const hasSlicing = element.slicing && Object.keys(element.slices).length > 0;
+    
+    // Only sort non-sliced children
+    // Sliced children order is controlled by matching rules in Phase 3
+    if (!hasSlicing) {
+      node.children.sort((a, b) => {
+        return a.path.localeCompare(b.path);
+      });
+    } else {
+      // For sliced elements, only sort slice nodes alphabetically
+      // but preserve unsliced node position based on matching rule
+      const matching = element.slicing?.rules.toLowerCase() || 'open';
       
-      // Slice nodes sort after regular nodes, then by name
-      if (a.kind === 'slice' && b.kind !== 'slice') return 1;
-      if (a.kind !== 'slice' && b.kind === 'slice') return -1;
-      if (a.kind === 'slice' && b.kind === 'slice') return a.name.localeCompare(b.name);
-      
-      return a.path.localeCompare(b.path);
-    });
+      if (matching === 'closed') {
+        // Only slice nodes, sort alphabetically
+        node.children.sort((a, b) => a.name.localeCompare(b.name));
+      } else if (matching === 'open') {
+        // Unsliced first (already positioned), sort slices only
+        const unslicedNode = node.children.find(c => c.kind === 'slice-other');
+        const sliceNodes = node.children.filter(c => c.kind === 'slice');
+        sliceNodes.sort((a, b) => a.name.localeCompare(b.name));
+        node.children = unslicedNode ? [unslicedNode, ...sliceNodes] : sliceNodes;
+      } else if (matching === 'openatend') {
+        // Slices first (sorted), unsliced last
+        const unslicedNode = node.children.find(c => c.kind === 'slice-other');
+        const sliceNodes = node.children.filter(c => c.kind === 'slice');
+        sliceNodes.sort((a, b) => a.name.localeCompare(b.name));
+        node.children = unslicedNode ? [...sliceNodes, unslicedNode] : sliceNodes;
+      }
+    }
   });
   
   return rootNodes;
