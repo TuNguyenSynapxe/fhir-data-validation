@@ -57,11 +57,15 @@ export function SliceConstraintDrawer({
   useEffect(() => {
     if (!isOpen) return;
 
-    console.log('[SliceConstraintDrawer] Initializing form');
+    console.log('[SliceConstraintDrawer] ========== FORM INIT START ==========');
+    console.log('[SliceConstraintDrawer] isOpen:', isOpen);
+    console.log('[SliceConstraintDrawer] sliceName:', sliceName);
+    console.log('[SliceConstraintDrawer] element.path:', element.path);
+    console.log('[SliceConstraintDrawer] element.slices:', element.slices);
     console.log('[SliceConstraintDrawer] slice data:', slice);
-    console.log('[SliceConstraintDrawer] slice.Conditions:', slice?.Conditions);
-    console.log('[SliceConstraintDrawer] slice.OverrideCardinality:', slice?.OverrideCardinality);
-    console.log('[SliceConstraintDrawer] slice.Metadata:', slice?.Metadata);
+    console.log('[SliceConstraintDrawer] slice?.Conditions:', slice?.Conditions);
+    console.log('[SliceConstraintDrawer] slice?.OverrideCardinality:', slice?.OverrideCardinality);
+    console.log('[SliceConstraintDrawer] slice?.Metadata:', slice?.Metadata);
 
     if (!slice) {
       console.warn('[SliceConstraintDrawer] Slice not found:', sliceName);
@@ -100,6 +104,7 @@ export function SliceConstraintDrawer({
     });
 
     console.log('[SliceConstraintDrawer] Initialized conditions:', initialConditions);
+    console.log('[SliceConstraintDrawer] ========== FORM INIT END ==========');
 
     setConditions(initialConditions);
     setMinCardinality(slice.OverrideCardinality?.Min?.toString() || '');

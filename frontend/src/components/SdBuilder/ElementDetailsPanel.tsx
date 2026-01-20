@@ -57,9 +57,20 @@ export const ElementDetailsPanel: React.FC = () => {
   const selectedElement = React.useMemo(() => {
     if (!design || !selection) return null;
     
+    console.log('[ElementDetailsPanel] Recalculating selectedElement');
+    console.log('[ElementDetailsPanel] selection:', selection);
+    console.log('[ElementDetailsPanel] design.elements.length:', design.elements.length);
+    
     const path = selection.kind === 'slice' ? selection.path : selection.path;
     const tree = buildTree(design.elements);
-    return findNodeByPath(tree, path);
+    const node = findNodeByPath(tree, path);
+    
+    console.log('[ElementDetailsPanel] Found node:', node?.path);
+    if (node && selection.kind === 'slice') {
+      console.log('[ElementDetailsPanel] Slice data in element:', node.elementDesign.slices);
+    }
+    
+    return node;
   }, [design, selection]);
   
   const handleSelectValueSet = async (url: string) => {
